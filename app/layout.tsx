@@ -1,8 +1,8 @@
-import { Navbar } from "@/components/navbar"
 import { Providers } from "@/components/providers"
 import { Toaster as SonnerToaster } from "sonner"
 import { Inter } from 'next/font/google'
 import "./globals.css"
+import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export const viewport = {
   width: 'device-width',
@@ -37,10 +37,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-screen bg-background`}>
         <Providers>
-          <div className="relative flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-1">{children}</main>
-          </div>
+          <LayoutWrapper>{children}</LayoutWrapper>
         </Providers>
         <SonnerToaster />
       </body>
