@@ -34,7 +34,7 @@ export function ReviewForm({ barberId, onSuccess }: ReviewFormProps) {
       clientId: user.id,
       client: {
         id: user.id,
-        name: user.name,
+        name: user.name || "Anonymous",
         image: user.image || "/placeholder.svg?height=100&width=100",
       },
       date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
