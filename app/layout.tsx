@@ -3,7 +3,6 @@ import { Providers } from "@/components/providers"
 import { Toaster as SonnerToaster } from "sonner"
 import { Inter } from 'next/font/google'
 import "./globals.css"
-import ClientLayout from "@/components/client-layout"
 
 export const viewport = {
   width: 'device-width',
@@ -20,7 +19,11 @@ export const metadata = {
 
 const inter = Inter({ subsets: ["latin"] })
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -34,12 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.className} min-h-screen bg-background`}>
         <Providers>
-          <ClientLayout>
-            <div className="relative flex min-h-screen flex-col">
-              <Navbar />
-              <main className="flex-1">{children}</main>
-            </div>
-          </ClientLayout>
+          <div className="relative flex min-h-screen flex-col">
+            <Navbar />
+            <main className="flex-1">{children}</main>
+          </div>
         </Providers>
         <SonnerToaster />
       </body>
