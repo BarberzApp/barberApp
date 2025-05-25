@@ -48,10 +48,6 @@ export function NotificationCenter() {
     }
   }
 
-  const handleMarkAsRead = (notificationId: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)))
-  }
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -85,7 +81,7 @@ export function NotificationCenter() {
           ) : (
             <div className="divide-y">
               {notifications.map((notification) => (
-                <NotificationItem key={notification.id} notification={notification} onMarkAsRead={handleMarkAsRead} />
+                <NotificationItem key={notification.id} notification={notification} />
               ))}
             </div>
           )}

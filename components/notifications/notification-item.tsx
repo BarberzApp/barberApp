@@ -8,12 +8,12 @@ import { markNotificationAsRead, type Notification } from "@/lib/notification-se
 
 interface NotificationItemProps {
   notification: Notification
-  onMarkAsRead: (id: string) => void
 }
 
-export function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
+export function NotificationItem({ notification }: NotificationItemProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [isRead, setIsRead] = useState(notification.read)
 
   const getIcon = () => {
     switch (notification.type) {
@@ -37,12 +37,13 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
   }
 
   const handleClick = async () => {
+    if (isLoading) return
     setIsLoading(true)
 
     try {
-      if (!notification.read) {
+      if (!isRead) {
         await markNotificationAsRead(notification.id, notification.userId)
-        onMarkAsRead(notification.id)
+        setIsRead(true)
       }
 
       // Navigate based on notification type
@@ -97,17 +98,17 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
     <div
       className={cn(
         "flex items-start gap-3 p-4 hover:bg-muted/50 cursor-pointer transition-colors",
-        notification.read ? "opacity-70" : "bg-muted/30",
+        isRead ? "opacity-70" : "bg-muted/30",
       )}
       onClick={handleClick}
     >
       <div className="mt-0.5">{getIcon()}</div>
       <div className="flex-1 min-w-0">
-        <p className={cn("text-sm", !notification.read && "font-medium")}>{notification.title}</p>
+        <p className={cn("text-sm", !isRead && "font-medium")}>{notification.title}</p>
         <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
         <p className="text-xs text-muted-foreground mt-1">{timeAgo()}</p>
       </div>
-      {!notification.read && <div className="w-2 h-2 rounded-full bg-barber-500 mt-1.5" />}
+      {!isRead && <div className="w-2 h-2 rounded-full bg-barber-500 mt-1.5" />}
     </div>
   )
 }
