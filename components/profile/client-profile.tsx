@@ -1,0 +1,452 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Calendar, MapPin, Star, Scissors, Heart, Upload } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import Link from "next/link"
+import type { User } from "@/contexts/auth-context"
+
+interface ClientProfileProps {
+  user: User
+}
+
+// Mock data for client profile
+const mockClientData = {
+  phone: "555-123-4567",
+  location: "New York, NY",
+  joinDate: "January 2023",
+  bookingHistory: [
+    {
+      id: "1",
+      date: "May 15, 2023",
+      barber: {
+        id: "b1",
+        name: "Alex Johnson",
+        image: "/placeholder.svg?height=100&width=100",
+      },
+      service: "Haircut & Beard Trim",
+      price: "$45",
+    },
+    {
+      id: "2",
+      date: "March 3, 2023",
+      barber: {
+        id: "b2",
+        name: "Maria Garcia",
+        image: "/placeholder.svg?height=100&width=100",
+      },
+      service: "Haircut",
+      price: "$30",
+    },
+  ],
+  favoriteBarbers: [
+    {
+      id: "b1",
+      name: "Alex Johnson",
+      image: "/placeholder.svg?height=100&width=100",
+      rating: 4.8,
+      specialties: ["Fades", "Beard Trim"],
+    },
+    {
+      id: "b3",
+      name: "Jamal Williams",
+      image: "/placeholder.svg?height=100&width=100",
+      rating: 4.7,
+      specialties: ["Tapers", "Waves"],
+    },
+  ],
+  reviews: [
+    {
+      id: "r1",
+      barber: {
+        id: "b1",
+        name: "Alex Johnson",
+        image: "/placeholder.svg?height=100&width=100",
+      },
+      date: "May 16, 2023",
+      rating: 5,
+      comment: "Great haircut, very professional and friendly service!",
+    },
+    {
+      id: "r2",
+      barber: {
+        id: "b2",
+        name: "Maria Garcia",
+        image: "/placeholder.svg?height=100&width=100",
+      },
+      date: "March 4, 2023",
+      rating: 4,
+      comment: "Good service, but had to wait a bit longer than expected.",
+    },
+  ],
+}
+
+export function ClientProfile({ user }: ClientProfileProps) {
+  const { toast } = useToast()
+  const [isEditing, setIsEditing] = useState(false)
+  const [profileData, setProfileData] = useState({
+    name: user.name || "",
+    email: user.email || "",
+    phone: mockClientData.phone,
+    location: mockClientData.location,
+  })
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setProfileData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSave = () => {
+    // In a real app, this would call an API to update the profile
+    toast({
+      title: "Profile updated",
+      description: "Your profile has been updated successfully",
+    })
+    setIsEditing(false)
+  }
+
+  const renderStars = (rating: number) => {
+    return Array(5)
+      .fill(0)
+      .map((_, i) => (
+        <Star key={i} className={`h-4 w-4 ${i < rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`} />
+      ))
+  }
+
+  return (
+    <Tabs defaultValue="overview" className="w-full">
+      <TabsList className="grid w-full grid-cols-4 mb-8">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="bookings">Bookings</TabsTrigger>
+        <TabsTrigger value="favorites">Favorites</TabsTrigger>
+        <TabsTrigger value="settings">Settings</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-1">
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+              <CardDescription>Your personal information</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center text-center">
+              <div className="relative mb-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute bottom-0 right-0 rounded-full bg-background border"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="sr-only">Upload avatar</span>
+                </Button>
+              </div>
+              <h3 className="text-xl font-bold">{user.name}</h3>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+              <div className="flex items-center text-sm text-muted-foreground mt-1">
+                <MapPin className="h-4 w-4 mr-1" />
+                <span>{mockClientData.location}</span>
+              </div>
+              <div className="flex items-center text-sm text-muted-foreground mt-1">
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>Member since {mockClientData.joinDate}</span>
+              </div>
+              <Button variant="outline" className="mt-4 w-full" onClick={() => setIsEditing(true)}>
+                Edit Profile
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Recent Bookings</CardTitle>
+              <CardDescription>Your recent appointments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {mockClientData.bookingHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {mockClientData.bookingHistory.map((booking) => (
+                    <div key={booking.id} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
+                      <Avatar>
+                        <AvatarImage src={booking.barber.image || "/placeholder.svg"} alt={booking.barber.name} />
+                        <AvatarFallback>{booking.barber.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex justify-between">
+                          <h4 className="font-medium">{booking.barber.name}</h4>
+                          <span className="text-sm font-medium">{booking.price}</span>
+                        </div>
+                        <p className="text-sm">{booking.service}</p>
+                        <div className="flex items-center text-xs text-muted-foreground mt-1">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          <span>{booking.date}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
+                  <p className="text-muted-foreground mb-4">You haven't made any bookings yet</p>
+                  <Button asChild>
+                    <Link href="/browse">Book a Barber</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <CardTitle>Your Reviews</CardTitle>
+              <CardDescription>Reviews you've left for barbers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {mockClientData.reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {mockClientData.reviews.map((review) => (
+                    <div key={review.id} className="border-b pb-6 last:border-0 last:pb-0">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar>
+                          <AvatarImage src={review.barber.image || "/placeholder.svg"} alt={review.barber.name} />
+                          <AvatarFallback>{review.barber.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium">{review.barber.name}</h4>
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            <span>{review.date}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex mb-2">{renderStars(review.rating)}</div>
+                      <p className="text-sm">{review.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No reviews yet</h3>
+                  <p className="text-muted-foreground">You haven't left any reviews yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="bookings">
+        <Card>
+          <CardHeader>
+            <CardTitle>Booking History</CardTitle>
+            <CardDescription>View all your past and upcoming appointments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {mockClientData.bookingHistory.length > 0 ? (
+              <div className="space-y-6">
+                {mockClientData.bookingHistory.map((booking) => (
+                  <div key={booking.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={booking.barber.image || "/placeholder.svg"} alt={booking.barber.name} />
+                      <AvatarFallback>{booking.barber.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex justify-between">
+                        <h4 className="font-medium">{booking.barber.name}</h4>
+                        <span className="font-medium">{booking.price}</span>
+                      </div>
+                      <p>{booking.service}</p>
+                      <div className="flex items-center text-sm text-muted-foreground mt-1">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        <span>{booking.date}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/book/${booking.barber.id}`}>Book Again</Link>
+                      </Button>
+                      <Button size="sm" asChild>
+                        <Link href={`/messages/${booking.barber.id}`}>Message</Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
+                <p className="text-muted-foreground mb-6">You haven't made any bookings yet</p>
+                <Button asChild>
+                  <Link href="/browse">Book a Barber</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="favorites">
+        <Card>
+          <CardHeader>
+            <CardTitle>Favorite Barbers</CardTitle>
+            <CardDescription>Barbers you've saved as favorites</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {mockClientData.favoriteBarbers.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {mockClientData.favoriteBarbers.map((barber) => (
+                  <div key={barber.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={barber.image || "/placeholder.svg"} alt={barber.name} />
+                      <AvatarFallback>{barber.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h4 className="font-medium">{barber.name}</h4>
+                      <div className="flex items-center mt-1">
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
+                        <span>{barber.rating}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {barber.specialties.map((specialty) => (
+                          <Badge key={specialty} variant="secondary" className="text-xs">
+                            {specialty}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" asChild>
+                        <Link href={`/book/${barber.id}`}>Book</Link>
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <Heart className="h-3 w-3 fill-current" />
+                        Favorited
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No favorites yet</h3>
+                <p className="text-muted-foreground mb-6">You haven't added any barbers to your favorites yet</p>
+                <Button asChild>
+                  <Link href="/browse">Browse Barbers</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="settings">
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Settings</CardTitle>
+            <CardDescription>Manage your account preferences</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Personal Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input id="name" name="name" value={profileData.name} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={profileData.email}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    value={profileData.phone}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={profileData.location}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+              </div>
+
+              {isEditing ? (
+                <div className="flex gap-2">
+                  <Button onClick={handleSave}>Save Changes</Button>
+                  <Button variant="outline" onClick={() => setIsEditing(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  Edit Information
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-medium">Notification Preferences</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="email-notifications">Email Notifications</Label>
+                  <input type="checkbox" id="email-notifications" className="toggle" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="sms-notifications">SMS Notifications</Label>
+                  <input type="checkbox" id="sms-notifications" className="toggle" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="marketing-emails">Marketing Emails</Label>
+                  <input type="checkbox" id="marketing-emails" className="toggle" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-medium">Security</h3>
+              <Button variant="outline">Change Password</Button>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-medium">Danger Zone</h3>
+              <Button variant="destructive">Delete Account</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  )
+}
