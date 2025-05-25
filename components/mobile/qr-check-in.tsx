@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { QrCode, Check, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
-import { QrReader } from "react-qr-reader"
+import { BrowserQRCodeReader } from "@zxing/browser"
 import { useAuth } from "@/contexts/auth-context"
 
 interface QrCheckInProps {
@@ -27,6 +27,33 @@ export function QrCheckIn({ bookingId, onCheckIn }: QrCheckInProps) {
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
   const { user } = useAuth()
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    let codeReader: BrowserQRCodeReader | null = null
+
+    if (isScanning && videoRef.current) {
+      codeReader = new BrowserQRCodeReader()
+      codeReader
+        .decodeFromVideoDevice(undefined, videoRef.current, (result, error) => {
+          if (result) {
+            handleScan(result.getText())
+          }
+          if (error) {
+            handleError(error)
+          }
+        })
+        .catch((err) => {
+          handleError(err)
+        })
+    }
+
+    return () => {
+      if (codeReader) {
+        codeReader = null
+      }
+    }
+  }, [isScanning])
 
   const handleScan = async (result: string | null) => {
     if (!result) return
@@ -98,18 +125,7 @@ export function QrCheckIn({ bookingId, onCheckIn }: QrCheckInProps) {
         <div className="flex flex-col items-center justify-center py-6">
           {isScanning ? (
             <div className="relative w-64 h-64 bg-muted rounded-lg overflow-hidden">
-              <QrReader
-                constraints={{ facingMode: "environment" }}
-                onResult={(result, error) => {
-                  if (result) {
-                    handleScan(result.getText())
-                  }
-                  if (error) {
-                    handleError(error)
-                  }
-                }}
-                className="w-full h-full"
-              />
+              <video ref={videoRef} className="w-full h-full" />
               <div className="absolute top-1/2 left-0 w-full h-0.5 bg-primary animate-scan" />
             </div>
           ) : isCheckedIn ? (
