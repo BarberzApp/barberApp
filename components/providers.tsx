@@ -6,7 +6,7 @@ import { DataProvider } from "@/contexts/data-context"
 import { PaymentProvider } from "@/contexts/payment-context"
 import { SupabaseAuthProvider } from "@/contexts/supabase-auth-context"
 import { SessionProvider } from "next-auth/react"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/toaster"
 import { PWARegister } from "@/components/pwa-register"
 import { useEffect, useState } from "react"
 
