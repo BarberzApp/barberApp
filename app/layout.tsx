@@ -1,8 +1,8 @@
 import { Providers } from "@/components/providers"
-import { Toaster as SonnerToaster } from "sonner"
 import { Inter } from 'next/font/google'
 import "./globals.css"
 import { LayoutWrapper } from "@/components/layout-wrapper"
+import { Toaster } from "@/components/toaster"
 
 export const viewport = {
   width: 'device-width',
@@ -39,7 +39,7 @@ export default function RootLayout({
         <Providers>
           <LayoutWrapper>{children}</LayoutWrapper>
         </Providers>
-        <SonnerToaster />
+        <Toaster />
       </body>
     </html>
   )
