@@ -1,32 +1,26 @@
-"use client"
-import type React from "react"
-import type { Metadata, Viewport } from "next"
-import { Inter } from 'next/font/google'
-import "./globals.css"
 import { Navbar } from "@/components/navbar"
 import { Providers } from "@/components/providers"
 import { Toaster as SonnerToaster } from "sonner"
+import { Inter } from 'next/font/google'
+import "./globals.css"
+import ClientLayout from "@/components/client-layout"
 
-const inter = Inter({ subsets: ["latin"] })
-
-export const viewport: Viewport = {
+export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#6366f1",
 }
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "BarberHub",
   description: "Find and book barbers or offer your services",
   manifest: "/manifest.json",
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+const inter = Inter({ subsets: ["latin"] })
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -40,10 +34,12 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-screen bg-background`}>
         <Providers>
-          <div className="relative flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-1">{children}</main>
-          </div>
+          <ClientLayout>
+            <div className="relative flex min-h-screen flex-col">
+              <Navbar />
+              <main className="flex-1">{children}</main>
+            </div>
+          </ClientLayout>
         </Providers>
         <SonnerToaster />
       </body>
