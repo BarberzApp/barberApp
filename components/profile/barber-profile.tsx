@@ -201,8 +201,8 @@ export function BarberProfile({ user }: BarberProfileProps) {
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name || "Barber"} />
+                  <AvatarFallback>{user.name?.charAt(0) || "B"}</AvatarFallback>
                 </Avatar>
                 <Button
                   variant="outline"

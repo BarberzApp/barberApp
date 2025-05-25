@@ -141,8 +141,8 @@ export function ClientProfile({ user }: ClientProfileProps) {
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name || "User"} />
+                  <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
                 </Avatar>
                 <Button
                   variant="outline"

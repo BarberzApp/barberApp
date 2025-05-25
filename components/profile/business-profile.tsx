@@ -279,8 +279,8 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.businessName || "Business"} />
-                  <AvatarFallback>{(user.businessName || "B").charAt(0)}</AvatarFallback>
+                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name || "Business"} />
+                  <AvatarFallback>{user.name?.charAt(0) || "B"}</AvatarFallback>
                 </Avatar>
                 <Button
                   variant="outline"
@@ -288,7 +288,7 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
                   className="absolute bottom-0 right-0 rounded-full bg-background border"
                 >
                   <Upload className="h-4 w-4" />
-                  <span className="sr-only">Upload logo</span>
+                  <span className="sr-only">Upload avatar</span>
                 </Button>
               </div>
               <h3 className="text-xl font-bold">{user.businessName || profileData.businessName}</h3>
