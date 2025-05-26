@@ -1,6 +1,10 @@
+"use client"
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { NotificationSettings } from "@/components/settings/notification-settings"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+export const dynamic = 'force-dynamic'
 
 export default function SettingsPage() {
   return (

@@ -7,6 +7,8 @@ import { ClientProfile } from "@/components/profile/client-profile"
 import { BarberProfile } from "@/components/profile/barber-profile"
 import { BusinessProfile } from "@/components/profile/business-profile"
 
+export const dynamic = 'force-dynamic'
+
 export default function ProfilePage() {
   const { user, status } = useAuth()
   const router = useRouter()

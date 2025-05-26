@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { Wallet, ArrowUp, ArrowDown, DollarSign, Loader2 } from "lucide-react"
 
+export const dynamic = 'force-dynamic'
+
 export default function WalletPage() {
   const { user, addFundsToWallet, withdrawFromWallet } = useAuth()
   const { toast } = useToast()

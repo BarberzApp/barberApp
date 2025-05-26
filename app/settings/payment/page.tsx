@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaymentMethods } from "@/components/payment/payment-methods"
 import { EarningsDashboard } from "@/components/payment/earnings-dashboard"
 
+export const dynamic = 'force-dynamic'
+
 export default function PaymentSettingsPage() {
   const { user, status } = useAuth()
   const router = useRouter()
