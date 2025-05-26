@@ -1,25 +1,36 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
+import { supabase } from "@/lib/supabase"
+import { useToast } from "@/components/ui/use-toast"
 
 // Types
 export type UserRole = "client" | "barber" | "business"
 
 export type User = {
   id: string
-  name: string | null
-  email: string | null
-  image: string | null
-  role: string
+  name: string
+  email: string
+  image?: string
+  role: "client" | "barber" | "business"
+  businessName?: string
   phone?: string
   location?: string
+  description?: string
   favorites?: string[]
   wallet?: number
   stripeCustomerId?: string
   stripeAccountId?: string
   businessId?: string
-  businessName?: string
+  bio?: string
+  joinDate?: string
+  services?: Array<{
+    id: string
+    name: string
+    price: number
+    duration: number
+  }>
+  specialties?: string[]
 }
 
 interface AuthContextType {
@@ -50,161 +61,337 @@ const AuthContext = createContext<AuthContextType>({
   withdrawFromWallet: async () => false,
 })
 
-// Mock user data
-const mockUsers = [
-  {
-    id: "c1",
-    name: "John Client",
-    email: "client@example.com",
-    image: "/placeholder.svg?height=100&width=100",
-    role: "client" as UserRole,
-    phone: "555-123-4567",
-    location: "New York, NY",
-    favorites: ["b1", "b3"],
-    wallet: 150.0,
-    stripeCustomerId: "cus_mock123",
-  },
-  {
-    id: "b1",
-    name: "Alex Johnson",
-    email: "barber@example.com",
-    image: "/placeholder.svg?height=100&width=100",
-    role: "barber" as UserRole,
-    phone: "555-987-6543",
-    location: "Downtown, New York, NY",
-    wallet: 750.0,
-    stripeCustomerId: "cus_mock456",
-    stripeAccountId: "acct_mock123",
-  },
-  {
-    id: "biz1",
-    name: "Elite Cuts",
-    email: "business@example.com",
-    image: "/placeholder.svg?height=100&width=100",
-    role: "business" as UserRole,
-    phone: "555-789-0123",
-    location: "123 Main St, New York, NY",
-    wallet: 2500.0,
-    stripeCustomerId: "cus_mock789",
-    businessName: "Elite Cuts",
-  },
-]
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession()
   const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
-    if (session?.user) {
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+      } else {
+        setUser(null)
+        setIsLoading(false)
+      }
+    })
+
+    // Listen for changes on auth state
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await fetchUserProfile(session.user.id)
+      } else {
+        setUser(null)
+        setIsLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+
       setUser({
-        id: session.user.id,
-        name: session.user.name ?? null,
-        email: session.user.email ?? null,
-        image: session.user.image ?? null,
-        role: session.user.role,
+        id: userId,
+        name: profile.name,
+        email: profile.email,
+        image: undefined,
+        role: profile.role,
+        phone: profile.phone,
+        location: profile.location,
+        favorites: profile.favorites,
+        wallet: profile.wallet,
+        stripeCustomerId: profile.stripe_customer_id,
+        stripeAccountId: profile.stripe_account_id,
+        businessId: profile.business_id,
+        businessName: profile.business_name,
+        description: profile.description,
+        bio: profile.bio,
+        joinDate: profile.join_date,
+        services: profile.services,
+        specialties: profile.specialties,
       })
-    } else {
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
       setUser(null)
+    } finally {
+      setIsLoading(false)
     }
-  }, [session])
+  }
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    const foundUser = mockUsers.find((u) => u.email === email)
-    if (foundUser) {
-      setUser(foundUser)
-      return true
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (data.user) {
+        // Fetch additional user data from the profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError)
+          return false
+        }
+
+        setUser({
+          id: data.user.id,
+          name: data.user.user_metadata?.name || "",
+          email: data.user.email || "",
+          image: data.user.user_metadata?.avatar_url || undefined,
+          role: profile?.role || 'client',
+          phone: profile?.phone || undefined,
+          location: profile?.location || undefined,
+          favorites: profile?.favorites || [],
+          wallet: profile?.wallet || 0,
+          stripeCustomerId: profile?.stripe_customer_id || undefined,
+          stripeAccountId: profile?.stripe_account_id || undefined,
+          businessId: profile?.business_id || undefined,
+          businessName: profile?.business_name || undefined,
+          description: profile?.description || undefined,
+          bio: profile?.bio || undefined,
+          joinDate: profile?.join_date || undefined,
+          services: profile?.services || [],
+          specialties: profile?.specialties || [],
+        })
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Login error:', error)
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+      return false
     }
-    return false
   }
 
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            role,
+          },
+        },
+      })
 
-    // Check if email already exists
-    if (mockUsers.some((u) => u.email === email)) {
+      if (authError) {
+        toast({
+          title: "Registration failed",
+          description: authError.message,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (authData.user) {
+        // Create profile in profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: authData.user.id,
+              name,
+              email,
+              role,
+              wallet: 0,
+              favorites: [],
+            },
+          ])
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError)
+          // Clean up auth user if profile creation fails
+          await supabase.auth.admin.deleteUser(authData.user.id)
+          return false
+        }
+
+        setUser({
+          id: authData.user.id,
+          name,
+          email,
+          image: undefined,
+          role,
+          wallet: 0,
+          favorites: [],
+          description: undefined,
+          bio: undefined,
+          joinDate: undefined,
+          services: [],
+          specialties: [],
+        })
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Registration error:', error)
+      toast({
+        title: "Registration failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
       return false
     }
-
-    // Create new user
-    const newUser: User = {
-      id: `user_${Date.now()}`,
-      name,
-      email,
-      role,
-      image: "/placeholder.svg?height=100&width=100",
-      favorites: [],
-      wallet: 0,
-      stripeCustomerId: `cus_new${Date.now()}`,
-    }
-
-    // Add Stripe Connect account ID for barbers
-    if (role === "barber") {
-      newUser.stripeAccountId = `acct_new${Date.now()}`
-    }
-
-    setUser(newUser)
-    return true
   }
 
-  const logout = () => {
-    setUser(null)
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      setUser(null)
+    } catch (error) {
+      console.error('Logout error:', error)
+      toast({
+        title: "Logout failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    }
   }
 
-  const updateProfile = (data: Partial<User>) => {
+  const updateProfile = async (data: Partial<User>) => {
     if (!user) return
 
-    const updatedUser = { ...user, ...data }
-    setUser(updatedUser)
-  }
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', user.id)
 
-  const addToFavorites = (barberId: string) => {
-    if (!user) return
+      if (error) throw error
 
-    const favorites = user.favorites || []
-    if (!favorites.includes(barberId)) {
-      const updatedFavorites = [...favorites, barberId]
-      updateProfile({ favorites: updatedFavorites })
+      setUser(prev => prev ? { ...prev, ...data } : null)
+    } catch (error) {
+      console.error('Profile update error:', error)
+      toast({
+        title: "Profile update failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
     }
   }
 
-  const removeFromFavorites = (barberId: string) => {
+  const addToFavorites = async (barberId: string) => {
+    if (!user) return
+
+    try {
+      const favorites = user.favorites || []
+      if (!favorites.includes(barberId)) {
+        const updatedFavorites = [...favorites, barberId]
+        await updateProfile({ favorites: updatedFavorites })
+      }
+    } catch (error) {
+      console.error('Add to favorites error:', error)
+      toast({
+        title: "Failed to add to favorites",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const removeFromFavorites = async (barberId: string) => {
     if (!user || !user.favorites) return
 
-    const updatedFavorites = user.favorites.filter((id) => id !== barberId)
-    updateProfile({ favorites: updatedFavorites })
+    try {
+      const updatedFavorites = user.favorites.filter((id) => id !== barberId)
+      await updateProfile({ favorites: updatedFavorites })
+    } catch (error) {
+      console.error('Remove from favorites error:', error)
+      toast({
+        title: "Failed to remove from favorites",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    }
   }
 
   const addFundsToWallet = async (amount: number): Promise<boolean> => {
     if (!user) return false
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const currentWallet = user.wallet || 0
+      const { error } = await supabase
+        .from('profiles')
+        .update({ wallet: currentWallet + amount })
+        .eq('id', user.id)
 
-    const currentWallet = user.wallet || 0
-    updateProfile({ wallet: currentWallet + amount })
-    return true
+      if (error) throw error
+
+      setUser(prev => prev ? { ...prev, wallet: currentWallet + amount } : null)
+      return true
+    } catch (error) {
+      console.error('Add funds error:', error)
+      toast({
+        title: "Failed to add funds",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+      return false
+    }
   }
 
   const withdrawFromWallet = async (amount: number): Promise<boolean> => {
     if (!user || !user.wallet || user.wallet < amount) return false
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const currentWallet = user.wallet
+      const { error } = await supabase
+        .from('profiles')
+        .update({ wallet: currentWallet - amount })
+        .eq('id', user.id)
 
-    updateProfile({ wallet: user.wallet - amount })
-    return true
+      if (error) throw error
+
+      setUser(prev => prev ? { ...prev, wallet: currentWallet - amount } : null)
+      return true
+    } catch (error) {
+      console.error('Withdraw funds error:', error)
+      toast({
+        title: "Failed to withdraw funds",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+      return false
+    }
   }
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isLoading: status === "loading",
-        status,
+        isLoading,
+        status: isLoading ? "loading" : user ? "authenticated" : "unauthenticated",
         login,
         register,
         logout,

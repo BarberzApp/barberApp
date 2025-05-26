@@ -4,8 +4,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { DataProvider } from "@/contexts/data-context"
 import { PaymentProvider } from "@/contexts/payment-context"
-import { SupabaseAuthProvider } from "@/contexts/supabase-auth-context"
-import { SessionProvider } from "next-auth/react"
 import { Toaster } from "@/components/toaster"
 import { PWARegister } from "@/components/pwa-register"
 import { useEffect, useState } from "react"
@@ -26,20 +24,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SessionProvider>
-      <SupabaseAuthProvider>
-        <AuthProvider>
-          <DataProvider>
-            <PaymentProvider>
-              <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-                {children}
-                <PWARegister />
-                <Toaster />
-              </ThemeProvider>
-            </PaymentProvider>
-          </DataProvider>
-        </AuthProvider>
-      </SupabaseAuthProvider>
-    </SessionProvider>
+    <AuthProvider>
+      <DataProvider>
+        <PaymentProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+            {children}
+            <PWARegister />
+            <Toaster />
+          </ThemeProvider>
+        </PaymentProvider>
+      </DataProvider>
+    </AuthProvider>
   )
 } 

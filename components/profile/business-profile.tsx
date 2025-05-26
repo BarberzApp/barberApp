@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MapPin, Star, Upload, DollarSign, Scissors, Plus, Edit, Trash2, Clock } from "lucide-react"
+import { Calendar, MapPin, Star, Upload, DollarSign, Scissors, Plus, Edit, Trash2, Clock, Mail } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import {
@@ -25,135 +25,54 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { User } from "@/contexts/auth-context"
+import { useData } from "@/contexts/data-context"
 
 interface BusinessProfileProps {
   user: User
 }
 
-// Mock data for business profile
-const mockBusinessData = {
-  phone: "555-789-1234",
-  location: "123 Main St, New York, NY",
-  description:
-    "Elite Cuts is a premium barbershop offering top-notch haircuts and grooming services in a modern, comfortable environment.",
-  joinDate: "January 2021",
-  rating: 4.9,
-  totalReviews: 256,
-  totalBarbers: 5,
-  totalClients: 312,
-  totalBookings: 1842,
-  services: [
-    { id: "1", name: "Haircut", price: 30, duration: 30 },
-    { id: "2", name: "Haircut & Beard Trim", price: 45, duration: 45 },
-    { id: "3", name: "Fade", price: 35, duration: 30 },
-    { id: "4", name: "Beard Trim", price: 15, duration: 15 },
-    { id: "5", name: "Hot Towel Shave", price: 30, duration: 30 },
-  ],
-  barbers: [
-    {
-      id: "b1",
-      name: "Alex Johnson",
-      image: "/placeholder.svg?height=200&width=200",
-      role: "Senior Barber",
-      specialties: ["Fades", "Beard Trim", "Designs"],
-      rating: 4.8,
-      bookings: 423,
-      joinDate: "March 2021",
-    },
-    {
-      id: "b2",
-      name: "Maria Garcia",
-      image: "/placeholder.svg?height=200&width=200",
-      role: "Master Stylist",
-      specialties: ["Braids", "Color", "Extensions"],
-      rating: 4.9,
-      bookings: 387,
-      joinDate: "April 2021",
-    },
-    {
-      id: "b3",
-      name: "Jamal Williams",
-      image: "/placeholder.svg?height=200&width=200",
-      role: "Barber",
-      specialties: ["Tapers", "Waves", "Hot Towel"],
-      rating: 4.7,
-      bookings: 312,
-      joinDate: "June 2021",
-    },
-    {
-      id: "b4",
-      name: "Sarah Thompson",
-      image: "/placeholder.svg?height=200&width=200",
-      role: "Junior Stylist",
-      specialties: ["Pixie Cuts", "Balayage", "Styling"],
-      rating: 4.6,
-      bookings: 245,
-      joinDate: "September 2021",
-    },
-    {
-      id: "b5",
-      name: "David Chen",
-      image: "/placeholder.svg?height=200&width=200",
-      role: "Barber",
-      specialties: ["Asian Hair", "Texture", "Modern Styles"],
-      rating: 4.9,
-      bookings: 475,
-      joinDate: "February 2021",
-    },
-  ],
-  earnings: {
-    thisWeek: 3250,
-    thisMonth: 14200,
-    lastMonth: 12800,
-  },
-  photos: [
-    "/placeholder.svg?height=400&width=600",
-    "/placeholder.svg?height=400&width=600",
-    "/placeholder.svg?height=400&width=600",
-    "/placeholder.svg?height=400&width=600",
-  ],
-}
-
 export function BusinessProfile({ user }: BusinessProfileProps) {
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
-  const [profileData, setProfileData] = useState({
-    name: user.name || "",
-    email: user.email || "",
-    businessName: user.businessName || "Elite Cuts",
-    phone: mockBusinessData.phone,
-    location: mockBusinessData.location,
-    description: mockBusinessData.description,
-  })
-  const [barbers, setBarbers] = useState(mockBusinessData.barbers)
-  const [services, setServices] = useState(mockBusinessData.services)
   const [showAddBarberDialog, setShowAddBarberDialog] = useState(false)
   const [showAddServiceDialog, setShowAddServiceDialog] = useState(false)
   const [newBarber, setNewBarber] = useState({
     name: "",
     email: "",
-    role: "Barber",
-    specialties: "",
+    role: "",
+    specialties: ""
   })
   const [newService, setNewService] = useState({
     name: "",
     price: "",
-    duration: "",
+    duration: ""
   })
+  const [profileData, setProfileData] = useState({
+    name: user.name || "",
+    email: user.email || "",
+    businessName: user.businessName || "Elite Cuts",
+    phone: user.phone || "",
+    location: user.location || "",
+    description: user.description || "",
+  })
+  const { businesses, loading, error } = useData()
+  const business = businesses[0] // TODO: Get business by ID from URL or props
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>
+  }
+
+  if (!business) {
+    return <div>Business not found</div>
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setProfileData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleBarberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setNewBarber((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setNewService((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSave = () => {
@@ -165,90 +84,34 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
     setIsEditing(false)
   }
 
+  const handleBarberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setNewBarber(prev => ({ ...prev, [name]: value }))
+  }
+
   const addBarber = () => {
-    if (newBarber.name && newBarber.email && newBarber.role) {
-      const specialtiesArray = newBarber.specialties
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s)
-
-      const newBarberObj = {
-        id: `b${barbers.length + 1}`,
-        name: newBarber.name,
-        image: "/placeholder.svg?height=200&width=200",
-        role: newBarber.role,
-        specialties: specialtiesArray.length > 0 ? specialtiesArray : ["Haircuts"],
-        rating: 0,
-        bookings: 0,
-        joinDate: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-      }
-
-      setBarbers([...barbers, newBarberObj])
-      setNewBarber({
-        name: "",
-        email: "",
-        role: "Barber",
-        specialties: "",
-      })
-      setShowAddBarberDialog(false)
-
-      toast({
-        title: "Barber added",
-        description: `${newBarber.name} has been added to your team`,
-      })
-    }
+    // TODO: Implement barber addition logic
+    setShowAddBarberDialog(false)
+    setNewBarber({ name: "", email: "", role: "", specialties: "" })
   }
 
   const removeBarber = (id: string) => {
-    setBarbers(barbers.filter((barber) => barber.id !== id))
-    toast({
-      title: "Barber removed",
-      description: "The barber has been removed from your team",
-    })
+    // TODO: Implement barber removal logic
+  }
+
+  const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setNewService(prev => ({ ...prev, [name]: value }))
   }
 
   const addService = () => {
-    if (newService.name && newService.price && newService.duration) {
-      const price = Number.parseInt(newService.price)
-      const duration = Number.parseInt(newService.duration)
-
-      if (isNaN(price) || isNaN(duration)) {
-        toast({
-          title: "Invalid input",
-          description: "Price and duration must be numbers",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const newServiceObj = {
-        id: `service_${Math.random().toString(36).substr(2, 9)}`,
-        name: newService.name,
-        price,
-        duration,
-      }
-
-      setServices([...services, newServiceObj])
-      setNewService({
-        name: "",
-        price: "",
-        duration: "",
-      })
-      setShowAddServiceDialog(false)
-
-      toast({
-        title: "Service added",
-        description: `${newService.name} has been added to your services`,
-      })
-    }
+    // TODO: Implement service addition logic
+    setShowAddServiceDialog(false)
+    setNewService({ name: "", price: "", duration: "" })
   }
 
   const removeService = (id: string) => {
-    setServices(services.filter((service) => service.id !== id))
-    toast({
-      title: "Service removed",
-      description: "The service has been removed from your offerings",
-    })
+    // TODO: Implement service removal logic
   }
 
   const renderStars = (rating: number) => {
@@ -295,18 +158,18 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
               <div className="flex items-center mt-1">
                 <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
                 <span>
-                  {mockBusinessData.rating} ({mockBusinessData.totalReviews} reviews)
+                  {business.rating} ({business.totalReviews} reviews)
                 </span>
               </div>
               <div className="flex items-center text-sm text-muted-foreground mt-1">
                 <MapPin className="h-4 w-4 mr-1" />
-                <span>{mockBusinessData.location}</span>
+                <span>{business.location}</span>
               </div>
               <div className="flex items-center text-sm text-muted-foreground mt-1">
                 <Calendar className="h-4 w-4 mr-1" />
-                <span>Member since {mockBusinessData.joinDate}</span>
+                <span>Member since {business.joinDate}</span>
               </div>
-              <p className="mt-4 text-sm">{mockBusinessData.description}</p>
+              <p className="mt-4 text-sm">{business.description}</p>
               <Button variant="outline" className="mt-4 w-full" onClick={() => setIsEditing(true)}>
                 Edit Business Profile
               </Button>
@@ -321,15 +184,15 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
             <CardContent>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{mockBusinessData.totalBarbers}</h4>
+                  <h4 className="text-2xl font-bold">{business.totalBarbers}</h4>
                   <p className="text-sm text-muted-foreground">Team Members</p>
                 </div>
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{mockBusinessData.totalClients}</h4>
+                  <h4 className="text-2xl font-bold">{business.totalClients}</h4>
                   <p className="text-sm text-muted-foreground">Total Clients</p>
                 </div>
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{mockBusinessData.totalBookings}</h4>
+                  <h4 className="text-2xl font-bold">{business.totalBookings}</h4>
                   <p className="text-sm text-muted-foreground">Total Bookings</p>
                 </div>
               </div>
@@ -341,21 +204,21 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
                     <DollarSign className="h-4 w-4 mr-1" />
                     <span>This Week</span>
                   </div>
-                  <p className="text-xl font-bold">${mockBusinessData.earnings.thisWeek}</p>
+                  <p className="text-xl font-bold">${business.earnings.thisWeek}</p>
                 </div>
                 <div className="border p-4 rounded-lg">
                   <div className="flex items-center text-sm text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4 mr-1" />
                     <span>This Month</span>
                   </div>
-                  <p className="text-xl font-bold">${mockBusinessData.earnings.thisMonth}</p>
+                  <p className="text-xl font-bold">${business.earnings.thisMonth}</p>
                 </div>
                 <div className="border p-4 rounded-lg">
                   <div className="flex items-center text-sm text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4 mr-1" />
                     <span>Last Month</span>
                   </div>
-                  <p className="text-xl font-bold">${mockBusinessData.earnings.lastMonth}</p>
+                  <p className="text-xl font-bold">${business.earnings.lastMonth}</p>
                 </div>
               </div>
             </CardContent>
@@ -368,7 +231,7 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {mockBusinessData.photos.map((photo, index) => (
+                {business.photos.map((photo, index) => (
                   <div key={index} className="relative aspect-video bg-muted rounded-md overflow-hidden group">
                     <Image
                       src={photo || "/placeholder.svg"}
@@ -429,14 +292,18 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="barber-email">Email</Label>
-                    <Input
-                      id="barber-email"
-                      name="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={newBarber.email}
-                      onChange={handleBarberChange}
-                    />
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="barber-email"
+                        name="email"
+                        type="email"
+                        placeholder="john@example.com"
+                        value={newBarber.email}
+                        onChange={handleBarberChange}
+                        className="pl-9"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="barber-role">Role</Label>
@@ -481,7 +348,7 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {barbers.map((barber) => (
+              {business.barbers.map((barber) => (
                 <div key={barber.id} className="flex items-start gap-4 p-4 border rounded-lg">
                   <Avatar className="h-16 w-16">
                     <AvatarImage src={barber.image || "/placeholder.svg"} alt={barber.name} />
@@ -597,7 +464,7 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {services.map((service) => (
+              {business.services.map((service) => (
                 <div key={service.id} className="flex justify-between items-center p-4 border rounded-md">
                   <div>
                     <h3 className="font-medium">{service.name}</h3>
@@ -640,12 +507,12 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
               <div className="grid grid-cols-3 gap-4 mt-6">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">This Week</p>
-                  <p className="text-2xl font-bold">${mockBusinessData.earnings.thisWeek}</p>
+                  <p className="text-2xl font-bold">${business.earnings.thisWeek}</p>
                   <p className="text-sm text-green-600">+12% from last week</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-2xl font-bold">${mockBusinessData.earnings.thisMonth}</p>
+                  <p className="text-2xl font-bold">${business.earnings.thisMonth}</p>
                   <p className="text-sm text-green-600">+8% from last month</p>
                 </div>
                 <div className="space-y-1">
@@ -756,7 +623,7 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {barbers.slice(0, 4).map((barber, index) => (
+                {business.barbers.slice(0, 4).map((barber, index) => (
                   <div key={barber.id} className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">

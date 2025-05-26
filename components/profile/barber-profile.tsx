@@ -16,85 +16,10 @@ import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
 import Image from "next/image"
 import type { User } from "@/contexts/auth-context"
+import { useData } from "@/contexts/data-context"
 
 interface BarberProfileProps {
   user: User
-}
-
-// Mock data for barber profile
-const mockBarberData = {
-  phone: "555-987-6543",
-  location: "Downtown Studio, New York, NY",
-  bio: "Professional barber with 7+ years of experience specializing in modern cuts and classic styles.",
-  joinDate: "January 2022",
-  rating: 4.8,
-  totalReviews: 124,
-  totalClients: 87,
-  totalBookings: 342,
-  services: [
-    { id: "1", name: "Haircut", price: 30, duration: 30 },
-    { id: "2", name: "Haircut & Beard Trim", price: 45, duration: 45 },
-    { id: "3", name: "Fade", price: 35, duration: 30 },
-    { id: "4", name: "Beard Trim", price: 15, duration: 15 },
-  ],
-  specialties: ["Fades", "Beard Trim", "Designs", "Hot Towel Shave"],
-  portfolio: [
-    "/placeholder.svg?height=400&width=300",
-    "/placeholder.svg?height=400&width=300",
-    "/placeholder.svg?height=400&width=300",
-    "/placeholder.svg?height=400&width=300",
-    "/placeholder.svg?height=400&width=300",
-    "/placeholder.svg?height=400&width=300",
-  ],
-  availability: {
-    monday: { start: "9:00 AM", end: "5:00 PM", available: true },
-    tuesday: { start: "9:00 AM", end: "5:00 PM", available: true },
-    wednesday: { start: "9:00 AM", end: "5:00 PM", available: true },
-    thursday: { start: "9:00 AM", end: "5:00 PM", available: true },
-    friday: { start: "9:00 AM", end: "5:00 PM", available: true },
-    saturday: { start: "10:00 AM", end: "4:00 PM", available: true },
-    sunday: { start: "10:00 AM", end: "4:00 PM", available: false },
-  },
-  reviews: [
-    {
-      id: "r1",
-      client: {
-        id: "c1",
-        name: "John Client",
-        image: "/placeholder.svg?height=100&width=100",
-      },
-      date: "May 16, 2023",
-      rating: 5,
-      comment: "Alex is amazing! Best haircut I've had in years. Highly recommend!",
-    },
-    {
-      id: "r2",
-      client: {
-        id: "c2",
-        name: "Michael Brown",
-        image: "/placeholder.svg?height=100&width=100",
-      },
-      date: "April 22, 2023",
-      rating: 4,
-      comment: "Great service, very professional and skilled. Will definitely come back.",
-    },
-    {
-      id: "r3",
-      client: {
-        id: "c3",
-        name: "David Lee",
-        image: "/placeholder.svg?height=100&width=100",
-      },
-      date: "March 15, 2023",
-      rating: 5,
-      comment: "Excellent fade! Alex really knows what he's doing. Highly recommended.",
-    },
-  ],
-  earnings: {
-    thisWeek: 420,
-    thisMonth: 1840,
-    lastMonth: 1650,
-  },
 }
 
 export function BarberProfile({ user }: BarberProfileProps) {
@@ -103,14 +28,29 @@ export function BarberProfile({ user }: BarberProfileProps) {
   const [profileData, setProfileData] = useState({
     name: user.name || "",
     email: user.email || "",
-    phone: mockBarberData.phone,
-    location: mockBarberData.location,
-    bio: mockBarberData.bio,
+    phone: user.phone || "",
+    location: user.location || "",
+    bio: user.bio || "",
   })
   const [newService, setNewService] = useState({ name: "", price: "", duration: "" })
   const [newSpecialty, setNewSpecialty] = useState("")
-  const [services, setServices] = useState(mockBarberData.services)
-  const [specialties, setSpecialties] = useState(mockBarberData.specialties)
+  const [services, setServices] = useState(user.services || [])
+  const [specialties, setSpecialties] = useState(user.specialties || [])
+
+  const { barbers, loading, error } = useData()
+  const barber = barbers[0] // TODO: Get barber by ID from URL or props
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>
+  }
+
+  if (!barber) {
+    return <div>Barber not found</div>
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -217,7 +157,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
               <div className="flex items-center mt-1">
                 <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
                 <span>
-                  {mockBarberData.rating} ({mockBarberData.totalReviews} reviews)
+                  {barber.rating} ({barber.totalReviews} reviews)
                 </span>
               </div>
               {user.businessName && (
@@ -228,13 +168,13 @@ export function BarberProfile({ user }: BarberProfileProps) {
               )}
               <div className="flex items-center text-sm text-muted-foreground mt-1">
                 <MapPin className="h-4 w-4 mr-1" />
-                <span>{mockBarberData.location}</span>
+                <span>{barber.location}</span>
               </div>
               <div className="flex items-center text-sm text-muted-foreground mt-1">
                 <Calendar className="h-4 w-4 mr-1" />
-                <span>Member since {mockBarberData.joinDate}</span>
+                <span>Member since {barber.joinDate}</span>
               </div>
-              <p className="mt-4 text-sm">{mockBarberData.bio}</p>
+              <p className="mt-4 text-sm">{barber.bio}</p>
               <Button variant="outline" className="mt-4 w-full" onClick={() => setIsEditing(true)}>
                 Edit Profile
               </Button>
@@ -249,15 +189,15 @@ export function BarberProfile({ user }: BarberProfileProps) {
             <CardContent>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{mockBarberData.totalClients}</h4>
+                  <h4 className="text-2xl font-bold">{barber.totalClients}</h4>
                   <p className="text-sm text-muted-foreground">Total Clients</p>
                 </div>
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{mockBarberData.totalBookings}</h4>
+                  <h4 className="text-2xl font-bold">{barber.totalBookings}</h4>
                   <p className="text-sm text-muted-foreground">Total Bookings</p>
                 </div>
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{mockBarberData.rating}</h4>
+                  <h4 className="text-2xl font-bold">{barber.rating}</h4>
                   <p className="text-sm text-muted-foreground">Average Rating</p>
                 </div>
               </div>
@@ -269,21 +209,21 @@ export function BarberProfile({ user }: BarberProfileProps) {
                     <DollarSign className="h-4 w-4 mr-1" />
                     <span>This Week</span>
                   </div>
-                  <p className="text-xl font-bold">${mockBarberData.earnings.thisWeek}</p>
+                  <p className="text-xl font-bold">${barber.earnings.thisWeek}</p>
                 </div>
                 <div className="border p-4 rounded-lg">
                   <div className="flex items-center text-sm text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4 mr-1" />
                     <span>This Month</span>
                   </div>
-                  <p className="text-xl font-bold">${mockBarberData.earnings.thisMonth}</p>
+                  <p className="text-xl font-bold">${barber.earnings.thisMonth}</p>
                 </div>
                 <div className="border p-4 rounded-lg">
                   <div className="flex items-center text-sm text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4 mr-1" />
                     <span>Last Month</span>
                   </div>
-                  <p className="text-xl font-bold">${mockBarberData.earnings.lastMonth}</p>
+                  <p className="text-xl font-bold">${barber.earnings.lastMonth}</p>
                 </div>
               </div>
             </CardContent>
@@ -341,7 +281,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {mockBarberData.portfolio.map((image, index) => (
+              {barber.portfolio.map((image, index) => (
                 <div key={index} className="relative aspect-[3/4] bg-muted rounded-md overflow-hidden group">
                   <Image
                     src={image || "/placeholder.svg"}
@@ -478,20 +418,20 @@ export function BarberProfile({ user }: BarberProfileProps) {
           <CardContent>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <div className="text-4xl font-bold">{mockBarberData.rating}</div>
+                <div className="text-4xl font-bold">{barber.rating}</div>
                 <div>
-                  <div className="flex">{renderStars(mockBarberData.rating)}</div>
-                  <div className="text-sm text-muted-foreground">Based on {mockBarberData.totalReviews} reviews</div>
+                  <div className="flex">{renderStars(barber.rating)}</div>
+                  <div className="text-sm text-muted-foreground">Based on {barber.totalReviews} reviews</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">{mockBarberData.totalClients}</div>
+                <div className="text-2xl font-bold">{barber.totalClients}</div>
                 <div className="text-sm text-muted-foreground">Happy clients</div>
               </div>
             </div>
 
             <div className="space-y-6">
-              {mockBarberData.reviews.map((review) => (
+              {barber.reviews.map((review) => (
                 <div key={review.id} className="border-b pb-6 last:border-0 last:pb-0">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar>
@@ -590,7 +530,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-medium">Availability</h3>
               <div className="space-y-3">
-                {Object.entries(mockBarberData.availability).map(([day, schedule]) => (
+                {Object.entries(barber.availability).map(([day, schedule]) => (
                   <div key={day} className="flex items-center justify-between p-3 border rounded-md">
                     <div className="font-medium capitalize">{day}</div>
                     <div className="flex items-center gap-4">

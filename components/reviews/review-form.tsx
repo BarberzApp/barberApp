@@ -37,6 +37,11 @@ export function ReviewForm({ barberId, onSuccess }: ReviewFormProps) {
         name: user.name || "Anonymous",
         image: user.image || "/placeholder.svg?height=100&width=100",
       },
+      barber: {
+        id: barberId,
+        name: "Barber Name", // This should be fetched from the barber data
+        image: "/placeholder.svg?height=100&width=100",
+      },
       date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
       rating,
       comment,

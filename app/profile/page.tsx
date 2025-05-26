@@ -40,11 +40,11 @@ export default function ProfilePage() {
       <h1 className="text-3xl font-bold mb-6">My Profile</h1>
 
       {user.role === "client" ? (
-        <ClientProfile user={{ ...user, name: user.name || "Anonymous Client", email: user.email || "", image: user.image || null, role: user.role as "client" }} />
+        <ClientProfile user={{ ...user, name: user.name || "Anonymous Client", email: user.email || "", image: user.image || undefined, role: user.role as "client" }} />
       ) : user.role === "barber" ? (
-        <BarberProfile user={{ ...user, name: user.name || "Anonymous Barber", email: user.email || "", image: user.image || null, role: user.role as "barber" }} />
+        <BarberProfile user={{ ...user, name: user.name || "Anonymous Barber", email: user.email || "", image: user.image || undefined, role: user.role as "barber" }} />
       ) : (
-        <BusinessProfile user={{ ...user, name: user.name || "Anonymous Business", email: user.email || "", image: user.image || null, role: user.role as "business" }} />
+        <BusinessProfile user={{ ...user, name: user.name || "Anonymous Business", email: user.email || "", image: user.image || undefined, role: user.role as "business" }} />
       )}
     </div>
   )
