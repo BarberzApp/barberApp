@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import * as React from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { NotificationItem } from "@/components/notifications/notification-item"
 import { getNotifications, markAllNotificationsAsRead, type Notification } from "@/lib/notification-service"
@@ -13,17 +14,11 @@ export function NotificationCenter() {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [open, setOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  useEffect(() => {
-    if (user) {
-      loadNotifications()
-    }
-  }, [user])
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!user) return
 
     setIsLoading(true)
@@ -35,58 +30,73 @@ export function NotificationCenter() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user])
 
-  const handleMarkAllAsRead = async () => {
-    if (!user) return
-
-    try {
-      await markAllNotificationsAsRead(user.id)
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-    } catch (error) {
-      console.error("Failed to mark notifications as read:", error)
+  useEffect(() => {
+    if (user) {
+      loadNotifications()
     }
-  }
+  }, [user, loadNotifications])
+
+  const handleMarkAllAsRead = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((notification) => ({
+        ...notification,
+        read: true,
+      }))
+    )
+  }, [])
+
+  const handleOpen = useCallback(() => {
+    setIsOpen(true)
+  }, [])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative"
+          onClick={handleOpen}
+        >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-barber-500 text-xs text-white">
-              {unreadCount}
-            </span>
+            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500" />
           )}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      </SheetTrigger>
+      <SheetContent className="w-80 p-0">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-medium">Notifications</h3>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMarkAllAsRead}
+              disabled={!notifications.some((n) => !n.read)}
+            >
               Mark all as read
             </Button>
           )}
         </div>
-        <ScrollArea className="h-[400px]">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-20">
-              <p className="text-sm text-muted-foreground">Loading notifications...</p>
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex items-center justify-center h-20">
-              <p className="text-sm text-muted-foreground">No notifications</p>
-            </div>
-          ) : (
+        <ScrollArea className="h-[calc(100vh-8rem)]">
+          {notifications.length > 0 ? (
             <div className="divide-y">
               {notifications.map((notification) => (
-                <NotificationItem key={notification.id} notification={notification} />
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                />
               ))}
+            </div>
+          ) : (
+            <div className="p-4 text-center text-muted-foreground">
+              No notifications
             </div>
           )}
         </ScrollArea>
-      </PopoverContent>
-    </Popover>
+      </SheetContent>
+    </Sheet>
   )
 }

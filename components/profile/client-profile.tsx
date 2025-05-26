@@ -202,9 +202,7 @@ export function ClientProfile({ user }: ClientProfileProps) {
                   <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
                   <p className="text-muted-foreground mb-4">You haven't made any bookings yet</p>
-                  <Button asChild>
-                    <Link href="/browse">Book a Barber</Link>
-                  </Button>
+                  <Button href="/browse">Book a Barber</Button>
                 </div>
               )}
             </CardContent>
@@ -277,11 +275,11 @@ export function ClientProfile({ user }: ClientProfileProps) {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/book/${booking.barber.id}`}>Book Again</Link>
+                      <Button variant="outline" size="sm" href={`/book/${booking.barber.id}`}>
+                        Book Again
                       </Button>
-                      <Button size="sm" asChild>
-                        <Link href={`/messages/${booking.barber.id}`}>Message</Link>
+                      <Button size="sm" href={`/messages/${booking.barber.id}`}>
+                        Message
                       </Button>
                     </div>
                   </div>
@@ -292,9 +290,7 @@ export function ClientProfile({ user }: ClientProfileProps) {
                 <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
                 <p className="text-muted-foreground mb-6">You haven't made any bookings yet</p>
-                <Button asChild>
-                  <Link href="/browse">Book a Barber</Link>
-                </Button>
+                <Button href="/browse">Book a Barber</Button>
               </div>
             )}
           </CardContent>
@@ -331,8 +327,8 @@ export function ClientProfile({ user }: ClientProfileProps) {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Button size="sm" asChild>
-                        <Link href={`/book/${barber.id}`}>Book</Link>
+                      <Button size="sm" href={`/book/${barber.id}`}>
+                        Book
                       </Button>
                       <Button variant="outline" size="sm" className="flex items-center gap-1">
                         <Heart className="h-3 w-3 fill-current" />
@@ -347,9 +343,7 @@ export function ClientProfile({ user }: ClientProfileProps) {
                 <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No favorites yet</h3>
                 <p className="text-muted-foreground mb-6">You haven't added any barbers to your favorites yet</p>
-                <Button asChild>
-                  <Link href="/browse">Browse Barbers</Link>
-                </Button>
+                <Button href="/browse">Browse Barbers</Button>
               </div>
             )}
           </CardContent>

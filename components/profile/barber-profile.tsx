@@ -320,7 +320,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
                     ))}
                     {services.length > 4 && (
                       <div className="text-center mt-2">
-                        <Button variant="link" asChild>
+                        <Button variant="link">
                           <Link href="#services">View all services</Link>
                         </Button>
                       </div>
@@ -635,6 +635,10 @@ export function BarberProfile({ user }: BarberProfileProps) {
               <h3 className="text-lg font-medium">Danger Zone</h3>
               <Button variant="destructive">Delete Account</Button>
             </div>
+
+            <Button variant="link" href={`/barber/${user.id}`}>
+              View Public Profile
+            </Button>
           </CardContent>
         </Card>
       </TabsContent>

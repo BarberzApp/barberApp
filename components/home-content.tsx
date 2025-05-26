@@ -65,17 +65,13 @@ export function HomeContent() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
-              <Button asChild size="lg" className="flex-1 rounded-full">
-                <Link href="/book">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  Book Appointment
-                </Link>
+              <Button href="/book" size="lg" className="flex-1 rounded-full">
+                <Calendar className="mr-2 h-5 w-5" />
+                Book Appointment
               </Button>
-              <Button asChild variant="outline" size="lg" className="flex-1 rounded-full">
-                <Link href="/services">
-                  <Clock className="mr-2 h-5 w-5" />
-                  View Services
-                </Link>
+              <Button href="/services" variant="outline" size="lg" className="flex-1 rounded-full">
+                <Clock className="mr-2 h-5 w-5" />
+                View Services
               </Button>
             </div>
           </div>
@@ -94,8 +90,8 @@ export function HomeContent() {
                   <p className="text-muted-foreground mb-4">{service.description}</p>
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold">${service.price}</span>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/book?service=${service.id}`}>Book Now</Link>
+                    <Button href={`/book?service=${service.id}`} variant="outline" size="sm">
+                      Book Now
                     </Button>
                   </div>
                 </div>
@@ -114,8 +110,8 @@ export function HomeContent() {
               <MapPin className="h-5 w-5" />
               <span>123 Barber Street, Downtown, City</span>
             </div>
-            <Button asChild variant="outline">
-              <Link href="/location">Get Directions</Link>
+            <Button href="/location" variant="outline">
+              Get Directions
             </Button>
           </div>
         </div>

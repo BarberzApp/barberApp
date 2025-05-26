@@ -98,8 +98,8 @@ export function SpecialOffersCarousel({ offers }: SpecialOffersCarouselProps) {
                   </div>
                 </div>
 
-                <Button asChild className="w-full mt-4">
-                  <Link href={`/book/${offer.barberId}`}>Book Now</Link>
+                <Button className="w-full mt-4" href={`/book/${offer.barberId}`}>
+                  Book Now
                 </Button>
               </CardContent>
             </Card>

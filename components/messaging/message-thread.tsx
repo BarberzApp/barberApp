@@ -6,10 +6,10 @@ import { useState, useRef, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Send, MoreVertical, Phone, Video, Calendar, Image as ImageIcon, Smile, Paperclip } from "lucide-react"
+import { ArrowLeft, Send, MoreVertical, Phone, Video, Calendar, Image as ImageIcon, Smile, Paperclip, Info, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Conversation, Message } from "@/components/messaging/chat-layout"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EmojiPicker } from "@/components/ui/emoji-picker"
 import Link from "next/link"
@@ -138,11 +138,9 @@ export function MessageThread({ conversation, messages, onSendMessage, onBack, i
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/book/${conversation.recipient.id}`}>
-              <Calendar className="h-5 w-5" />
-              <span className="sr-only">Book</span>
-            </Link>
+          <Button variant="ghost" size="icon" href={`/book/${conversation.recipient.id}`}>
+            <Calendar className="h-5 w-5" />
+            <span className="sr-only">Book</span>
           </Button>
           <Button variant="ghost" size="icon">
             <Phone className="h-5 w-5" />
@@ -160,9 +158,29 @@ export function MessageThread({ conversation, messages, onSendMessage, onBack, i
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>View profile</DropdownMenuItem>
-              <DropdownMenuItem>Clear conversation</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Block user</DropdownMenuItem>
+              <DropdownMenuItem>
+                <Button variant="ghost" size="icon" href={`/barber/${conversation.recipient.id}`}>
+                  <Info className="h-4 w-4 mr-2" />
+                  View Profile
+                </Button>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Phone className="h-4 w-4 mr-2" />
+                Call
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Video className="h-4 w-4 mr-2" />
+                Video Call
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule Appointment
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Chat
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

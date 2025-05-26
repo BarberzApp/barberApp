@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -86,20 +86,22 @@ export default function BookingsPage() {
   const upcomingBookings = bookings.filter((booking) => booking.status === "upcoming")
   const pastBookings = bookings.filter((booking) => booking.status === "completed")
 
-  const handleCancelBooking = () => {
+  const handleCancelBooking = useCallback(() => {
     if (cancelBookingId) {
       setBookings(bookings.filter((booking) => booking.id !== cancelBookingId))
       setCancelBookingId(null)
     }
-  }
+  }, [cancelBookingId, bookings])
+
+  const handleCancelClick = useCallback((bookingId: string) => {
+    setCancelBookingId(bookingId)
+  }, [])
 
   return (
     <div className="container py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">My Bookings</h1>
-        <Button asChild>
-          <Link href="/browse">Book New Appointment</Link>
-        </Button>
+        <Button href="/browse">Book New Appointment</Button>
       </div>
 
       <Tabs defaultValue="upcoming" className="w-full">
@@ -114,9 +116,7 @@ export default function BookingsPage() {
               <Scissors className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Upcoming Bookings</h3>
               <p className="text-muted-foreground mb-6">You don't have any upcoming appointments scheduled.</p>
-              <Button asChild>
-                <Link href="/browse">Book an Appointment</Link>
-              </Button>
+              <Button href="/browse">Book an Appointment</Button>
             </div>
           ) : (
             upcomingBookings.map((booking) => (
@@ -173,10 +173,14 @@ export default function BookingsPage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/book/${booking.barber.id}`}>Reschedule</Link>
+                        <Button variant="outline" size="sm" href={`/book/${booking.barber.id}`}>
+                          Reschedule
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => setCancelBookingId(booking.id)}>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => handleCancelClick(booking.id)}
+                        >
                           <X className="h-4 w-4 mr-1" />
                           Cancel
                         </Button>

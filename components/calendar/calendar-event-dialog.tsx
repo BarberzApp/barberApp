@@ -104,12 +104,12 @@ export function CalendarEventDialog({ event, userType, onClose }: CalendarEventD
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" asChild className="sm:flex-1">
-            <Link href={`/messages/${person?.id}`}>
+          {event.barber && (
+            <Button variant="outline" className="sm:flex-1" href={`/messages/${event.barber.id}`}>
               <MessageSquare className="h-4 w-4 mr-2" />
-              Message
-            </Link>
-          </Button>
+              Message Barber
+            </Button>
+          )}
           {event.status === "confirmed" && (
             <Button variant="destructive" className="sm:flex-1">
               Cancel Appointment

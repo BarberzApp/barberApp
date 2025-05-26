@@ -1,6 +1,7 @@
 "use client"
 
-import type React from "react"
+import * as React from "react"
+import { useCallback } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -32,7 +33,7 @@ interface WeeklyScheduleProps {
 export function WeeklySchedule({ availability, setAvailability, onSave }: WeeklyScheduleProps) {
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
 
-  const handleToggleDay = (day: keyof WeeklyAvailabilityType) => {
+  const handleToggleDay = useCallback((day: keyof WeeklyAvailabilityType) => {
     setAvailability((prev) => ({
       ...prev,
       [day]: {
@@ -40,9 +41,9 @@ export function WeeklySchedule({ availability, setAvailability, onSave }: Weekly
         isAvailable: !prev[day].isAvailable,
       },
     }))
-  }
+  }, [setAvailability])
 
-  const handleAddSlot = (day: keyof WeeklyAvailabilityType) => {
+  const handleAddSlot = useCallback((day: keyof WeeklyAvailabilityType) => {
     setAvailability((prev) => ({
       ...prev,
       [day]: {
@@ -50,9 +51,9 @@ export function WeeklySchedule({ availability, setAvailability, onSave }: Weekly
         slots: [...prev[day].slots, "9:00 AM - 5:00 PM"],
       },
     }))
-  }
+  }, [setAvailability])
 
-  const handleRemoveSlot = (day: keyof WeeklyAvailabilityType, index: number) => {
+  const handleRemoveSlot = useCallback((day: keyof WeeklyAvailabilityType, index: number) => {
     setAvailability((prev) => ({
       ...prev,
       [day]: {
@@ -60,9 +61,9 @@ export function WeeklySchedule({ availability, setAvailability, onSave }: Weekly
         slots: prev[day].slots.filter((_, i) => i !== index),
       },
     }))
-  }
+  }, [setAvailability])
 
-  const handleChangeSlot = (day: keyof WeeklyAvailabilityType, index: number, value: string) => {
+  const handleChangeSlot = useCallback((day: keyof WeeklyAvailabilityType, index: number, value: string) => {
     setAvailability((prev) => {
       const newSlots = [...prev[day].slots]
       newSlots[index] = value
@@ -74,7 +75,7 @@ export function WeeklySchedule({ availability, setAvailability, onSave }: Weekly
         },
       }
     })
-  }
+  }, [setAvailability])
 
   return (
     <div className="space-y-6">

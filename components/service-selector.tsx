@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import * as React from "react"
+import { useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -20,9 +21,9 @@ interface ServiceSelectorProps {
 }
 
 export function ServiceSelector({ services, onSelectServices }: ServiceSelectorProps) {
-  const [selectedServices, setSelectedServices] = useState<string[]>([])
+  const [selectedServices, setSelectedServices] = React.useState<string[]>([])
 
-  const toggleService = (serviceId: string) => {
+  const toggleService = useCallback((serviceId: string) => {
     setSelectedServices((prev) => {
       if (prev.includes(serviceId)) {
         return prev.filter((id) => id !== serviceId)
@@ -30,7 +31,15 @@ export function ServiceSelector({ services, onSelectServices }: ServiceSelectorP
         return [...prev, serviceId]
       }
     })
-  }
+  }, [])
+
+  const handleServiceClick = useCallback((serviceId: string) => {
+    toggleService(serviceId)
+  }, [toggleService])
+
+  const handleContinue = useCallback(() => {
+    onSelectServices(selectedServices)
+  }, [onSelectServices, selectedServices])
 
   const totalPrice = selectedServices.reduce((total, serviceId) => {
     const service = services.find((s) => s.id === serviceId)
@@ -52,7 +61,7 @@ export function ServiceSelector({ services, onSelectServices }: ServiceSelectorP
                 <Checkbox
                   id={`service-${service.id}`}
                   checked={selectedServices.includes(service.id)}
-                  onCheckedChange={() => toggleService(service.id)}
+                  onCheckedChange={() => handleServiceClick(service.id)}
                 />
                 <div className="flex-1">
                   <label htmlFor={`service-${service.id}`} className="text-base font-medium cursor-pointer">
@@ -92,7 +101,7 @@ export function ServiceSelector({ services, onSelectServices }: ServiceSelectorP
       <Button
         className="w-full"
         disabled={selectedServices.length === 0}
-        onClick={() => onSelectServices(selectedServices)}
+        onClick={handleContinue}
       >
         {selectedServices.length === 0
           ? "Select at least one service"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Bell, Smartphone, Mail, MessageSquare } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
@@ -24,7 +24,7 @@ export function NotificationSettings() {
   }, [])
 
   // Request push notification permission
-  const handlePushToggle = async () => {
+  const handlePushToggle = useCallback(async () => {
     if (!pushEnabled) {
       const granted = await requestNotificationPermission()
       setPushEnabled(granted)
@@ -47,7 +47,19 @@ export function NotificationSettings() {
         description: "Please disable notifications in your browser settings.",
       })
     }
-  }
+  }, [pushEnabled, toast])
+
+  const handleEmailToggle = useCallback((checked: boolean) => {
+    setEmailEnabled(checked)
+  }, [])
+
+  const handleSmsToggle = useCallback((checked: boolean) => {
+    setSmsEnabled(checked)
+  }, [])
+
+  const handleInAppToggle = useCallback((checked: boolean) => {
+    setInAppEnabled(checked)
+  }, [])
 
   return (
     <Card>
@@ -80,7 +92,7 @@ export function NotificationSettings() {
                 <p className="text-sm text-muted-foreground">Receive notifications via email</p>
               </div>
             </div>
-            <Switch id="email-notifications" checked={emailEnabled} onCheckedChange={setEmailEnabled} />
+            <Switch id="email-notifications" checked={emailEnabled} onCheckedChange={handleEmailToggle} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -93,7 +105,7 @@ export function NotificationSettings() {
                 <p className="text-sm text-muted-foreground">Receive notifications via text message</p>
               </div>
             </div>
-            <Switch id="sms-notifications" checked={smsEnabled} onCheckedChange={setSmsEnabled} />
+            <Switch id="sms-notifications" checked={smsEnabled} onCheckedChange={handleSmsToggle} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -106,7 +118,7 @@ export function NotificationSettings() {
                 <p className="text-sm text-muted-foreground">Receive notifications within the app</p>
               </div>
             </div>
-            <Switch id="in-app-notifications" checked={inAppEnabled} onCheckedChange={setInAppEnabled} />
+            <Switch id="in-app-notifications" checked={inAppEnabled} onCheckedChange={handleInAppToggle} />
           </div>
         </div>
 

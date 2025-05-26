@@ -220,10 +220,12 @@ export default function BarberProfilePage() {
                   >
                     <Heart className={`h-5 w-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
                   </Button>
-                  <Button variant="outline" size="icon" asChild>
-                    <a href={`/messages/${barber.id}`}>
-                      <MessageSquare className="h-5 w-5" />
-                    </a>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    href={`/messages/${barber.id}`}
+                  >
+                    <MessageSquare className="h-5 w-5" />
                   </Button>
                 </div>
               </div>

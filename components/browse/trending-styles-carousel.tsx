@@ -87,8 +87,8 @@ export function TrendingStylesCarousel({ styles }: TrendingStylesCarouselProps) 
                       <span className="text-xs text-barber-300">{style.popularity}</span>
                     </div>
                     <h3 className="text-lg font-bold text-white">{style.name}</h3>
-                    <Button asChild size="sm" className="mt-2 w-full">
-                      <Link href="/browse">Find Barbers</Link>
+                    <Button size="sm" className="mt-2 w-full" href={`/browse?style=${style.name}`}>
+                      View More
                     </Button>
                   </div>
                 </div>

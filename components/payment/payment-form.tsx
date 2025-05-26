@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { usePayment } from "@/contexts/payment-context"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,7 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Set default payment method when payment methods load
   useEffect(() => {
@@ -43,15 +44,42 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
     }
   }, [paymentMethods])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
+    try {
+      if (paymentType === "wallet") {
+        // Handle wallet payment
+        if (!user?.wallet || user.wallet < amount) {
+          toast({
+            title: "Insufficient funds",
+            description: "You don't have enough funds in your wallet.",
+            variant: "destructive",
+          })
+          return
+        }
 
-    if (paymentType === "wallet") {
-      // Handle wallet payment
-      if (!user?.wallet || user.wallet < amount) {
+        setIsProcessing(true)
+
+        // Simulate wallet payment processing
+        setTimeout(() => {
+          setIsProcessing(false)
+          toast({
+            title: "Payment successful",
+            description: `Your payment of $${amount.toFixed(2)} has been processed successfully.`,
+          })
+          // Generate a fake payment intent ID for wallet payments
+          onSuccess(`wallet_${Date.now()}`)
+        }, 1500)
+
+        return
+      }
+
+      // Handle card payment
+      if (!selectedPaymentMethod) {
         toast({
-          title: "Insufficient funds",
-          description: "You don't have enough funds in your wallet.",
+          title: "No payment method selected",
+          description: "Please select a payment method or add a new one.",
           variant: "destructive",
         })
         return
@@ -59,33 +87,6 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
 
       setIsProcessing(true)
 
-      // Simulate wallet payment processing
-      setTimeout(() => {
-        setIsProcessing(false)
-        toast({
-          title: "Payment successful",
-          description: `Your payment of $${amount.toFixed(2)} has been processed successfully.`,
-        })
-        // Generate a fake payment intent ID for wallet payments
-        onSuccess(`wallet_${Date.now()}`)
-      }, 1500)
-
-      return
-    }
-
-    // Handle card payment
-    if (!selectedPaymentMethod) {
-      toast({
-        title: "No payment method selected",
-        description: "Please select a payment method or add a new one.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsProcessing(true)
-
-    try {
       // Create payment intent if not already created
       let intent = paymentIntent
       if (!intent) {
@@ -122,8 +123,13 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
       })
     } finally {
       setIsProcessing(false)
+      setIsLoading(false)
     }
-  }
+  }, [amount, metadata, onSuccess, paymentType, selectedPaymentMethod, user, paymentMethods, createPaymentIntent, confirmPayment, toast])
+
+  const handleCancel = useCallback(() => {
+    onCancel()
+  }, [onCancel])
 
   const hasEnoughInWallet = user?.wallet && user.wallet >= amount
 
@@ -215,11 +221,16 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
           )}
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isProcessing || (paymentType === "card" && !selectedPaymentMethod)}>
-            {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          <Button type="submit" disabled={isLoading || (paymentType === "card" && !selectedPaymentMethod)}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Pay ${amount.toFixed(2)}
           </Button>
         </CardFooter>

@@ -18,10 +18,8 @@ export default function NotFound() {
       <p className="mb-8 max-w-md">
         The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
       </p>
-      <Button asChild>
-        <Link href="/">
-          Return to Home
-        </Link>
+      <Button href="/">
+        Return to Home
       </Button>
     </div>
   )

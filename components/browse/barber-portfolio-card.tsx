@@ -136,11 +136,11 @@ export function BarberPortfolioCard({ barber }: BarberPortfolioCardProps) {
               </div>
 
               <div className="mt-auto">
-                <Button asChild className="w-full">
-                  <Link href={`/book/${barber.id}`}>Book Now</Link>
+                <Button className="w-full" href={`/book/${barber.id}`}>
+                  Book Now
                 </Button>
-                <Button variant="outline" asChild className="w-full mt-2">
-                  <Link href={`/messages/${barber.id}`}>Message</Link>
+                <Button variant="outline" className="w-full mt-2" href={`/barber/${barber.id}`}>
+                  View Profile
                 </Button>
               </div>
             </div>

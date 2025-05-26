@@ -138,17 +138,13 @@ export function MarketplaceContent() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
-              <Button asChild size="lg" className="flex-1 rounded-full">
-                <Link href="/browse">
-                  <Scissors className="mr-2 h-5 w-5" />
-                  Book a Barber
-                </Link>
+              <Button href="/browse" size="lg" className="flex-1 rounded-full">
+                <Scissors className="mr-2 h-5 w-5" />
+                Book a Barber
               </Button>
-              <Button asChild variant="outline" size="lg" className="flex-1 rounded-full">
-                <Link href="/hire">
-                  <Users className="mr-2 h-5 w-5" />
-                  Hire a Barber
-                </Link>
+              <Button href="/hire" variant="outline" size="lg" className="flex-1 rounded-full">
+                <Users className="mr-2 h-5 w-5" />
+                Hire a Barber
               </Button>
             </div>
           </div>
@@ -161,9 +157,7 @@ export function MarketplaceContent() {
           <div className="flex flex-col gap-8">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl md:text-3xl font-bold">Featured Barbers</h2>
-              <Button asChild variant="ghost">
-                <Link href="/browse">View All</Link>
-              </Button>
+              <Button href="/browse" variant="ghost">View All</Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -181,9 +175,7 @@ export function MarketplaceContent() {
           <div className="flex flex-col gap-8">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl md:text-3xl font-bold">Featured Opportunities</h2>
-              <Button asChild variant="ghost">
-                <Link href="/jobs">View All</Link>
-              </Button>
+              <Button href="/jobs" variant="ghost">View All</Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

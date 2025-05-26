@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { usePayment } from "@/contexts/payment-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,7 +37,7 @@ export function PaymentMethods() {
   // Find default payment method
   const defaultPaymentMethod = paymentMethods.find((pm) => pm.isDefault)?.id || null
 
-  const handleSetDefault = async (paymentMethodId: string) => {
+  const handleSetDefault = useCallback(async (paymentMethodId: string) => {
     setIsProcessing(true)
     try {
       await setDefaultPaymentMethod(paymentMethodId)
@@ -54,9 +54,9 @@ export function PaymentMethods() {
     } finally {
       setIsProcessing(false)
     }
-  }
+  }, [setDefaultPaymentMethod, toast])
 
-  const handleRemove = async (paymentMethodId: string) => {
+  const handleRemove = useCallback(async (paymentMethodId: string) => {
     setIsProcessing(true)
     try {
       await removePaymentMethod(paymentMethodId)
@@ -73,9 +73,9 @@ export function PaymentMethods() {
     } finally {
       setIsProcessing(false)
     }
-  }
+  }, [removePaymentMethod, toast])
 
-  const handleAddCard = async (e: React.FormEvent) => {
+  const handleAddCard = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setIsProcessing(true)
 
@@ -96,12 +96,12 @@ export function PaymentMethods() {
         description: "Your new payment method has been added.",
       })
     }, 1500)
-  }
+  }, [toast])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setNewCardDetails((prev) => ({ ...prev, [name]: value }))
-  }
+  }, [])
 
   const getCardIcon = (brand?: string) => {
     // In a real app, you would use different icons for different card brands

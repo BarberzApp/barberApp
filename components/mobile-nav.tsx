@@ -1,17 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import * as React from "react"
+import { useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Search, Calendar, MessageSquare, User, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAuth } from "@/contexts/auth-context"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Icons } from "@/components/icons"
+import { MobileLink } from "@/components/mobile-link"
 
 export function MobileNav() {
   const pathname = usePathname()
   const { user } = useAuth()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = React.useState(false)
 
   const navItems = [
     { name: "Home", href: "/", icon: Home },
@@ -45,6 +49,14 @@ export function MobileNav() {
 
   const allNavItems = [...navItems, ...roleSpecificNavItems()]
 
+  const handleOpen = useCallback(() => {
+    setIsOpen(true)
+  }, [])
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false)
+  }, [])
+
   return (
     <>
       {/* Bottom Navigation Bar */}
@@ -67,41 +79,39 @@ export function MobileNav() {
 
       {/* Mobile Menu Sheet */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild className="md:hidden">
-          <Button variant="ghost" size="icon" className="mr-2">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+            onClick={handleOpen}
+          >
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Toggle Menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-6">
-              <Link href="/" className="flex items-center gap-2 font-semibold" onClick={() => setIsOpen(false)}>
-                <Scissors className="h-5 w-5" />
-                <span>BarberHub</span>
-              </Link>
-              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
-                <X className="h-5 w-5" />
-                <span className="sr-only">Close menu</span>
-              </Button>
-            </div>
-
-            <div className="space-y-4">
+        <SheetContent side="left" className="pr-0">
+          <MobileLink
+            href="/"
+            className="flex items-center"
+            onOpenChange={handleClose}
+          >
+            <Icons.logo className="mr-2 h-4 w-4" />
+            <span className="font-bold">BarberHub</span>
+          </MobileLink>
+          <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10">
+            <div className="flex flex-col space-y-3">
               {allNavItems.map((item) => (
-                <Link
+                <MobileLink
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 px-2 py-3 rounded-md ${
-                    pathname === item.href ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
-                  }`}
-                  onClick={() => setIsOpen(false)}
+                  onOpenChange={handleClose}
                 >
                   <item.icon className="h-5 w-5" />
                   <span>{item.name}</span>
-                </Link>
+                </MobileLink>
               ))}
             </div>
-          </div>
+          </ScrollArea>
         </SheetContent>
       </Sheet>
     </>

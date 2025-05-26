@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MapPin, Star, Clock, MessageSquare, Briefcase } from "lucide-react"
+import { MapPin, Star, Clock, MessageSquare, Briefcase, Info } from "lucide-react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { motion } from "framer-motion"
 import Link from "next/link"
@@ -104,11 +104,9 @@ export function BarberCard({ barber }: BarberCardProps) {
           <CardFooter className="p-6 pt-0 flex gap-2">
             {isBusinessOwner ? (
               barber.openToHire ? (
-                <Button className="flex-1" asChild>
-                  <Link href={`/business/hire/${barber.id}`}>
-                    <Briefcase className="h-4 w-4 mr-2" />
-                    Hire
-                  </Link>
+                <Button className="flex-1" href={`/business/hire/${barber.id}`}>
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Hire
                 </Button>
               ) : (
                 <Button className="flex-1" disabled>
@@ -117,15 +115,17 @@ export function BarberCard({ barber }: BarberCardProps) {
                 </Button>
               )
             ) : (
-              <Button className="flex-1" asChild>
-                <Link href={`/book/${barber.id}`}>Book Now</Link>
-              </Button>
+              <div className="flex gap-2">
+                <Button className="flex-1" href={`/book/${barber.id}`}>
+                  Book Now
+                </Button>
+                <Button className="flex-1" href={`/messages/${barber.id}`}>
+                  Message
+                </Button>
+              </div>
             )}
-            <Button variant="outline" size="icon" asChild>
-              <Link href={`/messages/${barber.id}`}>
-                <MessageSquare className="h-4 w-4" />
-                <span className="sr-only">Message</span>
-              </Link>
+            <Button variant="outline" size="icon" href={`/barber/${barber.id}`}>
+              <Info className="h-4 w-4" />
             </Button>
           </CardFooter>
         </Card>
