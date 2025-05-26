@@ -130,31 +130,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('Attempting login for:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
+
+      console.log('Login response:', { data, error });
 
       if (error) {
+        console.error('Login error:', error);
         toast({
           title: "Login failed",
           description: error.message,
           variant: "destructive",
-        })
-        return false
+        });
+        return false;
       }
 
       if (data.user) {
+        console.log('User authenticated, fetching profile...');
+        
         // Fetch additional user data from the profiles table
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
-          .single()
+          .single();
+
+        console.log('Profile fetch response:', { profile, profileError });
 
         if (profileError) {
-          console.error('Error fetching profile:', profileError)
-          return false
+          console.error('Error fetching profile:', profileError);
+          return false;
         }
 
         setUser({
@@ -176,24 +185,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           joinDate: profile?.join_date || undefined,
           services: profile?.services || [],
           specialties: profile?.specialties || [],
-        })
-        return true
+        });
+        return true;
       }
-      return false
+      return false;
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('Login error:', error);
       toast({
         title: "Login failed",
         description: "An unexpected error occurred",
         variant: "destructive",
-      })
-      return false
+      });
+      return false;
     }
-  }
+  };
 
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<boolean> => {
     try {
-      // Create auth user
+      console.log('Starting registration process...');
+      
+      // Get the current URL for the callback
+      const redirectTo = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001/auth/callback'
+        : `${window.location.origin}/auth/callback`;
+
+      console.log('Using redirect URL:', redirectTo);
+      
+      // Create auth user with metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -202,40 +220,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name,
             role,
           },
+          emailRedirectTo: redirectTo,
         },
-      })
+      });
+
+      console.log('Auth signup response:', { authData, authError });
 
       if (authError) {
+        console.error('Auth error:', authError);
         toast({
           title: "Registration failed",
           description: authError.message,
           variant: "destructive",
-        })
-        return false
+        });
+        return false;
       }
 
       if (authData.user) {
-        // Create profile in profiles table
-        const { error: profileError } = await supabase
+        console.log('User created, creating profile...');
+        
+        // Create profile using service role client to bypass RLS
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .insert([
             {
               id: authData.user.id,
-              name,
               email,
+              full_name: name,
               role,
-              wallet: 0,
-              favorites: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             },
           ])
+          .select()
+          .single();
+
+        console.log('Profile creation response:', { profileData, profileError });
 
         if (profileError) {
-          console.error('Error creating profile:', profileError)
+          console.error('Profile creation error:', profileError);
           // Clean up auth user if profile creation fails
-          await supabase.auth.admin.deleteUser(authData.user.id)
-          return false
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          toast({
+            title: "Registration failed",
+            description: "Failed to create user profile",
+            variant: "destructive",
+          });
+          return false;
         }
 
+        // Set user state
         setUser({
           id: authData.user.id,
           name,
@@ -249,20 +283,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           joinDate: undefined,
           services: [],
           specialties: [],
-        })
-        return true
+        });
+
+        toast({
+          title: "Registration successful",
+          description: "Welcome to BarberHub!",
+        });
+        
+        return true;
       }
-      return false
+      return false;
     } catch (error) {
-      console.error('Registration error:', error)
+      console.error('Registration error:', error);
       toast({
         title: "Registration failed",
         description: "An unexpected error occurred",
         variant: "destructive",
-      })
-      return false
+      });
+      return false;
     }
-  }
+  };
 
   const logout = async () => {
     try {
