@@ -3,6 +3,10 @@
 import { useState } from "react"
 import { CalendarView } from "@/components/calendar/calendar-view"
 import { useAuth } from "@/contexts/auth-context" // Adjusted the import path
+import { useData } from "@/contexts/data-context"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { BarberCard } from "@/components/barber-card"
 
 // Mock calendar events
 const mockEvents = [
@@ -148,19 +152,71 @@ const mockEvents = [
 
 export default function CalendarPage() {
   const { user } = useAuth();
-  const [userType, setUserType] = useState<"client" | "barber">("client")
+  const { barbers, loading, error } = useData()
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [selectedBarber, setSelectedBarber] = useState<string | undefined>()
 
-  // Optionally handle loading state if it's managed elsewhere
-  if (!user || (user.role !== "client" && user.role !== "barber")) {
-    return <div>Access Denied</div>;
+  if (loading) {
+    return (
+      <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading barbers...</p>
+        </div>
+      </div>
+    )
   }
 
-  // Optionally, set userType based on user.role
-  // setUserType(user.role)
+  if (error) {
+    return (
+      <div className="container py-8">
+        <div className="text-center">
+          <p className="text-red-500">Error loading barbers: {error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="container py-8 h-[calc(100vh-4rem)]">
+    <div className="container py-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Calendar</h1>
+          <p className="text-muted-foreground mt-1">View and manage your appointments</p>
+        </div>
+        <div className="flex gap-4">
+          <Select
+            value={selectedBarber}
+            onValueChange={setSelectedBarber}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select barber" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Barbers</SelectItem>
+              {barbers.map((barber) => (
+                <SelectItem key={barber.id} value={barber.id}>
+                  {barber.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            className="rounded-md border"
+          />
+        </div>
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {barbers
+          .filter((barber) => !selectedBarber || barber.id === selectedBarber)
+          .map((barber) => (
+            <BarberCard key={barber.id} barber={barber} />
+          ))}
+      </div>
     </div>
   )
 }

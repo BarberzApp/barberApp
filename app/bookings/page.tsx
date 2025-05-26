@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Clock, MapPin, Scissors, X } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,8 +82,16 @@ const mockBookings = [
 ]
 
 export default function BookingsPage() {
+  const { user } = useAuth()
+  const router = useRouter()
   const [bookings, setBookings] = useState(mockBookings)
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    router.push("/login")
+    return null
+  }
 
   const upcomingBookings = bookings.filter((booking) => booking.status === "upcoming")
   const pastBookings = bookings.filter((booking) => booking.status === "completed")

@@ -12,34 +12,27 @@ import { Clock, MapPin, Star, Check } from "lucide-react"
 import { AvailabilityCalendar } from "@/components/availability/availability-calendar"
 import { PaymentForm } from "@/components/payment/payment-form"
 import { useToast } from "@/components/ui/use-toast"
+import type { Barber, Service } from "@/contexts/data-context"
+import type { DateTimeSelection, TimeSlot } from "@/types"
 
 export default function BookingPage() {
   const params = useParams<{ barberId: string }>()
   const router = useRouter()
-  const { getBarberById, createBooking } = useData()
+  const { getBarberById, createBooking, services } = useData()
   const { user } = useAuth()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("service")
-  const [barber, setBarber] = useState<any>(null)
+  const [barber, setBarber] = useState<Barber | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedService, setSelectedService] = useState<string | null>(null)
-  const [selectedDateTime, setSelectedDateTime] = useState<{
-    date: Date | null
-    timeSlot: { id: string; time: string; available: boolean } | null
-  }>({
+  const [selectedDateTime, setSelectedDateTime] = useState<DateTimeSelection>({
     date: null,
     timeSlot: null,
   })
   const [showPayment, setShowPayment] = useState(false)
 
-  // Mock services
-  const services = [
-    { id: "s1", name: "Haircut", price: 30, duration: 30 },
-    { id: "s2", name: "Haircut & Beard Trim", price: 45, duration: 45 },
-    { id: "s3", name: "Fade", price: 35, duration: 30 },
-    { id: "s4", name: "Beard Trim", price: 15, duration: 15 },
-    { id: "s5", name: "Hot Towel Shave", price: 30, duration: 30 },
-  ]
+  // Get services for this barber
+  const barberServices = services.filter(s => s.barberId === barber?.id)
 
   useEffect(() => {
     if (params.barberId) {
@@ -51,7 +44,7 @@ export default function BookingPage() {
     }
   }, [params.barberId, getBarberById])
 
-  const handleTimeSelected = (date: Date, timeSlot: { id: string; time: string; available: boolean }) => {
+  const handleTimeSelected = (date: Date, timeSlot: TimeSlot) => {
     setSelectedDateTime({
       date,
       timeSlot,
@@ -71,7 +64,7 @@ export default function BookingPage() {
       return
     }
 
-    const selectedServiceObj = services.find((s) => s.id === selectedService)
+    const selectedServiceObj = barberServices.find((s) => s.id === selectedService)
     if (!selectedServiceObj) return
 
     // Create booking with payment information
@@ -84,9 +77,11 @@ export default function BookingPage() {
         location: barber.location,
       },
       clientId: user.id,
-      date: selectedDateTime.date,
+      date: selectedDateTime.date.toISOString().split('T')[0],
       time: selectedDateTime.timeSlot.time,
       services: [selectedServiceObj.name],
+      service: selectedServiceObj.name,
+      price: selectedServiceObj.price,
       totalPrice: selectedServiceObj.price,
       status: "upcoming",
       paymentStatus: "paid",
@@ -126,7 +121,7 @@ export default function BookingPage() {
     )
   }
 
-  const selectedServiceObj = services.find((s) => s.id === selectedService)
+  const selectedServiceObj = barberServices.find((s) => s.id === selectedService)
 
   return (
     <div className="container py-8">
@@ -136,7 +131,7 @@ export default function BookingPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-32 w-32 mb-4">
-                  <AvatarImage src={barber.image || "/placeholder.svg"} alt={barber.name} />
+                  <AvatarImage src={barber.image} alt={barber.name} />
                   <AvatarFallback>{barber.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <h1 className="text-2xl font-bold">{barber.name}</h1>
@@ -219,7 +214,7 @@ export default function BookingPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-2">
-                    {services.map((service) => (
+                    {barberServices.map((service) => (
                       <div
                         key={service.id}
                         className={`flex justify-between items-center p-3 border rounded-md cursor-pointer ${
@@ -272,7 +267,7 @@ export default function BookingPage() {
                   metadata={{
                     barberId: barber.id,
                     serviceId: selectedServiceObj.id,
-                    date: selectedDateTime.date?.toISOString() || "",
+                    date: selectedDateTime.date?.toISOString().split('T')[0] || "",
                     time: selectedDateTime.timeSlot?.time || "",
                   }}
                   onSuccess={handlePaymentSuccess}

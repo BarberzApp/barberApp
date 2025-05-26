@@ -7,6 +7,9 @@ import Link from "next/link"
 import { BarberCard } from "@/components/barber-card"
 import { JobPostingCard } from "@/components/job-posting-card"
 import type { Job as JobType } from "@/components/job-posting-card"
+import { useData } from "@/contexts/data-context"
+import { useState } from "react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export interface Barber {
   id: string
@@ -118,74 +121,80 @@ const featuredJobs: LocalJob[] = [
 ]
 
 export function MarketplaceContent() {
+  const { barbers, loading, error } = useData()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
+
+  // Filter barbers based on search query
+  const filteredBarbers = barbers.filter(
+    (barber) =>
+      barber.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      barber.specialties.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+
+  // Filter barbers based on active tab
+  const getFilteredBarbers = () => {
+    if (activeTab === "all") return filteredBarbers
+    if (activeTab === "featured") return filteredBarbers.filter((b) => b.featured)
+    if (activeTab === "trending") return filteredBarbers.filter((b) => b.trending)
+    return filteredBarbers
+  }
+
+  const displayBarbers = getFilteredBarbers()
+
+  if (loading) {
+    return (
+      <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading barbers...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8">
+        <div className="text-center">
+          <p className="text-red-500">Error loading barbers: {error}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Hero Section */}
-      <section className="hero-gradient py-16 md:py-24">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center text-center space-y-8">
-            <h1 className="text-3xl md:text-5xl font-bold tracking-tighter">Find Your Perfect Barber Experience</h1>
-            <p className="text-muted-foreground md:text-xl max-w-[700px]">
-              Connect with skilled barbers or offer your services on the premier marketplace for haircut professionals.
-            </p>
-
-            <div className="w-full max-w-2xl relative">
-              <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Find barbers by name, style, or location"
-                className="pl-10 h-12 text-base rounded-full"
-              />
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
-              <Button href="/browse" size="lg" className="flex-1 rounded-full">
-                <Scissors className="mr-2 h-5 w-5" />
-                Book a Barber
-              </Button>
-              <Button href="/hire" variant="outline" size="lg" className="flex-1 rounded-full">
-                <Users className="mr-2 h-5 w-5" />
-                Hire a Barber
-              </Button>
-            </div>
-          </div>
+    <div className="container py-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Browse Barbers</h1>
+          <p className="text-muted-foreground mt-1">Find and book your perfect barber</p>
         </div>
-      </section>
-
-      {/* Featured Barbers Section */}
-      <section className="py-16">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col gap-8">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl md:text-3xl font-bold">Featured Barbers</h2>
-              <Button href="/browse" variant="ghost">View All</Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredBarbers.map((barber) => (
-                <BarberCard key={barber.id} barber={barber} />
-              ))}
-            </div>
-          </div>
+        <div className="relative w-full md:w-64">
+          <Input
+            type="search"
+            placeholder="Search barbers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         </div>
-      </section>
+      </div>
 
-      {/* Featured Jobs Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col gap-8">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl md:text-3xl font-bold">Featured Opportunities</h2>
-              <Button href="/jobs" variant="ghost">View All</Button>
-            </div>
+      <Tabs defaultValue="all" className="mb-8">
+        <TabsList>
+          <TabsTrigger value="all">All Barbers</TabsTrigger>
+          <TabsTrigger value="featured">Featured</TabsTrigger>
+          <TabsTrigger value="trending">Trending</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {featuredJobs.map((job) => (
-                <JobPostingCard key={job.id} job={job} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {displayBarbers.map((barber) => (
+          <BarberCard key={barber.id} barber={barber} />
+        ))}
+      </div>
     </div>
   )
 } 

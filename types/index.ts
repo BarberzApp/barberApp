@@ -1,14 +1,24 @@
 // User Types
-export type UserRole = "client" | "barber" | "business"
+export type UserRole = "client" | "barber" | "admin"
+
+export const USER_ROLES = {
+  CLIENT: "client" as const,
+  BARBER: "barber" as const,
+  ADMIN: "admin" as const,
+}
 
 export interface User {
   id: string
   name: string
   email: string
-  image?: string
   role: UserRole
-  phone?: string
+  image?: string
+  businessName?: string
   location?: string
+  description?: string
+  bio?: string
+  specialties?: string[]
+  joinDate?: Date
   favorites?: string[]
   wallet?: number
   stripeCustomerId?: string
@@ -16,35 +26,39 @@ export interface User {
   businessId?: string
 }
 
-// Payment Types
-export interface PaymentMethod {
+// Barber Types
+export interface Barber {
   id: string
-  brand?: string
-  last4: string
-  expiryMonth: string
-  expiryYear: string
-  isDefault: boolean
-}
-
-export interface PaymentIntent {
-  id: string
-  status: "succeeded" | "processing" | "failed"
-  amount: number
-  currency: string
-}
-
-// Booking Types
-export interface Booking {
-  id: string
-  userId: string
-  barberId: string
-  serviceId: string
-  date: Date
-  startTime: string
-  endTime: string
-  status: "pending" | "confirmed" | "completed" | "cancelled"
-  price: number
-  notes?: string
+  name: string
+  image: string
+  role: string
+  businessId?: string
+  businessName?: string
+  location: string
+  bio: string
+  specialties: string[]
+  rating: number
+  totalReviews: number
+  openToHire: boolean
+  distance?: number
+  priceRange: string
+  portfolio: string[]
+  nextAvailable: string
+  featured?: boolean
+  trending?: boolean
+  joinDate: string
+  bookings: number
+  totalClients: number
+  totalBookings: number
+  earnings: {
+    thisWeek: number
+    thisMonth: number
+    lastMonth: number
+  }
+  reviews: Review[]
+  isFavorite?: boolean
+  availability: Record<string, { available: boolean; start: string; end: string }>
+  services: Service[]
 }
 
 // Service Types
@@ -54,67 +68,147 @@ export interface Service {
   description: string
   duration: number
   price: number
+  barberId?: string
+  isFavorite?: boolean
+}
+
+// Booking Types
+export type BookingStatus = "upcoming" | "completed" | "cancelled"
+export type PaymentStatus = "pending" | "paid" | "refunded"
+
+export interface Booking {
+  id: string
   barberId: string
+  barber: {
+    id: string
+    name: string
+    image: string
+    location: string
+  }
+  clientId: string
+  client?: {
+    id: string
+    name: string
+    image: string
+  }
+  date: string
+  time: string
+  services: string[]
+  service: string
+  price: number
+  totalPrice: number
+  status: BookingStatus
+  paymentStatus: PaymentStatus
+  notes?: string
 }
 
 // Review Types
 export interface Review {
   id: string
-  userId: string
   barberId: string
+  clientId: string
+  client: {
+    id: string
+    name: string
+    image: string
+  }
+  barber: {
+    id: string
+    name: string
+    image: string
+  }
+  date: string
   rating: number
   comment: string
-  date: Date
+}
+
+// Business Types
+export interface Business {
+  id: string
+  name: string
+  ownerId: string
+  image: string
+  location: string
+  description: string
+  phone: string
+  rating: number
+  totalReviews: number
+  totalBarbers: number
+  totalClients: number
+  totalBookings: number
+  services: Service[]
+  barbers: Barber[]
+  photos: string[]
+  hours: Record<string, { open: string; close: string; isOpen: boolean }>
+  earnings: {
+    thisWeek: number
+    thisMonth: number
+    lastMonth: number
+  }
+  joinDate: string
 }
 
 // Message Types
 export interface Message {
   id: string
+  conversationId: string
+  senderId: string
   text: string
-  sender: "me" | "them"
   timestamp: Date
   status: "sending" | "sent" | "delivered" | "read"
-  attachments?: File[]
 }
 
+// Conversation Types
 export interface Conversation {
   id: string
-  recipient: {
-    id: string
-    name: string
-    image?: string
-    role: UserRole
-    lastSeen?: string
-  }
+  participants: string[]
   lastMessage: {
     text: string
     timestamp: Date
-    isRead: boolean
-    sender: "me" | "them"
+    senderId: string
   }
   unreadCount: number
+}
+
+// Helper Types
+export interface TimeSlot {
+  id: string
+  time: string
+  available: boolean
+}
+
+export interface DateTimeSelection {
+  date: Date | null
+  timeSlot: TimeSlot | null
 }
 
 // Job Types
 export interface JobPost {
   id: string
   businessId: string
+  businessName: string
+  businessImage: string
   title: string
   description: string
   requirements: string[]
   location: string
-  salary?: string
-  type: "full-time" | "part-time" | "contract"
+  salary: string
+  postedDate: string
   status: "open" | "closed"
-  createdAt: Date
 }
 
 export interface JobApplication {
   id: string
   jobId: string
-  userId: string
-  status: "pending" | "reviewed" | "accepted" | "rejected"
+  barberId: string
+  barber: {
+    id: string
+    name: string
+    image: string
+    experience: string
+    location: string
+  }
+  status: "pending" | "reviewing" | "accepted" | "rejected"
+  appliedDate: string
   coverLetter: string
-  resume?: string
-  createdAt: Date
 } 

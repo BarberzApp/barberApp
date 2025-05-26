@@ -2,6 +2,8 @@
 
 import { ChatLayout } from "@/components/messaging/chat-layout"
 import type { Conversation } from "@/components/messaging/chat-layout"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 // Mock conversations data
 const mockConversations: Conversation[] = [
@@ -42,6 +44,15 @@ const mockConversations: Conversation[] = [
 ]
 
 export default function MessagesPage() {
+  const { user } = useAuth()
+  const router = useRouter()
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    router.push("/login")
+    return null
+  }
+
   return (
     <div className="container py-8">
       <h1 className="text-2xl font-bold mb-6">Messages</h1>

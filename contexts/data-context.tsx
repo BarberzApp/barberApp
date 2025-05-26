@@ -43,6 +43,7 @@ export type Service = {
   description: string
   price: number
   duration: number
+  barberId: string
   isFavorite?: boolean
 }
 
@@ -53,6 +54,7 @@ export type Booking = {
     id: string
     name: string
     image: string
+    location: string
   }
   clientId: string
   client?: {

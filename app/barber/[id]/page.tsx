@@ -1,14 +1,12 @@
 "use client"
 
-import { AvatarFallback } from "@/components/ui/avatar"
-
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useData } from "@/contexts/data-context"
 import { useAuth } from "@/contexts/auth-context"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, MapPin, MessageSquare, Star, Heart, Check } from "lucide-react"
@@ -16,6 +14,8 @@ import { BeforeAfterGallery } from "@/components/gallery/before-after-gallery"
 import { ReviewList } from "@/components/reviews/review-list"
 import { AvailabilityCalendar } from "@/components/availability/availability-calendar"
 import { PaymentForm } from "@/components/payment/payment-form"
+import type { Barber, Service, Review } from "@/contexts/data-context"
+import type { DateTimeSelection, TimeSlot } from "@/types"
 
 // Mock data for before/after images
 const mockPortfolioImages = [
@@ -50,32 +50,22 @@ const mockPortfolioImages = [
 
 export default function BarberProfilePage() {
   const params = useParams<{ id: string }>()
-  const { getBarberById, getReviewsByBarberId, createBooking } = useData()
+  const { getBarberById, getReviewsByBarberId, createBooking, services } = useData()
   const { user, addToFavorites, removeFromFavorites } = useAuth()
   const [activeTab, setActiveTab] = useState("about")
-  const [barber, setBarber] = useState<any>(null)
-  const [reviews, setReviews] = useState<any[]>([])
+  const [barber, setBarber] = useState<Barber | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedService, setSelectedService] = useState<string | null>(null)
-  const [selectedDateTime, setSelectedDateTime] = useState<{
-    date: Date | null
-    timeSlot: { id: string; time: string } | null
-  }>({
+  const [selectedDateTime, setSelectedDateTime] = useState<DateTimeSelection>({
     date: null,
     timeSlot: null,
   })
   const [showPayment, setShowPayment] = useState(false)
-
-  // Mock services
-  const services = [
-    { id: "s1", name: "Haircut", price: 30, duration: 30 },
-    { id: "s2", name: "Haircut & Beard Trim", price: 45, duration: 45 },
-    { id: "s3", name: "Fade", price: 35, duration: 30 },
-    { id: "s4", name: "Beard Trim", price: 15, duration: 15 },
-    { id: "s5", name: "Hot Towel Shave", price: 30, duration: 30 },
-  ]
-
   const [isFavorite, setIsFavorite] = useState(false)
+
+  // Get services for this barber
+  const barberServices = services.filter(s => s.barberId === barber?.id)
 
   useEffect(() => {
     if (params.id) {
@@ -93,7 +83,7 @@ export default function BarberProfilePage() {
     }
   }, [params.id, getBarberById, getReviewsByBarberId, user])
 
-  const handleTimeSelected = (date: Date, timeSlot: { id: string; time: string; available: boolean }) => {
+  const handleTimeSelected = (date: Date, timeSlot: TimeSlot) => {
     setSelectedDateTime({
       date,
       timeSlot,
@@ -107,12 +97,12 @@ export default function BarberProfilePage() {
     setShowPayment(true)
   }
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (paymentIntentId: string) => {
     if (!user || !barber || !selectedDateTime.date || !selectedDateTime.timeSlot || !selectedService) {
       return
     }
 
-    const selectedServiceObj = services.find((s) => s.id === selectedService)
+    const selectedServiceObj = barberServices.find((s) => s.id === selectedService)
     if (!selectedServiceObj) return
 
     // Create booking
@@ -122,9 +112,10 @@ export default function BarberProfilePage() {
         id: barber.id,
         name: barber.name,
         image: barber.image,
+        location: barber.location,
       },
       clientId: user.id,
-      date: selectedDateTime.date?.toISOString().split('T')[0],
+      date: selectedDateTime.date.toISOString().split('T')[0],
       time: selectedDateTime.timeSlot.time,
       service: selectedServiceObj.name,
       price: selectedServiceObj.price,
@@ -249,31 +240,25 @@ export default function BarberProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">{barber.bio}</p>
-                  <div className="mt-6">
-                    <h3 className="font-medium mb-2">Services & Pricing</h3>
-                    <div className="space-y-2">
-                      {services.map((service) => (
-                        <div key={service.id} className="flex justify-between items-center p-3 border rounded-md">
-                          <div>
-                            <p className="font-medium">{service.name}</p>
-                            <p className="text-sm text-muted-foreground">{service.duration} min</p>
-                          </div>
-                          <div className="font-medium">${service.price}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
 
-              <ReviewList barberId={barber.id} />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reviews</CardTitle>
+                  <CardDescription>What clients say about {barber.name}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ReviewList barberId={barber.id} />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="portfolio" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Before & After Gallery</CardTitle>
-                  <CardDescription>Check out some of my recent work</CardDescription>
+                  <CardTitle>Portfolio</CardTitle>
+                  <CardDescription>Before and after transformations</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <BeforeAfterGallery images={mockPortfolioImages} />
@@ -282,60 +267,66 @@ export default function BarberProfilePage() {
             </TabsContent>
 
             <TabsContent value="book" className="space-y-6">
-              {showPayment ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Select Service</CardTitle>
+                  <CardDescription>Choose a service for your appointment</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-2">
+                    {barberServices.map((service) => (
+                      <div
+                        key={service.id}
+                        className={`flex justify-between items-center p-3 border rounded-md cursor-pointer ${
+                          selectedService === service.id ? "border-primary bg-primary/5" : "hover:border-primary/50"
+                        }`}
+                        onClick={() => setSelectedService(service.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {selectedService === service.id && <Check className="h-4 w-4 text-primary" />}
+                          <div>
+                            <p className="font-medium">{service.name}</p>
+                            <p className="text-sm text-muted-foreground">{service.duration} min</p>
+                          </div>
+                        </div>
+                        <div className="font-medium">${service.price.toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {selectedService && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Date & Time</CardTitle>
+                    <CardDescription>Choose your preferred appointment time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AvailabilityCalendar barberId={barber.id} onTimeSelected={handleTimeSelected} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedService && selectedDateTime.date && selectedDateTime.timeSlot && (
+                <div className="flex justify-end">
+                  <Button onClick={handleBookNow}>Proceed to Payment</Button>
+                </div>
+              )}
+
+              {showPayment && selectedService && (
                 <PaymentForm
-                  amount={Number(services.find((s) => s.id === selectedService)?.price || 0)}
-                  description={`Appointment with ${barber.name} on ${selectedDateTime.date?.toLocaleDateString()} at ${selectedDateTime.timeSlot?.time}`}
+                  amount={barberServices.find(s => s.id === selectedService)?.price || 0}
+                  description={`${barberServices.find(s => s.id === selectedService)?.name} with ${barber.name}`}
+                  metadata={{
+                    barberId: barber.id,
+                    serviceId: selectedService,
+                    date: selectedDateTime.date?.toISOString().split('T')[0] || "",
+                    time: selectedDateTime.timeSlot?.time || "",
+                  }}
                   onSuccess={handlePaymentSuccess}
                   onCancel={() => setShowPayment(false)}
                 />
-              ) : (
-                <>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Select Service</CardTitle>
-                      <CardDescription>Choose a service for your appointment</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-2">
-                        {services.map((service) => (
-                          <div
-                            key={service.id}
-                            className={`flex justify-between items-center p-3 border rounded-md cursor-pointer ${
-                              selectedService === service.id ? "border-primary bg-primary/5" : "hover:border-primary/50"
-                            }`}
-                            onClick={() => setSelectedService(service.id)}
-                          >
-                            <div className="flex items-center gap-2">
-                              {selectedService === service.id && <Check className="h-4 w-4 text-primary" />}
-                              <div>
-                                <p className="font-medium">{service.name}</p>
-                                <p className="text-sm text-muted-foreground">{service.duration} min</p>
-                              </div>
-                            </div>
-                            <div className="font-medium">${service.price}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {selectedService && (
-                    <>
-                      <AvailabilityCalendar barberId={barber.id} onTimeSelected={handleTimeSelected} />
-
-                      <div className="flex justify-end">
-                        <Button
-                          size="lg"
-                          disabled={!selectedService || !selectedDateTime.date || !selectedDateTime.timeSlot}
-                          onClick={handleBookNow}
-                        >
-                          Proceed to Payment
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </>
               )}
             </TabsContent>
           </Tabs>
