@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { User } from "@/contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 
 interface BusinessProfileProps {
@@ -33,6 +34,7 @@ interface BusinessProfileProps {
 
 export function BusinessProfile({ user }: BusinessProfileProps) {
   const { toast } = useToast()
+  const { updateProfile } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [showAddBarberDialog, setShowAddBarberDialog] = useState(false)
   const [showAddServiceDialog, setShowAddServiceDialog] = useState(false)
@@ -75,13 +77,21 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
     setProfileData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSave = () => {
-    // In a real app, this would call an API to update the profile
-    toast({
-      title: "Profile updated",
-      description: "Your business profile has been updated successfully",
-    })
-    setIsEditing(false)
+  const handleSave = async () => {
+    try {
+      await updateProfile(profileData)
+      toast({
+        title: "Profile updated",
+        description: "Your business profile has been updated successfully",
+      })
+      setIsEditing(false)
+    } catch (error) {
+      toast({
+        title: "Profile update failed",
+        description: "Failed to update your profile",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleBarberChange = (e: React.ChangeEvent<HTMLInputElement>) => {

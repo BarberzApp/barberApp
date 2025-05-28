@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
 import Image from "next/image"
 import type { User } from "@/contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 
 interface BarberProfileProps {
@@ -24,6 +25,7 @@ interface BarberProfileProps {
 
 export function BarberProfile({ user }: BarberProfileProps) {
   const { toast } = useToast()
+  const { updateProfile } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [profileData, setProfileData] = useState({
     name: user.name || "",
@@ -104,13 +106,25 @@ export function BarberProfile({ user }: BarberProfileProps) {
     setSpecialties(specialties.filter((s) => s !== specialty))
   }
 
-  const handleSave = () => {
-    // In a real app, this would call an API to update the profile
-    toast({
-      title: "Profile updated",
-      description: "Your profile has been updated successfully",
-    })
-    setIsEditing(false)
+  const handleSave = async () => {
+    try {
+      await updateProfile({
+        ...profileData,
+        services,
+        specialties
+      })
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
+      })
+      setIsEditing(false)
+    } catch (error) {
+      toast({
+        title: "Profile update failed",
+        description: "Failed to update your profile",
+        variant: "destructive",
+      })
+    }
   }
 
   const renderStars = (rating: number) => {
