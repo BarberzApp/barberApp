@@ -4,7 +4,7 @@ import * as React from "react"
 import { useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Search, Calendar, MessageSquare, User, Menu } from "lucide-react"
+import { Home, Search, Calendar, MessageSquare, User, Menu, Clock, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAuth } from "@/contexts/auth-context"
@@ -14,20 +14,45 @@ export function MobileNav() {
   const { user } = useAuth()
   const [isOpen, setIsOpen] = React.useState(false)
 
-  const navItems = [
+  const baseNavItems = [
     { name: "Home", href: "/", icon: Home },
     { name: "Browse", href: "/browse", icon: Search },
-    { name: "Bookings", href: "/bookings", icon: Calendar },
     { name: "Messages", href: "/messages", icon: MessageSquare },
     { name: "Profile", href: "/profile", icon: User },
   ]
+
+  const roleSpecificNavItems = () => {
+    if (!user) return []
+
+    switch (user.role) {
+      case "client":
+        return [
+          { name: "Bookings", href: "/bookings", icon: Calendar },
+        ]
+      case "barber":
+        return [
+          { name: "My Appointments", href: "/barber/bookings", icon: Calendar },
+          { name: "Availability", href: "/availability", icon: Clock },
+          { name: "Jobs", href: "/jobs", icon: Briefcase },
+        ]
+      case "business":
+        return [
+          { name: "Dashboard", href: "/dashboard", icon: Calendar },
+          { name: "Hiring", href: "/business/hiring", icon: Briefcase },
+        ]
+      default:
+        return []
+    }
+  }
+
+  const navItems = [...baseNavItems, ...roleSpecificNavItems()]
 
   return (
     <>
       {/* Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
         <div className="flex justify-around items-center h-16">
-          {navItems.map((item) => (
+          {navItems.slice(0, 5).map((item) => (
             <Link
               key={item.href}
               href={item.href}

@@ -269,6 +269,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
 
+        // If user is a barber, create barber record
+        if (role === 'barber') {
+          console.log('Creating barber record...');
+          const { error: barberError } = await supabase
+            .from('barbers')
+            .insert([
+              {
+                id: authData.user.id,
+                name,
+                email,
+                role: 'barber',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ]);
+
+          if (barberError) {
+            console.error('Barber creation error:', barberError);
+            // Clean up auth user and profile if barber creation fails
+            await supabase.auth.admin.deleteUser(authData.user.id);
+            await supabase.from('profiles').delete().eq('id', authData.user.id);
+            toast({
+              title: "Registration failed",
+              description: "Failed to create barber profile",
+              variant: "destructive",
+            });
+            return false;
+          }
+        }
+
+        // If user is a business, create business record
+        if (role === 'business') {
+          console.log('Creating business record...');
+          const { error: businessError } = await supabase
+            .from('businesses')
+            .insert([
+              {
+                id: authData.user.id,
+                business_name: name, // Using name as business name initially
+                description: '',
+                address: '',
+                city: '',
+                state: '',
+                zip_code: '',
+                phone: '',
+                website: '',
+                operating_hours: {},
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ]);
+
+          if (businessError) {
+            console.error('Business creation error:', businessError);
+            // Clean up auth user and profile if business creation fails
+            await supabase.auth.admin.deleteUser(authData.user.id);
+            await supabase.from('profiles').delete().eq('id', authData.user.id);
+            toast({
+              title: "Registration failed",
+              description: "Failed to create business profile",
+              variant: "destructive",
+            });
+            return false;
+          }
+        }
+
         // Set user state
         setUser({
           id: authData.user.id,

@@ -35,32 +35,24 @@ export function Navbar() {
   const pathname = usePathname()
   const isMobile = useMobile()
 
-  const isActive = (path: string) => {
-    return pathname === path
-  }
-
-  const navItems = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Browse", href: "/browse", icon: Search },
-    { name: "Bookings", href: "/bookings", icon: Calendar },
-    { name: "Messages", href: "/messages", icon: MessageSquare },
-  ]
-
-  // Role-specific nav items
   const roleSpecificNavItems = () => {
     if (!user) return []
 
     switch (user.role) {
       case "client":
-        return []
+        return [
+          { name: "Bookings", href: "/bookings", icon: Calendar },
+          { name: "Messages", href: "/messages", icon: MessageSquare },
+        ]
       case "barber":
         return [
-          { name: "Availability", href: "/availability", icon: Clock },
-          { name: "Jobs", href: "/jobs", icon: Briefcase },
+          { name: "My Appointments", href: "/barber/bookings", icon: Calendar },
+          { name: "Availability", href: "/barber/availability", icon: Clock },
+          { name: "Jobs", href: "/barber/jobs", icon: Briefcase },
         ]
       case "business":
         return [
-          { name: "Dashboard", href: "/dashboard", icon: DollarSign },
+          { name: "Dashboard", href: "/business/dashboard", icon: DollarSign },
           { name: "Hiring", href: "/business/hiring", icon: Briefcase },
         ]
       default:
@@ -68,36 +60,57 @@ export function Navbar() {
     }
   }
 
-  const allNavItems = [...navItems, ...roleSpecificNavItems()]
+  const handleLogout = async () => {
+    try {
+      await logout()
+      window.location.href = "/" // Force a full page reload to clear all state
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
+
+  if (isMobile) {
+    return <MobileNav />
+  }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        {isMobile ? (
-          <MobileNav />
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2 font-semibold">
-                <Scissors className="h-5 w-5" />
-                <span className="hidden md:inline-block">BarberHub</span>
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <div className="mr-4 hidden md:flex">
+          <Link href="/" className="mr-6 flex items-center space-x-2">
+            <Scissors className="h-6 w-6" />
+            <span className="hidden font-bold sm:inline-block">BarberHub</span>
+          </Link>
+          <nav className="flex items-center space-x-6 text-sm font-medium">
+            <Link
+              href="/"
+              className={`transition-colors hover:text-foreground/80 ${
+                pathname === "/" ? "text-foreground" : "text-foreground/60"
+              }`}
+            >
+              <Home className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/browse"
+              className={`transition-colors hover:text-foreground/80 ${
+                pathname === "/browse" ? "text-foreground" : "text-foreground/60"
+              }`}
+            >
+              <Search className="h-4 w-4" />
+            </Link>
+            {roleSpecificNavItems().map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`transition-colors hover:text-foreground/80 ${
+                  pathname === item.href ? "text-foreground" : "text-foreground/60"
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
               </Link>
-            </div>
-            <nav className="hidden md:flex items-center gap-6 mx-6">
-              {allNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`text-sm font-medium ${
-                    isActive(item.href) ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
-          </>
-        )}
+            ))}
+          </nav>
+        </div>
         <div className="flex items-center gap-2 ml-auto">
           <NotificationCenter />
           <ModeToggle />
@@ -132,22 +145,19 @@ export function Navbar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button href="/login" variant="default" size="sm">
-              Login
+            <Button asChild variant="default" size="sm">
+              <Link href="/login">Login</Link>
             </Button>
           )}
         </div>
       </div>
-
-      {/* Add padding at the bottom for mobile navigation */}
-      {isMobile && <div className="h-16 md:h-0" />}
-    </header>
+    </nav>
   )
 }
