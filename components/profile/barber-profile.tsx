@@ -18,6 +18,8 @@ import Image from "next/image"
 import type { User } from "@/contexts/auth-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
+import { Switch } from "@/components/ui/switch"
+import { Service } from "@/types/service"
 
 interface BarberProfileProps {
   user: User
@@ -26,7 +28,9 @@ interface BarberProfileProps {
 export function BarberProfile({ user }: BarberProfileProps) {
   const { toast } = useToast()
   const { updateProfile } = useAuth()
+  const { updateBarber, addPortfolioImage, removePortfolioImage, loading: dataLoading } = useData()
   const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [profileData, setProfileData] = useState({
     name: user.name || "",
     email: user.email || "",
@@ -34,24 +38,49 @@ export function BarberProfile({ user }: BarberProfileProps) {
     location: user.location || "",
     bio: user.bio || "",
   })
-  const [newService, setNewService] = useState({ name: "", price: "", duration: "" })
+  const [newService, setNewService] = useState({ 
+    name: "", 
+    price: "", 
+    duration: "",
+    description: "",
+    barberId: user.id 
+  })
   const [newSpecialty, setNewSpecialty] = useState("")
-  const [services, setServices] = useState(user.services || [])
+  const [services, setServices] = useState<Service[]>(
+    (user.services || []).map(service => ({
+      id: service.id,
+      name: service.name,
+      price: service.price,
+      duration: service.duration,
+      description: (service as any).description || "",
+      barberId: (service as any).barberId || user.id
+    }))
+  )
   const [specialties, setSpecialties] = useState(user.specialties || [])
 
   const { barbers, loading, error } = useData()
-  const barber = barbers[0] // TODO: Get barber by ID from URL or props
-
-  if (loading) {
-    return <div>Loading...</div>
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>
-  }
-
-  if (!barber) {
-    return <div>Barber not found</div>
+  const barber = barbers.find(b => b.id === user.id) || {
+    id: user.id,
+    name: user.name || "",
+    image: user.image || "",
+    location: user.location || "",
+    bio: user.bio || "",
+    rating: 0,
+    totalReviews: 0,
+    totalClients: 0,
+    totalBookings: 0,
+    earnings: {
+      thisWeek: 0,
+      thisMonth: 0,
+      lastMonth: 0
+    },
+    reviews: [],
+    specialties: [],
+    services: [],
+    portfolio: user.portfolio || [],
+    joinDate: new Date().toLocaleDateString(),
+    nextAvailable: "Available now",
+    isPublic: user.isPublic || false
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -59,7 +88,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
     setProfileData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setNewService((prev) => ({ ...prev, [name]: value }))
   }
@@ -78,16 +107,17 @@ export function BarberProfile({ user }: BarberProfileProps) {
         return
       }
 
-      setServices([
-        ...services,
-        {
-          id: `service_${Math.random().toString(36).substr(2, 9)}`,
-          name: newService.name,
-          price,
-          duration,
-        },
-      ])
-      setNewService({ name: "", price: "", duration: "" })
+      const newServiceObj: Service = {
+        id: `service_${Math.random().toString(36).substr(2, 9)}`,
+        name: newService.name,
+        price,
+        duration,
+        description: newService.description || "",
+        barberId: user.id
+      }
+
+      setServices([...services, newServiceObj])
+      setNewService({ name: "", price: "", duration: "", description: "", barberId: user.id })
     }
   }
 
@@ -108,22 +138,34 @@ export function BarberProfile({ user }: BarberProfileProps) {
 
   const handleSave = async () => {
     try {
-      await updateProfile({
-        ...profileData,
-        services,
-        specialties
-      })
+      setIsSaving(true)
+      const updatedBarber = {
+        ...barber,
+        services: services.map(service => ({
+          id: service.id,
+          name: service.name,
+          price: service.price,
+          duration: service.duration,
+          description: service.description || "",
+          barberId: barber.id
+        }))
+      }
+      
+      await updateBarber(barber.id, updatedBarber)
       toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
+        title: "Success",
+        description: "Profile updated successfully",
       })
       setIsEditing(false)
     } catch (error) {
+      console.error('Error updating profile:', error)
       toast({
-        title: "Profile update failed",
-        description: "Failed to update your profile",
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to update profile',
         variant: "destructive",
       })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -133,6 +175,99 @@ export function BarberProfile({ user }: BarberProfileProps) {
       .map((_, i) => (
         <Star key={i} className={`h-4 w-4 ${i < rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`} />
       ))
+  }
+
+  const handlePortfolioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const imageUrl = URL.createObjectURL(file)
+      addPortfolioImage(user.id, imageUrl)
+      
+      await updateProfile({
+        ...profileData,
+        portfolio: [...(user.portfolio || []), imageUrl]
+      })
+
+      toast({
+        title: "Portfolio updated",
+        description: "Your portfolio has been updated successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRemovePortfolioImage = async (index: number) => {
+    try {
+      const imageUrl = user.portfolio?.[index]
+      if (imageUrl) {
+        removePortfolioImage(user.id, imageUrl)
+        
+        const newPortfolio = (user.portfolio || []).filter((_, i) => i !== index)
+        await updateProfile({
+          ...profileData,
+          portfolio: newPortfolio
+        })
+
+        toast({
+          title: "Image removed",
+          description: "The image has been removed from your portfolio",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to remove image",
+        description: "Please try again",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleToggleIsPublic = async () => {
+    try {
+      setIsSaving(true)
+      const updatedBarber = {
+        ...barber,
+        isPublic: !barber.isPublic
+      }
+      
+      await updateBarber(barber.id, updatedBarber)
+      toast({
+        title: "Success",
+        description: `Profile is now ${!barber.isPublic ? 'public' : 'private'}`,
+      })
+    } catch (error) {
+      console.error('Error toggling profile visibility:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to update profile visibility',
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-500">Error loading profile: {error}</p>
+      </div>
+    )
   }
 
   return (
@@ -189,7 +324,18 @@ export function BarberProfile({ user }: BarberProfileProps) {
                 <span>Member since {barber.joinDate}</span>
               </div>
               <p className="mt-4 text-sm">{barber.bio}</p>
-              <Button variant="outline" className="mt-4 w-full" onClick={() => setIsEditing(true)}>
+              <Button 
+                variant="outline" 
+                className="mt-4 w-full" 
+                onClick={() => {
+                  setIsEditing(true)
+                  // Find the settings tab trigger and click it
+                  const settingsTab = document.querySelector('[data-value="settings"]')
+                  if (settingsTab instanceof HTMLElement) {
+                    settingsTab.click()
+                  }
+                }}
+              >
                 Edit Profile
               </Button>
             </CardContent>
@@ -242,48 +388,6 @@ export function BarberProfile({ user }: BarberProfileProps) {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="md:col-span-3">
-            <CardHeader>
-              <CardTitle>Specialties & Services</CardTitle>
-              <CardDescription>Your expertise and offerings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium mb-3">Specialties</h4>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {specialties.map((specialty) => (
-                      <Badge key={specialty} variant="secondary">
-                        {specialty}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-3">Services</h4>
-                  <div className="space-y-2">
-                    {services.slice(0, 4).map((service) => (
-                      <div key={service.id} className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                        <span>{service.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm">{service.duration} min</span>
-                          <span className="font-medium">${service.price}</span>
-                        </div>
-                      </div>
-                    ))}
-                    {services.length > 4 && (
-                      <div className="text-center mt-2">
-                        <Button variant="link">
-                          <Link href="#services">View all services</Link>
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </TabsContent>
 
@@ -295,7 +399,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {barber.portfolio.map((image, index) => (
+              {(user.portfolio || []).map((image: string, index: number) => (
                 <div key={index} className="relative aspect-[3/4] bg-muted rounded-md overflow-hidden group">
                   <Image
                     src={image || "/placeholder.svg"}
@@ -307,17 +411,23 @@ export function BarberProfile({ user }: BarberProfileProps) {
                     <Button variant="outline" size="sm" className="text-white border-white">
                       Edit
                     </Button>
-                    <Button variant="destructive" size="sm">
+                    <Button variant="destructive" size="sm" onClick={() => handleRemovePortfolioImage(index)}>
                       Remove
                     </Button>
                   </div>
                 </div>
               ))}
-              <div className="relative aspect-[3/4] bg-muted rounded-md border-2 border-dashed flex flex-col items-center justify-center">
+              <label className="relative aspect-[3/4] bg-muted rounded-md border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePortfolioUpload}
+                />
                 <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                 <p className="text-sm font-medium">Add Photo</p>
                 <p className="text-xs text-muted-foreground">Upload a new image</p>
-              </div>
+              </label>
             </div>
           </CardContent>
         </Card>
@@ -326,97 +436,60 @@ export function BarberProfile({ user }: BarberProfileProps) {
       <TabsContent value="services">
         <Card>
           <CardHeader>
-            <CardTitle>Services & Pricing</CardTitle>
+            <CardTitle>Services</CardTitle>
             <CardDescription>Manage your service offerings</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Your Services</h3>
-                <div className="space-y-2">
-                  {services.map((service) => (
-                    <div key={service.id} className="flex justify-between items-center p-3 border rounded-md">
-                      <span className="font-medium">{service.name}</span>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 mr-1" />
-                          <span>{service.duration} min</span>
-                        </div>
-                        <div className="flex items-center text-sm font-medium">
-                          <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
-                          <span>${service.price}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={() => removeService(service.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input
+                  placeholder="Service name"
+                  value={newService.name}
+                  name="name"
+                  onChange={handleServiceChange}
+                />
+                <Input
+                  placeholder="Price"
+                  value={newService.price}
+                  name="price"
+                  type="number"
+                  onChange={handleServiceChange}
+                />
+                <Input
+                  placeholder="Duration (minutes)"
+                  value={newService.duration}
+                  name="duration"
+                  type="number"
+                  onChange={handleServiceChange}
+                />
+              </div>
+              <div className="mt-4">
+                <Textarea
+                  placeholder="Service description"
+                  value={newService.description}
+                  name="description"
+                  onChange={handleServiceChange}
+                />
+              </div>
+              <Button onClick={addService}>Add Service</Button>
+
+              <div className="space-y-4 mt-6">
+                {services.map((service) => (
+                  <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">{service.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        ${service.price} • {service.duration} minutes
+                      </p>
+                      {service.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{service.description}</p>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-lg font-medium">Add New Service</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="service-name">Service Name</Label>
-                    <Input
-                      id="service-name"
-                      name="name"
-                      placeholder="e.g. Haircut"
-                      value={newService.name}
-                      onChange={handleServiceChange}
-                    />
+                    <Button variant="ghost" size="icon" onClick={() => removeService(service.id)}>
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="service-price">Price ($)</Label>
-                    <Input
-                      id="service-price"
-                      name="price"
-                      type="number"
-                      placeholder="e.g. 30"
-                      value={newService.price}
-                      onChange={handleServiceChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="service-duration">Duration (minutes)</Label>
-                    <Input
-                      id="service-duration"
-                      name="duration"
-                      type="number"
-                      placeholder="e.g. 30"
-                      value={newService.duration}
-                      onChange={handleServiceChange}
-                    />
-                  </div>
-                </div>
-                <Button onClick={addService}>Add Service</Button>
-              </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-lg font-medium">Specialties</h3>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {specialties.map((specialty) => (
-                    <Badge key={specialty} variant="secondary" className="flex items-center gap-1">
-                      {specialty}
-                      <X className="h-3 w-3 cursor-pointer" onClick={() => removeSpecialty(specialty)} />
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add a specialty"
-                    value={newSpecialty}
-                    onChange={(e) => setNewSpecialty(e.target.value)}
-                  />
-                  <Button onClick={addSpecialty}>Add</Button>
-                </div>
+                ))}
               </div>
             </div>
           </CardContent>
@@ -526,38 +599,31 @@ export function BarberProfile({ user }: BarberProfileProps) {
                   />
                 </div>
               </div>
-
-              {isEditing ? (
-                <div className="flex gap-2">
-                  <Button onClick={handleSave}>Save Changes</Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
-                  Edit Information
-                </Button>
-              )}
             </div>
 
             <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-lg font-medium">Availability</h3>
-              <div className="space-y-3">
-                {Object.entries(barber.availability).map(([day, schedule]) => (
-                  <div key={day} className="flex items-center justify-between p-3 border rounded-md">
-                    <div className="font-medium capitalize">{day}</div>
-                    <div className="flex items-center gap-4">
-                      {schedule.available ? (
-                        <span className="text-sm">
-                          {schedule.start} - {schedule.end}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Unavailable</span>
-                      )}
-                      <input type="checkbox" checked={schedule.available} className="toggle" onChange={() => {}} />
-                    </div>
-                  </div>
+              <h3 className="text-lg font-medium">Specialties</h3>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a specialty"
+                  value={newSpecialty}
+                  onChange={(e) => setNewSpecialty(e.target.value)}
+                />
+                <Button onClick={addSpecialty}>Add</Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {specialties.map((specialty) => (
+                  <Badge key={specialty} variant="secondary" className="flex items-center gap-1">
+                    {specialty}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0 hover:bg-transparent"
+                      onClick={() => removeSpecialty(specialty)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -590,9 +656,27 @@ export function BarberProfile({ user }: BarberProfileProps) {
               <Button variant="destructive">Delete Account</Button>
             </div>
 
-            <Button variant="link" href={`/barber/${user.id}`}>
-              View Public Profile
-            </Button>
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-medium">Profile Visibility</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between py-4">
+                  <span className="font-medium">Show in Browse Page</span>
+                  <Switch
+                    checked={barber.isPublic}
+                    onCheckedChange={handleToggleIsPublic}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <Button 
+                onClick={handleSave} 
+                disabled={isSaving || dataLoading}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </TabsContent>

@@ -29,8 +29,9 @@ export default function BrowsePage() {
   // Filter barbers based on search query
   const filteredBarbers = barbers.filter(
     (barber) =>
-      barber.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      barber.specialties.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
+      barber.isPublic && // Only show public barbers
+      (barber.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      barber.specialties.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase())))
   )
 
   // Filter barbers based on active tab

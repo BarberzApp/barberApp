@@ -37,7 +37,7 @@ export function MobileNav() {
         ]
       case "business":
         return [
-          { name: "Dashboard", href: "/dashboard", icon: Calendar },
+          { name: "Dashboard", href: "/business/dashboard", icon: Calendar },
           { name: "Hiring", href: "/business/hiring", icon: Briefcase },
         ]
       default:

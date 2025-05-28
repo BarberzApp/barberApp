@@ -2,6 +2,8 @@
 
 import { User as LucideUser } from "lucide-react"
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import { useAuth } from "./auth-context"
+import { supabase } from "@/lib/supabase"
 
 // Types
 export type Barber = {
@@ -35,6 +37,8 @@ export type Barber = {
   reviews: Review[]
   isFavorite?: boolean
   availability: Record<string, { available: boolean; start: string; end: string }>
+  isPublic?: boolean
+  services: Service[]
 }
 
 export type Service = {
@@ -225,6 +229,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined)
 
 export const DataProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth()
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -241,17 +246,52 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching data...', { user })
         setLoading(true)
-        // TODO: Implement Supabase data fetching
+        
+        // Only fetch data if user is authenticated
+        if (user) {
+          console.log('User is authenticated, fetching data...')
+          
+          // Fetch barbers
+          const { data: barbersData, error: barbersError } = await supabase
+            .from('barbers')
+            .select('*')
+          
+          if (barbersError) {
+            console.error('Error fetching barbers:', barbersError)
+            throw barbersError
+          }
+          console.log('Barbers fetched:', barbersData)
+          setBarbers(barbersData || [])
+
+          // Fetch services
+          const { data: servicesData, error: servicesError } = await supabase
+            .from('services')
+            .select('*')
+          
+          if (servicesError) {
+            console.error('Error fetching services:', servicesError)
+            throw servicesError
+          }
+          console.log('Services fetched:', servicesData)
+          setServices(servicesData || [])
+        } else {
+          console.log('No authenticated user, clearing data')
+          setBarbers([])
+          setServices([])
+        }
+        
         setLoading(false)
       } catch (err) {
+        console.error('Error fetching data:', err)
         setError(err instanceof Error ? err.message : 'An error occurred')
         setLoading(false)
       }
     }
 
     fetchData()
-  }, [])
+  }, [user]) // Re-fetch when user changes
 
   const value: DataContextType = {
     barbers,
@@ -268,10 +308,114 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Barber methods
     getBarberById: (id) => barbers.find(b => b.id === id),
-    updateBarber: (id, data) => setBarbers(barbers.map(b => b.id === id ? { ...b, ...data } : b)),
-    toggleOpenToHire: (id) => setBarbers(barbers.map(b => b.id === id ? { ...b, openToHire: !b.openToHire } : b)),
-    addPortfolioImage: (barberId, imageUrl) => setBarbers(barbers.map(b => b.id === barberId ? { ...b, portfolio: [...b.portfolio, imageUrl] } : b)),
-    removePortfolioImage: (barberId, imageUrl) => setBarbers(barbers.map(b => b.id === barberId ? { ...b, portfolio: b.portfolio.filter(img => img !== imageUrl) } : b)),
+    updateBarber: async (id, data) => {
+      try {
+        console.log('Updating barber:', { id, data })
+        
+        // Get the current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+          throw new Error('Session error: ' + sessionError.message)
+        }
+
+        if (!session) {
+          console.error('No session found')
+          throw new Error('No session found')
+        }
+
+        console.log('Session found:', { userId: session.user.id })
+        
+        // Update in the database
+        const response = await fetch(`/api/barbers/update`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Ensure cookies are sent
+          body: JSON.stringify({ id, ...data }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('Update failed:', { status: response.status, error: errorData })
+          throw new Error(errorData.error || 'Failed to update barber')
+        }
+
+        const updatedData = await response.json()
+        console.log('Update successful:', updatedData)
+
+        // Update local state
+        setBarbers(prevBarbers =>
+          prevBarbers.map(barber =>
+            barber.id === id ? { ...barber, ...updatedData } : barber
+          )
+        )
+
+        return updatedData
+      } catch (error) {
+        console.error('Error updating barber:', error)
+        throw error
+      }
+    },
+    toggleOpenToHire: (id) => {
+      setBarbers(barbers.map(b => {
+        if (b.id === id) {
+          const updatedBarber = { ...b, openToHire: !b.openToHire }
+          // Update the barber in the database
+          fetch('/api/barbers/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id, data: updatedBarber }),
+          }).catch(error => {
+            console.error('Failed to update barber:', error)
+          })
+          return updatedBarber
+        }
+        return b
+      }))
+    },
+    addPortfolioImage: (barberId, imageUrl) => {
+      setBarbers(barbers.map(b => {
+        if (b.id === barberId) {
+          const updatedBarber = { ...b, portfolio: [...b.portfolio, imageUrl] }
+          // Update the barber in the database
+          fetch('/api/barbers/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: barberId, data: updatedBarber }),
+          }).catch(error => {
+            console.error('Failed to update barber:', error)
+          })
+          return updatedBarber
+        }
+        return b
+      }))
+    },
+    removePortfolioImage: (barberId, imageUrl) => {
+      setBarbers(barbers.map(b => {
+        if (b.id === barberId) {
+          const updatedBarber = { ...b, portfolio: b.portfolio.filter(img => img !== imageUrl) }
+          // Update the barber in the database
+          fetch('/api/barbers/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: barberId, data: updatedBarber }),
+          }).catch(error => {
+            console.error('Failed to update barber:', error)
+          })
+          return updatedBarber
+        }
+        return b
+      }))
+    },
 
     // Booking methods
     createBooking: (booking) => {

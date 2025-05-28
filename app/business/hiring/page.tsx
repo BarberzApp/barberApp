@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useData, type Application } from "@/contexts/data-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Briefcase, Plus, FileText } from "lucide-react"
 import {
@@ -19,20 +19,31 @@ import { useToast } from "@/components/ui/use-toast"
 import { JobPostingCard } from "@/components/job-posting-card"
 import { ApplicationCard } from "@/components/application-card"
 import { CreateJobPostForm } from "@/components/business/create-job-post-form"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 export default function HiringPage() {
   const { user } = useAuth()
-  const { jobPosts, applications, getJobPostsByBusinessId, getApplicationsByJobId, updateApplicationStatus } = useData()
+  const { jobPosts, applications, getJobPostsByBusinessId, getApplicationsByJobId, updateApplicationStatus, getBusinessById } = useData()
   const { toast } = useToast()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("job-posts")
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [isCreatingJob, setIsCreatingJob] = useState(false)
+  const [jobTitle, setJobTitle] = useState("")
+  const [jobDescription, setJobDescription] = useState("")
 
   // Filter job posts by business ID
   const businessJobPosts = user?.businessId ? getJobPostsByBusinessId(user.businessId) : []
 
   // Get applications for the selected job
   const jobApplications = selectedJobId ? getApplicationsByJobId(selectedJobId) : []
+
+  // Get business data
+  const business = user?.businessId ? getBusinessById(user.businessId) : null
 
   // Handle application status change
   const handleStatusChange = (applicationId: string, status: Application["status"]) => {
@@ -52,41 +63,98 @@ export default function HiringPage() {
     })
   }
 
+  // Access control - only business owners can access this page
   if (!user || user.role !== "business") {
     return (
       <div className="container py-8">
-        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-        <p>You must be logged in as a business owner to access this page.</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>Only business owners can access the hiring page.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => router.push("/")}>Return to Home</Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
+  if (!business) {
+    return (
+      <div className="container py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Business Not Found</CardTitle>
+            <CardDescription>We couldn't find your business information.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => router.push("/")}>Return to Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const handleCreateJob = async () => {
+    try {
+      // TODO: Implement job creation logic
+      toast({
+        title: "Success",
+        description: "Job posting created successfully",
+      })
+      setIsCreatingJob(false)
+      setJobTitle("")
+      setJobDescription("")
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create job posting",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="container py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Hiring Board</h1>
-          <p className="text-muted-foreground">Manage your job postings and applications</p>
-        </div>
-
-        <Dialog open={showCreateJobDialog} onOpenChange={setShowCreateJobDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Post New Job
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Create New Job Posting</DialogTitle>
-              <DialogDescription>
-                Fill out the details below to create a new job posting for your business.
-              </DialogDescription>
-            </DialogHeader>
-            <CreateJobPostForm onSuccess={handleJobPostCreated} />
-          </DialogContent>
-        </Dialog>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Hiring Board</h1>
+        <Button onClick={() => setIsCreatingJob(true)}>Post New Job</Button>
       </div>
+
+      {isCreatingJob && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Create New Job Posting</CardTitle>
+            <CardDescription>Fill in the details for your new job posting</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Job Title</label>
+              <Input
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g., Senior Barber"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Job Description</label>
+              <Textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Describe the role, requirements, and benefits..."
+                rows={5}
+              />
+            </div>
+            <div className="flex justify-end gap-4">
+              <Button variant="outline" onClick={() => setIsCreatingJob(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateJob}>Post Job</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-8">

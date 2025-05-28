@@ -31,6 +31,8 @@ export type User = {
     duration: number
   }>
   specialties?: string[]
+  portfolio?: string[]
+  isPublic?: boolean
 }
 
 interface AuthContextType {
@@ -119,6 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         joinDate: profile.join_date,
         services: profile.services,
         specialties: profile.specialties,
+        portfolio: profile.portfolio,
+        isPublic: profile.is_public,
       })
     } catch (error) {
       console.error('Error fetching user profile:', error)
@@ -185,6 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           joinDate: profile?.join_date || undefined,
           services: profile?.services || [],
           specialties: profile?.specialties || [],
+          portfolio: profile?.portfolio || [],
+          isPublic: profile?.is_public || false,
         });
         return true;
       }
@@ -349,6 +355,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           joinDate: undefined,
           services: [],
           specialties: [],
+          portfolio: [],
+          isPublic: false,
         });
 
         toast({
