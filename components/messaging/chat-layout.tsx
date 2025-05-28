@@ -40,21 +40,6 @@ interface ChatLayoutProps {
   initialConversationId?: string
 }
 
-// Mock messages data (in a real app, this would come from an API)
-const mockMessages: Record<string, Message[]> = {
-  conv1: [
-    {
-      id: "m1",
-      text: "Hey, I'd like to book an appointment for next week",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      sender: "me",
-      status: "read",
-    },
-    // ... rest of the mock messages ...
-  ],
-  // ... other conversations ...
-}
-
 export function ChatLayout({ conversations, initialConversationId }: ChatLayoutProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(initialConversationId)
   const [isMobileListVisible, setIsMobileListVisible] = useState(!initialConversationId)
@@ -71,12 +56,27 @@ export function ChatLayout({ conversations, initialConversationId }: ChatLayoutP
       const fetchMessages = async () => {
         setIsLoading(true)
         try {
-          const response = await fetch(`/api/messages/${activeConversationId}`)
-          if (!response.ok) {
-            throw new Error("Failed to fetch messages")
-          }
-          const data = await response.json()
-          setMessages(prev => ({ ...prev, [activeConversationId]: data }))
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) throw new Error('Not authenticated')
+
+          const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', activeConversationId)
+            .order('created_at', { ascending: true })
+
+          if (error) throw error
+
+          // Transform messages to match the expected format
+          const transformedMessages: Message[] = (data || []).map(msg => ({
+            id: msg.id,
+            text: msg.content,
+            sender: msg.sender_id === user.id ? 'me' : 'them' as const,
+            timestamp: new Date(msg.created_at),
+            status: msg.status || 'sent'
+          }))
+
+          setMessages(prev => ({ ...prev, [activeConversationId]: transformedMessages }))
         } catch (error) {
           toast({
             title: "Error",
@@ -100,10 +100,20 @@ export function ChatLayout({ conversations, initialConversationId }: ChatLayoutP
             table: "messages",
             filter: `conversation_id=eq.${activeConversationId}`,
           },
-          (payload) => {
+          async (payload) => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const newMessage: Message = {
+              id: payload.new.id,
+              text: payload.new.content,
+              sender: payload.new.sender_id === user.id ? 'me' : 'them' as const,
+              timestamp: new Date(payload.new.created_at),
+              status: payload.new.status || 'sent'
+            }
             setMessages(prev => ({
               ...prev,
-              [activeConversationId]: [...(prev[activeConversationId] || []), payload.new as Message]
+              [activeConversationId]: [...(prev[activeConversationId] || []), newMessage]
             }))
           }
         )
@@ -128,18 +138,32 @@ export function ChatLayout({ conversations, initialConversationId }: ChatLayoutP
     if (!activeConversationId) return
 
     try {
-      const response = await fetch(`/api/messages/${activeConversationId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      })
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
 
-      if (!response.ok) {
-        throw new Error("Failed to send message")
+      const { data: message, error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            conversation_id: activeConversationId,
+            sender_id: user.id,
+            content: text,
+            status: 'sent'
+          }
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newMessage: Message = {
+        id: message.id,
+        text: message.content,
+        sender: 'me' as const,
+        timestamp: new Date(message.created_at),
+        status: message.status || 'sent'
       }
 
-      const newMessage = await response.json()
-      
       setMessages(prev => ({
         ...prev,
         [activeConversationId]: [...(prev[activeConversationId] || []), newMessage]

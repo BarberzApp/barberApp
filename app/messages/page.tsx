@@ -1,62 +1,83 @@
 "use client"
 
-import { ChatLayout } from "@/components/messaging/chat-layout"
-import type { Conversation } from "@/components/messaging/chat-layout"
+import { ChatLayout, type Conversation } from "@/components/messaging/chat-layout"
+import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
-
-// Mock conversations data
-const mockConversations: Conversation[] = [
-  {
-    id: "1",
-    recipient: {
-      id: "1",
-      name: "John Smith",
-      image: "/placeholder.svg",
-      role: "barber" as const,
-      lastSeen: "2 minutes ago",
-    },
-    lastMessage: {
-      text: "Hey, are you available for a haircut tomorrow?",
-      timestamp: new Date(),
-      isRead: true,
-      sender: "them",
-    },
-    unreadCount: 0,
-  },
-  {
-    id: "2",
-    recipient: {
-      id: "2",
-      name: "Sarah Johnson",
-      image: "/placeholder.svg",
-      role: "client" as const,
-      lastSeen: "5 minutes ago",
-    },
-    lastMessage: {
-      text: "Thanks for the great service!",
-      timestamp: new Date(),
-      isRead: false,
-      sender: "me",
-    },
-    unreadCount: 1,
-  },
-]
+import { supabase } from "@/lib/supabase"
 
 export default function MessagesPage() {
   const { user } = useAuth()
-  const router = useRouter()
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    router.push("/login")
-    return null
+  useEffect(() => {
+    const fetchConversations = async () => {
+      if (!user) return
+
+      try {
+        const { data, error } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            recipient:recipient_id (
+              id,
+              name,
+              image,
+              role
+            ),
+            last_message:last_message_id (
+              id,
+              text,
+              timestamp,
+              sender_id,
+              is_read
+            )
+          `)
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+          .order('updated_at', { ascending: false })
+
+        if (error) throw error
+
+        // Transform the data to match the ChatLayout's expected format
+        const transformedConversations = (data || []).map(conv => ({
+          id: conv.id,
+          recipient: {
+            id: conv.recipient.id,
+            name: conv.recipient.name,
+            image: conv.recipient.image,
+            role: conv.recipient.role as "client" | "barber",
+            lastSeen: conv.recipient.last_seen
+          },
+          lastMessage: {
+            text: conv.last_message?.text || '',
+            timestamp: new Date(conv.last_message?.timestamp || conv.updated_at),
+            isRead: conv.last_message?.is_read || false,
+            sender: (conv.last_message?.sender_id === user.id ? 'me' : 'them') as 'me' | 'them'
+          },
+          unreadCount: conv.unread_count || 0
+        }))
+
+        setConversations(transformedConversations)
+      } catch (error) {
+        console.error('Error fetching conversations:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchConversations()
+  }, [user])
+
+  if (loading) {
+    return (
+      <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading conversations...</p>
+        </div>
+      </div>
+    )
   }
 
-  return (
-    <div className="container py-8">
-      <h1 className="text-2xl font-bold mb-6">Messages</h1>
-      <ChatLayout conversations={mockConversations} />
-    </div>
-  )
+  return <ChatLayout conversations={conversations} />
 }

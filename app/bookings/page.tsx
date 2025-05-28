@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -20,72 +20,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
-// Mock bookings data
-const mockBookings = [
-  {
-    id: "1",
-    barber: {
-      id: "1",
-      name: "Alex Johnson",
-      image: "/placeholder.svg?height=100&width=100",
-      location: "Downtown",
-    },
-    date: new Date(Date.now() + 86400000 * 3), // 3 days from now
-    time: "2:00 PM",
-    services: ["Haircut", "Beard Trim"],
-    totalPrice: 45,
-    status: "upcoming",
-  },
-  {
-    id: "2",
-    barber: {
-      id: "2",
-      name: "Maria Garcia",
-      image: "/placeholder.svg?height=100&width=100",
-      location: "Westside",
-    },
-    date: new Date(Date.now() + 86400000 * 10), // 10 days from now
-    time: "11:30 AM",
-    services: ["Haircut & Style"],
-    totalPrice: 35,
-    status: "upcoming",
-  },
-  {
-    id: "3",
-    barber: {
-      id: "3",
-      name: "Jamal Williams",
-      image: "/placeholder.svg?height=100&width=100",
-      location: "Midtown",
-    },
-    date: new Date(Date.now() - 86400000 * 5), // 5 days ago
-    time: "3:30 PM",
-    services: ["Fade", "Hot Towel Shave"],
-    totalPrice: 65,
-    status: "completed",
-  },
-  {
-    id: "4",
-    barber: {
-      id: "1",
-      name: "Alex Johnson",
-      image: "/placeholder.svg?height=100&width=100",
-      location: "Downtown",
-    },
-    date: new Date(Date.now() - 86400000 * 15), // 15 days ago
-    time: "10:00 AM",
-    services: ["Haircut"],
-    totalPrice: 30,
-    status: "completed",
-  },
-]
+import { supabase } from "@/lib/supabase"
+import type { Booking } from "@/types"
 
 export default function BookingsPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [bookings, setBookings] = useState(mockBookings)
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   // Redirect to login if not authenticated
   if (!user) {
@@ -93,19 +36,82 @@ export default function BookingsPage() {
     return null
   }
 
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            barber:barber_id (
+              id,
+              name,
+              image,
+              location
+            )
+          `)
+          .eq('client_id', user.id)
+          .order('booking_date', { ascending: true })
+
+        if (error) throw error
+
+        // Transform the data to include proper Date objects
+        const transformedBookings = (data || []).map(booking => ({
+          ...booking,
+          date: new Date(booking.booking_date),
+          time: booking.booking_time
+        }))
+
+        setBookings(transformedBookings)
+      } catch (error) {
+        console.error('Error fetching bookings:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBookings()
+  }, [user.id])
+
   const upcomingBookings = bookings.filter((booking) => booking.status === "upcoming")
   const pastBookings = bookings.filter((booking) => booking.status === "completed")
 
-  const handleCancelBooking = useCallback(() => {
-    if (cancelBookingId) {
-      setBookings(bookings.filter((booking) => booking.id !== cancelBookingId))
+  const handleCancelBooking = useCallback(async () => {
+    if (!cancelBookingId) return
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', cancelBookingId)
+
+      if (error) throw error
+
+      setBookings(bookings.map(booking => 
+        booking.id === cancelBookingId 
+          ? { ...booking, status: 'cancelled' }
+          : booking
+      ))
       setCancelBookingId(null)
+    } catch (error) {
+      console.error('Error cancelling booking:', error)
     }
   }, [cancelBookingId, bookings])
 
   const handleCancelClick = useCallback((bookingId: string) => {
     setCancelBookingId(bookingId)
   }, [])
+
+  if (loading) {
+    return (
+      <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading bookings...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container py-8">

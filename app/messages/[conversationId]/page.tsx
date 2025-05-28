@@ -1,62 +1,9 @@
 "use client"
 
-import { ChatLayout } from "@/components/messaging/chat-layout"
+import { ChatLayout, type Conversation } from "@/components/messaging/chat-layout"
 import { useEffect, useState } from "react"
-
-// Mock conversations data (same as in messages/page.tsx)
-const mockConversations = [
-  {
-    id: "conv1",
-    recipient: {
-      id: "b1",
-      name: "Alex Johnson",
-      image: "/placeholder.svg?height=100&width=100",
-      role: "barber" as const,
-      lastSeen: "online",
-    },
-    lastMessage: {
-      text: "Thanks! Looking forward to it",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2 + 1000 * 60 * 75), // 2 days and 1 hour 15 minutes ago
-      isRead: true,
-      sender: "me" as const,
-    },
-    unreadCount: 0,
-  },
-  {
-    id: "conv2",
-    recipient: {
-      id: "b2",
-      name: "Maria Garcia",
-      image: "/placeholder.svg?height=100&width=100",
-      role: "barber" as const,
-      lastSeen: "2 hours ago",
-    },
-    lastMessage: {
-      text: "3pm on Saturday sounds perfect",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1), // 1 hour ago
-      isRead: false,
-      sender: "me" as const,
-    },
-    unreadCount: 0,
-  },
-  {
-    id: "conv3",
-    recipient: {
-      id: "b3",
-      name: "Jamal Williams",
-      image: "/placeholder.svg?height=100&width=100",
-      role: "barber" as const,
-      lastSeen: "yesterday",
-    },
-    lastMessage: {
-      text: "I'd recommend in about 3-4 weeks. You can book anytime through the app.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 21), // 21 hours ago
-      isRead: true,
-      sender: "them" as const,
-    },
-    unreadCount: 2,
-  },
-]
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
 
 type Props = {
   params: { conversationId: string }
@@ -64,24 +11,78 @@ type Props = {
 }
 
 export default function ConversationPage({ params }: Props) {
-  const conversationId = params.conversationId
-  const [conversations, setConversations] = useState(mockConversations)
+  const { user } = useAuth()
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // In a real app, you would fetch conversations here
   useEffect(() => {
-    // Example of how you would fetch conversations:
-    // const fetchConversations = async () => {
-    //   const response = await fetch('/api/conversations')
-    //   const data = await response.json()
-    //   setConversations(data)
-    // }
-    // fetchConversations()
-  }, [])
+    const fetchConversations = async () => {
+      if (!user) return
 
-  return (
-    <div className="container py-8">
-      <h1 className="text-2xl font-bold mb-6">Messages</h1>
-      <ChatLayout conversations={conversations} initialConversationId={conversationId} />
-    </div>
-  )
+      try {
+        const { data, error } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            recipient:recipient_id (
+              id,
+              name,
+              image,
+              role
+            ),
+            last_message:last_message_id (
+              id,
+              text,
+              timestamp,
+              sender_id,
+              is_read
+            )
+          `)
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+          .order('updated_at', { ascending: false })
+
+        if (error) throw error
+
+        // Transform the data to match the ChatLayout's expected format
+        const transformedConversations = (data || []).map(conv => ({
+          id: conv.id,
+          recipient: {
+            id: conv.recipient.id,
+            name: conv.recipient.name,
+            image: conv.recipient.image,
+            role: conv.recipient.role as "client" | "barber",
+            lastSeen: conv.recipient.last_seen
+          },
+          lastMessage: {
+            text: conv.last_message?.text || '',
+            timestamp: new Date(conv.last_message?.timestamp || conv.updated_at),
+            isRead: conv.last_message?.is_read || false,
+            sender: (conv.last_message?.sender_id === user.id ? 'me' : 'them') as 'me' | 'them'
+          },
+          unreadCount: conv.unread_count || 0
+        }))
+
+        setConversations(transformedConversations)
+      } catch (error) {
+        console.error('Error fetching conversations:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchConversations()
+  }, [user])
+
+  if (loading) {
+    return (
+      <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading conversations...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <ChatLayout conversations={conversations} initialConversationId={params.conversationId} />
 }

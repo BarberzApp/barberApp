@@ -91,7 +91,7 @@ export interface Booking {
     name: string
     image: string
   }
-  date: string
+  date: Date
   time: string
   services: string[]
   service: string
