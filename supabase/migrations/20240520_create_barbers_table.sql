@@ -1,5 +1,11 @@
--- Create barbers table
-CREATE TABLE IF NOT EXISTS barbers (
+-- Step 1: Drop existing barbers table if it exists
+DROP TABLE IF EXISTS public.barbers CASCADE;
+
+-- Step 2: Drop existing handle_new_barber function if it exists
+DROP FUNCTION IF EXISTS public.handle_new_barber CASCADE;
+
+-- Step 3: Create new barbers table
+CREATE TABLE public.barbers (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
@@ -18,44 +24,63 @@ CREATE TABLE IF NOT EXISTS barbers (
   bio TEXT,
   total_reviews INTEGER DEFAULT 0,
   total_bookings INTEGER DEFAULT 0,
+  is_public BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable Row Level Security
-ALTER TABLE barbers ENABLE ROW LEVEL SECURITY;
+-- Step 4: Enable Row Level Security
+ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 
--- Create policies
+-- Step 5: Create policies
 CREATE POLICY "Barbers can view their own profile"
-ON barbers FOR SELECT
+ON public.barbers FOR SELECT
 USING (auth.uid() = id);
 
 CREATE POLICY "Barbers can update their own profile"
-ON barbers FOR UPDATE
+ON public.barbers FOR UPDATE
 USING (auth.uid() = id);
 
-CREATE POLICY "Anyone can view barber profiles"
-ON barbers FOR SELECT
-USING (true);
+CREATE POLICY "Anyone can view public barber profiles"
+ON public.barbers FOR SELECT
+USING (is_public = true);
 
--- Create function to handle barber creation
+CREATE POLICY "Barbers can insert their own profile"
+ON public.barbers FOR INSERT
+WITH CHECK (auth.uid() = id);
+
+-- Step 6: Create new function to handle barber creation
 CREATE OR REPLACE FUNCTION public.handle_new_barber()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   IF NEW.raw_user_meta_data->>'role' = 'barber' THEN
-    INSERT INTO public.barbers (id, name, email, role)
+    INSERT INTO public.barbers (
+      id,
+      name,
+      email,
+      role,
+      is_public,
+      created_at,
+      updated_at
+    )
     VALUES (
       NEW.id,
       NEW.raw_user_meta_data->>'name',
       NEW.email,
-      'barber'
+      'barber',
+      false,
+      NOW(),
+      NOW()
     );
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ SECURITY DEFINER;
 
--- Create trigger for new barber creation
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_barber(); 
+-- Step 7: Create trigger for new barber creation
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_barber(); 

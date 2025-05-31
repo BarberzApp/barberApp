@@ -32,6 +32,10 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Calculate platform fee
+  const platformFee = 100 + Math.round(amount * 0.15) // $1 + 15%
+  const totalAmount = amount + platformFee
+
   // Set default payment method when payment methods load
   useEffect(() => {
     if (paymentMethods.length > 0) {
@@ -142,11 +146,24 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
     <Card>
       <CardHeader>
         <CardTitle>Payment Details</CardTitle>
-        <CardDescription>Complete your payment for {description}</CardDescription>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          <div className="text-2xl font-bold">${amount.toFixed(2)}</div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Service Amount</span>
+              <span>${(amount / 100).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Platform Fee</span>
+              <span>${(platformFee / 100).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-medium">
+              <span>Total</span>
+              <span>${(totalAmount / 100).toFixed(2)}</span>
+            </div>
+          </div>
 
           <RadioGroup
             value={paymentType}
@@ -231,7 +248,7 @@ export function PaymentForm({ amount, description, metadata = {}, onSuccess, onC
           </Button>
           <Button type="submit" disabled={isLoading || (paymentType === "card" && !selectedPaymentMethod)}>
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Pay ${amount.toFixed(2)}
+            Pay ${(totalAmount / 100).toFixed(2)}
           </Button>
         </CardFooter>
       </form>

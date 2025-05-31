@@ -16,23 +16,42 @@ import { useData } from "@/contexts/data-context"
 export default function BrowsePage() {
   const { barbers, loading, error } = useData()
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("all")
-  const [showFilters, setShowFilters] = useState(false)
-  const [activeFilters, setActiveFilters] = useState({
-    maxDistance: 10,
-    specialties: [] as string[],
-    availability: "any",
-    priceRange: [0, 100],
-  })
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
+  const [selectedRating, setSelectedRating] = useState<number | null>(null)
+  const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"list" | "portfolio">("list")
 
-  // Filter barbers based on search query
-  const filteredBarbers = barbers.filter(
-    (barber) =>
-      barber.isPublic && // Only show public barbers
-      (barber.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      barber.specialties.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase())))
-  )
+  // Filter barbers based on search and filters
+  const filteredBarbers = barbers.filter((barber) => {
+    // Only show public barbers
+    if (!barber.isPublic) return false;
+
+    // Search filter
+    if (searchQuery && !barber.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    // Location filter
+    if (selectedLocation && barber.location !== selectedLocation) {
+      return false;
+    }
+
+    // Rating filter
+    if (selectedRating && barber.rating < selectedRating) {
+      return false;
+    }
+
+    // Price range filter
+    if (selectedPriceRange) {
+      const [min, max] = selectedPriceRange.split('-').map(Number);
+      const barberPrice = parseFloat(barber.priceRange?.replace(/[^0-9.]/g, '') || '0');
+      if (barberPrice < min || barberPrice > max) {
+        return false;
+      }
+    }
+
+    return true;
+  })
 
   // Filter barbers based on active tab
   const getFilteredBarbers = () => {

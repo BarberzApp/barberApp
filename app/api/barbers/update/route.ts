@@ -68,11 +68,16 @@ export async function POST(request: Request) {
     }
 
     // Only allow updating specific fields
-    const allowedFields = ['name', 'location', 'bio', 'isPublic', 'specialties']
+    const allowedFields = ['name', 'location', 'bio', 'is_public', 'specialties']
     const filteredUpdateData = Object.keys(updateData)
       .filter(key => allowedFields.includes(key))
       .reduce((obj, key) => {
-        obj[key] = updateData[key]
+        // Convert isPublic to is_public for database
+        if (key === 'isPublic') {
+          obj['is_public'] = updateData[key]
+        } else {
+          obj[key] = updateData[key]
+        }
         return obj
       }, {} as Record<string, any>)
 

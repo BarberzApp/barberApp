@@ -61,8 +61,12 @@ let stripePromise: Promise<StripeType | null>
 // Initialize Stripe
 export const getStripe = () => {
   if (!stripePromise) {
-    // In a real app, this would use an environment variable
-    stripePromise = loadStripe("pk_test_your_publishable_key")
+    // Use environment variable for the publishable key
+    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    if (!publishableKey) {
+      throw new Error('Stripe publishable key is not set')
+    }
+    stripePromise = loadStripe(publishableKey)
   }
   return stripePromise
 }
@@ -308,7 +312,10 @@ export const getPayouts = async (accountId: string, limit = 10): Promise<StripeP
 
 // Platform fees and commission calculation
 export const calculatePlatformFee = (amount: number, commissionRate = 0.15): number => {
-  return Math.round(amount * commissionRate * 100) / 100
+  // Fixed $1 platform fee plus percentage
+  const fixedFee = 100 // $1.00 in cents
+  const percentageFee = Math.round(amount * commissionRate)
+  return fixedFee + percentageFee
 }
 
 export const createTransferToBarber = async (
@@ -317,12 +324,16 @@ export const createTransferToBarber = async (
   amount: number,
   description: string,
 ): Promise<{ id: string; amount: number }> => {
+  // Calculate platform fee
+  const platformFee = calculatePlatformFee(amount)
+  const barberAmount = amount - platformFee
+
   // Simulate API call
   await new Promise((resolve) => setTimeout(resolve, 800))
 
   return {
     id: `tr_${Math.random().toString(36).substring(2, 15)}`,
-    amount,
+    amount: barberAmount,
   }
 }
 
