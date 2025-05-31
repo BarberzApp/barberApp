@@ -109,10 +109,10 @@ export function BarberProfile({ user }: BarberProfileProps) {
       }
 
       const newServiceObj: Service = {
-        id: `service_${Math.random().toString(36).substr(2, 9)}`,
-        name: newService.name,
-        price,
-        duration,
+          id: `service_${Math.random().toString(36).substr(2, 9)}`,
+          name: newService.name,
+          price,
+          duration,
         description: newService.description || "",
         barberId: user.id
       }
@@ -171,11 +171,11 @@ export function BarberProfile({ user }: BarberProfileProps) {
       }
       
       await updateBarber(barber.id, updatedBarber)
-      toast({
+    toast({
         title: "Success",
         description: "Profile updated successfully",
-      })
-      setIsEditing(false)
+    })
+    setIsEditing(false)
     } catch (error) {
       console.error('Error updating profile:', error)
       toast({
@@ -459,29 +459,29 @@ export function BarberProfile({ user }: BarberProfileProps) {
             <CardDescription>Manage your service offerings</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
                   placeholder="Service name"
                   value={newService.name}
-                  name="name"
-                  onChange={handleServiceChange}
-                />
-                <Input
+                      name="name"
+                      onChange={handleServiceChange}
+                    />
+                    <Input
                   placeholder="Price"
                   value={newService.price}
-                  name="price"
-                  type="number"
-                  onChange={handleServiceChange}
-                />
-                <Input
+                      name="price"
+                      type="number"
+                      onChange={handleServiceChange}
+                    />
+                    <Input
                   placeholder="Duration (minutes)"
                   value={newService.duration}
-                  name="duration"
-                  type="number"
-                  onChange={handleServiceChange}
-                />
-              </div>
+                      name="duration"
+                      type="number"
+                      onChange={handleServiceChange}
+                    />
+                  </div>
               <div className="mt-4">
                 <Textarea
                   placeholder="Service description"
@@ -503,11 +503,11 @@ export function BarberProfile({ user }: BarberProfileProps) {
                       {service.description && (
                         <p className="text-sm text-muted-foreground mt-1">{service.description}</p>
                       )}
-                    </div>
+                </div>
                     <Button variant="ghost" size="icon" onClick={() => removeService(service.id)}>
                       <X className="h-4 w-4" />
                     </Button>
-                  </div>
+                </div>
                 ))}
               </div>
             </div>
@@ -629,7 +629,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
                   onChange={(e) => setNewSpecialty(e.target.value)}
                 />
                 <Button onClick={addSpecialty}>Add</Button>
-              </div>
+                    </div>
               <div className="flex flex-wrap gap-2 mt-4">
                 {specialties.map((specialty) => (
                   <Badge key={specialty} variant="secondary" className="flex items-center gap-1">
@@ -694,7 +694,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
                 disabled={isSaving || dataLoading}
               >
                 {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
+            </Button>
             </div>
           </CardContent>
         </Card>

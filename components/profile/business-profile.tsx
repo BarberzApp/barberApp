@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -26,10 +24,44 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { User } from "@/contexts/auth-context"
 import { useAuth } from "@/contexts/auth-context"
-import { useData } from "@/contexts/data-context"
+import { supabase } from "@/lib/supabase"
+
+interface Business {
+  id: string;
+  photos: string[];
+  barbers: Array<{
+    id: string;
+    name: string;
+    image?: string;
+    role: string;
+    rating: number;
+    specialties: string[];
+    joinDate: string;
+    bookings: number;
+  }>;
+  services: Array<{
+    id: string;
+    name: string;
+    price: number;
+    duration: number;
+  }>;
+  rating: number;
+  totalReviews: number;
+  location: string;
+  joinDate: string;
+  description: string;
+  totalBarbers: number;
+  totalClients: number;
+  totalBookings: number;
+  earnings: {
+    thisWeek: number;
+    thisMonth: number;
+    lastMonth: number;
+  };
+}
 
 interface BusinessProfileProps {
-  user: User
+  user: User;
 }
 
 export function BusinessProfile({ user }: BusinessProfileProps) {
@@ -52,24 +84,117 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
   const [profileData, setProfileData] = useState({
     name: user.name || "",
     email: user.email || "",
-    businessName: user.businessName || "Elite Cuts",
+    businessName: user.businessName || "",
     phone: user.phone || "",
     location: user.location || "",
     description: user.description || "",
   })
-  const { businesses, loading, error } = useData()
-  const business = businesses[0] // TODO: Get business by ID from URL or props
+  const [business, setBusiness] = useState<Business | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchBusinessData = async () => {
+      try {
+        setLoading(true)
+        // First try to get the business record
+        const { data: businessData, error: businessError } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (businessError) {
+          // If business record doesn't exist, create it
+          if (businessError.code === 'PGRST116') {
+            const { data: newBusiness, error: createError } = await supabase
+              .from('businesses')
+              .insert([
+                {
+                  id: user.id,
+                  business_name: user.businessName || user.name,
+                  description: '',
+                  address: '',
+                  city: '',
+                  state: '',
+                  zip_code: '',
+                  phone: '',
+                  website: '',
+                  operating_hours: {},
+                  photos: [],
+                  barbers: [],
+                  services: [],
+                  rating: 0,
+                  total_reviews: 0,
+                  total_barbers: 0,
+                  total_clients: 0,
+                  total_bookings: 0,
+                  earnings: {
+                    thisWeek: 0,
+                    thisMonth: 0,
+                    lastMonth: 0
+                  },
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                }
+              ])
+              .select()
+              .single()
+
+            if (createError) throw createError
+            setBusiness(newBusiness)
+          } else {
+            throw businessError
+          }
+        } else {
+          setBusiness(businessData)
+        }
+
+        // Update profile data with business data
+        if (businessData) {
+          setProfileData(prev => ({
+            ...prev,
+            businessName: businessData.business_name || prev.businessName,
+            phone: businessData.phone || prev.phone,
+            location: businessData.address || prev.location,
+            description: businessData.description || prev.description,
+          }))
+        }
+      } catch (err) {
+        console.error('Error fetching/creating business data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch business data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (user?.id) {
+      fetchBusinessData()
+    }
+  }, [user?.id, user?.name, user?.businessName])
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   if (error) {
-    return <div>Error: {error}</div>
+    return (
+      <div className="flex items-center justify-center min-h-[400px] text-destructive">
+        Error: {error}
+      </div>
+    )
   }
 
   if (!business) {
-    return <div>Business not found</div>
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        Business not found
+      </div>
+    )
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -99,14 +224,86 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
     setNewBarber(prev => ({ ...prev, [name]: value }))
   }
 
-  const addBarber = () => {
-    // TODO: Implement barber addition logic
-    setShowAddBarberDialog(false)
-    setNewBarber({ name: "", email: "", role: "", specialties: "" })
+  const addBarber = async () => {
+    try {
+      // First create a new user account for the barber
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newBarber.email,
+        password: Math.random().toString(36).slice(-8), // Generate random password
+        options: {
+          data: {
+            name: newBarber.name,
+            role: 'barber',
+            business_id: user.id
+          }
+        }
+      })
+
+      if (authError) throw authError
+
+      // Then create the barber profile
+      const { data: barberData, error: barberError } = await supabase
+        .from('barbers')
+        .insert({
+          id: authData.user?.id,
+          name: newBarber.name,
+          email: newBarber.email,
+          business_id: user.id,
+          specialties: newBarber.specialties.split(',').map(s => s.trim()),
+          is_public: false,
+          role: 'barber'
+        })
+        .select()
+        .single()
+
+      if (barberError) throw barberError
+
+      toast({
+        title: "Success",
+        description: "Barber added successfully. They will receive an email to set up their account.",
+      })
+
+      // Reset form and close dialog
+      setShowAddBarberDialog(false)
+      setNewBarber({ name: "", email: "", role: "", specialties: "" })
+
+      // Refresh the business data
+      // You might want to implement a refresh function in your data context
+    } catch (error) {
+      console.error('Error adding barber:', error)
+      toast({
+        title: "Error",
+        description: "Failed to add barber. Please try again.",
+        variant: "destructive"
+      })
+    }
   }
 
-  const removeBarber = (id: string) => {
-    // TODO: Implement barber removal logic
+  const removeBarber = async (barberId: string) => {
+    try {
+      // Update the barber's business_id to null
+      const { error } = await supabase
+        .from('barbers')
+        .update({ business_id: null })
+        .eq('id', barberId)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Barber removed from your team.",
+      })
+
+      // Refresh the business data
+      // You might want to implement a refresh function in your data context
+    } catch (error) {
+      console.error('Error removing barber:', error)
+      toast({
+        title: "Error",
+        description: "Failed to remove barber. Please try again.",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,7 +438,7 @@ export function BusinessProfile({ user }: BusinessProfileProps) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {business.photos.map((photo, index) => (
+                {(business?.photos || []).map((photo: string, index: number) => (
                   <div key={index} className="relative aspect-video bg-muted rounded-md overflow-hidden group">
                     <Image
                       src={photo || "/placeholder.svg"}

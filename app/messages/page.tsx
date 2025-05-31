@@ -69,14 +69,14 @@ export default function MessagesPage() {
   }, [user])
 
   if (loading) {
-    return (
+  return (
       <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading conversations...</p>
         </div>
-      </div>
-    )
+    </div>
+  )
   }
 
   return <ChatLayout conversations={conversations} />

@@ -138,10 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        options: {
-          persistSession: true,
-        }
+        password
       });
 
       console.log('Login response:', { data, error });
@@ -246,104 +243,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authData.user) {
-        console.log('User created, creating profile...');
-        
-        // Create profile using service role client to bypass RLS
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: authData.user.id,
-              email,
-              full_name: name,
-              role,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ])
-          .select()
-          .single();
-
-        console.log('Profile creation response:', { profileData, profileError });
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          // Clean up auth user if profile creation fails
-          await supabase.auth.admin.deleteUser(authData.user.id);
-          toast({
-            title: "Registration failed",
-            description: "Failed to create user profile",
-            variant: "destructive",
-          });
-          return false;
-        }
-
-        // If user is a barber, create barber record
-        if (role === 'barber') {
-          console.log('Creating barber record...');
-          const { error: barberError } = await supabase
-            .from('barbers')
-            .insert([
-              {
-                id: authData.user.id,
-                name,
-                email,
-                role: 'barber',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-            ]);
-
-          if (barberError) {
-            console.error('Barber creation error:', barberError);
-            // Clean up auth user and profile if barber creation fails
-            await supabase.auth.admin.deleteUser(authData.user.id);
-            await supabase.from('profiles').delete().eq('id', authData.user.id);
-            toast({
-              title: "Registration failed",
-              description: "Failed to create barber profile",
-              variant: "destructive",
-            });
-            return false;
-          }
-        }
-
-        // If user is a business, create business record
-        if (role === 'business') {
-          console.log('Creating business record...');
-          const { error: businessError } = await supabase
-            .from('businesses')
-            .insert([
-              {
-                id: authData.user.id,
-                business_name: name, // Using name as business name initially
-                description: '',
-                address: '',
-                city: '',
-                state: '',
-                zip_code: '',
-                phone: '',
-                website: '',
-                operating_hours: {},
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-            ]);
-
-          if (businessError) {
-            console.error('Business creation error:', businessError);
-            // Clean up auth user and profile if business creation fails
-            await supabase.auth.admin.deleteUser(authData.user.id);
-            await supabase.from('profiles').delete().eq('id', authData.user.id);
-            toast({
-              title: "Registration failed",
-              description: "Failed to create business profile",
-              variant: "destructive",
-            });
-            return false;
-          }
-        }
-
         // Set user state
         setUser({
           id: authData.user.id,
@@ -374,7 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Registration error:', error);
       toast({
         title: "Registration failed",
-        description: "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "An error occurred during registration",
         variant: "destructive",
       });
       return false;

@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create a Supabase client with the anon key for client-side operations
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
 
 // Create a Supabase client with the service role key for admin operations
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey) 

@@ -1,59 +1,31 @@
-import { Providers } from "@/components/providers"
-import { Inter } from 'next/font/google'
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import "./globals.css"
-import { LayoutWrapper } from "@/components/layout-wrapper"
-import { useEffect } from 'react'
-
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  themeColor: "#6366f1",
-}
-
-export const metadata = {
-  title: "BarberHub",
-  description: "Find and book barbers or offer your services",
-  manifest: "/manifest.json",
-}
+import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "Barber App",
+  description: "Book top barbers near you or run your shop on autopilot",
+}
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(
-          (registration) => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          },
-          (err) => {
-            console.log('ServiceWorker registration failed: ', err);
-          }
-        );
-      });
-    }
-  }, []);
-
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <meta name="application-name" content="BarberHub" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="BarberHub" />
-        <meta name="format-detection" content="telephone=no" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-      </head>
-      <body className={`${inter.className} min-h-screen bg-background`}>
-        <Providers>
-          <LayoutWrapper>{children}</LayoutWrapper>
-        </Providers>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )

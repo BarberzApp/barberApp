@@ -20,6 +20,7 @@ export default function BrowsePage() {
   const [selectedRating, setSelectedRating] = useState<number | null>(null)
   const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"list" | "portfolio">("list")
+  const [activeTab, setActiveTab] = useState("all")
 
   // Filter barbers based on search and filters
   const filteredBarbers = barbers.filter((barber) => {
@@ -103,7 +104,7 @@ export default function BrowsePage() {
         </div>
       </div>
 
-      <Tabs defaultValue="all" className="mb-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
         <TabsList>
           <TabsTrigger value="all">All Barbers</TabsTrigger>
           <TabsTrigger value="featured">Featured</TabsTrigger>

@@ -1,10 +1,11 @@
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/db"
 
 export async function POST(req: Request) {
   try {
+    const supabase = createClient()
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 })
@@ -23,15 +24,10 @@ export async function POST(req: Request) {
     }
 
     // Update the booking status in the database
-    const booking = await db.booking.update({
-      where: {
-        id: bookingId,
-      },
-      data: {
-        status: "CHECKED_IN",
-        checkedInAt: new Date(),
-      },
-    })
+    const booking = await supabase.from('bookings').update({
+      status: "CHECKED_IN",
+      checkedInAt: new Date(),
+    }).eq('id', bookingId)
 
     return NextResponse.json(booking)
   } catch (error) {

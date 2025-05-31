@@ -2,15 +2,9 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { NextRequest } from "next/server"
 
-interface RouteSegmentProps {
-  params: {
-    conversationId: string
-  }
-}
-
 export async function GET(
   request: NextRequest,
-  props: RouteSegmentProps
+  { params }: { params: { conversationId: string } }
 ): Promise<NextResponse> {
   try {
     const supabase = createClient()
@@ -23,7 +17,7 @@ export async function GET(
     const { data: messages, error } = await supabase
       .from("messages")
       .select("*")
-      .eq("conversation_id", props.params.conversationId)
+      .eq("conversation_id", params.conversationId)
       .order("created_at", { ascending: true })
 
     if (error) {
@@ -39,7 +33,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  props: RouteSegmentProps
+  { params }: { params: { conversationId: string } }
 ): Promise<NextResponse> {
   try {
     const supabase = createClient()
@@ -60,7 +54,7 @@ export async function POST(
       .from("messages")
       .insert([
         {
-          conversation_id: props.params.conversationId,
+          conversation_id: params.conversationId,
           sender_id: user.id,
           content,
         },

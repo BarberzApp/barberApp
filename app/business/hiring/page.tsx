@@ -118,7 +118,7 @@ export default function HiringPage() {
   return (
     <div className="container py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Hiring Board</h1>
+          <h1 className="text-3xl font-bold">Hiring Board</h1>
         <Button onClick={() => setIsCreatingJob(true)}>Post New Job</Button>
       </div>
 

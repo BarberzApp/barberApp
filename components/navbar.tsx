@@ -28,6 +28,9 @@ import {
   Briefcase,
   Clock,
   DollarSign,
+  BarChart,
+  Users,
+  Heart,
 } from "lucide-react"
 
 export function Navbar() {
@@ -38,26 +41,63 @@ export function Navbar() {
   const roleSpecificNavItems = () => {
     if (!user) return []
 
-    switch (user.role) {
-      case "client":
-        return [
-          { name: "Bookings", href: "/bookings", icon: Calendar },
-          { name: "Messages", href: "/messages", icon: MessageSquare },
-        ]
-      case "barber":
-        return [
-          { name: "My Appointments", href: "/barber/bookings", icon: Calendar },
-          { name: "Availability", href: "/barber/availability", icon: Clock },
-          { name: "Jobs", href: "/barber/jobs", icon: Briefcase },
-        ]
-      case "business":
-        return [
-          { name: "Dashboard", href: "/business/dashboard", icon: DollarSign },
-          { name: "Hiring", href: "/business/hiring", icon: Briefcase },
-        ]
-      default:
-        return []
+    if (user.role === "business") {
+      return [
+        {
+          href: "/business/dashboard",
+          icon: BarChart,
+          label: "Dashboard",
+        },
+        {
+          href: "/business/team",
+          icon: Users,
+          label: "Team",
+        },
+        {
+          href: "/business/services",
+          icon: Scissors,
+          label: "Services",
+        },
+        {
+          href: "/business/hiring",
+          icon: Briefcase,
+          label: "Hiring",
+        },
+      ]
     }
+
+    if (user.role === "barber") {
+      return [
+        {
+          href: "/barber/dashboard",
+          icon: BarChart,
+          label: "Dashboard",
+        },
+        {
+          href: "/barber/availability",
+          icon: Calendar,
+          label: "Availability",
+        },
+        {
+          href: "/barber/appointments",
+          icon: Clock,
+          label: "Appointments",
+        },
+      ]
+    }
+
+    return [
+      {
+        href: "/appointments",
+        icon: Calendar,
+        label: "Appointments",
+      },
+      {
+        href: "/favorites",
+        icon: Heart,
+        label: "Favorites",
+      },
+    ]
   }
 
   const handleLogout = async () => {

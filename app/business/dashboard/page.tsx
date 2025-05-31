@@ -5,16 +5,42 @@ import { useData } from "@/contexts/data-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Calendar, Users, DollarSign, TrendingUp } from "lucide-react"
+import { Calendar, Users, DollarSign, TrendingUp, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
 
 export default function BusinessDashboard() {
   const { user } = useAuth()
-  const { getBusinessById } = useData()
   const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [business, setBusiness] = useState<any>(null)
 
-  // Get business data
-  const business = user?.businessId ? getBusinessById(user.businessId) : null
+  useEffect(() => {
+    const fetchBusinessData = async () => {
+      try {
+        setLoading(true)
+        if (!user?.id) return
+
+        const { data, error } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (error) throw error
+        setBusiness(data)
+      } catch (err) {
+        console.error('Error fetching business data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch business data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBusinessData()
+  }, [user?.id])
 
   // Access control - only business owners can access this page
   if (!user || user.role !== "business") {
@@ -24,6 +50,32 @@ export default function BusinessDashboard() {
           <CardHeader>
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>Only business owners can access the dashboard.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => router.push("/")}>Return to Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="container py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Error</CardTitle>
+            <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => router.push("/")}>Return to Home</Button>
@@ -61,7 +113,7 @@ export default function BusinessDashboard() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{business.totalBookings}</div>
+            <div className="text-2xl font-bold">{business.total_bookings || 0}</div>
             <p className="text-xs text-muted-foreground">+12% from last week</p>
             <Progress value={78} className="h-1 mt-3" />
           </CardContent>
@@ -73,7 +125,7 @@ export default function BusinessDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{business.totalBarbers}</div>
+            <div className="text-2xl font-bold">{business.total_barbers || 0}</div>
             <p className="text-xs text-muted-foreground">+1 from last month</p>
             <Progress value={60} className="h-1 mt-3" />
           </CardContent>
@@ -85,7 +137,7 @@ export default function BusinessDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${business.earnings.thisWeek}</div>
+            <div className="text-2xl font-bold">${business.earnings?.thisWeek || 0}</div>
             <p className="text-xs text-muted-foreground">+8% from last week</p>
             <Progress value={85} className="h-1 mt-3" />
           </CardContent>
@@ -97,9 +149,9 @@ export default function BusinessDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{business.rating}</div>
-            <p className="text-xs text-muted-foreground">Based on {business.totalReviews} reviews</p>
-            <Progress value={business.rating * 20} className="h-1 mt-3" />
+            <div className="text-2xl font-bold">{business.rating || 0}</div>
+            <p className="text-xs text-muted-foreground">Based on {business.total_reviews || 0} reviews</p>
+            <Progress value={(business.rating || 0) * 20} className="h-1 mt-3" />
           </CardContent>
         </Card>
       </div>

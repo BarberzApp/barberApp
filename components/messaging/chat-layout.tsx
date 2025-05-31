@@ -163,7 +163,7 @@ export function ChatLayout({ conversations, initialConversationId }: ChatLayoutP
         timestamp: new Date(message.created_at),
         status: message.status || 'sent'
       }
-
+      
       setMessages(prev => ({
         ...prev,
         [activeConversationId]: [...(prev[activeConversationId] || []), newMessage]
