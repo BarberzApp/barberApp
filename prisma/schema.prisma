@@ -14,107 +14,264 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  role          String    @default("client")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  bookings      Booking[]
-  reviews       Review[]
-  messages      Message[]
-  conversations Conversation[]
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  phone     String?
+  imageUrl  String?  @map("image_url")
+  role      String
+  location  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  barberProfile    Barber?
+  businessProfile  Business?
+  bookings         Booking[]    @relation("ClientBookings")
+  reviews          Review[]     @relation("ClientReviews")
+  notifications    Notification[]
+  sentMessages     Message[]    @relation("SentMessages")
+  receivedMessages Message[]    @relation("ReceivedMessages")
+
+  @@map("users")
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+model Barber {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  bio          String?
+  specialties  String[]
+  portfolio    String[]
+  priceRange   String?  @map("price_range")
+  rating       Decimal? @db.Decimal(3, 2)
+  totalReviews Int      @default(0) @map("total_reviews")
+  businessId   String?  @map("business_id")
+  openToHire   Boolean  @default(false) @map("open_to_hire")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Relations
+  user            User            @relation(fields: [userId], references: [id])
+  business        Business?       @relation(fields: [businessId], references: [id])
+  services        Service[]
+  bookings        Booking[]
+  reviews         Review[]        @relation("BarberReviews")
+  availabilities  Availability[]
+  timeOff         TimeOff[]
+  jobApplications JobApplication[]
 
-  @@unique([provider, providerAccountId])
+  @@map("barbers")
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Business {
+  id          String   @id @default(uuid())
+  name        String
+  ownerId     String   @map("owner_id")
+  description String?
+  location    String?
+  phone       String?
+  imageUrl    String?  @map("image_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner       User       @relation(fields: [ownerId], references: [id])
+  barbers     Barber[]
+  locations   Location[]
+  inventory   Inventory[]
+  jobPostings JobPosting[]
+
+  @@map("businesses")
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+model Location {
+  id        String   @id @default(uuid())
+  businessId String  @map("business_id")
+  name      String
+  address   String
+  city      String
+  state     String
+  zip       String
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([identifier, token])
-}
+  // Relations
+  business Business @relation(fields: [businessId], references: [id])
 
-model Booking {
-  id          String   @id @default(cuid())
-  userId      String
-  serviceId   String
-  date        DateTime
-  status      String   @default("PENDING")
-  checkedInAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  @@map("locations")
 }
 
 model Service {
-  id          String    @id @default(cuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
-  price       Float
   duration    Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  bookings    Booking[]
+  price       Decimal  @db.Decimal(10, 2)
+  barberId    String   @map("barber_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  barber   Barber   @relation(fields: [barberId], references: [id])
+  bookings Booking[]
+
+  @@map("services")
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  clientId      String   @map("client_id")
+  barberId      String   @map("barber_id")
+  serviceId     String   @map("service_id")
+  date          DateTime @db.Date
+  time          DateTime @db.Time
+  status        String
+  paymentStatus String   @map("payment_status")
+  totalPrice    Decimal  @db.Decimal(10, 2) @map("total_price")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  client  User    @relation("ClientBookings", fields: [clientId], references: [id])
+  barber  Barber  @relation(fields: [barberId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+  review  Review?
+
+  @@map("bookings")
 }
 
 model Review {
-  id        String   @id @default(cuid())
-  userId    String
+  id        String   @id @default(uuid())
+  bookingId String   @unique @map("booking_id")
+  clientId  String   @map("client_id")
+  barberId  String   @map("barber_id")
   rating    Int
   comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id])
+  client  User    @relation("ClientReviews", fields: [clientId], references: [id])
+  barber  Barber  @relation("BarberReviews", fields: [barberId], references: [id])
+
+  @@map("reviews")
+}
+
+model Availability {
+  id          String   @id @default(uuid())
+  barberId    String   @map("barber_id")
+  dayOfWeek   Int      @map("day_of_week")
+  startTime   DateTime @db.Time @map("start_time")
+  endTime     DateTime @db.Time @map("end_time")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  barber Barber @relation(fields: [barberId], references: [id])
+
+  @@map("availability")
+}
+
+model TimeOff {
+  id        String   @id @default(uuid())
+  barberId  String   @map("barber_id")
+  startDate DateTime @db.Date @map("start_date")
+  endDate   DateTime @db.Date @map("end_date")
+  startTime DateTime @db.Time @map("start_time")
+  endTime   DateTime @db.Time @map("end_time")
+  allDay    Boolean  @default(false) @map("all_day")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  barber Barber @relation(fields: [barberId], references: [id])
+
+  @@map("time_off")
+}
+
+model Inventory {
+  id          String   @id @default(uuid())
+  businessId  String   @map("business_id")
+  name        String
+  description String?
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2) @map("unit_price")
+  category    String?
+  imageUrl    String?  @map("image_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@map("inventory")
+}
+
+model JobPosting {
+  id           String   @id @default(uuid())
+  businessId   String   @map("business_id")
+  title        String
+  description  String
+  requirements String[]
+  location     String
+  compensation String
+  status       String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  business        Business         @relation(fields: [businessId], references: [id])
+  applications    JobApplication[]
+
+  @@map("job_postings")
+}
+
+model JobApplication {
+  id          String   @id @default(uuid())
+  jobId       String   @map("job_id")
+  barberId    String   @map("barber_id")
+  coverLetter String   @map("cover_letter")
+  status      String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  job    JobPosting @relation(fields: [jobId], references: [id])
+  barber Barber     @relation(fields: [barberId], references: [id])
+
+  @@map("job_applications")
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  content        String
-  userId         String
-  conversationId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  senderId    String   @map("sender_id")
+  recipientId String   @map("recipient_id")
+  content     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  sender    User @relation("SentMessages", fields: [senderId], references: [id])
+  recipient User @relation("ReceivedMessages", fields: [recipientId], references: [id])
+
+  @@map("messages")
 }
 
-model Conversation {
-  id        String    @id @default(cuid())
-  userId    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  Message[]
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  actionUrl String?  @map("action_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
 }
