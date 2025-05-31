@@ -1,12 +1,32 @@
 "use client"
 
-import { Navbar } from "@/components/navbar"
+import { useEffect } from 'react'
+import { ThemeProvider } from "@/components/theme-provider"
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Add any client-side initialization here
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <Navbar />
-      <main className="flex-1">{children}</main>
-    </div>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      {children}
+    </ThemeProvider>
   )
 } 
