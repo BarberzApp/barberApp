@@ -139,6 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          persistSession: true,
+        }
       });
 
       console.log('Login response:', { data, error });
@@ -153,14 +156,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      if (data.user) {
+      if (data.session) {
         console.log('User authenticated, fetching profile...');
         
         // Fetch additional user data from the profiles table
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', data.user.id)
+          .eq('id', data.session.user.id)
           .single();
 
         console.log('Profile fetch response:', { profile, profileError });
@@ -171,10 +174,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser({
-          id: data.user.id,
-          name: data.user.user_metadata?.name || "",
-          email: data.user.email || "",
-          image: data.user.user_metadata?.avatar_url || undefined,
+          id: data.session.user.id,
+          name: data.session.user.user_metadata?.name || "",
+          email: data.session.user.email || "",
+          image: data.session.user.user_metadata?.avatar_url || undefined,
           role: profile?.role || 'client',
           phone: profile?.phone || undefined,
           location: profile?.location || undefined,

@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     if (!session) {
       console.error('No session found')
       return NextResponse.json(
-        { error: 'No session found' },
+        { error: 'No session found. Please log in to update your profile.' },
         { status: 401 }
       )
     }
@@ -67,26 +67,20 @@ export async function POST(request: Request) {
       )
     }
 
-    // Handle services separately if they exist in updateData
-    let services = undefined
-    if (updateData.services) {
-      services = updateData.services
-      delete updateData.services
-    }
-
-    // Handle isPublic separately if it exists in updateData
-    let isPublic = undefined
-    if (updateData.isPublic !== undefined) {
-      isPublic = updateData.isPublic
-      delete updateData.isPublic
-    }
+    // Only allow updating specific fields
+    const allowedFields = ['name', 'location', 'bio', 'isPublic', 'specialties']
+    const filteredUpdateData = Object.keys(updateData)
+      .filter(key => allowedFields.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = updateData[key]
+        return obj
+      }, {} as Record<string, any>)
 
     // Update the barber profile
     const { data: updatedBarber, error: updateError } = await supabaseAdmin
       .from('barbers')
       .update({
-        ...updateData,
-        isPublic: isPublic,
+        ...filteredUpdateData,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -101,8 +95,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update services if provided
-    if (services) {
+    // Handle services separately if they exist in updateData
+    if (updateData.services) {
       // First, delete existing services
       const { error: deleteError } = await supabaseAdmin
         .from('services')
@@ -121,7 +115,7 @@ export async function POST(request: Request) {
       const { error: insertError } = await supabaseAdmin
         .from('services')
         .insert(
-          services.map((service: any) => ({
+          updateData.services.map((service: any) => ({
             ...service,
             barber_id: id
           }))

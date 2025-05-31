@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { Switch } from "@/components/ui/switch"
 import { Service } from "@/types/service"
+import { supabase } from "@/lib/supabase"
 
 interface BarberProfileProps {
   user: User
@@ -139,8 +140,24 @@ export function BarberProfile({ user }: BarberProfileProps) {
   const handleSave = async () => {
     try {
       setIsSaving(true)
+      
+      // Check if user is logged in
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        console.error('No valid session:', sessionError)
+        toast({
+          title: "Error",
+          description: "Please log in to update your profile",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Only send fields that should be updated by the user
       const updatedBarber = {
-        ...barber,
+        name: profileData.name,
+        location: profileData.location,
+        bio: profileData.bio,
         services: services.map(service => ({
           id: service.id,
           name: service.name,
@@ -148,7 +165,9 @@ export function BarberProfile({ user }: BarberProfileProps) {
           duration: service.duration,
           description: service.description || "",
           barberId: barber.id
-        }))
+        })),
+        specialties: specialties,
+        isPublic: barber.isPublic
       }
       
       await updateBarber(barber.id, updatedBarber)

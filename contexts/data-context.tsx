@@ -310,8 +310,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     getBarberById: (id) => barbers.find(b => b.id === id),
     updateBarber: async (id, data) => {
       try {
-        console.log('Updating barber:', { id, data })
-        
         // Get the current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
@@ -322,40 +320,38 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (!session) {
           console.error('No session found')
-          throw new Error('No session found')
+          throw new Error('No session found. Please log in to update your profile.')
         }
 
-        console.log('Session found:', { userId: session.user.id })
-        
-        // Update in the database
-        const response = await fetch(`/api/barbers/update`, {
+        console.log('Updating barber with session:', { userId: session.user.id })
+
+        const response = await fetch('/api/barbers/update', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include', // Ensure cookies are sent
+          credentials: 'include',
           body: JSON.stringify({ id, ...data }),
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
-          console.error('Update failed:', { status: response.status, error: errorData })
-          throw new Error(errorData.error || 'Failed to update barber')
+          const error = await response.json()
+          console.error('Update failed:', error)
+          throw new Error(error.error || 'Failed to update barber')
         }
 
-        const updatedData = await response.json()
-        console.log('Update successful:', updatedData)
-
+        const updatedBarber = await response.json()
+        
         // Update local state
-        setBarbers(prevBarbers =>
-          prevBarbers.map(barber =>
-            barber.id === id ? { ...barber, ...updatedData } : barber
+        setBarbers(prevBarbers => 
+          prevBarbers.map(barber => 
+            barber.id === id ? { ...barber, ...updatedBarber } : barber
           )
         )
 
-        return updatedData
+        return updatedBarber
       } catch (error) {
-        console.error('Error updating barber:', error)
+        console.error('Error in updateBarber:', error)
         throw error
       }
     },
