@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin, Scissors, X, Check } from "lucide-react"
+import { Calendar, Clock, MapPin, Scissors, X, Check, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import {
@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { supabase } from "@/lib/supabase"
 import type { Booking } from "@/types"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+
+export const dynamic = 'force-dynamic'
 
 export default function BarberBookingsPage() {
   const { user } = useAuth()
@@ -30,14 +33,23 @@ export default function BarberBookingsPage() {
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [completeBookingId, setCompleteBookingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Redirect to login if not authenticated or not a barber
-  if (!user || user.role !== "barber") {
-    router.push("/login")
-    return null
-  }
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Redirect to login if not authenticated or not a barber
+    if (!user) {
+      router.push("/login")
+      return
+    }
+    if (user.role !== "barber") {
+      router.push("/")
+      return
+    }
+  }, [user, router])
+
+  useEffect(() => {
+    if (!user) return
+
     const fetchBookings = async () => {
       try {
         const { data, error } = await supabase
@@ -48,6 +60,10 @@ export default function BarberBookingsPage() {
               id,
               name,
               image
+            ),
+            barber:barber_id (
+              id,
+              location
             )
           `)
           .eq('barber_id', user.id)
@@ -63,15 +79,17 @@ export default function BarberBookingsPage() {
         }))
 
         setBookings(transformedBookings)
+        setError(null)
       } catch (error) {
         console.error('Error fetching bookings:', error)
+        setError('Failed to load bookings. Please try again.')
       } finally {
         setLoading(false)
       }
     }
 
     fetchBookings()
-  }, [user.id])
+  }, [user])
 
   const upcomingBookings = bookings.filter((booking) => booking.status === "upcoming")
   const pastBookings = bookings.filter((booking) => booking.status === "completed")
@@ -95,6 +113,7 @@ export default function BarberBookingsPage() {
       setCancelBookingId(null)
     } catch (error) {
       console.error('Error cancelling booking:', error)
+      setError('Failed to cancel booking. Please try again.')
     }
   }, [cancelBookingId, bookings])
 
@@ -117,6 +136,7 @@ export default function BarberBookingsPage() {
       setCompleteBookingId(null)
     } catch (error) {
       console.error('Error completing booking:', error)
+      setError('Failed to complete booking. Please try again.')
     }
   }, [completeBookingId, bookings])
 
@@ -132,9 +152,20 @@ export default function BarberBookingsPage() {
     return (
       <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
           <p className="mt-4 text-muted-foreground">Loading bookings...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8">
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       </div>
     )
   }
@@ -190,7 +221,7 @@ export default function BarberBookingsPage() {
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
                           <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
-                          <span>{booking.barber.location}</span>
+                          <span>{booking.barber?.location || "Location not specified"}</span>
                         </div>
                       </div>
 
@@ -277,7 +308,7 @@ export default function BarberBookingsPage() {
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
                           <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
-                          <span>{booking.barber.location}</span>
+                          <span>{booking.barber?.location || "Location not specified"}</span>
                         </div>
                       </div>
 

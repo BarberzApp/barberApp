@@ -4,16 +4,21 @@ import { ChatLayout, type Conversation } from "@/components/messaging/chat-layou
 import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle, Loader2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function MessagesPage() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchConversations = async () => {
-      if (!user) return
+    if (!user) return
 
+    const fetchConversations = async () => {
       try {
         const { data, error } = await supabase
           .from('conversations')
@@ -58,25 +63,78 @@ export default function MessagesPage() {
         }))
 
         setConversations(transformedConversations)
+        setError(null)
       } catch (error) {
         console.error('Error fetching conversations:', error)
+        setError('Failed to load conversations. Please try again.')
+        toast({
+          title: "Error",
+          description: "Failed to load conversations. Please try again.",
+          variant: "destructive",
+        })
       } finally {
         setLoading(false)
       }
     }
 
     fetchConversations()
-  }, [user])
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('conversations')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations',
+          filter: `sender_id=eq.${user.id} OR recipient_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Refresh conversations when there's a change
+          fetchConversations()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [user, toast])
+
+  if (!user) {
+    return (
+      <div className="container py-8">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Authentication Required</AlertTitle>
+          <AlertDescription>Please log in to access your messages.</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
   if (loading) {
-  return (
+    return (
       <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600 mx-auto"></div>
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
           <p className="mt-4 text-muted-foreground">Loading conversations...</p>
         </div>
-    </div>
-  )
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   return <ChatLayout conversations={conversations} />

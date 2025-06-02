@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
-import { Wallet, ArrowUp, ArrowDown, DollarSign, Loader2 } from "lucide-react"
+import { Wallet, ArrowUp, ArrowDown, DollarSign, Loader2, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export const dynamic = 'force-dynamic'
 
@@ -20,27 +20,42 @@ export default function WalletPage() {
   const [activeTab, setActiveTab] = useState("add-funds")
   const [amount, setAmount] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Simulate loading user data
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const validateAmount = (value: string): boolean => {
+    const parsedAmount = Number.parseFloat(value)
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError("Please enter a valid amount greater than 0")
+      return false
+    }
+    if (parsedAmount > 10000) {
+      setError("Amount cannot exceed $10,000")
+      return false
+    }
+    setError(null)
+    return true
+  }
 
   const handleAddFunds = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    const parsedAmount = Number.parseFloat(amount)
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast({
-        title: "Invalid amount",
-        description: "Please enter a valid amount greater than 0.",
-        variant: "destructive",
-      })
-      return
-    }
+    if (!validateAmount(amount)) return
 
     setIsProcessing(true)
     try {
-      const success = await addFundsToWallet(parsedAmount)
+      const success = await addFundsToWallet(Number.parseFloat(amount))
       if (success) {
         toast({
           title: "Funds added",
-          description: `$${parsedAmount.toFixed(2)} has been added to your wallet.`,
+          description: `$${Number.parseFloat(amount).toFixed(2)} has been added to your wallet.`,
         })
         setAmount("")
       } else {
@@ -63,23 +78,11 @@ export default function WalletPage() {
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validateAmount(amount)) return
 
     const parsedAmount = Number.parseFloat(amount)
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast({
-        title: "Invalid amount",
-        description: "Please enter a valid amount greater than 0.",
-        variant: "destructive",
-      })
-      return
-    }
-
     if (!user?.wallet || user.wallet < parsedAmount) {
-      toast({
-        title: "Insufficient funds",
-        description: "You don't have enough funds in your wallet.",
-        variant: "destructive",
-      })
+      setError("Insufficient funds in your wallet")
       return
     }
 
@@ -110,11 +113,26 @@ export default function WalletPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="container py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading wallet...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!user) {
     return (
       <div className="container py-8">
         <h1 className="text-3xl font-bold mb-6">Wallet</h1>
-        <p>Please log in to access your wallet.</p>
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Authentication Required</AlertTitle>
+          <AlertDescription>Please log in to access your wallet.</AlertDescription>
+        </Alert>
       </div>
     )
   }
@@ -122,6 +140,14 @@ export default function WalletPage() {
   return (
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-6">Wallet</h1>
+
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-1">
@@ -164,8 +190,14 @@ export default function WalletPage() {
                             placeholder="0.00"
                             className="pl-9"
                             value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            onChange={(e) => {
+                              setAmount(e.target.value)
+                              validateAmount(e.target.value)
+                            }}
                             required
+                            min="0.01"
+                            max="10000"
+                            step="0.01"
                           />
                         </div>
                       </div>
@@ -188,7 +220,7 @@ export default function WalletPage() {
                         </p>
                       </div>
 
-                      <Button type="submit" className="w-full" disabled={isProcessing}>
+                      <Button type="submit" className="w-full" disabled={isProcessing || !!error}>
                         {isProcessing ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         ) : (
@@ -212,8 +244,14 @@ export default function WalletPage() {
                             placeholder="0.00"
                             className="pl-9"
                             value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            onChange={(e) => {
+                              setAmount(e.target.value)
+                              validateAmount(e.target.value)
+                            }}
                             required
+                            min="0.01"
+                            max={user.wallet?.toString() || "0"}
+                            step="0.01"
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">Available: ${user.wallet?.toFixed(2) || "0.00"}</p>
@@ -237,7 +275,7 @@ export default function WalletPage() {
                       <Button
                         type="submit"
                         className="w-full"
-                        disabled={isProcessing || !user.wallet || user.wallet <= 0}
+                        disabled={isProcessing || !user.wallet || user.wallet <= 0 || !!error}
                       >
                         {isProcessing ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -251,11 +289,6 @@ export default function WalletPage() {
                 </TabsContent>
               </Tabs>
             </CardContent>
-            <CardFooter className="flex justify-center border-t pt-6">
-              <p className="text-sm text-muted-foreground">
-                Funds in your wallet can be used for bookings or withdrawn at any time.
-              </p>
-            </CardFooter>
           </Card>
         </div>
       </div>

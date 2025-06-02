@@ -30,13 +30,13 @@ export default function BookingsPage() {
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    router.push("/login")
-    return null
-  }
-
   useEffect(() => {
+    // Redirect to login if not authenticated
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
     const fetchBookings = async () => {
       try {
         const { data, error } = await supabase
@@ -71,7 +71,7 @@ export default function BookingsPage() {
     }
 
     fetchBookings()
-  }, [user.id])
+  }, [user, router])
 
   const upcomingBookings = bookings.filter((booking) => booking.status === "upcoming")
   const pastBookings = bookings.filter((booking) => booking.status === "completed")
@@ -113,11 +113,17 @@ export default function BookingsPage() {
     )
   }
 
+  if (!user) {
+    return null
+  }
+
   return (
     <div className="container py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">My Bookings</h1>
-        <Button href="/browse">Book New Appointment</Button>
+        <Button asChild>
+          <Link href="/browse">Book New Appointment</Link>
+        </Button>
       </div>
 
       <Tabs defaultValue="upcoming" className="w-full">
@@ -132,7 +138,9 @@ export default function BookingsPage() {
               <Scissors className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Upcoming Bookings</h3>
               <p className="text-muted-foreground mb-6">You don't have any upcoming appointments scheduled.</p>
-              <Button href="/browse">Book an Appointment</Button>
+              <Button asChild>
+                <Link href="/browse">Book an Appointment</Link>
+              </Button>
             </div>
           ) : (
             upcomingBookings.map((booking) => (
@@ -189,8 +197,8 @@ export default function BookingsPage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" href={`/book/${booking.barber.id}`}>
-                          Reschedule
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/book/${booking.barber.id}`}>Reschedule</Link>
                         </Button>
                         <Button 
                           variant="destructive" 
@@ -214,7 +222,7 @@ export default function BookingsPage() {
             <div className="text-center py-12">
               <Scissors className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Past Bookings</h3>
-              <p className="text-muted-foreground">You don't have any past appointments.</p>
+              <p className="text-muted-foreground">You haven't had any appointments yet.</p>
             </div>
           ) : (
             pastBookings.map((booking) => (
@@ -285,16 +293,14 @@ export default function BookingsPage() {
       <AlertDialog open={!!cancelBookingId} onOpenChange={() => setCancelBookingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Appointment</AlertDialogTitle>
+            <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this appointment? This action cannot be undone.
+              Are you sure you want to cancel this booking? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Appointment</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelBooking} className="bg-destructive text-destructive-foreground">
-              Yes, Cancel
-            </AlertDialogAction>
+            <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelBooking}>Cancel Booking</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
