@@ -4,6 +4,7 @@ DROP TABLE IF EXISTS bookings CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
 DROP TABLE IF EXISTS barbers CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -77,6 +78,18 @@ CREATE TABLE IF NOT EXISTS availability (
     UNIQUE(barber_id, day_of_week) -- One availability slot per day per barber
 );
 
+-- Create notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL,
+    booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+    read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
@@ -89,6 +102,8 @@ DROP POLICY IF EXISTS "Users can create bookings" ON bookings;
 DROP POLICY IF EXISTS "Users can update own bookings" ON bookings;
 DROP POLICY IF EXISTS "Availability is viewable by everyone" ON availability;
 DROP POLICY IF EXISTS "Barbers can manage own availability" ON availability;
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
 
 -- Create RLS policies
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -96,6 +111,7 @@ ALTER TABLE barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availability ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Users can view own profile"
@@ -161,6 +177,15 @@ CREATE POLICY "Barbers can manage own availability"
         WHERE barbers.id = availability.barber_id
         AND barbers.user_id = auth.uid()
     ));
+
+-- Notifications policies
+CREATE POLICY "Users can view own notifications"
+    ON notifications FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own notifications"
+    ON notifications FOR UPDATE
+    USING (auth.uid() = user_id);
 
 -- Drop existing function and trigger if they exist
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;

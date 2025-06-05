@@ -4,81 +4,107 @@ import * as React from "react"
 import { Bell } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/components/ui/popover"
-import { Notification } from "./booking-notifications"
-import { format } from "date-fns"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu"
+import { NotificationService, Notification } from "@/shared/lib/notification-service"
+import { useAuth } from "@/shared/hooks/use-auth"
+import { useEffect, useState } from "react"
 
-interface NotificationBellProps {
-  notifications: Notification[]
-  onNotificationClick?: (notification: Notification) => void
-  onMarkAllRead?: () => void
-}
+export function NotificationBell() {
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const { user } = useAuth()
 
-export function NotificationBell({
-  notifications,
-  onNotificationClick,
-  onMarkAllRead,
-}: NotificationBellProps) {
-  const unreadCount = notifications.filter(n => !n.read).length
+  useEffect(() => {
+    if (user) {
+      loadNotifications()
+      // Poll for new notifications every minute
+      const interval = setInterval(loadNotifications, 60000)
+      return () => clearInterval(interval)
+    }
+  }, [user])
+
+  const loadNotifications = async () => {
+    if (!user) return
+    try {
+      const userNotifications = await NotificationService.getUserNotifications(user.id)
+      setNotifications(userNotifications)
+      const count = await NotificationService.getUnreadCount(user.id)
+      setUnreadCount(count)
+    } catch (error) {
+      console.error("Error loading notifications:", error)
+    }
+  }
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await NotificationService.markAsRead(notificationId)
+      await loadNotifications()
+    } catch (error) {
+      console.error("Error marking notification as read:", error)
+    }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    if (!user) return
+    try {
+      await NotificationService.markAllAsRead(user.id)
+      await loadNotifications()
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error)
+    }
+  }
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-medium text-white flex items-center justify-center">
               {unreadCount}
             </span>
           )}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between border-b p-4">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <div className="flex items-center justify-between p-2 border-b">
           <h4 className="font-medium">Notifications</h4>
           {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onMarkAllRead}
-            >
-              Mark all read
+            <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
+              Mark all as read
             </Button>
           )}
         </div>
-        <div className="max-h-[300px] overflow-auto">
+        <div className="max-h-[300px] overflow-y-auto">
           {notifications.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
+            <div className="p-4 text-center text-muted-foreground">
               No notifications
             </div>
           ) : (
             notifications.map((notification) => (
-              <div
+              <DropdownMenuItem
                 key={notification.id}
-                className={`cursor-pointer border-b p-4 hover:bg-accent ${
-                  !notification.read ? "bg-accent/50" : ""
-                }`}
-                onClick={() => onNotificationClick?.(notification)}
+                className={`p-3 cursor-pointer ${!notification.read ? "bg-muted" : ""}`}
+                onClick={() => handleMarkAsRead(notification.id)}
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium">{notification.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {notification.message}
-                    </p>
+                <div className="flex flex-col gap-1">
+                  <div className="font-medium">{notification.title}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {notification.message}
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {format(notification.createdAt, "MMM d, h:mm a")}
-                  </span>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(notification.created_at).toLocaleString()}
+                  </div>
                 </div>
-              </div>
+              </DropdownMenuItem>
             ))
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 } 
