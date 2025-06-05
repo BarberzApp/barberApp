@@ -216,6 +216,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
       try {
         setLoading(true)
         setError(null)
@@ -224,38 +229,51 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const { data: barbersData, error: barbersError } = await supabase
           .from('barbers')
           .select('*')
-        if (barbersError) throw barbersError
+        if (barbersError) {
+          console.error('Error fetching barbers:', barbersError)
+          throw new Error('Failed to load barbers')
+        }
         setBarbers(barbersData || [])
 
         // Fetch services
         const { data: servicesData, error: servicesError } = await supabase
           .from('services')
           .select('*')
-        if (servicesError) throw servicesError
+        if (servicesError) {
+          console.error('Error fetching services:', servicesError)
+          throw new Error('Failed to load services')
+        }
         setServices(servicesData || [])
 
-        // Fetch bookings if user is logged in
-        if (user) {
-          const { data: bookingsData, error: bookingsError } = await supabase
-            .from('bookings')
-            .select('*')
-            .or(`barber_id.eq.${user.id},client_id.eq.${user.id}`)
-          if (bookingsError) throw bookingsError
-          setBookings(bookingsData || [])
+        // Fetch bookings
+        const { data: bookingsData, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('*')
+          .or(`barber_id.eq.${user.id},client_id.eq.${user.id}`)
+        if (bookingsError) {
+          console.error('Error fetching bookings:', bookingsError)
+          throw new Error('Failed to load bookings')
         }
+        setBookings(bookingsData || [])
 
         // Fetch reviews
         const { data: reviewsData, error: reviewsError } = await supabase
           .from('reviews')
           .select('*')
-        if (reviewsError) throw reviewsError
+        if (reviewsError) {
+          console.error('Error fetching reviews:', reviewsError)
+          throw new Error('Failed to load reviews')
+        }
         setReviews(reviewsData || [])
 
         // Fetch job posts
         const { data: jobPostsData, error: jobPostsError } = await supabase
           .from('job_posts')
           .select('*')
-        if (jobPostsError) throw jobPostsError
+        if (jobPostsError) {
+          console.error('Error fetching job posts:', jobPostsError)
+          throw new Error('Failed to load job posts')
+        }
         setJobPosts(jobPostsData || [])
 
         // Fetch applications if user is a barber
@@ -264,23 +282,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             .from('applications')
             .select('*')
             .eq('barber_id', user.id)
-          if (applicationsError) throw applicationsError
+          if (applicationsError) {
+            console.error('Error fetching applications:', applicationsError)
+            throw new Error('Failed to load applications')
+          }
           setApplications(applicationsData || [])
         }
 
-        // Fetch conversations if user is logged in
-        if (user) {
-          const { data: conversationsData, error: conversationsError } = await supabase
-            .from('conversations')
-            .select('*')
-            .contains('participants', [user.id])
-          if (conversationsError) throw conversationsError
-          setConversations(conversationsData || [])
+        // Fetch conversations
+        const { data: conversationsData, error: conversationsError } = await supabase
+          .from('conversations')
+          .select('*')
+          .contains('participants', [user.id])
+        if (conversationsError) {
+          console.error('Error fetching conversations:', conversationsError)
+          throw new Error('Failed to load conversations')
         }
+        setConversations(conversationsData || [])
 
       } catch (err) {
         console.error('Error fetching data:', err)
-        setError('Failed to load data. Please try again.')
+        setError(err instanceof Error ? err.message : 'Failed to load data')
       } finally {
         setLoading(false)
       }

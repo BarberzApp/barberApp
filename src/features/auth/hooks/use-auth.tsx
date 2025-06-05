@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authData.user) {
-        // Fetch user data from a single profiles table
+        // Fetch user data from profiles table
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select(`
@@ -161,6 +161,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           toast({
             title: "Login failed",
             description: "Failed to load profile data",
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        if (!profile) {
+          console.error('No profile found');
+          toast({
+            title: "Login failed",
+            description: "User profile not found",
             variant: "destructive",
           });
           return false;
