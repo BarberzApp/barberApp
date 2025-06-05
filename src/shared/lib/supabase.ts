@@ -9,7 +9,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create a Supabase client with the anon key for client-side operations
-export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+})
 
 // Create a Supabase client with the service role key for admin operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey) 
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+}) 
