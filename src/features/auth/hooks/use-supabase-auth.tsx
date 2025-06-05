@@ -1,3 +1,6 @@
+/**
+ * @deprecated Use useAuth from '@/features/auth/hooks/use-auth' instead
+ */
 "use client"
 
 import React, { createContext, useContext, useEffect, useState } from 'react'

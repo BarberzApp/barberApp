@@ -124,6 +124,10 @@ CREATE POLICY "Users can update own profile"
     ON profiles FOR UPDATE
     USING (auth.uid() = id);
 
+CREATE POLICY "Enable insert for authenticated users only"
+    ON profiles FOR INSERT
+    WITH CHECK (auth.uid() = id);
+
 -- Barbers policies
 CREATE POLICY "Barbers can view own profile"
     ON barbers FOR SELECT
@@ -197,6 +201,9 @@ DROP FUNCTION IF EXISTS public.handle_new_user();
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+    -- Set a fixed search path
+    SET search_path = public;
+    
     INSERT INTO public.profiles (id, name, email, role)
     VALUES (
         NEW.id,

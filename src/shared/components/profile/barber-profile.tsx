@@ -68,23 +68,13 @@ export function BarberProfile({ user }: BarberProfileProps) {
     barberId: user.id 
   })
   const [newSpecialty, setNewSpecialty] = useState("")
-  const [services, setServices] = useState<Service[]>(
-    (user.services || []).map(service => ({
-      id: service.id,
-      name: service.name,
-      price: service.price,
-      duration: service.duration,
-      description: (service as any).description || "",
-      barberId: (service as any).barberId || user.id
-    }))
-  )
-  const [specialties, setSpecialties] = useState(user.specialties || [])
+  const [services, setServices] = useState<Service[]>([])
+  const [specialties, setSpecialties] = useState<string[]>([])
 
   const { barbers, loading, error } = useData()
   const barber = barbers.find(b => b.id === user.id) || {
     id: user.id,
     name: user.name || "",
-    image: user.image || "",
     location: user.location || "",
     bio: user.bio || "",
     rating: 0,
@@ -96,13 +86,11 @@ export function BarberProfile({ user }: BarberProfileProps) {
       thisMonth: 0,
       lastMonth: 0
     },
-    reviews: [],
     specialties: [],
     services: [],
-    portfolio: user.portfolio || [],
     joinDate: new Date().toLocaleDateString(),
     nextAvailable: "Available now",
-    isPublic: user.isPublic || false
+    isPublic: false
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -226,8 +214,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
       addPortfolioImage(user.id, imageUrl)
       
       await updateProfile({
-        ...profileData,
-        portfolio: [...(user.portfolio || []), imageUrl]
+        ...profileData
       })
 
       toast({
@@ -245,21 +232,16 @@ export function BarberProfile({ user }: BarberProfileProps) {
 
   const handleRemovePortfolioImage = async (index: number) => {
     try {
-      const imageUrl = user.portfolio?.[index]
-      if (imageUrl) {
-        removePortfolioImage(user.id, imageUrl)
-        
-        const newPortfolio = (user.portfolio || []).filter((_, i) => i !== index)
-        await updateProfile({
-          ...profileData,
-          portfolio: newPortfolio
-        })
+      removePortfolioImage(user.id, "")
+      
+      await updateProfile({
+        ...profileData
+      })
 
-        toast({
-          title: "Image removed",
-          description: "The image has been removed from your portfolio",
-        })
-      }
+      toast({
+        title: "Image removed",
+        description: "The image has been removed from your portfolio",
+      })
     } catch (error) {
       toast({
         title: "Failed to remove image",
@@ -341,7 +323,6 @@ export function BarberProfile({ user }: BarberProfileProps) {
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name || "Barber"} />
                   <AvatarFallback>{user.name?.charAt(0) || "B"}</AvatarFallback>
                 </Avatar>
                 <Button
@@ -413,24 +394,7 @@ export function BarberProfile({ user }: BarberProfileProps) {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {(user.portfolio || []).map((image: string, index: number) => (
-                <div key={index} className="relative aspect-[3/4] bg-muted rounded-md overflow-hidden group">
-                  <Image
-                    src={image || "/placeholder.svg"}
-                    alt={`Portfolio image ${index + 1}`}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button variant="outline" size="sm" className="text-white border-white">
-                      Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleRemovePortfolioImage(index)}>
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              ))}
+              {[]}
               <label className="relative aspect-[3/4] bg-muted rounded-md border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
                 <input
                   type="file"

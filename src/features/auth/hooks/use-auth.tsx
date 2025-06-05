@@ -11,26 +11,15 @@ export type User = {
   id: string
   name: string
   email: string
-  image?: string
   role: "client" | "barber"
   phone?: string
   location?: string
   description?: string
-  favorites?: string[]
-  wallet?: number
-  stripeCustomerId?: string
-  stripeAccountId?: string
   bio?: string
+  favorites?: string[]
   joinDate?: string
-  services?: Array<{
-    id: string
-    name: string
-    price: number
-    duration: number
-  }>
-  specialties?: string[]
-  portfolio?: string[]
-  isPublic?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 interface AuthContextType {
@@ -43,8 +32,6 @@ interface AuthContextType {
   updateProfile: (data: Partial<User>) => void
   addToFavorites: (barberId: string) => void
   removeFromFavorites: (barberId: string) => void
-  addFundsToWallet: (amount: number) => Promise<boolean>
-  withdrawFromWallet: (amount: number) => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -57,8 +44,6 @@ const AuthContext = createContext<AuthContextType>({
   updateProfile: () => {},
   addToFavorites: () => {},
   removeFromFavorites: () => {},
-  addFundsToWallet: async () => false,
-  withdrawFromWallet: async () => false,
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -104,21 +89,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: userId,
         name: profile.name,
         email: profile.email,
-        image: profile.image_url,
         role: profile.role,
         phone: profile.phone,
         location: profile.location,
-        favorites: profile.favorites,
-        wallet: profile.wallet,
-        stripeCustomerId: profile.stripe_customer_id,
-        stripeAccountId: profile.stripe_account_id,
         description: profile.bio,
         bio: profile.bio,
-        joinDate: profile.created_at,
-        services: profile.services,
-        specialties: profile.specialties,
-        portfolio: profile.portfolio,
-        isPublic: profile.is_public,
+        favorites: profile.favorites,
+        joinDate: profile.join_date,
+        createdAt: profile.created_at,
+        updatedAt: profile.updated_at
       })
     } catch (error) {
       console.error('Error fetching user profile:', error)
@@ -130,10 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Start both auth and profile fetch in parallel
+      const [authResponse, profileResponse] = await Promise.all([
+        supabase.auth.signInWithPassword({ email, password }),
+        supabase.from('profiles').select('*').eq('email', email).single()
+      ]);
+
+      const { data: authData, error: authError } = authResponse;
+      const { data: profile, error: profileError } = profileResponse;
 
       if (authError) {
         console.error('Auth error:', authError);
@@ -145,67 +128,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      if (authData.user) {
-        // Fetch user data from profiles table
-        const { data: profile, error: profileError } = await supabase
+      if (!authData.user) {
+        toast({
+          title: "Login failed",
+          description: "Invalid credentials",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // If profile fetch failed, try one more time with user ID
+      if (profileError || !profile) {
+        const { data: retryProfile, error: retryError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', authData.user.id)
           .single();
 
-        if (profileError) {
-          console.error('Profile fetch error:', profileError);
+        if (retryError || !retryProfile) {
+          console.error('Profile fetch error:', retryError);
           toast({
             title: "Login failed",
-            description: "Failed to load profile data",
+            description: "User profile not found. Please try again.",
             variant: "destructive",
           });
           return false;
         }
 
-        if (!profile) {
-          console.error('No profile found');
-          toast({
-            title: "Login failed",
-            description: "User profile not found",
-            variant: "destructive",
-          });
-          return false;
-        }
-
-        // Set user state with combined data
+        // Set user state with retry profile data
+        setUser({
+          id: authData.user.id,
+          name: retryProfile.name,
+          email: retryProfile.email,
+          role: retryProfile.role,
+          phone: retryProfile.phone,
+          location: retryProfile.location,
+          description: retryProfile.description,
+          bio: retryProfile.bio,
+          favorites: retryProfile.favorites,
+          joinDate: retryProfile.join_date,
+          createdAt: retryProfile.created_at,
+          updatedAt: retryProfile.updated_at
+        });
+      } else {
+        // Set user state with initial profile data
         setUser({
           id: authData.user.id,
           name: profile.name,
           email: profile.email,
-          image: profile.image_url,
           role: profile.role,
           phone: profile.phone,
           location: profile.location,
-          wallet: profile.wallet || 0,
-          favorites: profile.favorites || [],
-          description: profile.bio,
+          description: profile.description,
           bio: profile.bio,
-          joinDate: profile.created_at,
-          services: profile.services || [],
-          specialties: profile.specialties || [],
-          portfolio: profile.portfolio || [],
-          isPublic: profile.is_public || false,
+          favorites: profile.favorites,
+          joinDate: profile.join_date,
+          createdAt: profile.created_at,
+          updatedAt: profile.updated_at
         });
-
-        toast({
-          title: "Login successful",
-          description: "Welcome back!",
-        });
-        
-        return true;
       }
-      return false;
+
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+      
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       toast({
         title: "Login failed",
-        description: "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
       return false;
@@ -269,19 +262,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: authData.user.id,
           name: profile.name,
           email: profile.email,
-          image: profile.image_url,
           role: profile.role,
           phone: profile.phone,
           location: profile.location,
-          wallet: profile.wallet || 0,
-          favorites: profile.favorites || [],
           description: profile.bio,
           bio: profile.bio,
-          joinDate: profile.created_at,
-          services: profile.services || [],
-          specialties: profile.specialties || [],
-          portfolio: profile.portfolio || [],
-          isPublic: profile.is_public || false,
+          favorites: profile.favorites,
+          joinDate: profile.join_date,
+          createdAt: profile.created_at,
+          updatedAt: profile.updated_at
         });
 
         toast({
@@ -326,16 +315,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profileData = {
         name: data.name,
         email: data.email,
-        image_url: data.image,
         phone: data.phone,
         location: data.location,
-        wallet: data.wallet,
-        favorites: data.favorites,
+        description: data.description,
         bio: data.bio,
-        specialties: data.specialties,
-        services: data.services,
-        portfolio: data.portfolio,
-        is_public: data.isPublic,
+        favorites: data.favorites,
         updated_at: new Date().toISOString(),
       };
 
@@ -364,89 +348,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToFavorites = async (barberId: string) => {
-    if (!user) return
+    if (!user) return;
 
     try {
-      const favorites = user.favorites || []
+      const favorites = user.favorites || [];
       if (!favorites.includes(barberId)) {
-        const updatedFavorites = [...favorites, barberId]
-        await updateProfile({ favorites: updatedFavorites })
+        const updatedFavorites = [...favorites, barberId];
+        await updateProfile({ favorites: updatedFavorites });
       }
     } catch (error) {
-      console.error('Add to favorites error:', error)
+      console.error('Add to favorites error:', error);
       toast({
         title: "Failed to add to favorites",
         description: "An unexpected error occurred",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const removeFromFavorites = async (barberId: string) => {
-    if (!user || !user.favorites) return
+    if (!user || !user.favorites) return;
 
     try {
-      const updatedFavorites = user.favorites.filter((id) => id !== barberId)
-      await updateProfile({ favorites: updatedFavorites })
+      const updatedFavorites = user.favorites.filter((id) => id !== barberId);
+      await updateProfile({ favorites: updatedFavorites });
     } catch (error) {
-      console.error('Remove from favorites error:', error)
+      console.error('Remove from favorites error:', error);
       toast({
         title: "Failed to remove from favorites",
         description: "An unexpected error occurred",
         variant: "destructive",
-      })
+      });
     }
-  }
-
-  const addFundsToWallet = async (amount: number): Promise<boolean> => {
-    if (!user) return false
-
-    try {
-      const currentWallet = user.wallet || 0
-      const { error } = await supabase
-        .from('profiles')
-        .update({ wallet: currentWallet + amount })
-        .eq('id', user.id)
-
-      if (error) throw error
-
-      setUser(prev => prev ? { ...prev, wallet: currentWallet + amount } : null)
-      return true
-    } catch (error) {
-      console.error('Add funds error:', error)
-      toast({
-        title: "Failed to add funds",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
-      return false
-    }
-  }
-
-  const withdrawFromWallet = async (amount: number): Promise<boolean> => {
-    if (!user || !user.wallet || user.wallet < amount) return false
-
-    try {
-      const currentWallet = user.wallet
-      const { error } = await supabase
-        .from('profiles')
-        .update({ wallet: currentWallet - amount })
-        .eq('id', user.id)
-
-      if (error) throw error
-
-      setUser(prev => prev ? { ...prev, wallet: currentWallet - amount } : null)
-      return true
-    } catch (error) {
-      console.error('Withdraw funds error:', error)
-      toast({
-        title: "Failed to withdraw funds",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
-      return false
-    }
-  }
+  };
 
   return (
     <AuthContext.Provider
@@ -460,8 +394,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateProfile,
         addToFavorites,
         removeFromFavorites,
-        addFundsToWallet,
-        withdrawFromWallet,
       }}
     >
       {children}

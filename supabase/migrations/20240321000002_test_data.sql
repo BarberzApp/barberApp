@@ -16,11 +16,7 @@ VALUES
         'phone', '+1987654321',
         'location', 'Los Angeles, CA'
      ),
-     NOW())
-ON CONFLICT (email) DO UPDATE
-SET 
-    raw_user_meta_data = EXCLUDED.raw_user_meta_data,
-    email_confirmed_at = EXCLUDED.email_confirmed_at;
+     NOW());
 
 -- Update profiles with additional data
 UPDATE profiles

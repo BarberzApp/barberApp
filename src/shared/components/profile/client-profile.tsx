@@ -26,13 +26,11 @@ interface ClientProfileProps {
 export function ClientProfile({ user }: ClientProfileProps) {
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
-  const { bookings, reviews, barbers, loading, error } = useData()
+  const { bookings, barbers, loading, error } = useData()
   const userBookings = bookings.filter(b => b.clientId === user.id)
-  const userReviews = reviews.filter(r => r.clientId === user.id)
   const client = barbers.find((b) => b.id === user.id) || {
     id: user.id,
     name: user.name || "",
-    image: user.image || "",
     email: user.email || "",
     phone: user.phone || "",
     location: user.location || "",
@@ -41,15 +39,8 @@ export function ClientProfile({ user }: ClientProfileProps) {
     totalReviews: 0,
     totalClients: 0,
     totalBookings: 0,
-    earnings: {
-      thisWeek: 0,
-      thisMonth: 0,
-      lastMonth: 0
-    },
-    reviews: [],
     specialties: [],
     services: [],
-    portfolio: [],
     joinDate: new Date().toLocaleDateString(),
     nextAvailable: "Available now",
     isPublic: false
@@ -103,7 +94,6 @@ export function ClientProfile({ user }: ClientProfileProps) {
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name || "User"} />
                   <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
                 </Avatar>
                 <Button
@@ -172,37 +162,35 @@ export function ClientProfile({ user }: ClientProfileProps) {
 
           <Card className="md:col-span-3">
             <CardHeader>
-              <CardTitle>Your Reviews</CardTitle>
-              <CardDescription>Reviews you've left for barbers</CardDescription>
+              <CardTitle>Your Bookings</CardTitle>
+              <CardDescription>Your recent appointments</CardDescription>
             </CardHeader>
             <CardContent>
-              {userReviews.length > 0 ? (
+              {userBookings.length > 0 ? (
                 <div className="space-y-6">
-                  {userReviews.map((review: Review) => (
-                    <div key={review.id} className="border-b pb-6 last:border-0 last:pb-0">
+                  {userBookings.map((booking: Booking) => (
+                    <div key={booking.id} className="border-b pb-6 last:border-0 last:pb-0">
                       <div className="flex items-center gap-3 mb-3">
                         <Avatar>
-                          <AvatarImage src={review.barber.image || "/placeholder.svg"} alt={review.barber.name} />
-                          <AvatarFallback>{review.barber.name.charAt(0)}</AvatarFallback>
+                          <AvatarFallback>{booking.barber.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <h4 className="font-medium">{review.barber.name}</h4>
+                          <h4 className="font-medium">{booking.barber.name}</h4>
                           <div className="flex items-center text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3 mr-1" />
-                            <span>{review.date}</span>
+                            <span>{booking.date}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex mb-2">{renderStars(review.rating)}</div>
-                      <p className="text-sm">{review.comment}</p>
+                      <p className="text-sm">{booking.service}</p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No reviews yet</h3>
-                  <p className="text-muted-foreground">You haven't left any reviews yet</p>
+                  <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
+                  <p className="text-muted-foreground">You haven't made any bookings yet</p>
                 </div>
               )}
             </CardContent>
