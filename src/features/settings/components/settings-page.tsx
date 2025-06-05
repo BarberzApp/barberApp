@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { ProfileSettings } from './profile-settings'
 import { ServicesSettings } from './services-settings'
+import { ShareSettings } from './share-settings'
+import { useAuth } from '@/features/auth/hooks/use-auth'
 
-type Tab = 'profile' | 'services'
+type Tab = 'profile' | 'services' | 'share'
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile')
+  const { user } = useAuth()
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -39,6 +42,18 @@ export function SettingsPage() {
               >
                 Services
               </button>
+              {user?.role === 'barber' && (
+                <button
+                  onClick={() => setActiveTab('share')}
+                  className={`${
+                    activeTab === 'share'
+                      ? 'bg-gray-100 text-gray-900'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  } group flex items-center px-3 py-2 text-sm font-medium rounded-md w-full`}
+                >
+                  Share
+                </button>
+              )}
             </nav>
           </div>
         </div>
@@ -48,8 +63,10 @@ export function SettingsPage() {
             <div className="px-4 py-5 bg-white space-y-6 sm:p-6">
               {activeTab === 'profile' ? (
                 <ProfileSettings />
-              ) : (
+              ) : activeTab === 'services' ? (
                 <ServicesSettings />
+              ) : (
+                <ShareSettings />
               )}
             </div>
           </div>

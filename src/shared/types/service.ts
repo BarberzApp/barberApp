@@ -1,8 +1,8 @@
-export interface Service {
+export type Service = {
   id: string
   name: string
-  price: number
+  description?: string
   duration: number
-  description: string
+  price: number
   barberId: string
 } 
