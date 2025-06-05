@@ -244,28 +244,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authData.user) {
-        // Create profile in profiles table
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            name,
-            email,
-            role,
-            created_at: new Date().toISOString(),
-            wallet: 0,
-            favorites: [],
-            specialties: [],
-            services: [],
-            portfolio: [],
-            is_public: false,
-          });
+        // Wait a moment for the trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
+        // Fetch the created profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          console.error('Profile fetch error:', profileError);
           toast({
-            title: "Profile creation failed",
-            description: "Please try logging in again",
+            title: "Registration failed",
+            description: "Failed to create user profile",
             variant: "destructive",
           });
           return false;
@@ -274,19 +267,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set user state
         setUser({
           id: authData.user.id,
-          name,
-          email,
-          image: undefined,
-          role,
-          wallet: 0,
-          favorites: [],
-          description: undefined,
-          bio: undefined,
-          joinDate: new Date().toISOString(),
-          services: [],
-          specialties: [],
-          portfolio: [],
-          isPublic: false,
+          name: profile.name,
+          email: profile.email,
+          image: profile.image_url,
+          role: profile.role,
+          phone: profile.phone,
+          location: profile.location,
+          wallet: profile.wallet || 0,
+          favorites: profile.favorites || [],
+          description: profile.bio,
+          bio: profile.bio,
+          joinDate: profile.created_at,
+          services: profile.services || [],
+          specialties: profile.specialties || [],
+          portfolio: profile.portfolio || [],
+          isPublic: profile.is_public || false,
         });
 
         toast({
