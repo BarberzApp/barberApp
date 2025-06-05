@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react'
 import { ThemeProvider } from "@/shared/components/theme/theme-provider"
+import { Header } from './header'
 
 interface LayoutWrapperProps {
   children: ReactNode;
@@ -15,8 +16,11 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <div className="min-h-screen bg-background">
-        {children}
+      <div className="relative min-h-screen bg-background">
+        <Header />
+        <main className="container py-6">
+          {children}
+        </main>
       </div>
     </ThemeProvider>
   )
