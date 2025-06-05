@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
+import { Card, CardContent } from '@/shared/components/ui/card'
 
 interface ProfileFormData {
   full_name: string
@@ -83,63 +84,78 @@ export function ProfileSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Profile Settings</h3>
-        <p className="text-sm text-muted-foreground">Update your personal information.</p>
+        <h3 className="text-2xl font-semibold tracking-tight">Profile Information</h3>
+        <p className="text-muted-foreground mt-1">Update your personal information and preferences.</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="full_name">Full Name</Label>
-          <Input
-            id="full_name"
-            {...register('full_name', { required: 'Full name is required' })}
-          />
-          {errors.full_name && (
-            <p className="text-sm text-destructive">{errors.full_name.message}</p>
-          )}
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <Card>
+          <CardContent className="pt-6 space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="full_name" className="text-sm font-medium">Full Name</Label>
+                <Input
+                  id="full_name"
+                  className="h-11"
+                  {...register('full_name', { required: 'Full name is required' })}
+                />
+                {errors.full_name && (
+                  <p className="text-sm text-destructive">{errors.full_name.message}</p>
+                )}
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            {...register('email', { required: 'Email is required' })}
-          />
-          {errors.email && (
-            <p className="text-sm text-destructive">{errors.email.message}</p>
-          )}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  className="h-11"
+                  {...register('email', { required: 'Email is required' })}
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                )}
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="phone">Phone Number</Label>
-          <Input
-            id="phone"
-            type="tel"
-            {...register('phone')}
-          />
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  className="h-11"
+                  {...register('phone')}
+                />
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="bio">Bio</Label>
-          <Textarea
-            id="bio"
-            rows={3}
-            {...register('bio')}
-          />
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium">Location</Label>
+                <Input
+                  id="location"
+                  type="text"
+                  className="h-11"
+                  {...register('location')}
+                />
+              </div>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            type="text"
-            {...register('location')}
-          />
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="bio" className="text-sm font-medium">Bio</Label>
+              <Textarea
+                id="bio"
+                rows={4}
+                className="resize-none"
+                {...register('bio')}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="h-11 px-8"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

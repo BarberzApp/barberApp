@@ -22,6 +22,7 @@ import { useData } from "../../hooks/use-data"
 import { Switch } from "@/shared/components/ui/switch"
 import { Service } from "@/shared/types"
 import { supabase } from '@/shared/lib/supabase'
+import { EarningsDashboard } from "@/shared/components/payment/earnings-dashboard"
 
 interface BarberProfileProps {
   user: User
@@ -413,29 +414,8 @@ export function BarberProfile({ user }: BarberProfileProps) {
                 </div>
               </div>
 
-              <h4 className="font-medium mb-3">Earnings</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="border p-4 rounded-lg">
-                  <div className="flex items-center text-sm text-muted-foreground mb-1">
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    <span>This Week</span>
-                  </div>
-                  <p className="text-xl font-bold">${barber.earnings.thisWeek}</p>
-                </div>
-                <div className="border p-4 rounded-lg">
-                  <div className="flex items-center text-sm text-muted-foreground mb-1">
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    <span>This Month</span>
-                  </div>
-                  <p className="text-xl font-bold">${barber.earnings.thisMonth}</p>
-                </div>
-                <div className="border p-4 rounded-lg">
-                  <div className="flex items-center text-sm text-muted-foreground mb-1">
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    <span>Last Month</span>
-                  </div>
-                  <p className="text-xl font-bold">${barber.earnings.lastMonth}</p>
-                </div>
+              <div className="mt-6">
+                <EarningsDashboard />
               </div>
             </CardContent>
           </Card>

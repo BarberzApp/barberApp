@@ -134,64 +134,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log('Attempting login for:', email);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
-      console.log('Login response:', { data, error });
-
-      if (error) {
-        console.error('Login error:', error);
+      if (authError) {
+        console.error('Auth error:', authError);
         toast({
           title: "Login failed",
-          description: error.message,
+          description: authError.message,
           variant: "destructive",
         });
         return false;
       }
 
-      if (data.session) {
-        console.log('User authenticated, fetching profile...');
-        
-        // Fetch additional user data from the profiles table
+      if (authData.user) {
+        // Fetch profile data
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', data.session.user.id)
+          .eq('id', authData.user.id)
           .single();
 
-        console.log('Profile fetch response:', { profile, profileError });
-
         if (profileError) {
-          console.error('Error fetching profile:', profileError);
+          console.error('Profile fetch error:', profileError);
+          toast({
+            title: "Login failed",
+            description: "Failed to load profile data",
+            variant: "destructive",
+          });
           return false;
         }
 
+        // If user is a barber, fetch barber profile
+        let barberData = null;
+        if (profile.role === 'barber') {
+          const { data: barber, error: barberError } = await supabase
+            .from('barbers')
+            .select('*')
+            .eq('user_id', authData.user.id)
+            .single();
+
+          if (barberError) {
+            console.error('Barber profile fetch error:', barberError);
+            toast({
+              title: "Login failed",
+              description: "Failed to load barber profile",
+              variant: "destructive",
+            });
+            return false;
+          }
+          barberData = barber;
+        }
+
+        // Set user state with combined data
         setUser({
-          id: data.session.user.id,
-          name: data.session.user.user_metadata?.name || "",
-          email: data.session.user.email || "",
-          image: data.session.user.user_metadata?.avatar_url || undefined,
-          role: profile?.role || 'client',
-          phone: profile?.phone || undefined,
-          location: profile?.location || undefined,
-          favorites: profile?.favorites || [],
-          wallet: profile?.wallet || 0,
-          stripeCustomerId: profile?.stripe_customer_id || undefined,
-          stripeAccountId: profile?.stripe_account_id || undefined,
-          businessId: profile?.business_id || undefined,
-          businessName: profile?.business_name || undefined,
-          description: profile?.description || undefined,
-          bio: profile?.bio || undefined,
-          joinDate: profile?.join_date || undefined,
-          services: profile?.services || [],
-          specialties: profile?.specialties || [],
-          portfolio: profile?.portfolio || [],
-          isPublic: profile?.is_public || false,
+          id: authData.user.id,
+          name: profile.name,
+          email: profile.email,
+          image: profile.image_url,
+          role: profile.role,
+          wallet: profile.wallet || 0,
+          favorites: profile.favorites || [],
+          description: barberData?.bio,
+          bio: barberData?.bio,
+          joinDate: profile.created_at,
+          services: barberData?.services || [],
+          specialties: barberData?.specialties || [],
+          portfolio: barberData?.portfolio || [],
+          isPublic: barberData?.is_public || false,
         });
+
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
+        });
+        
         return true;
       }
       return false;
@@ -217,15 +236,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Using redirect URL:', redirectTo);
       
-      // Create auth user with metadata
+      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            name,
-            role,
-          },
           emailRedirectTo: redirectTo,
         },
       });
@@ -243,6 +258,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authData.user) {
+        // Create profile in profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            name,
+            email,
+            role,
+            created_at: new Date().toISOString(),
+          });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          toast({
+            title: "Profile creation failed",
+            description: "Please try logging in again",
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        // If user is a barber, create barber profile
+        if (role === 'barber') {
+          const { error: barberError } = await supabase
+            .from('barbers')
+            .insert({
+              user_id: authData.user.id,
+              specialties: [],
+              portfolio: [],
+              created_at: new Date().toISOString(),
+            });
+
+          if (barberError) {
+            console.error('Barber profile creation error:', barberError);
+            toast({
+              title: "Barber profile creation failed",
+              description: "Please try logging in again",
+              variant: "destructive",
+            });
+            return false;
+          }
+        }
+
         // Set user state
         setUser({
           id: authData.user.id,
@@ -254,7 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           favorites: [],
           description: undefined,
           bio: undefined,
-          joinDate: undefined,
+          joinDate: new Date().toISOString(),
           services: [],
           specialties: [],
           portfolio: [],
@@ -263,7 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         toast({
           title: "Registration successful",
-          description: "Welcome to BarberHub!",
+          description: "Welcome to BOCM!",
         });
         
         return true;
@@ -296,26 +354,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateProfile = async (data: Partial<User>) => {
-    if (!user) return
+    if (!user) return;
 
     try {
-      const { error } = await supabase
+      // Update profile data
+      const profileData = {
+        name: data.name,
+        email: data.email,
+        image_url: data.image,
+        phone: data.phone,
+        location: data.location,
+        wallet: data.wallet,
+        favorites: data.favorites,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: profileError } = await supabase
         .from('profiles')
-        .update(data)
-        .eq('id', user.id)
+        .update(profileData)
+        .eq('id', user.id);
 
-      if (error) throw error
+      if (profileError) throw profileError;
 
-      setUser(prev => prev ? { ...prev, ...data } : null)
+      // If user is a barber, update barber profile
+      if (user.role === 'barber') {
+        const barberData = {
+          bio: data.bio,
+          specialties: data.specialties,
+          portfolio: data.portfolio,
+          is_public: data.isPublic,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error: barberError } = await supabase
+          .from('barbers')
+          .update(barberData)
+          .eq('user_id', user.id);
+
+        if (barberError) throw barberError;
+      }
+
+      // Update user state
+      setUser(prev => prev ? { ...prev, ...data } : null);
+
+      toast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully",
+      });
     } catch (error) {
-      console.error('Profile update error:', error)
+      console.error('Profile update error:', error);
       toast({
         title: "Profile update failed",
         description: "An unexpected error occurred",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const addToFavorites = async (barberId: string) => {
     if (!user) return

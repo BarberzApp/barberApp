@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-05-28.basil",
@@ -7,12 +9,37 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function GET() {
   try {
+    const supabase = createRouteHandlerClient({ cookies })
+    
+    // Get the current user's session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    // Get barber ID from the user's profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', session.user.id)
+      .single()
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: "Barber profile not found" },
+        { status: 404 }
+      )
+    }
+
     const now = new Date()
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const endOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0)
 
-    // Get current month's earnings
+    // Get current month's earnings for this barber
     const currentMonthPayments = await stripe.paymentIntents.list({
       created: {
         gte: Math.floor(startOfCurrentMonth.getTime() / 1000),
@@ -20,7 +47,12 @@ export async function GET() {
       limit: 100,
     })
 
-    // Get previous month's earnings
+    // Filter payments by barber ID in metadata
+    const currentMonthBarberPayments = currentMonthPayments.data.filter(
+      payment => payment.metadata?.barberId === profile.id
+    )
+
+    // Get previous month's earnings for this barber
     const previousMonthPayments = await stripe.paymentIntents.list({
       created: {
         gte: Math.floor(startOfPreviousMonth.getTime() / 1000),
@@ -29,9 +61,14 @@ export async function GET() {
       limit: 100,
     })
 
+    // Filter payments by barber ID in metadata
+    const previousMonthBarberPayments = previousMonthPayments.data.filter(
+      payment => payment.metadata?.barberId === profile.id
+    )
+
     // Calculate totals
-    const currentTotal = currentMonthPayments.data.reduce((sum, payment) => sum + payment.amount, 0)
-    const previousTotal = previousMonthPayments.data.reduce((sum, payment) => sum + payment.amount, 0)
+    const currentTotal = currentMonthBarberPayments.reduce((sum, payment) => sum + payment.amount, 0)
+    const previousTotal = previousMonthBarberPayments.reduce((sum, payment) => sum + payment.amount, 0)
 
     // Calculate trend
     const trend = currentTotal > previousTotal ? "up" : "down"

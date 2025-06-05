@@ -1,137 +1,148 @@
 "use client"
 
-import * as React from "react"
-import { useCallback } from "react"
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Button } from '@/shared/components/ui/button'
+import { Input } from '@/shared/components/ui/input'
+import { Label } from '@/shared/components/ui/label'
+import { Switch } from '@/shared/components/ui/switch'
+import { Plus, Trash2 } from 'lucide-react'
 
-import { Button } from "@/shared/components/ui/button"
-import { Switch } from "@/shared/components/ui/switch"
-import { Label } from "@/shared/components/ui/label"
-import { Input } from "@/shared/components/ui/input"
-import { Plus, Trash2 } from "lucide-react"
-
-type DayAvailability = {
-  isAvailable: boolean
-  slots: string[]
+interface TimeSlot {
+  start: string
+  end: string
 }
 
-export type WeeklyAvailabilityType = {
-  monday: DayAvailability
-  tuesday: DayAvailability
-  wednesday: DayAvailability
-  thursday: DayAvailability
-  friday: DayAvailability
-  saturday: DayAvailability
-  sunday: DayAvailability
+interface Availability {
+  day: string
+  isAvailable: boolean
+  slots: TimeSlot[]
 }
 
 interface WeeklyScheduleProps {
-  availability: WeeklyAvailabilityType
-  setAvailability: React.Dispatch<React.SetStateAction<WeeklyAvailabilityType>>
-  onSave: () => void
+  availability: Availability[]
+  onSave: (availability: Availability[]) => void
 }
 
-export function WeeklySchedule({ availability, setAvailability, onSave }: WeeklyScheduleProps) {
-  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-  const handleToggleDay = useCallback((day: keyof WeeklyAvailabilityType) => {
-    setAvailability((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        isAvailable: !prev[day].isAvailable,
-      },
-    }))
-  }, [setAvailability])
+export function WeeklySchedule({ availability, onSave }: WeeklyScheduleProps) {
+  const [schedule, setSchedule] = useState<Availability[]>(() => {
+    if (availability.length === 0) {
+      return DAYS.map(day => ({
+        day,
+        isAvailable: day !== 'sunday',
+        slots: [{ start: '09:00', end: '17:00' }]
+      }))
+    }
+    return availability
+  })
 
-  const handleAddSlot = useCallback((day: keyof WeeklyAvailabilityType) => {
-    setAvailability((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        slots: [...prev[day].slots, "9:00 AM - 5:00 PM"],
-      },
-    }))
-  }, [setAvailability])
+  const handleToggleDay = (day: string) => {
+    setSchedule(schedule.map(item => 
+      item.day === day ? { ...item, isAvailable: !item.isAvailable } : item
+    ))
+  }
 
-  const handleRemoveSlot = useCallback((day: keyof WeeklyAvailabilityType, index: number) => {
-    setAvailability((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        slots: prev[day].slots.filter((_, i) => i !== index),
-      },
-    }))
-  }, [setAvailability])
+  const handleAddSlot = (day: string) => {
+    setSchedule(schedule.map(item =>
+      item.day === day
+        ? { ...item, slots: [...item.slots, { start: '09:00', end: '17:00' }] }
+        : item
+    ))
+  }
 
-  const handleChangeSlot = useCallback((day: keyof WeeklyAvailabilityType, index: number, value: string) => {
-    setAvailability((prev) => {
-      const newSlots = [...prev[day].slots]
-      newSlots[index] = value
-      return {
-        ...prev,
-        [day]: {
-          ...prev[day],
-          slots: newSlots,
-        },
-      }
-    })
-  }, [setAvailability])
+  const handleRemoveSlot = (day: string, index: number) => {
+    setSchedule(schedule.map(item =>
+      item.day === day
+        ? { ...item, slots: item.slots.filter((_, i) => i !== index) }
+        : item
+    ))
+  }
+
+  const handleSlotChange = (day: string, index: number, field: 'start' | 'end', value: string) => {
+    setSchedule(schedule.map(item =>
+      item.day === day
+        ? {
+            ...item,
+            slots: item.slots.map((slot, i) =>
+              i === index ? { ...slot, [field]: value } : slot
+            )
+          }
+        : item
+    ))
+  }
+
+  const handleSave = () => {
+    onSave(schedule)
+  }
 
   return (
-    <div className="space-y-6">
-      {days.map((day) => (
-        <div key={day} className="border rounded-md p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id={`${day}-toggle`}
-                checked={availability[day].isAvailable}
-                onCheckedChange={() => handleToggleDay(day)}
-              />
-              <Label htmlFor={`${day}-toggle`} className="capitalize font-medium">
-                {day}
-              </Label>
-            </div>
-            {availability[day].isAvailable && (
-              <Button variant="outline" size="sm" onClick={() => handleAddSlot(day)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Time Slot
-              </Button>
-            )}
-          </div>
-
-          {availability[day].isAvailable && (
-            <div className="space-y-2">
-              {availability[day].slots.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No time slots added yet.</p>
-              ) : (
-                availability[day].slots.map((slot, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      value={slot}
-                      onChange={(e) => handleChangeSlot(day, index, e.target.value)}
-                      placeholder="e.g. 9:00 AM - 5:00 PM"
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveSlot(day, index)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))
+    <Card>
+      <CardHeader>
+        <CardTitle>Weekly Schedule</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {schedule.map((day) => (
+          <div key={day.day} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={day.isAvailable}
+                  onCheckedChange={() => handleToggleDay(day.day)}
+                />
+                <Label className="capitalize">{day.day}</Label>
+              </div>
+              {day.isAvailable && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddSlot(day.day)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Slot
+                </Button>
               )}
             </div>
-          )}
-        </div>
-      ))}
 
-      <Button onClick={onSave} className="w-full">
-        Save Weekly Schedule
-      </Button>
-    </div>
+            {day.isAvailable && (
+              <div className="space-y-2">
+                {day.slots.map((slot, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      value={slot.start}
+                      onChange={(e) => handleSlotChange(day.day, index, 'start', e.target.value)}
+                      className="w-32"
+                    />
+                    <span>to</span>
+                    <Input
+                      type="time"
+                      value={slot.end}
+                      onChange={(e) => handleSlotChange(day.day, index, 'end', e.target.value)}
+                      className="w-32"
+                    />
+                    {day.slots.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveSlot(day.day, index)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        <Button onClick={handleSave} className="w-full">
+          Save Schedule
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
