@@ -1,6 +1,6 @@
 import { Booking } from '@/shared/types/booking';
 
-const DB_NAME = 'barber-app-db';
+const DB_NAME = 'bocm-db';
 const DB_VERSION = 1;
 const BOOKINGS_STORE = 'bookings';
 

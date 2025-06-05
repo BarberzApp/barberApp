@@ -1,87 +1,151 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Button } from '@/shared/components/ui/button';
 import { useToast } from '@/shared/components/ui/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { supabase } from '@/shared/lib/supabase';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
+
+interface Service {
+  name: string;
+  duration: number;
+  price: number;
+}
+
+interface Client {
+  full_name: string;
+  avatar_url: string;
+}
+
+interface Booking {
+  id: string;
+  date: string;
+  time: string;
+  status: string;
+  service: Service;
+  client: Client;
+}
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  backgroundColor: string;
+  borderColor: string;
+}
 
 export default function CalendarPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !date || !time) return;
+  useEffect(() => {
+    if (user) {
+      fetchBookings();
+    }
+  }, [user]);
 
+  const fetchBookings = async () => {
     try {
-      // For MVP, just show a success message
-      toast({
-        title: "Booking Successful",
-        description: `Your appointment is scheduled for ${date} at ${time}`,
-      });
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          date,
+          time,
+          status,
+          service:services (
+            name,
+            duration,
+            price
+          ),
+          client:profiles (
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('barber_id', user?.id)
+        .order('date', { ascending: true });
 
-      // Reset form
-      setDate('');
-      setTime('');
+      if (error) throw error;
+
+      // Transform bookings for FullCalendar
+      const calendarEvents = data.map((booking: any) => ({
+        id: booking.id,
+        title: `${booking.service[0].name} - ${booking.client[0].full_name}`,
+        start: `${booking.date}T${booking.time}`,
+        end: new Date(new Date(`${booking.date}T${booking.time}`).getTime() + booking.service[0].duration * 60000).toISOString(),
+        backgroundColor: booking.status === 'confirmed' ? '#22c55e' : '#f59e0b',
+        borderColor: booking.status === 'confirmed' ? '#16a34a' : '#d97706',
+      }));
+
+      setEvents(calendarEvents);
     } catch (error) {
+      console.error('Error fetching bookings:', error);
       toast({
         title: "Error",
-        description: "Failed to book appointment. Please try again.",
+        description: "Failed to load bookings. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-8">Book an Appointment</h1>
-
-      <div className="max-w-md mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium mb-2">
-              Date
-            </label>
-            <input
-              type="date"
-              id="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="time" className="block text-sm font-medium mb-2">
-              Time
-            </label>
-            <select
-              id="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            >
-              <option value="">Select a time</option>
-              <option value="9:00 AM">9:00 AM</option>
-              <option value="10:00 AM">10:00 AM</option>
-              <option value="11:00 AM">11:00 AM</option>
-              <option value="1:00 PM">1:00 PM</option>
-              <option value="2:00 PM">2:00 PM</option>
-              <option value="3:00 PM">3:00 PM</option>
-              <option value="4:00 PM">4:00 PM</option>
-            </select>
-          </div>
-
-          <Button type="submit" className="w-full">
-            Book Now
-          </Button>
-        </form>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Schedule</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FullCalendar
+            plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            headerToolbar={{
+              left: '',
+              center: 'title',
+              right: ''
+            }}
+            height="auto"
+            slotMinTime="08:00:00"
+            slotMaxTime="20:00:00"
+            allDaySlot={false}
+            slotDuration="00:30:00"
+            events={events}
+            editable={false}
+            selectable={false}
+            selectMirror={false}
+            dayMaxEvents={true}
+            weekends={false}
+            nowIndicator={true}
+            eventTimeFormat={{
+              hour: 'numeric',
+              minute: '2-digit',
+              meridiem: 'short'
+            }}
+            slotLabelFormat={{
+              hour: 'numeric',
+              minute: '2-digit',
+              meridiem: 'short'
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 } 

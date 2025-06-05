@@ -1,18 +1,19 @@
 export const PWA_CONFIG = {
-  CACHE_NAME: 'barber-app-v1',
+  CACHE_NAME: 'bocm-v1',
   urlsToCache: [
     '/',
-    '/offline',
-    '/globals.css',
+    '/manifest.json',
+    '/icon.png',
+    '/apple-icon.png',
   ],
   manifest: {
-    name: 'BarberHub',
-    short_name: 'BarberHub',
+    name: 'BOCM',
+    short_name: 'BOCM',
     description: 'Book and manage barber appointments',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#6366f1',
+    background_color: '#000000',
+    theme_color: '#000000',
     icons: [
       {
         src: '/icons/icon-192x192.png',

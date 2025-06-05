@@ -35,6 +35,9 @@ export type Booking = {
   status: BookingStatus
   paymentStatus: PaymentStatus
   notes?: string
+  guestName?: string
+  guestEmail?: string
+  guestPhone?: string
   createdAt: string
   updatedAt: string
 } 

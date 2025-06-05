@@ -1,8 +1,13 @@
+'use client'
+
 import { useState } from 'react'
 import { ProfileSettings } from './profile-settings'
 import { ServicesSettings } from './services-settings'
 import { ShareSettings } from './share-settings'
 import { useAuth } from '@/features/auth/hooks/use-auth'
+import { Card } from '@/shared/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
+import { User, Scissors, Share2 } from 'lucide-react'
 
 type Tab = 'profile' | 'services' | 'share'
 
@@ -11,66 +16,47 @@ export function SettingsPage() {
   const { user } = useAuth()
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="md:grid md:grid-cols-3 md:gap-6">
-        <div className="md:col-span-1">
-          <div className="px-4 sm:px-0">
-            <h2 className="text-lg font-medium leading-6 text-gray-900">Settings</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Manage your profile and services.
-            </p>
-          </div>
-          <div className="mt-4">
-            <nav className="space-y-1">
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`${
-                  activeTab === 'profile'
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                } group flex items-center px-3 py-2 text-sm font-medium rounded-md w-full`}
-              >
-                Profile
-              </button>
-              <button
-                onClick={() => setActiveTab('services')}
-                className={`${
-                  activeTab === 'services'
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                } group flex items-center px-3 py-2 text-sm font-medium rounded-md w-full`}
-              >
-                Services
-              </button>
-              {user?.role === 'barber' && (
-                <button
-                  onClick={() => setActiveTab('share')}
-                  className={`${
-                    activeTab === 'share'
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  } group flex items-center px-3 py-2 text-sm font-medium rounded-md w-full`}
-                >
-                  Share
-                </button>
-              )}
-            </nav>
-          </div>
+    <div className="container mx-auto py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage your profile, services, and sharing preferences.
+          </p>
         </div>
 
-        <div className="mt-5 md:mt-0 md:col-span-2">
-          <div className="shadow sm:rounded-md sm:overflow-hidden">
-            <div className="px-4 py-5 bg-white space-y-6 sm:p-6">
-              {activeTab === 'profile' ? (
-                <ProfileSettings />
-              ) : activeTab === 'services' ? (
-                <ServicesSettings />
-              ) : (
-                <ShareSettings />
+        <Card className="p-6">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as Tab)}>
+            <TabsList className="grid w-full grid-cols-3 mb-8">
+              <TabsTrigger value="profile" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Profile
+              </TabsTrigger>
+              <TabsTrigger value="services" className="flex items-center gap-2">
+                <Scissors className="h-4 w-4" />
+                Services
+              </TabsTrigger>
+              {user?.role === 'barber' && (
+                <TabsTrigger value="share" className="flex items-center gap-2">
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </TabsTrigger>
               )}
-            </div>
-          </div>
-        </div>
+            </TabsList>
+
+            <TabsContent value="profile" className="mt-0">
+              <ProfileSettings />
+            </TabsContent>
+            <TabsContent value="services" className="mt-0">
+              <ServicesSettings />
+            </TabsContent>
+            {user?.role === 'barber' && (
+              <TabsContent value="share" className="mt-0">
+                <ShareSettings />
+              </TabsContent>
+            )}
+          </Tabs>
+        </Card>
       </div>
     </div>
   )

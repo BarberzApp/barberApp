@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/shared/lib/supabase'
-import { useAuth } from '@/features/auth/hooks/use-auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Button } from '@/shared/components/ui/button'
 import { BookingForm } from '@/shared/components/booking/booking-form'
 import { Service } from '@/shared/types/service'
+import { useToast } from '@/shared/components/ui/use-toast'
 
 type Barber = {
   id: string
@@ -22,7 +22,8 @@ type Barber = {
 
 export default function BookPage() {
   const { barberId } = useParams()
-  const { user } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
   const [barber, setBarber] = useState<Barber | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -41,9 +42,9 @@ export default function BookPage() {
           user_id,
           bio,
           specialties,
-          user:users (
-            name,
-            image_url
+          profile:profiles (
+            full_name,
+            avatar_url
           ),
           services (
             id,
@@ -62,8 +63,8 @@ export default function BookPage() {
       setBarber({
         id: data.id,
         userId: data.user_id,
-        name: data.user[0].name,
-        image: data.user[0].image_url,
+        name: data.profile[0].full_name,
+        image: data.profile[0].avatar_url,
         bio: data.bio,
         specialties: data.specialties,
         services: data.services.map((service: any) => ({
@@ -73,6 +74,11 @@ export default function BookPage() {
       })
     } catch (error) {
       console.error('Error fetching barber details:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load barber details',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -168,9 +174,8 @@ export default function BookPage() {
               <Button
                 className="w-full"
                 onClick={() => setShowBookingForm(true)}
-                disabled={!user}
               >
-                {user ? 'Select Date & Time' : 'Login to Book'}
+                Select Date & Time
               </Button>
             </CardContent>
           </Card>
@@ -185,7 +190,11 @@ export default function BookPage() {
           barberId={barber.id}
           onBookingCreated={(booking) => {
             setShowBookingForm(false)
-            // Handle successful booking (e.g., show confirmation, redirect)
+            toast({
+              title: 'Success',
+              description: 'Appointment booked successfully!',
+            })
+            router.push('/calendar')
           }}
         />
       )}

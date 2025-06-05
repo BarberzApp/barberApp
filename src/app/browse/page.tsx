@@ -34,9 +34,9 @@ export default function BrowsePage() {
           id,
           user_id,
           specialties,
-          user:users (
-            name,
-            image_url,
+          profile:profiles (
+            full_name,
+            avatar_url,
             location
           )
         `)
@@ -46,9 +46,9 @@ export default function BrowsePage() {
       const formattedBarbers = data.map(barber => ({
         id: barber.id,
         userId: barber.user_id,
-        name: barber.user[0].name,
-        image: barber.user[0].image_url,
-        location: barber.user[0].location,
+        name: barber.profile[0].full_name,
+        image: barber.profile[0].avatar_url,
+        location: barber.profile[0].location,
         specialties: barber.specialties
       }))
 

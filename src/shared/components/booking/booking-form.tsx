@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/features/auth/hooks/use-auth'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
@@ -30,7 +29,6 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBookingCreated }: BookingFormProps) {
-  const { user } = useAuth()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [services, setServices] = useState<Service[]>([])
@@ -39,6 +37,9 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
     serviceId: '',
     time: '',
     notes: '',
+    guestName: '',
+    guestEmail: '',
+    guestPhone: '',
   })
   const [date, setDate] = useState<Date>(selectedDate)
   const [paymentIntent, setPaymentIntent] = useState<any>(null)
@@ -122,7 +123,6 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
 
     const selectedService = services.find(s => s.id === formData.serviceId)
     if (!selectedService) {
@@ -134,18 +134,30 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       return
     }
 
+    if (!formData.guestName || !formData.guestEmail || !formData.guestPhone) {
+      toast({
+        title: "Error",
+        description: "Please fill in all guest information.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
     try {
       // Create payment intent
       const intent = await createPaymentIntent(
         selectedService.price * 100, // Convert to cents
         'usd',
-        user.id,
+        'guest', // Use 'guest' as the client ID for guest bookings
         {
           serviceId: selectedService.id,
           barberId,
           date: date.toISOString(),
           time: formData.time,
+          guestName: formData.guestName,
+          guestEmail: formData.guestEmail,
+          guestPhone: formData.guestPhone,
         }
       )
 
@@ -164,7 +176,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !paymentIntent) return
+    if (!paymentIntent) return
 
     const selectedService = services.find(s => s.id === formData.serviceId)
     if (!selectedService) return
@@ -180,7 +192,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
       // Create the booking
       const booking = await syncService.createBooking({
-        clientId: user.id,
+        clientId: 'guest', // Use 'guest' as the client ID
         barberId,
         serviceId: formData.serviceId,
         date: date,
@@ -189,6 +201,9 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
         status: "confirmed", // Set to confirmed since payment is successful
         paymentStatus: "paid",
         notes: formData.notes,
+        guestName: formData.guestName,
+        guestEmail: formData.guestEmail,
+        guestPhone: formData.guestPhone,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
@@ -214,105 +229,112 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Book Appointment</DialogTitle>
         </DialogHeader>
         {!showPaymentForm ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-medium mb-4">Select Date</h3>
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(newDate) => newDate && setDate(newDate)}
-                    disabled={(date) => date < new Date()}
-                    className="rounded-md border"
-                  />
-                </CardContent>
-              </Card>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(date) => date && setDate(date)}
+                className="rounded-md border"
+              />
+            </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="service">Service</Label>
-                  <Select
-                    value={formData.serviceId}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, serviceId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name} - ${service.price} ({service.duration} min)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="service">Service</Label>
+              <Select
+                value={formData.serviceId}
+                onValueChange={(value) => setFormData({ ...formData, serviceId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a service" />
+                </SelectTrigger>
+                <SelectContent>
+                  {services.map((service) => (
+                    <SelectItem key={service.id} value={service.id}>
+                      {service.name} - ${service.price}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="time">Time</Label>
-                  <Select
-                    value={formData.time}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, time: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTimeSlots.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {new Date(`2000-01-01T${time}`).toLocaleTimeString([], { 
-                            hour: 'numeric',
-                            minute: '2-digit'
-                          })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="time">Time</Label>
+              <Select
+                value={formData.time}
+                onValueChange={(value) => setFormData({ ...formData, time: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTimeSlots.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Input
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Any special requests or notes"
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="guestName">Your Name</Label>
+              <Input
+                id="guestName"
+                value={formData.guestName}
+                onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="guestEmail">Email</Label>
+              <Input
+                id="guestEmail"
+                type="email"
+                value={formData.guestEmail}
+                onChange={(e) => setFormData({ ...formData, guestEmail: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="guestPhone">Phone</Label>
+              <Input
+                id="guestPhone"
+                type="tel"
+                value={formData.guestPhone}
+                onChange={(e) => setFormData({ ...formData, guestPhone: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Input
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Processing..." : "Continue to Payment"}
+                {loading ? 'Processing...' : 'Continue to Payment'}
               </Button>
             </DialogFooter>
           </form>
         ) : (
-          <form onSubmit={handlePaymentSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <h3 className="font-medium mb-2">Booking Summary</h3>
-                <div className="space-y-2 text-sm">
-                  <p>Service: {services.find(s => s.id === formData.serviceId)?.name}</p>
-                  <p>Date: {date.toLocaleDateString()}</p>
-                  <p>Time: {formData.time}</p>
-                  <p className="font-medium">Total: ${services.find(s => s.id === formData.serviceId)?.price}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="card-element">Card Details</Label>
-                <StripeElements
+          <form onSubmit={handlePaymentSubmit} className="space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <StripeElements 
                   clientSecret={paymentIntent.clientSecret}
                   onPaymentComplete={() => {
                     // Payment is handled in handlePaymentSubmit
@@ -325,15 +347,11 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                     })
                   }}
                 />
-              </div>
-            </div>
-
+              </CardContent>
+            </Card>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowPaymentForm(false)}>
-                Back
-              </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Processing Payment..." : "Pay Now"}
+                {loading ? 'Processing...' : 'Complete Booking'}
               </Button>
             </DialogFooter>
           </form>

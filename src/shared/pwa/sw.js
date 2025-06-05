@@ -1,4 +1,4 @@
-const CACHE_NAME = 'barber-app-v1';
+const CACHE_NAME = 'bocm-v1';
 const urlsToCache = [
   '/',
   '/manifest.json',
