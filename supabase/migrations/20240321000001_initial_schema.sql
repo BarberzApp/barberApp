@@ -204,6 +204,20 @@ BEGIN
     -- Set a fixed search path
     SET search_path = public;
     
+    -- Log the incoming data
+    RAISE LOG 'Creating profile for user: %', NEW.id;
+    RAISE LOG 'User metadata: %', NEW.raw_user_meta_data;
+    
+    -- Validate required metadata
+    IF NEW.raw_user_meta_data->>'name' IS NULL THEN
+        RAISE EXCEPTION 'User metadata missing required field: name';
+    END IF;
+    
+    IF NEW.raw_user_meta_data->>'role' IS NULL THEN
+        RAISE EXCEPTION 'User metadata missing required field: role';
+    END IF;
+    
+    -- Create the profile
     INSERT INTO public.profiles (id, name, email, role)
     VALUES (
         NEW.id,
@@ -216,7 +230,13 @@ BEGIN
         name = EXCLUDED.name,
         email = EXCLUDED.email,
         role = EXCLUDED.role;
+        
+    RAISE LOG 'Profile created successfully for user: %', NEW.id;
     RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE LOG 'Error creating profile for user %: %', NEW.id, SQLERRM;
+        RAISE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

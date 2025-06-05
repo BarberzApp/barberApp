@@ -6,20 +6,22 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public"]
 }
 
 model Profile {
-  id                String    @id @default(cuid())
+  id                String    @id @default(uuid())
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   name              String?
   email             String?   @unique
-  role              String?
+  role              UserRole
   phone             String?
   location          String?
   description       String?
@@ -31,11 +33,16 @@ model Profile {
   bookings          Booking[] @relation("ClientBookings")
   barber            Barber?
   notifications     Notification[]
+
+  @@map("profiles")
+  @@schema("public")
 }
 
 enum UserRole {
   CLIENT
   BARBER
+
+  @@schema("public")
 }
 
 model Barber {
@@ -52,12 +59,13 @@ model Barber {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user           Profile        @relation(fields: [userId], references: [id])
+  user           Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
   services       Service[]
   bookings       Booking[]      @relation("BarberBookings")
   availabilities Availability[]
 
   @@map("barbers")
+  @@schema("public")
 }
 
 model Service {
@@ -71,10 +79,11 @@ model Service {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  barber    Barber?   @relation(fields: [barberId], references: [id])
+  barber    Barber?   @relation(fields: [barberId], references: [id], onDelete: Cascade)
   bookings  Booking[] @relation("BookingServices")
 
   @@map("services")
+  @@schema("public")
 }
 
 model Booking {
@@ -83,17 +92,18 @@ model Booking {
   barberId      String?       @map("barber_id")
   serviceId     String?       @map("service_id")
   date          DateTime      @db.Timestamptz
-  status        String        @default("pending")
+  status        BookingStatus @default(PENDING)
   price         Decimal       @db.Decimal(10, 2)
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  client   Profile? @relation("ClientBookings", fields: [clientId], references: [id])
-  barber   Barber?  @relation("BarberBookings", fields: [barberId], references: [id])
-  service  Service? @relation("BookingServices", fields: [serviceId], references: [id])
+  client   Profile? @relation("ClientBookings", fields: [clientId], references: [id], onDelete: SetNull)
+  barber   Barber?  @relation("BarberBookings", fields: [barberId], references: [id], onDelete: SetNull)
+  service  Service? @relation("BookingServices", fields: [serviceId], references: [id], onDelete: SetNull)
 
   @@map("bookings")
+  @@schema("public")
 }
 
 enum BookingStatus {
@@ -102,6 +112,8 @@ enum BookingStatus {
   CANCELLED
   COMPLETED
   NO_SHOW
+
+  @@schema("public")
 }
 
 enum PaymentStatus {
@@ -109,6 +121,8 @@ enum PaymentStatus {
   PAID
   REFUNDED
   FAILED
+
+  @@schema("public")
 }
 
 model Availability {
@@ -121,13 +135,14 @@ model Availability {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  barber Barber? @relation(fields: [barberId], references: [id])
+  barber Barber? @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
   @@map("availability")
+  @@schema("public")
 }
 
 model Notification {
-  id        String   @id
+  id        String   @id @default(uuid())
   profileId String   @map("user_id")
   title     String
   message   String
@@ -136,7 +151,8 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  profile Profile @relation(fields: [profileId], references: [id])
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+  @@schema("public")
 }

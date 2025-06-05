@@ -147,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (retryError || !retryProfile) {
           console.error('Profile fetch error:', retryError);
+          // Sign out if profile doesn't exist
+          await supabase.auth.signOut();
           toast({
             title: "Login failed",
             description: "User profile not found. Please try again.",
@@ -188,6 +190,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
+      // Store session in localStorage
+      localStorage.setItem('barber-app-auth', JSON.stringify({
+        user: authData.user,
+        session: authData.session
+      }));
+
       toast({
         title: "Login successful",
         description: "Welcome back!",
@@ -196,6 +204,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error('Login error:', error);
+      // Clear any partial session data
+      await supabase.auth.signOut();
+      localStorage.removeItem('barber-app-auth');
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -208,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<boolean> => {
     try {
       console.log('Starting registration process...');
+      console.log('Registration data:', { name, email, role });
       
       const redirectTo = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001/auth/callback'
@@ -236,6 +248,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
+      console.log('Auth data:', authData);
+      console.log('User metadata:', authData.user?.user_metadata);
+
       if (authData.user) {
         // Wait a moment for the trigger to create the profile
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -246,6 +261,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .select('*')
           .eq('id', authData.user.id)
           .single();
+
+        console.log('Profile fetch result:', { profile, profileError });
 
         if (profileError || !profile) {
           console.error('Profile fetch error:', profileError);

@@ -12,11 +12,29 @@ export async function middleware(req: NextRequest) {
     
     if (error) {
       console.error('Middleware auth error:', error)
+      // Clear any invalid session data
+      await supabase.auth.signOut()
+      return res
     }
 
     // Add session to response headers for client-side access
     if (session) {
       res.headers.set('x-session-user', session.user.id)
+      res.headers.set('x-session-role', session.user.user_metadata.role || 'client')
+    }
+
+    // Handle auth callback
+    if (req.nextUrl.pathname === '/auth/callback') {
+      const { searchParams } = req.nextUrl
+      const code = searchParams.get('code')
+      const next = searchParams.get('next') || '/'
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (!error) {
+          return NextResponse.redirect(new URL(next, req.url))
+        }
+      }
     }
 
     return res
@@ -30,7 +48,7 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
+     * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)

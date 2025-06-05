@@ -8,12 +8,28 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-// Create a Supabase client with the anon key for client-side operations
+// Create a single Supabase client instance for the entire app
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storageKey: 'barber-app-auth',
+    storage: {
+      getItem: (key) => {
+        if (typeof window === 'undefined') return null
+        const value = window.localStorage.getItem(key)
+        return value ? JSON.parse(value) : null
+      },
+      setItem: (key, value) => {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem(key, JSON.stringify(value))
+      },
+      removeItem: (key) => {
+        if (typeof window === 'undefined') return
+        window.localStorage.removeItem(key)
+      }
+    }
   }
 })
 
