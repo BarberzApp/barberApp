@@ -7,11 +7,10 @@ import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Button } from "@/shared/components/ui/button"
 import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Checkbox } from "@/shared/components/ui/checkbox"
-import { Scissors, User, Building2 } from "lucide-react"
+import { Scissors, User } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
 
 export default function RegisterPage() {
@@ -20,14 +19,13 @@ export default function RegisterPage() {
   const { toast } = useToast()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [role, setRole] = useState<"client" | "barber" | "business">("client")
+  const [role, setRole] = useState<"client" | "barber">("client")
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    businessName: "",
     agreeTerms: false,
   })
 
@@ -61,15 +59,6 @@ export default function RegisterPage() {
       return
     }
 
-    if (role === "business" && !formData.businessName) {
-      toast({
-        title: "Business name required",
-        description: "Please enter your business name",
-        variant: "destructive",
-      })
-      return
-    }
-
     setLoading(true)
 
     try {
@@ -92,284 +81,196 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] py-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Create an Account</CardTitle>
-          <CardDescription>Join BarberHub today</CardDescription>
-        </CardHeader>
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/20">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <Scissors className="mx-auto h-12 w-12 text-primary" />
+          <h2 className="mt-6 text-3xl font-bold tracking-tight">Create your account</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Join BarberHub and start your journey
+          </p>
+        </div>
+        <Card className="border-none shadow-lg">
+          <CardContent className="pt-6">
+            <Tabs defaultValue="client" onValueChange={(value) => setRole(value as "client" | "barber")} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="client" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Client
+                </TabsTrigger>
+                <TabsTrigger value="barber" className="flex items-center gap-2">
+                  <Scissors className="h-4 w-4" />
+                  Barber
+                </TabsTrigger>
+              </TabsList>
 
-        <Tabs defaultValue="client" onValueChange={(value) => setRole(value as "client" | "barber" | "business")} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="client" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Client
-            </TabsTrigger>
-            <TabsTrigger value="barber" className="flex items-center gap-2">
-              <Scissors className="h-4 w-4" />
-              Barber
-            </TabsTrigger>
-            <TabsTrigger value="business" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Business
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="client">
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="client-name">Full Name</Label>
-                  <Input
-                    id="client-name"
-                    name="name"
-                    placeholder="John Doe"
-                    required
-                    value={formData.name}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-email">Email</Label>
-                  <Input
-                    id="client-email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-password">Password</Label>
-                  <Input
-                    id="client-password"
-                    name="password"
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-confirm-password">Confirm Password</Label>
-                  <Input
-                    id="client-confirm-password"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="client-terms"
-                    name="agreeTerms"
-                    checked={formData.agreeTerms}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, agreeTerms: checked as boolean }))}
-                  />
-                  <label
-                    htmlFor="client-terms"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              <TabsContent value="client">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      placeholder="John Doe"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      required
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="terms"
+                      name="agreeTerms"
+                      checked={formData.agreeTerms}
+                      onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, agreeTerms: checked as boolean }))}
+                    />
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      I agree to the{" "}
+                      <Link href="/terms" className="text-primary hover:underline">
+                        terms and conditions
+                      </Link>
+                    </label>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full h-11 bg-primary hover:bg-primary/90" 
+                    disabled={loading}
                   >
-                    I agree to the{" "}
-                    <Link href="/terms" className="text-primary hover:underline">
-                      terms and conditions
-                    </Link>
-                  </label>
-                </div>
-              </CardContent>
+                    {loading ? "Creating account..." : "Create account"}
+                  </Button>
+                </form>
+              </TabsContent>
 
-              <CardFooter className="flex flex-col">
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Create Account"}
-                </Button>
-                <div className="mt-4 text-center text-sm">
-                  Already have an account?{" "}
-                  <Link href="/auth/login" className="text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </CardFooter>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="barber">
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="barber-name">Full Name</Label>
-                  <Input
-                    id="barber-name"
-                    name="name"
-                    placeholder="John Doe"
-                    required
-                    value={formData.name}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="barber-email">Email</Label>
-                  <Input
-                    id="barber-email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="barber-password">Password</Label>
-                  <Input
-                    id="barber-password"
-                    name="password"
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="barber-confirm-password">Confirm Password</Label>
-                  <Input
-                    id="barber-confirm-password"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="barber-terms"
-                    name="agreeTerms"
-                    checked={formData.agreeTerms}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, agreeTerms: checked as boolean }))}
-                  />
-                  <label
-                    htmlFor="barber-terms"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              <TabsContent value="barber">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="barber-name" className="text-sm font-medium">Full Name</Label>
+                    <Input
+                      id="barber-name"
+                      name="name"
+                      placeholder="John Doe"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="barber-email" className="text-sm font-medium">Email</Label>
+                    <Input
+                      id="barber-email"
+                      name="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="barber-password" className="text-sm font-medium">Password</Label>
+                    <Input
+                      id="barber-password"
+                      name="password"
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="barber-confirm-password" className="text-sm font-medium">Confirm Password</Label>
+                    <Input
+                      id="barber-confirm-password"
+                      name="confirmPassword"
+                      type="password"
+                      required
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="barber-terms"
+                      name="agreeTerms"
+                      checked={formData.agreeTerms}
+                      onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, agreeTerms: checked as boolean }))}
+                    />
+                    <label
+                      htmlFor="barber-terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      I agree to the{" "}
+                      <Link href="/terms" className="text-primary hover:underline">
+                        terms and conditions
+                      </Link>
+                    </label>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full h-11 bg-primary hover:bg-primary/90" 
+                    disabled={loading}
                   >
-                    I agree to the{" "}
-                    <Link href="/terms" className="text-primary hover:underline">
-                      terms and conditions
-                    </Link>
-                  </label>
-                </div>
-              </CardContent>
-
-              <CardFooter className="flex flex-col">
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Create Account"}
-                </Button>
-                <div className="mt-4 text-center text-sm">
-                  Already have an account?{" "}
-                  <Link href="/auth/login" className="text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </CardFooter>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="business">
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="business-name">Full Name</Label>
-                  <Input
-                    id="business-name"
-                    name="name"
-                    placeholder="John Doe"
-                    required
-                    value={formData.name}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-email">Email</Label>
-                  <Input
-                    id="business-email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-name">Business Name</Label>
-                  <Input
-                    id="business-name"
-                    name="businessName"
-                    placeholder="Your Business Name"
-                    required
-                    value={formData.businessName}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-password">Password</Label>
-                  <Input
-                    id="business-password"
-                    name="password"
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-confirm-password">Confirm Password</Label>
-                  <Input
-                    id="business-confirm-password"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="business-terms"
-                    name="agreeTerms"
-                    checked={formData.agreeTerms}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, agreeTerms: checked as boolean }))}
-                  />
-                  <label
-                    htmlFor="business-terms"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    I agree to the{" "}
-                    <Link href="/terms" className="text-primary hover:underline">
-                      terms and conditions
-                    </Link>
-                  </label>
-                </div>
-              </CardContent>
-
-              <CardFooter className="flex flex-col">
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Create Account"}
-                </Button>
-                <div className="mt-4 text-center text-sm">
-                  Already have an account?{" "}
-                  <Link href="/auth/login" className="text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </CardFooter>
-            </form>
-          </TabsContent>
-        </Tabs>
-      </Card>
+                    {loading ? "Creating account..." : "Create account"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          <CardFooter className="flex justify-center pb-6">
+            <p className="text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/login" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   )
 } 
