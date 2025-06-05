@@ -149,10 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fetch user data from profiles table
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select(`
-            *,
-            barber_details:barber_profiles(*)
-          `)
+          .select('*')
           .eq('id', authData.user.id)
           .single();
 
@@ -187,14 +184,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           location: profile.location,
           wallet: profile.wallet || 0,
           favorites: profile.favorites || [],
-          // Barber specific fields
-          description: profile.role === 'barber' ? profile.barber_details?.bio : undefined,
-          bio: profile.role === 'barber' ? profile.barber_details?.bio : undefined,
+          description: profile.bio,
+          bio: profile.bio,
           joinDate: profile.created_at,
-          services: profile.role === 'barber' ? profile.barber_details?.services || [] : [],
-          specialties: profile.role === 'barber' ? profile.barber_details?.specialties || [] : [],
-          portfolio: profile.role === 'barber' ? profile.barber_details?.portfolio || [] : [],
-          isPublic: profile.role === 'barber' ? profile.barber_details?.is_public || false : false,
+          services: profile.services || [],
+          specialties: profile.specialties || [],
+          portfolio: profile.portfolio || [],
+          isPublic: profile.is_public || false,
         });
 
         toast({

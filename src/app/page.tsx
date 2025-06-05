@@ -10,9 +10,7 @@ export default function HomePage() {
   const { user, status } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (status === 'loading') return;
-
+  const handleGetStarted = () => {
     if (!user) {
       router.push('/login');
     } else {
@@ -27,7 +25,7 @@ export default function HomePage() {
           router.push('/login');
       }
     }
-  }, [user, status, router]);
+  };
 
   if (status === 'loading') {
     return (
@@ -50,11 +48,8 @@ export default function HomePage() {
           Find the perfect barber, book your appointment, and get the look you want.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Button asChild size="lg">
-            <Link href="/register">Get Started</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/browse">Browse Barbers</Link>
+          <Button onClick={handleGetStarted} size="lg">
+            Get Started
           </Button>
         </div>
       </div>

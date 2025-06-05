@@ -57,16 +57,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
+    <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] py-8">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
-          <CardDescription className="text-center">
-            Choose your account type and sign in to your account
-          </CardDescription>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="client" className="w-full" onValueChange={(value) => setRole(value as 'client' | 'barber')}>
+          <Tabs defaultValue="client" onValueChange={(value) => setRole(value as 'client' | 'barber')} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="client" className="flex items-center gap-2">
                 <User className="h-4 w-4" />

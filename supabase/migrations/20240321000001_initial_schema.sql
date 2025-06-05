@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     favorites UUID[] DEFAULT '{}',
     join_date TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+    CONSTRAINT profiles_email_key UNIQUE (email)
 );
 
 -- Create barbers table
@@ -36,7 +37,8 @@ CREATE TABLE IF NOT EXISTS barbers (
     price_range TEXT,
     next_available TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+    CONSTRAINT barbers_user_id_key UNIQUE (user_id)
 );
 
 -- Create services table
@@ -49,7 +51,7 @@ CREATE TABLE IF NOT EXISTS services (
     price DECIMAL NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-    UNIQUE(barber_id, name) -- A barber can't have two services with the same name
+    CONSTRAINT services_barber_name_key UNIQUE (barber_id, name)
 );
 
 -- Create bookings table
@@ -63,7 +65,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     price DECIMAL NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-    UNIQUE(barber_id, client_id, date) -- Prevent double bookings
+    CONSTRAINT bookings_barber_client_date_key UNIQUE (barber_id, client_id, date)
 );
 
 -- Create availability table
@@ -75,7 +77,7 @@ CREATE TABLE IF NOT EXISTS availability (
     end_time TIME NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-    UNIQUE(barber_id, day_of_week) -- One availability slot per day per barber
+    CONSTRAINT availability_barber_day_key UNIQUE (barber_id, day_of_week)
 );
 
 -- Create notifications table
@@ -200,7 +202,7 @@ BEGIN
         NEW.id,
         NEW.raw_user_meta_data->>'name',
         NEW.email,
-        COALESCE(NEW.raw_user_meta_data->>'role', 'client')
+        NEW.raw_user_meta_data->>'role'
     )
     ON CONFLICT (id) DO UPDATE
     SET
