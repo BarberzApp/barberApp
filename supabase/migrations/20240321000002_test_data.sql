@@ -27,6 +27,16 @@ UPDATE profiles
 SET 
     phone = '+1234567890',
     location = 'New York, NY',
+    bio = 'Regular client looking for great haircuts',
+    favorites = ARRAY[]::uuid[],
+    created_at = NOW(),
+    updated_at = NOW()
+WHERE id = '11111111-1111-1111-1111-111111111111';
+
+UPDATE profiles
+SET 
+    phone = '+1987654321',
+    location = 'Los Angeles, CA',
     bio = 'Professional barber with 5 years of experience',
     favorites = ARRAY[]::uuid[],
     created_at = NOW(),

@@ -202,13 +202,19 @@ BEGIN
         NEW.id,
         NEW.raw_user_meta_data->>'name',
         NEW.email,
-        NEW.raw_user_meta_data->>'role'
+        COALESCE(
+            (SELECT role FROM public.profiles WHERE id = NEW.id),
+            NEW.raw_user_meta_data->>'role'
+        )
     )
     ON CONFLICT (id) DO UPDATE
     SET
         name = EXCLUDED.name,
         email = EXCLUDED.email,
-        role = EXCLUDED.role;
+        role = COALESCE(
+            (SELECT role FROM public.profiles WHERE id = NEW.id),
+            EXCLUDED.role
+        );
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

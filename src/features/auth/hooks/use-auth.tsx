@@ -220,12 +220,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? 'http://localhost:3001/auth/callback'
         : `${window.location.origin}/auth/callback`;
 
-      // Create auth user
+      // Create auth user with role in metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: redirectTo,
+          data: {
+            name,
+            role,
+          }
         },
       });
 

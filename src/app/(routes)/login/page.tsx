@@ -9,14 +9,11 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
-import { Scissors, User } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [role, setRole] = useState<'client' | 'barber'>('client')
   const router = useRouter()
   const { login, user } = useAuth()
   const { toast } = useToast()
@@ -40,10 +37,9 @@ export default function LoginPage() {
         if (redirectUrl) {
           sessionStorage.removeItem('redirectAfterLogin')
           router.push(redirectUrl)
-        } else {
-          // Redirect based on role
-          router.push(role === 'barber' ? '/settings' : '/browse')
         }
+        // Note: The useEffect above will handle the role-based redirect
+        // once the user state is updated
       }
     } catch (error) {
       toast({
@@ -64,107 +60,49 @@ export default function LoginPage() {
           <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="client" onValueChange={(value) => setRole(value as 'client' | 'barber')} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="client" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Client
-              </TabsTrigger>
-              <TabsTrigger value="barber" className="flex items-center gap-2">
-                <Scissors className="h-4 w-4" />
-                Barber
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="client">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="client-email" className="text-sm font-medium">Email</Label>
-                  <Input
-                    id="client-email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="client-password" className="text-sm font-medium">Password</Label>
-                    <Link 
-                      href="/forgot-password" 
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <Input
-                    id="client-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full h-11 bg-primary hover:bg-primary/90" 
-                  disabled={isLoading}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Link 
+                  href="/forgot-password" 
+                  className="text-sm text-primary hover:underline"
                 >
-                  {isLoading ? 'Signing in...' : 'Sign in as Client'}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="barber">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="barber-email" className="text-sm font-medium">Email</Label>
-                  <Input
-                    id="barber-email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="barber-password" className="text-sm font-medium">Password</Label>
-                    <Link 
-                      href="/forgot-password" 
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <Input
-                    id="barber-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full h-11 bg-primary hover:bg-primary/90" 
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Signing in...' : 'Sign in as Barber'}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+                  Forgot password?
+                </Link>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-11"
+              />
+            </div>
+            <Button 
+              type="submit" 
+              className="w-full h-11 bg-primary hover:bg-primary/90" 
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
-          <div className="text-sm text-muted-foreground text-center">
+          <div className="text-sm text-center text-muted-foreground">
             Don't have an account?{' '}
             <Link href="/register" className="text-primary hover:underline">
               Sign up
