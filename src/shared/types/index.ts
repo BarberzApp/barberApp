@@ -11,19 +11,26 @@ export interface User {
   id: string
   name: string
   email: string
-  role: UserRole
   image?: string
-  businessName?: string
+  role: "client" | "barber"
+  phone?: string
   location?: string
   description?: string
-  bio?: string
-  specialties?: string[]
-  joinDate?: Date
   favorites?: string[]
   wallet?: number
   stripeCustomerId?: string
   stripeAccountId?: string
-  businessId?: string
+  bio?: string
+  joinDate?: string
+  services?: Array<{
+    id: string
+    name: string
+    price: number
+    duration: number
+  }>
+  specialties?: string[]
+  portfolio?: string[]
+  isPublic?: boolean
 }
 
 // Barber Types
@@ -55,7 +62,6 @@ export interface Barber {
     thisMonth: number
     lastMonth: number
   }
-  reviews: Review[]
   isFavorite?: boolean
   availability: Record<string, { available: boolean; start: string; end: string }>
   services: Service[]
@@ -105,52 +111,6 @@ export interface Booking {
   notes?: string
   createdAt: string
   updatedAt: string
-}
-
-// Review Types
-export interface Review {
-  id: string
-  barberId: string
-  clientId: string
-  client: {
-    id: string
-    name: string
-    image: string
-  }
-  barber: {
-    id: string
-    name: string
-    image: string
-  }
-  date: string
-  rating: number
-  comment: string
-}
-
-// Business Types
-export interface Business {
-  id: string
-  name: string
-  ownerId: string
-  image: string
-  location: string
-  description: string
-  phone: string
-  rating: number
-  totalReviews: number
-  totalBarbers: number
-  totalClients: number
-  totalBookings: number
-  services: Service[]
-  barbers: Barber[]
-  photos: string[]
-  hours: Record<string, { open: string; close: string; isOpen: boolean }>
-  earnings: {
-    thisWeek: number
-    thisMonth: number
-    lastMonth: number
-  }
-  joinDate: string
 }
 
 // Message Types
@@ -216,4 +176,20 @@ export interface JobApplication {
   status: "pending" | "reviewing" | "accepted" | "rejected"
   appliedDate: string
   coverLetter: string
+}
+
+// Review Types
+export interface Review {
+  id: string
+  barberId: string
+  clientId: string
+  rating: number
+  comment: string
+  createdAt: string
+  updatedAt: string
+  client?: {
+    id: string
+    name: string
+    image: string
+  }
 } 

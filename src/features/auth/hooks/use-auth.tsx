@@ -5,15 +5,14 @@ import { supabase } from '@/shared/lib/supabase'
 import { useToast } from "@/shared/components/ui/use-toast"
 
 // Types
-export type UserRole = "client" | "barber" | "business"
+export type UserRole = "client" | "barber"
 
 export type User = {
   id: string
   name: string
   email: string
   image?: string
-  role: "client" | "barber" | "business"
-  businessName?: string
+  role: "client" | "barber"
   phone?: string
   location?: string
   description?: string
@@ -21,7 +20,6 @@ export type User = {
   wallet?: number
   stripeCustomerId?: string
   stripeAccountId?: string
-  businessId?: string
   bio?: string
   joinDate?: string
   services?: Array<{
@@ -106,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: userId,
         name: profile.name,
         email: profile.email,
-        image: undefined,
+        image: profile.image_url,
         role: profile.role,
         phone: profile.phone,
         location: profile.location,
@@ -114,11 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         wallet: profile.wallet,
         stripeCustomerId: profile.stripe_customer_id,
         stripeAccountId: profile.stripe_account_id,
-        businessId: profile.business_id,
-        businessName: profile.business_name,
-        description: profile.description,
+        description: profile.bio,
         bio: profile.bio,
-        joinDate: profile.join_date,
+        joinDate: profile.created_at,
         services: profile.services,
         specialties: profile.specialties,
         portfolio: profile.portfolio,
@@ -150,10 +146,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authData.user) {
-        // Fetch profile data
+        // Fetch user data from a single profiles table
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('*')
+          .select(`
+            *,
+            barber_details:barber_profiles(*)
+          `)
           .eq('id', authData.user.id)
           .single();
 
@@ -167,27 +166,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
 
-        // If user is a barber, fetch barber profile
-        let barberData = null;
-        if (profile.role === 'barber') {
-          const { data: barber, error: barberError } = await supabase
-            .from('barbers')
-            .select('*')
-            .eq('user_id', authData.user.id)
-            .single();
-
-          if (barberError) {
-            console.error('Barber profile fetch error:', barberError);
-            toast({
-              title: "Login failed",
-              description: "Failed to load barber profile",
-              variant: "destructive",
-            });
-            return false;
-          }
-          barberData = barber;
-        }
-
         // Set user state with combined data
         setUser({
           id: authData.user.id,
@@ -195,15 +173,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: profile.email,
           image: profile.image_url,
           role: profile.role,
+          phone: profile.phone,
+          location: profile.location,
           wallet: profile.wallet || 0,
           favorites: profile.favorites || [],
-          description: barberData?.bio,
-          bio: barberData?.bio,
+          // Barber specific fields
+          description: profile.role === 'barber' ? profile.barber_details?.bio : undefined,
+          bio: profile.role === 'barber' ? profile.barber_details?.bio : undefined,
           joinDate: profile.created_at,
-          services: barberData?.services || [],
-          specialties: barberData?.specialties || [],
-          portfolio: barberData?.portfolio || [],
-          isPublic: barberData?.is_public || false,
+          services: profile.role === 'barber' ? profile.barber_details?.services || [] : [],
+          specialties: profile.role === 'barber' ? profile.barber_details?.specialties || [] : [],
+          portfolio: profile.role === 'barber' ? profile.barber_details?.portfolio || [] : [],
+          isPublic: profile.role === 'barber' ? profile.barber_details?.is_public || false : false,
         });
 
         toast({
@@ -229,13 +210,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Starting registration process...');
       
-      // Get the current URL for the callback
       const redirectTo = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001/auth/callback'
         : `${window.location.origin}/auth/callback`;
 
-      console.log('Using redirect URL:', redirectTo);
-      
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -244,8 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailRedirectTo: redirectTo,
         },
       });
-
-      console.log('Auth signup response:', { authData, authError });
 
       if (authError) {
         console.error('Auth error:', authError);
@@ -267,6 +243,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email,
             role,
             created_at: new Date().toISOString(),
+            wallet: 0,
+            favorites: [],
+            specialties: [],
+            services: [],
+            portfolio: [],
+            is_public: false,
           });
 
         if (profileError) {
@@ -277,28 +259,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             variant: "destructive",
           });
           return false;
-        }
-
-        // If user is a barber, create barber profile
-        if (role === 'barber') {
-          const { error: barberError } = await supabase
-            .from('barbers')
-            .insert({
-              user_id: authData.user.id,
-              specialties: [],
-              portfolio: [],
-              created_at: new Date().toISOString(),
-            });
-
-          if (barberError) {
-            console.error('Barber profile creation error:', barberError);
-            toast({
-              title: "Barber profile creation failed",
-              description: "Please try logging in again",
-              variant: "destructive",
-            });
-            return false;
-          }
         }
 
         // Set user state
@@ -366,6 +326,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         location: data.location,
         wallet: data.wallet,
         favorites: data.favorites,
+        bio: data.bio,
+        specialties: data.specialties,
+        services: data.services,
+        portfolio: data.portfolio,
+        is_public: data.isPublic,
         updated_at: new Date().toISOString(),
       };
 
@@ -375,24 +340,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', user.id);
 
       if (profileError) throw profileError;
-
-      // If user is a barber, update barber profile
-      if (user.role === 'barber') {
-        const barberData = {
-          bio: data.bio,
-          specialties: data.specialties,
-          portfolio: data.portfolio,
-          is_public: data.isPublic,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { error: barberError } = await supabase
-          .from('barbers')
-          .update(barberData)
-          .eq('user_id', user.id);
-
-        if (barberError) throw barberError;
-      }
 
       // Update user state
       setUser(prev => prev ? { ...prev, ...data } : null);

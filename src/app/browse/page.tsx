@@ -10,11 +10,12 @@ import { Search } from 'lucide-react'
 
 type Barber = {
   id: string
-  userId: string
   name: string
   image?: string
   location?: string
   specialties: string[]
+  bio?: string
+  priceRange?: string
 }
 
 export default function BrowsePage() {
@@ -29,27 +30,28 @@ export default function BrowsePage() {
   const fetchBarbers = async () => {
     try {
       const { data, error } = await supabase
-        .from('barbers')
+        .from('profiles')
         .select(`
           id,
-          user_id,
+          name,
+          image_url,
+          location,
           specialties,
-          profile:profiles (
-            full_name,
-            avatar_url,
-            location
-          )
+          bio,
+          price_range
         `)
+        .eq('role', 'barber')
 
       if (error) throw error
 
       const formattedBarbers = data.map(barber => ({
         id: barber.id,
-        userId: barber.user_id,
-        name: barber.profile[0].full_name,
-        image: barber.profile[0].avatar_url,
-        location: barber.profile[0].location,
-        specialties: barber.specialties
+        name: barber.name,
+        image: barber.image_url,
+        location: barber.location,
+        specialties: barber.specialties,
+        bio: barber.bio,
+        priceRange: barber.price_range
       }))
 
       setBarbers(formattedBarbers)
@@ -121,7 +123,7 @@ export default function BrowsePage() {
                   ))}
                 </div>
                 <Button asChild className="w-full">
-                  <a href={`/book/${barber.userId}`}>Book Appointment</a>
+                  <a href={`/book/${barber.id}`}>Book Appointment</a>
                 </Button>
               </CardContent>
             </Card>

@@ -13,22 +13,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String
-  phone         String?
-  imageUrl      String?   @map("image_url")
-  role          UserRole  @default(CLIENT)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+model Profile {
+  id                String    @id @default(cuid())
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  name              String?
+  email             String?   @unique
+  role              String?
+  phone             String?
+  location          String?
+  description       String?
+  bio               String?
+  favorites         String[]
+  join_date         DateTime  @default(now())
 
   // Relations
-  barberProfile    Barber?
-  bookings         Booking[]    @relation("ClientBookings")
-  notifications    Notification[]
-
-  @@map("users")
+  bookings          Booking[] @relation("ClientBookings")
+  barber            Barber?
+  notifications     Notification[]
 }
 
 enum UserRole {
@@ -45,13 +47,14 @@ model Barber {
   priceRange   String?  @map("price_range")
   rating       Decimal? @db.Decimal(3, 2)
   totalReviews Int      @default(0) @map("total_reviews")
+  nextAvailable DateTime? @map("next_available")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user           User           @relation(fields: [userId], references: [id])
+  user           Profile        @relation(fields: [userId], references: [id])
   services       Service[]
-  bookings       Booking[]
+  bookings       Booking[]      @relation("BarberBookings")
   availabilities Availability[]
 
   @@map("barbers")
@@ -63,35 +66,32 @@ model Service {
   description String?
   duration    Int
   price       Decimal  @db.Decimal(10, 2)
-  barberId    String   @map("barber_id")
+  barberId    String?  @map("barber_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  barber    Barber    @relation(fields: [barberId], references: [id])
-  bookings  Booking[]
+  barber    Barber?   @relation(fields: [barberId], references: [id])
+  bookings  Booking[] @relation("BookingServices")
 
   @@map("services")
 }
 
 model Booking {
   id            String        @id @default(uuid())
-  clientId      String        @map("client_id")
-  barberId      String        @map("barber_id")
-  serviceId     String        @map("service_id")
-  date          DateTime      @db.Date
-  time          DateTime      @db.Time
-  status        BookingStatus @default(PENDING)
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
-  totalPrice    Decimal       @db.Decimal(10, 2) @map("total_price")
-  notes         String?
+  clientId      String?       @map("client_id")
+  barberId      String?       @map("barber_id")
+  serviceId     String?       @map("service_id")
+  date          DateTime      @db.Timestamptz
+  status        String        @default("pending")
+  price         Decimal       @db.Decimal(10, 2)
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  client   User     @relation("ClientBookings", fields: [clientId], references: [id])
-  barber   Barber   @relation(fields: [barberId], references: [id])
-  service  Service  @relation(fields: [serviceId], references: [id])
+  client   Profile? @relation("ClientBookings", fields: [clientId], references: [id])
+  barber   Barber?  @relation("BarberBookings", fields: [barberId], references: [id])
+  service  Service? @relation("BookingServices", fields: [serviceId], references: [id])
 
   @@map("bookings")
 }
@@ -113,22 +113,22 @@ enum PaymentStatus {
 
 model Availability {
   id          String   @id @default(uuid())
-  barberId    String   @map("barber_id")
-  dayOfWeek   Int      @map("day_of_week")
+  barberId    String?  @map("barber_id")
+  dayOfWeek   Int?     @map("day_of_week")
   startTime   DateTime @db.Time @map("start_time")
   endTime     DateTime @db.Time @map("end_time")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  barber Barber @relation(fields: [barberId], references: [id])
+  barber Barber? @relation(fields: [barberId], references: [id])
 
   @@map("availability")
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
+  id        String   @id
+  profileId String   @map("user_id")
   title     String
   message   String
   type      String
@@ -136,7 +136,7 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  user User @relation(fields: [userId], references: [id])
+  profile Profile @relation(fields: [profileId], references: [id])
 
   @@map("notifications")
 }

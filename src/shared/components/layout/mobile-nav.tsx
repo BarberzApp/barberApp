@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/router"
-import { Home, Search, Calendar, MessageSquare, User, Menu, Clock, Briefcase } from "lucide-react"
+import { Home, Search, Calendar, MessageSquare, User, Menu, Clock, Briefcase, Heart, Users, DollarSign } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/components/ui/sheet"
 import { useAuth } from "@/features/auth/hooks/use-auth"
@@ -22,31 +22,26 @@ export function MobileNav() {
     { name: "Profile", href: "/profile", icon: User },
   ]
 
-  const roleSpecificNavItems = () => {
-    if (!user) return []
-
-    switch (user.role) {
+  const navigation = useMemo(() => {
+    switch (user?.role) {
       case "client":
         return [
+          { name: "Browse", href: "/browse", icon: Search },
           { name: "Bookings", href: "/bookings", icon: Calendar },
+          { name: "Favorites", href: "/favorites", icon: Heart },
         ]
       case "barber":
         return [
-          { name: "My Appointments", href: "/barber/bookings", icon: Calendar },
-          { name: "Availability", href: "/availability", icon: Clock },
-          { name: "Jobs", href: "/jobs", icon: Briefcase },
-        ]
-      case "business":
-        return [
-          { name: "Dashboard", href: "/business/dashboard", icon: Calendar },
-          { name: "Hiring", href: "/business/hiring", icon: Briefcase },
+          { name: "Calendar", href: "/calendar", icon: Calendar },
+          { name: "Clients", href: "/clients", icon: Users },
+          { name: "Earnings", href: "/earnings", icon: DollarSign },
         ]
       default:
         return []
     }
-  }
+  }, [user?.role])
 
-  const navItems = [...baseNavItems, ...roleSpecificNavItems()]
+  const navItems = [...baseNavItems, ...navigation]
 
   return (
     <>

@@ -20,7 +20,7 @@ export default function RegisterPage() {
   const { toast } = useToast()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [role, setRole] = useState<"client" | "barber" | "business">("client")
+  const [role, setRole] = useState<"client" | "barber">("client")
 
   const [formData, setFormData] = useState({
     name: "",
@@ -61,7 +61,7 @@ export default function RegisterPage() {
       return
     }
 
-    if (role === "business" && !formData.businessName) {
+    if (role === "barber" && !formData.businessName) {
       toast({
         title: "Business name required",
         description: "Please enter your business name",
@@ -99,8 +99,8 @@ export default function RegisterPage() {
           <CardDescription>Join BarberHub today</CardDescription>
         </CardHeader>
 
-        <Tabs defaultValue="client" onValueChange={(value) => setRole(value as "client" | "barber" | "business")} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="client" onValueChange={(value) => setRole(value as "client" | "barber")} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="client" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Client
@@ -108,10 +108,6 @@ export default function RegisterPage() {
             <TabsTrigger value="barber" className="flex items-center gap-2">
               <Scissors className="h-4 w-4" />
               Barber
-            </TabsTrigger>
-            <TabsTrigger value="business" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Business
             </TabsTrigger>
           </TabsList>
 
@@ -253,98 +249,6 @@ export default function RegisterPage() {
                   />
                   <label
                     htmlFor="barber-terms"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    I agree to the{" "}
-                    <Link href="/terms" className="text-primary hover:underline">
-                      terms and conditions
-                    </Link>
-                  </label>
-                </div>
-              </CardContent>
-
-              <CardFooter className="flex flex-col">
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Create Account"}
-                </Button>
-                <div className="mt-4 text-center text-sm">
-                  Already have an account?{" "}
-                  <Link href="/auth/login" className="text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </CardFooter>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="business">
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="business-name">Full Name</Label>
-                  <Input
-                    id="business-name"
-                    name="name"
-                    placeholder="John Doe"
-                    required
-                    value={formData.name}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-email">Email</Label>
-                  <Input
-                    id="business-email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-name">Business Name</Label>
-                  <Input
-                    id="business-name"
-                    name="businessName"
-                    placeholder="Your Business Name"
-                    required
-                    value={formData.businessName}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-password">Password</Label>
-                  <Input
-                    id="business-password"
-                    name="password"
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-confirm-password">Confirm Password</Label>
-                  <Input
-                    id="business-confirm-password"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="business-terms"
-                    name="agreeTerms"
-                    checked={formData.agreeTerms}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, agreeTerms: checked as boolean }))}
-                  />
-                  <label
-                    htmlFor="business-terms"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     I agree to the{" "}

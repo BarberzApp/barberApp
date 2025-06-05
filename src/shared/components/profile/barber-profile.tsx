@@ -324,11 +324,10 @@ export function BarberProfile({ user }: BarberProfileProps) {
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-5 mb-8">
+      <TabsList className="grid w-full grid-cols-4 mb-8">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
         <TabsTrigger value="services">Services</TabsTrigger>
-        <TabsTrigger value="reviews">Reviews</TabsTrigger>
         <TabsTrigger value="settings">Settings</TabsTrigger>
       </TabsList>
 
@@ -355,18 +354,6 @@ export function BarberProfile({ user }: BarberProfileProps) {
                 </Button>
               </div>
               <h3 className="text-xl font-bold">{user.name}</h3>
-              <div className="flex items-center mt-1">
-                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
-                <span>
-                  {barber.rating} ({barber.totalReviews} reviews)
-                </span>
-              </div>
-              {user.businessName && (
-                <div className="flex items-center text-sm text-barber-600 mt-1">
-                  <Building2 className="h-4 w-4 mr-1" />
-                  <span>{user.businessName}</span>
-                </div>
-              )}
               <div className="flex items-center text-sm text-muted-foreground mt-1">
                 <MapPin className="h-4 w-4 mr-1" />
                 <span>{barber.location}</span>
@@ -396,10 +383,10 @@ export function BarberProfile({ user }: BarberProfileProps) {
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Performance Overview</CardTitle>
-              <CardDescription>Your business metrics</CardDescription>
+              <CardDescription>Your barber metrics</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
                   <h4 className="text-2xl font-bold">{barber.totalClients}</h4>
                   <p className="text-sm text-muted-foreground">Total Clients</p>
@@ -407,10 +394,6 @@ export function BarberProfile({ user }: BarberProfileProps) {
                 <div className="bg-muted/30 p-4 rounded-lg text-center">
                   <h4 className="text-2xl font-bold">{barber.totalBookings}</h4>
                   <p className="text-sm text-muted-foreground">Total Bookings</p>
-                </div>
-                <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{barber.rating}</h4>
-                  <p className="text-sm text-muted-foreground">Average Rating</p>
                 </div>
               </div>
 
@@ -522,52 +505,6 @@ export function BarberProfile({ user }: BarberProfileProps) {
                 </div>
                 ))}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="reviews">
-        <Card>
-          <CardHeader>
-            <CardTitle>Client Reviews</CardTitle>
-            <CardDescription>What your clients are saying about you</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <div className="text-4xl font-bold">{barber.rating}</div>
-                <div>
-                  <div className="flex">{renderStars(barber.rating)}</div>
-                  <div className="text-sm text-muted-foreground">Based on {barber.totalReviews} reviews</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold">{barber.totalClients}</div>
-                <div className="text-sm text-muted-foreground">Happy clients</div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {barber.reviews.map((review) => (
-                <div key={review.id} className="border-b pb-6 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar>
-                      <AvatarImage src={review.client.image || "/placeholder.svg"} alt={review.client.name} />
-                      <AvatarFallback>{review.client.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium">{review.client.name}</h4>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        <span>{review.date}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex mb-2">{renderStars(review.rating)}</div>
-                  <p className="text-sm">{review.comment}</p>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>

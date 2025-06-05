@@ -4,17 +4,17 @@ import { Card, CardContent, CardFooter } from "@/shared/components/ui/card"
 import { Button } from "@/shared/components/ui/button"
 import { Badge } from "@/shared/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
-import { MapPin, Star, Clock, MessageSquare, Briefcase, Info } from "lucide-react"
+import { MapPin, Star, Clock, MessageSquare, Briefcase, Info, Heart } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
 interface Barber {
   id: string
   name: string
-  rating: number
   specialties: string[]
   image: string
   location: string
@@ -33,7 +33,22 @@ interface BarberCardProps {
 
 export function BarberCard({ barber }: BarberCardProps) {
   const { user } = useAuth()
-  const isBusinessOwner = user?.role === "business"
+  const router = useRouter()
+  const { addToFavorites, removeFromFavorites } = useAuth()
+  const isFavorite = user?.favorites?.includes(barber.id)
+
+  const handleFavorite = async () => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
+    if (isFavorite) {
+      await removeFromFavorites(barber.id)
+    } else {
+      await addToFavorites(barber.id)
+    }
+  }
 
   return (
     <TooltipProvider>
@@ -72,10 +87,6 @@ export function BarberCard({ barber }: BarberCardProps) {
             <div className="p-6">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-bold text-xl">{barber.name}</h3>
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
-                  <span>{barber.rating}</span>
-                </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mb-4">
@@ -102,30 +113,14 @@ export function BarberCard({ barber }: BarberCardProps) {
           </CardContent>
 
           <CardFooter className="p-6 pt-0 flex gap-2">
-            {isBusinessOwner ? (
-              barber.openToHire ? (
-                <Button className="flex-1" href={`/business/hire/${barber.id}`}>
-                  <Briefcase className="h-4 w-4 mr-2" />
-                  Hire
-                </Button>
-              ) : (
-                <Button className="flex-1" disabled>
-                  <Briefcase className="h-4 w-4 mr-2" />
-                  Not Open to Hire
-                </Button>
-              )
-            ) : (
-              <div className="flex gap-2">
-                <Button className="flex-1" href={`/book/${barber.id}`}>
-                  Book Now
-                </Button>
-                <Button className="flex-1" href={`/messages/${barber.id}`}>
-                  Message
-                </Button>
-              </div>
-            )}
-            <Button variant="outline" size="icon" href={`/barber/${barber.id}`}>
-              <Info className="h-4 w-4" />
+            <Button variant="outline" size="icon" onClick={handleFavorite}>
+              <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+            </Button>
+            <Button className="flex-1" href={`/barber/${barber.id}`}>
+              View Profile
+            </Button>
+            <Button className="flex-1" href={`/book/${barber.id}`}>
+              Book Now
             </Button>
           </CardFooter>
         </Card>
