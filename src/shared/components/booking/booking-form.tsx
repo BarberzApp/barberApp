@@ -16,6 +16,12 @@ import { Card, CardContent } from '@/shared/components/ui/card'
 import { createPaymentIntent, confirmPaymentIntent } from '@/shared/lib/stripe-service'
 import { loadStripe } from '@stripe/stripe-js'
 import { StripeElements } from '@/shared/components/payment/stripe-elements'
+import { useAuth } from '@/shared/hooks/use-auth'
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// Add constant for time slot interval (in minutes)
+const TIME_SLOT_INTERVAL = 30; // 30-minute intervals
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -29,6 +35,7 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBookingCreated }: BookingFormProps) {
+  const { user } = useAuth()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [services, setServices] = useState<Service[]>([])
@@ -44,6 +51,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
   const [date, setDate] = useState<Date>(selectedDate)
   const [paymentIntent, setPaymentIntent] = useState<any>(null)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [bookedTimes, setBookedTimes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (isOpen) {
@@ -73,42 +81,84 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   const fetchAvailability = async () => {
     try {
-      // Get barber's availability for the selected day
+      const selectedDate = date.toISOString().split('T')[0]
+      
+      // First check for special hours
+      const { data: specialHours, error: specialHoursError } = await supabase
+        .from('special_hours')
+        .select('*')
+        .eq('barber_id', barberId)
+        .eq('date', selectedDate)
+
+      if (specialHoursError) {
+        throw specialHoursError
+      }
+
+      // If there are special hours and the barber is closed, return no slots
+      if (specialHours?.[0]?.is_closed) {
+        setAvailableTimeSlots([])
+        return
+      }
+
+      // If there are special hours, use those times
+      if (specialHours?.[0]) {
+        const start = new Date(`2000-01-01T${specialHours[0].start_time}`)
+        const end = new Date(`2000-01-01T${specialHours[0].end_time}`)
+        const slots: string[] = []
+        
+        for (let time = new Date(start); time < end; time.setMinutes(time.getMinutes() + TIME_SLOT_INTERVAL)) {
+          const timeStr = time.toTimeString().slice(0, 5)
+          slots.push(timeStr)
+        }
+        setAvailableTimeSlots(slots)
+        return
+      }
+
+      // If no special hours, use regular availability
       const dayOfWeek = date.getDay()
       const { data: availability, error: availabilityError } = await supabase
         .from('availability')
         .select('*')
         .eq('barber_id', barberId)
         .eq('day_of_week', dayOfWeek)
-        .single()
 
       if (availabilityError) throw availabilityError
 
       // Get existing bookings for the selected date
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
-        .select('time')
+        .select('date')
         .eq('barber_id', barberId)
-        .eq('date', date.toISOString().split('T')[0])
+        .gte('date', `${selectedDate}T00:00:00`)
+        .lt('date', `${selectedDate}T23:59:59`)
         .eq('status', 'pending')
 
       if (bookingsError) throw bookingsError
 
+      // Log fetched bookings
+      console.log('Fetched bookings:', bookings)
+
+      // Set bookedTimes based on fetched bookings
+      const newBookedTimes = new Set(bookings?.map(b => new Date(b.date).toTimeString().slice(0, 5)) || [])
+      setBookedTimes(newBookedTimes)
+
       // Generate time slots based on availability
-      const bookedTimes = new Set(bookings?.map(b => b.time) || [])
       const slots: string[] = []
       
-      if (availability) {
-        const start = new Date(availability.start_time)
-        const end = new Date(availability.end_time)
+      if (availability?.[0]) {
+        const start = new Date(`2000-01-01T${availability[0].start_time}`)
+        const end = new Date(`2000-01-01T${availability[0].end_time}`)
         
-        for (let time = new Date(start); time < end; time.setHours(time.getHours() + 1)) {
+        for (let time = new Date(start); time < end; time.setMinutes(time.getMinutes() + TIME_SLOT_INTERVAL)) {
           const timeStr = time.toTimeString().slice(0, 5)
-          if (!bookedTimes.has(timeStr)) {
+          if (!newBookedTimes.has(timeStr)) {
             slots.push(timeStr)
           }
         }
       }
+
+      // Log generated slots
+      console.log('Generated slots:', slots)
 
       setAvailableTimeSlots(slots)
     } catch (error) {
@@ -134,7 +184,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       return
     }
 
-    if (!formData.guestName || !formData.guestEmail || !formData.guestPhone) {
+    // If user is not authenticated, require guest information
+    if (!user && (!formData.guestName || !formData.guestEmail || !formData.guestPhone)) {
       toast({
         title: "Error",
         description: "Please fill in all guest information.",
@@ -145,26 +196,54 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
     setLoading(true)
     try {
-      // Create payment intent
-      const intent = await createPaymentIntent(
-        selectedService.price * 100, // Convert to cents
-        'usd',
-        'guest', // Use 'guest' as the client ID for guest bookings
-        {
-          serviceId: selectedService.id,
-          barberId,
-          date: date.toISOString(),
-          time: formData.time,
-          guestName: formData.guestName,
-          guestEmail: formData.guestEmail,
-          guestPhone: formData.guestPhone,
-        }
-      )
+      // Combine date and time into a single timestamp
+      const [hours, minutes] = formData.time.split(':')
+      const bookingDate = new Date(date)
+      bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0)
 
-      setPaymentIntent(intent)
-      setShowPaymentForm(true)
+      // Create checkout session
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: selectedService.price * 100, // Base amount in cents
+          successUrl: `${window.location.origin}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/booking/cancel`,
+          metadata: {
+            serviceId: selectedService.id,
+            barberId,
+            date: bookingDate.toISOString(),
+            basePrice: selectedService.price,
+            notes: formData.notes || '',
+            // Include client_id if user is authenticated
+            ...(user ? { clientId: user.id } : {}),
+            // Include guest information if user is not authenticated
+            ...(!user ? {
+              guestName: formData.guestName,
+              guestEmail: formData.guestEmail,
+              guestPhone: formData.guestPhone,
+            } : {})
+          }
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session')
+      }
+
+      const { sessionId } = await response.json()
+      const stripe = await stripePromise
+      if (!stripe) throw new Error('Stripe failed to load')
+
+      // Redirect to Stripe Checkout
+      const { error } = await stripe.redirectToCheckout({ sessionId })
+      if (error) {
+        throw error
+      }
     } catch (error) {
-      console.error('Error creating payment intent:', error)
+      console.error('Error creating checkout session:', error)
       toast({
         title: "Error",
         description: "Failed to process payment. Please try again.",
@@ -190,22 +269,28 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       const { error: stripeError } = await stripe.confirmCardPayment(paymentIntent.clientSecret)
       if (stripeError) throw stripeError
 
+      // Combine date and time into a single timestamp
+      const [hours, minutes] = formData.time.split(':')
+      const bookingDate = new Date(date)
+      bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+
+      if (!syncService) throw new Error('Sync service not available')
+
       // Create the booking
       const booking = await syncService.createBooking({
-        clientId: 'guest', // Use 'guest' as the client ID
-        barberId,
-        serviceId: formData.serviceId,
-        date: date,
-        time: formData.time,
-        totalPrice: selectedService.price,
-        status: "confirmed", // Set to confirmed since payment is successful
-        paymentStatus: "paid",
+        client_id: 'guest',
+        barber_id: barberId,
+        service_id: formData.serviceId,
+        date: new Date(bookingDate.toISOString()),
+        price: selectedService.price,
+        status: "confirmed",
+        payment_status: "paid",
         notes: formData.notes,
-        guestName: formData.guestName,
-        guestEmail: formData.guestEmail,
-        guestPhone: formData.guestPhone,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        guest_name: formData.guestName,
+        guest_email: formData.guestEmail,
+        guest_phone: formData.guestPhone,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
 
       toast({
@@ -229,29 +314,56 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Book Appointment</DialogTitle>
         </DialogHeader>
         {!showPaymentForm ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Date</Label>
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(date) => date && setDate(date)}
-                className="rounded-md border"
-              />
+              <Label className="text-base font-semibold">Select Date</Label>
+              <div className="border rounded-lg p-4 bg-card">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(date) => date && setDate(date)}
+                  className="w-full"
+                  disabled={(date) => {
+                    // Disable past dates
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    return date < today
+                  }}
+                  modifiers={{
+                    available: (date) => {
+                      // Add your availability logic here
+                      return true
+                    },
+                    today: (date) => {
+                      const today = new Date()
+                      return date.toDateString() === today.toDateString()
+                    }
+                  }}
+                  modifiersStyles={{
+                    available: {
+                      fontWeight: 'bold',
+                      color: 'white',
+                    },
+                    today: {
+                      backgroundColor: 'rgba(128, 0, 128, 0.5)', // Set background opacity to 50% for purple
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="service">Service</Label>
+              <Label className="text-base font-semibold">Select Service</Label>
               <Select
                 value={formData.serviceId}
                 onValueChange={(value) => setFormData({ ...formData, serviceId: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a service" />
                 </SelectTrigger>
                 <SelectContent>
@@ -265,22 +377,30 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="time">Time</Label>
-              <Select
+              <Label className="text-base font-semibold">Select Time</Label>
+              <Input
+                type="time"
                 value={formData.time}
-                onValueChange={(value) => setFormData({ ...formData, time: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableTimeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(e) => {
+                  const newTime = e.target.value;
+                  const [hours, minutes] = newTime.split(':').map(Number);
+                  const bookingDate = new Date(date);
+                  bookingDate.setHours(hours, minutes, 0, 0);
+                  const bookingTimeStr = bookingDate.toTimeString().slice(0, 5);
+
+                  // Check if the time is in the bookedTimes set
+                  if (bookedTimes.has(bookingTimeStr)) {
+                    toast({
+                      title: "Time Unavailable",
+                      description: "This time slot is already booked. Please choose another time.",
+                      variant: "destructive",
+                    });
+                  } else {
+                    setFormData({ ...formData, time: newTime });
+                  }
+                }}
+                required
+              />
             </div>
 
             <div className="space-y-2">

@@ -20,6 +20,10 @@ export type User = {
   joinDate?: string
   createdAt?: string
   updatedAt?: string
+  barberId?: string
+  specialties?: string[]
+  priceRange?: string
+  nextAvailable?: string
 }
 
 interface AuthContextType {
@@ -52,38 +56,102 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchUserProfile(session.user.id)
-      } else {
-        setUser(null)
-        setIsLoading(false)
-      }
-    })
+    let mounted = true
 
-    // Listen for changes on auth state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
+    const initializeAuth = async () => {
+      try {
+        // Check for existing session in localStorage
+        const storedSession = localStorage.getItem('barber-app-auth')
+        if (storedSession) {
+          const { session, expiresAt } = JSON.parse(storedSession)
+          if (new Date(expiresAt) > new Date()) {
+            // Session is still valid
+            if (session?.user) {
+              await fetchUserProfile(session.user.id)
+              return
+            }
+          }
+        }
+
+        // If no valid stored session, check current session
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          await fetchUserProfile(session.user.id)
+        } else {
+          setUser(null)
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error)
+        setUser(null)
+      } finally {
+        if (mounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    initializeAuth()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
         await fetchUserProfile(session.user.id)
-      } else {
+        // Store session with expiration
+        const sessionData = {
+          session,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+        }
+        localStorage.setItem('barber-app-auth', JSON.stringify(sessionData))
+      } else if (event === 'SIGNED_OUT') {
         setUser(null)
-        setIsLoading(false)
+        localStorage.removeItem('barber-app-auth')
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+      let profile = null;
+      let profileError = null;
+      const maxRetries = 3;
+      const retryDelay = 1000; // 1 second
 
-      if (error) throw error
+      for (let i = 0; i < maxRetries; i++) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (data) {
+          profile = data;
+          break;
+        }
+
+        if (error) {
+          profileError = error;
+          // If it's not a "not found" error, break immediately
+          if (error.code !== 'PGRST116') {
+            break;
+          }
+        }
+
+        // Wait before retrying
+        if (i < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
+
+      if (!profile) {
+        console.error('Error fetching user profile:', profileError);
+        setUser(null);
+        return;
+      }
 
       setUser({
         id: userId,
@@ -98,31 +166,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         joinDate: profile.join_date,
         createdAt: profile.created_at,
         updatedAt: profile.updated_at
-      })
+      });
     } catch (error) {
-      console.error('Error fetching user profile:', error)
-      setUser(null)
+      console.error('Error in fetchUserProfile:', error);
+      setUser(null);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Start both auth and profile fetch in parallel
-      const [authResponse, profileResponse] = await Promise.all([
-        supabase.auth.signInWithPassword({ email, password }),
-        supabase.from('profiles').select('*').eq('email', email).single()
-      ]);
-
-      const { data: authData, error: authError } = authResponse;
-      const { data: profile, error: profileError } = profileResponse;
+      // 1. First authenticate the user with rate limiting check
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
 
       if (authError) {
         console.error('Auth error:', authError);
+        
+        // Handle specific error cases
+        let errorMessage = authError.message;
+        if (authError.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password';
+        } else if (authError.message.includes('Email not confirmed')) {
+          errorMessage = 'Please verify your email address first';
+        } else if (authError.message.includes('Too many requests')) {
+          errorMessage = 'Too many login attempts. Please try again later';
+        }
+
         toast({
           title: "Login failed",
-          description: authError.message,
+          description: errorMessage,
           variant: "destructive",
         });
         return false;
@@ -137,64 +213,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      // If profile fetch failed, try one more time with user ID
+      // 2. Fetch profile with optimized query
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          barbers (
+            id,
+            specialties,
+            price_range,
+            next_available
+          )
+        `)
+        .eq('id', authData.user.id)
+        .single();
+
       if (profileError || !profile) {
-        const { data: retryProfile, error: retryError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (retryError || !retryProfile) {
-          console.error('Profile fetch error:', retryError);
-          // Sign out if profile doesn't exist
-          await supabase.auth.signOut();
-          toast({
-            title: "Login failed",
-            description: "User profile not found. Please try again.",
-            variant: "destructive",
-          });
-          return false;
-        }
-
-        // Set user state with retry profile data
-        setUser({
-          id: authData.user.id,
-          name: retryProfile.name,
-          email: retryProfile.email,
-          role: retryProfile.role,
-          phone: retryProfile.phone,
-          location: retryProfile.location,
-          description: retryProfile.description,
-          bio: retryProfile.bio,
-          favorites: retryProfile.favorites,
-          joinDate: retryProfile.join_date,
-          createdAt: retryProfile.created_at,
-          updatedAt: retryProfile.updated_at
+        console.error('Profile fetch error:', profileError);
+        // Sign out if profile doesn't exist
+        await supabase.auth.signOut();
+        
+        const errorMessage = profileError?.code === 'PGRST116' 
+          ? "User profile not found. Please contact support."
+          : "Failed to load user profile. Please try again.";
+          
+        toast({
+          title: "Login failed",
+          description: errorMessage,
+          variant: "destructive",
         });
-      } else {
-        // Set user state with initial profile data
-        setUser({
-          id: authData.user.id,
-          name: profile.name,
-          email: profile.email,
-          role: profile.role,
-          phone: profile.phone,
-          location: profile.location,
-          description: profile.description,
-          bio: profile.bio,
-          favorites: profile.favorites,
-          joinDate: profile.join_date,
-          createdAt: profile.created_at,
-          updatedAt: profile.updated_at
-        });
+        return false;
       }
 
-      // Store session in localStorage
-      localStorage.setItem('barber-app-auth', JSON.stringify({
+      // 3. Set user state with profile data and barber info if applicable
+      const userData = {
+        id: authData.user.id,
+        name: profile.name,
+        email: profile.email,
+        role: profile.role,
+        phone: profile.phone,
+        location: profile.location,
+        description: profile.bio,
+        bio: profile.bio,
+        favorites: profile.favorites,
+        joinDate: profile.join_date,
+        createdAt: profile.created_at,
+        updatedAt: profile.updated_at,
+        ...(profile.role === 'barber' && profile.barbers?.[0] ? {
+          barberId: profile.barbers[0].id,
+          specialties: profile.barbers[0].specialties,
+          priceRange: profile.barbers[0].price_range,
+          nextAvailable: profile.barbers[0].next_available
+        } : {})
+      };
+
+      setUser(userData);
+
+      // 4. Store session with expiration
+      const sessionData = {
         user: authData.user,
-        session: authData.session
-      }));
+        session: authData.session,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      };
+      localStorage.setItem('barber-app-auth', JSON.stringify(sessionData));
+
+      // 5. Set up session refresh
+      const refreshInterval = setInterval(async () => {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          clearInterval(refreshInterval);
+          await logout();
+          return;
+        }
+        // Update session in storage
+        localStorage.setItem('barber-app-auth', JSON.stringify({
+          ...sessionData,
+          session
+        }));
+      }, 15 * 60 * 1000); // Refresh every 15 minutes
+
+      // Store refresh interval ID for cleanup
+      localStorage.setItem('refresh-interval-id', refreshInterval.toString());
 
       toast({
         title: "Login successful",
@@ -207,6 +306,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear any partial session data
       await supabase.auth.signOut();
       localStorage.removeItem('barber-app-auth');
+      localStorage.removeItem('refresh-interval-id');
+      
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -221,16 +322,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Starting registration process...');
       console.log('Registration data:', { name, email, role });
       
-      const redirectTo = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001/auth/callback'
-        : `${window.location.origin}/auth/callback`;
-
       // Create auth user with role in metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectTo,
           data: {
             name,
             role,
@@ -252,15 +348,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('User metadata:', authData.user?.user_metadata);
 
       if (authData.user) {
-        // Wait a moment for the trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Check if email confirmation is required
+        if (authData.user.identities?.length === 0) {
+          toast({
+            title: "Check your email",
+            description: "We've sent you a confirmation email. Please verify your email address to complete registration.",
+          });
+          return true;
+        }
 
-        // Fetch the created profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single();
+        // Try to fetch the profile with retries
+        let profile = null;
+        let profileError = null;
+        let retries = 3;
+        
+        while (retries > 0) {
+          const result = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+            
+          if (result.data) {
+            profile = result.data;
+            break;
+          }
+          
+          profileError = result.error;
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
 
         console.log('Profile fetch result:', { profile, profileError });
 
@@ -268,7 +387,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Profile fetch error:', profileError);
           toast({
             title: "Registration failed",
-            description: "Failed to create user profile",
+            description: "Failed to create user profile. Please try again.",
             variant: "destructive",
           });
           return false;
@@ -311,18 +430,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      setUser(null)
+      // Clear refresh interval
+      const intervalId = localStorage.getItem('refresh-interval-id');
+      if (intervalId) {
+        clearInterval(parseInt(intervalId));
+        localStorage.removeItem('refresh-interval-id');
+      }
+
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Clear local storage
+      localStorage.removeItem('barber-app-auth');
+      
+      // Reset user state
+      setUser(null);
+      
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
     } catch (error) {
-      console.error('Logout error:', error)
+      console.error('Logout error:', error);
       toast({
         title: "Logout failed",
-        description: "An unexpected error occurred",
+        description: "There was an error logging out. Please try again.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;

@@ -16,9 +16,9 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <div className="relative min-h-screen bg-background">
+      <div className="relative min-h-screen bg-background flex flex-col">
         <Header />
-        <main className="container py-6">
+        <main className="flex-1 container py-6">
           {children}
         </main>
       </div>

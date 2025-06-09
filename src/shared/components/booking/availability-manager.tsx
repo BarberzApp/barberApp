@@ -12,17 +12,24 @@ import { Loader2 } from 'lucide-react'
 
 interface TimeOff {
   id: string
-  startDate: string
-  endDate: string
+  barber_id: string
+  start_date: string
+  end_date: string
   reason: string
+  created_at: string
+  updated_at: string
 }
 
 interface SpecialHours {
   id: string
+  barber_id: string
   date: string
-  startTime: string
-  endTime: string
+  start_time: string
+  end_time: string
+  is_closed: boolean
   reason: string
+  created_at: string
+  updated_at: string
 }
 
 interface TimeSlot {
@@ -31,9 +38,13 @@ interface TimeSlot {
 }
 
 interface Availability {
-  day: string
-  isAvailable: boolean
-  slots: TimeSlot[]
+  id: string
+  barber_id: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  created_at: string
+  updated_at: string
 }
 
 interface AvailabilityManagerProps {
@@ -68,22 +79,8 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
 
       if (specialHoursError) throw specialHoursError
 
-      const { data: timeOffData, error: timeOffError } = await supabase
-        .from('time_off')
-        .select('*')
-        .eq('barber_id', barberId)
-
-      if (timeOffError) throw timeOffError
-
-      setAvailability(
-        availabilityData.map((item) => ({
-          day: item.day,
-          isAvailable: item.is_available,
-          slots: item.slots
-        }))
-      )
-      setSpecialHours(specialHoursData)
-      setTimeOff(timeOffData)
+      setAvailability(availabilityData || [])
+      setSpecialHours(specialHoursData || [])
     } catch (error) {
       console.error('Error fetching availability:', error)
       toast.error('Failed to load availability settings')
@@ -102,9 +99,9 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
       const { error } = await supabase.from('availability').insert(
         newAvailability.map((item) => ({
           barber_id: barberId,
-          day: item.day,
-          is_available: item.isAvailable,
-          slots: item.slots
+          day_of_week: item.day_of_week,
+          start_time: item.start_time,
+          end_time: item.end_time
         }))
       )
 
@@ -120,20 +117,21 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
     }
   }
 
-  const handleAddSpecialHours = async (hours: SpecialHours) => {
+  const handleAddSpecialHours = async (hours: Omit<SpecialHours, 'id' | 'barber_id' | 'created_at' | 'updated_at'>) => {
     try {
       setLoading(true)
-      const { error } = await supabase.from('special_hours').insert({
+      const { data, error } = await supabase.from('special_hours').insert({
         barber_id: barberId,
         date: hours.date,
-        start_time: hours.startTime,
-        end_time: hours.endTime,
+        start_time: hours.start_time,
+        end_time: hours.end_time,
+        is_closed: hours.is_closed,
         reason: hours.reason
-      })
+      }).select()
 
       if (error) throw error
 
-      setSpecialHours([...specialHours, hours])
+      setSpecialHours([...specialHours, data[0]])
       toast.success('Special hours added successfully')
     } catch (error) {
       console.error('Error adding special hours:', error)
@@ -165,8 +163,8 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
       setLoading(true)
       const { error } = await supabase.from('time_off').insert({
         barber_id: barberId,
-        start_date: timeOff.startDate,
-        end_date: timeOff.endDate,
+        start_date: timeOff.start_date,
+        end_date: timeOff.end_date,
         reason: timeOff.reason
       })
 
@@ -209,19 +207,17 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="weekly">Weekly Schedule</TabsTrigger>
-        <TabsTrigger value="time-off">Time Off</TabsTrigger>
         <TabsTrigger value="special-hours">Special Hours</TabsTrigger>
         <TabsTrigger value="calendar">Calendar View</TabsTrigger>
       </TabsList>
 
       <TabsContent value="weekly">
-        <WeeklySchedule availability={availability} onSave={handleSaveAvailability} />
-      </TabsContent>
-
-      <TabsContent value="time-off">
-        <TimeOffManager timeOff={timeOff} onAdd={handleAddTimeOff} onRemove={handleRemoveTimeOff} />
+        <WeeklySchedule
+          barberId={barberId}
+          initialSchedule={availability}
+        />
       </TabsContent>
 
       <TabsContent value="special-hours">
@@ -229,6 +225,7 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
           specialHours={specialHours}
           onAdd={handleAddSpecialHours}
           onRemove={handleRemoveSpecialHours}
+          barberId={barberId}
         />
       </TabsContent>
 
@@ -236,7 +233,6 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
         <AvailabilityCalendar
           availability={availability}
           specialHours={specialHours}
-          timeOff={timeOff}
         />
       </TabsContent>
     </Tabs>

@@ -12,12 +12,12 @@ import { Button } from "@/shared/components/ui/button"
 import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, MapPin, Star, Scissors, Heart, Upload } from "lucide-react"
+import { Calendar, MapPin, Scissors, Heart, Upload } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
 import Link from "next/link"
 import type { User } from "@/features/auth/hooks/use-auth"
 import { useData } from "@/shared/hooks/use-data"
-import type { Booking, Review, Barber, Service } from "@/shared/hooks/use-data"
+import type { Booking, Barber, Service } from "@/shared/hooks/use-data"
 
 interface ClientProfileProps {
   user: User
@@ -35,8 +35,6 @@ export function ClientProfile({ user }: ClientProfileProps) {
     phone: user.phone || "",
     location: user.location || "",
     bio: user.bio || "",
-    rating: 0,
-    totalReviews: 0,
     totalClients: 0,
     totalBookings: 0,
     specialties: [],
@@ -65,14 +63,6 @@ export function ClientProfile({ user }: ClientProfileProps) {
       description: "Your profile has been updated successfully",
     })
     setIsEditing(false)
-  }
-
-  const renderStars = (rating: number) => {
-    return Array(5)
-      .fill(0)
-      .map((_, i) => (
-        <Star key={i} className={`h-4 w-4 ${i < rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`} />
-      ))
   }
 
   return (
@@ -227,9 +217,6 @@ export function ClientProfile({ user }: ClientProfileProps) {
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" href={`/book/${booking.barber.id}`}>
                         Book Again
-                      </Button>
-                      <Button size="sm" href={`/messages/${booking.barber.id}`}>
-                        Message
                       </Button>
                     </div>
                   </div>

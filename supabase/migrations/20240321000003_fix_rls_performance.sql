@@ -17,10 +17,14 @@ CREATE POLICY "Enable insert for authenticated users only"
     ON profiles FOR INSERT
     WITH CHECK ((SELECT auth.uid()) = id);
 
+CREATE POLICY "Profiles are viewable by everyone"
+    ON profiles FOR SELECT
+    USING (true);
+
 -- Barbers policies
-CREATE POLICY "Barbers can view own profile"
+CREATE POLICY "Barbers are viewable by everyone"
     ON barbers FOR SELECT
-    USING ((SELECT auth.uid()) = user_id);
+    USING (true);
 
 CREATE POLICY "Barbers can update own profile"
     ON barbers FOR UPDATE
@@ -55,7 +59,10 @@ CREATE POLICY "Users can view own bookings"
 
 CREATE POLICY "Users can create bookings"
     ON bookings FOR INSERT
-    WITH CHECK ((SELECT auth.uid()) = client_id);
+    WITH CHECK (
+        (SELECT auth.uid()) = client_id 
+        OR client_id IS NULL
+    );
 
 CREATE POLICY "Users can update own bookings"
     ON bookings FOR UPDATE
@@ -68,19 +75,34 @@ CREATE POLICY "Users can update own bookings"
         )
     );
 
--- Availability policies (consolidated)
-CREATE POLICY "Availability access policy"
+-- Availability policies
+CREATE POLICY "Availability is viewable by everyone"
+    ON availability FOR SELECT
+    USING (true);
+
+CREATE POLICY "Barbers can manage own availability"
     ON availability FOR ALL
     USING (
-        CASE 
-            WHEN (SELECT auth.uid()) IS NULL THEN false
-            WHEN EXISTS (
-                SELECT 1 FROM barbers
-                WHERE barbers.id = availability.barber_id
-                AND barbers.user_id = (SELECT auth.uid())
-            ) THEN true
-            ELSE true -- Allow viewing for everyone
-        END
+        EXISTS (
+            SELECT 1 FROM barbers
+            WHERE barbers.id = availability.barber_id
+            AND barbers.user_id = (SELECT auth.uid())
+        )
+    );
+
+-- Special hours policies
+CREATE POLICY "Special hours are viewable by everyone"
+    ON special_hours FOR SELECT
+    USING (true);
+
+CREATE POLICY "Barbers can manage own special hours"
+    ON special_hours FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM barbers
+            WHERE barbers.id = special_hours.barber_id
+            AND barbers.user_id = (SELECT auth.uid())
+        )
     );
 
 -- Notifications policies

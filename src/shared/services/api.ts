@@ -1,114 +1,107 @@
-import { createClient } from '@/lib/supabase/client'
-import type { User, Booking, Service, Review, JobPost, JobApplication } from '@/shared/types'
+import { supabase } from '@/shared/lib/supabase'
+import type { Barber, Booking, Service } from '@/shared/types'
 
-const supabase = createClient()
-
-// User Services
-export const userService = {
-  async getProfile(userId: string): Promise<User | null> {
+// Barber service
+export const barberService = {
+  async getBarberById(id: string) {
     const { data, error } = await supabase
-      .from('users')
+      .from('barbers')
       .select('*')
-      .eq('id', userId)
+      .eq('id', id)
       .single()
-    
     if (error) throw error
     return data
   },
 
-  async updateProfile(userId: string, updates: Partial<User>): Promise<User> {
+  async updateBarber(id: string, data: Partial<Barber>) {
+    const { error } = await supabase
+      .from('barbers')
+      .update(data)
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async getBarbers() {
     const { data, error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single()
-    
+      .from('barbers')
+      .select('*')
     if (error) throw error
     return data
   }
 }
 
-// Booking Services
+// Booking service
 export const bookingService = {
-  async createBooking(booking: Omit<Booking, 'id'>): Promise<Booking> {
+  async createBooking(booking: Omit<Booking, 'id'>) {
     const { data, error } = await supabase
       .from('bookings')
       .insert(booking)
       .select()
       .single()
-    
     if (error) throw error
     return data
   },
 
-  async getBookings(userId: string): Promise<Booking[]> {
+  async updateBookingStatus(id: string, status: Booking['status']) {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status })
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async updatePaymentStatus(id: string, status: Booking['paymentStatus']) {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ paymentStatus: status })
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async getBookingsByBarberId(barberId: string) {
     const { data, error } = await supabase
       .from('bookings')
       .select('*')
-      .eq('userId', userId)
-    
+      .eq('barberId', barberId)
+    if (error) throw error
+    return data
+  },
+
+  async getBookingsByClientId(clientId: string) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('clientId', clientId)
     if (error) throw error
     return data
   }
 }
 
-// Service Services
+// Service service
 export const serviceService = {
-  async getBarberServices(barberId: string): Promise<Service[]> {
+  async createService(service: Omit<Service, 'id'>) {
+    const { data, error } = await supabase
+      .from('services')
+      .insert(service)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async updateService(id: string, data: Partial<Service>) {
+    const { error } = await supabase
+      .from('services')
+      .update(data)
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async getServicesByBarberId(barberId: string) {
     const { data, error } = await supabase
       .from('services')
       .select('*')
       .eq('barberId', barberId)
-    
-    if (error) throw error
-    return data
-  }
-}
-
-// Review Services
-export const reviewService = {
-  async createReview(review: Omit<Review, 'id'>): Promise<Review> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .insert(review)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data
-  },
-
-  async getBarberReviews(barberId: string): Promise<Review[]> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select('*')
-      .eq('barberId', barberId)
-    
-    if (error) throw error
-    return data
-  }
-}
-
-// Job Services
-export const jobService = {
-  async createJobPost(jobPost: Omit<JobPost, 'id'>): Promise<JobPost> {
-    const { data, error } = await supabase
-      .from('job_posts')
-      .insert(jobPost)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data
-  },
-
-  async getJobApplications(jobId: string): Promise<JobApplication[]> {
-    const { data, error } = await supabase
-      .from('job_applications')
-      .select('*')
-      .eq('jobId', jobId)
-    
     if (error) throw error
     return data
   }

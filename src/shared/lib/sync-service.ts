@@ -1,3 +1,5 @@
+"use client"
+
 import { indexedDBService } from './indexeddb';
 import { Booking } from '@/shared/types/booking';
 import { supabase } from './supabase';
@@ -7,14 +9,22 @@ interface OfflineBooking extends Booking {
 }
 
 class SyncService {
-  private isOnline: boolean = navigator.onLine;
+  private isOnline: boolean;
   private syncQueue: OfflineBooking[] = [];
 
   constructor() {
-    this.setupEventListeners();
+    // Initialize isOnline safely
+    this.isOnline = typeof window !== 'undefined' ? navigator.onLine : true;
+    
+    // Only set up event listeners on the client side
+    if (typeof window !== 'undefined') {
+      this.setupEventListeners();
+    }
   }
 
   private setupEventListeners() {
+    if (typeof window === 'undefined') return;
+    
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
   }
@@ -93,21 +103,8 @@ class SyncService {
   async createBooking(booking: Omit<Booking, 'id' | 'barber' | 'service' | 'client'>): Promise<Booking> {
     const { data, error } = await supabase
       .from('bookings')
-      .insert([booking])
-      .select(`
-        *,
-        barber:barber_id (
-          id,
-          name,
-          image,
-          location
-        ),
-        service:service_id (
-          id,
-          name,
-          price
-        )
-      `)
+      .insert(booking)
+      .select('*, barber:barber_id(*), service:service_id(*)')
       .single()
 
     if (error) throw error
@@ -166,4 +163,5 @@ class SyncService {
   }
 }
 
-export const syncService = new SyncService(); 
+// Only create the service instance on the client side
+export const syncService = typeof window !== 'undefined' ? new SyncService() : null; 

@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { Card, CardContent } from "@/shared/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs"
 import { Button } from "@/shared/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar"
 import { Badge } from "@/shared/components/ui/badge"
 import { Calendar, Clock, MapPin, Scissors, X } from "lucide-react"
 import Link from "next/link"
@@ -22,13 +22,17 @@ import {
 } from "@/shared/components/ui/alert-dialog"
 import { supabase } from "@/shared/lib/supabase"
 import type { Booking } from "@/shared/types/booking"
+import { useToast } from '@/shared/components/ui/use-toast'
 
 export default function BookingsPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [showBookingForm, setShowBookingForm] = useState(false)
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -59,7 +63,6 @@ export default function BookingsPage() {
         const transformedBookings = (data || []).map(booking => ({
           ...booking,
           date: new Date(booking.booking_date),
-          time: booking.booking_time,
           services: booking.services || [],
           barber: {
             id: booking.barber.id,
@@ -72,13 +75,18 @@ export default function BookingsPage() {
         setBookings(transformedBookings)
       } catch (error) {
         console.error('Error fetching bookings:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load bookings',
+          variant: 'destructive',
+        })
       } finally {
         setLoading(false)
       }
     }
 
     fetchBookings()
-  }, [user, router])
+  }, [user, router, toast])
 
   const upcomingBookings = bookings.filter((booking) => booking.status === "pending" || booking.status === "confirmed")
   const pastBookings = bookings.filter((booking) => booking.status === "completed")
@@ -155,7 +163,6 @@ export default function BookingsPage() {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <Avatar className="h-16 w-16">
-                      <AvatarImage src={booking.barber.image || "/placeholder.svg"} alt={booking.barber.name} />
                       <AvatarFallback>{booking.barber.name.charAt(0)}</AvatarFallback>
                     </Avatar>
 
@@ -176,7 +183,11 @@ export default function BookingsPage() {
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
                           <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                          <span>{booking.time}</span>
+                          <span>{booking.date.toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true
+                          })}</span>
                         </div>
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
@@ -198,7 +209,7 @@ export default function BookingsPage() {
                     <div className="flex flex-col gap-3 mt-4 md:mt-0">
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Total</p>
-                        <p className="font-bold">${booking.totalPrice}</p>
+                        <p className="font-bold">${booking.price}</p>
                       </div>
 
                       <div className="flex gap-2">
@@ -235,7 +246,6 @@ export default function BookingsPage() {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <Avatar className="h-16 w-16">
-                      <AvatarImage src={booking.barber.image || "/placeholder.svg"} alt={booking.barber.name} />
                       <AvatarFallback>{booking.barber.name.charAt(0)}</AvatarFallback>
                     </Avatar>
 
@@ -256,7 +266,11 @@ export default function BookingsPage() {
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
                           <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                          <span>{booking.time}</span>
+                          <span>{booking.date.toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true
+                          })}</span>
                         </div>
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
@@ -278,7 +292,7 @@ export default function BookingsPage() {
                     <div className="flex flex-col gap-3 mt-4 md:mt-0">
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Total</p>
-                        <p className="font-bold">${booking.totalPrice}</p>
+                        <p className="font-bold">${booking.price}</p>
                       </div>
 
                       <Button variant="outline" size="sm">

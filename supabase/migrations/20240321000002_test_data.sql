@@ -40,21 +40,15 @@ SET
 WHERE id = '22222222-2222-2222-2222-222222222222';
 
 -- Insert test barber
-INSERT INTO barbers (id, user_id, bio, specialties, rating, total_reviews, price_range)
-VALUES 
-    ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 
-     'Professional Barber with 5 years of experience', 
-     ARRAY['Haircuts', 'Beard Trimming', 'Fades'],
-     4.8,
-     25,
-     '$20-$50')
-ON CONFLICT (user_id) DO UPDATE
-SET
-    bio = EXCLUDED.bio,
-    specialties = EXCLUDED.specialties,
-    rating = EXCLUDED.rating,
-    total_reviews = EXCLUDED.total_reviews,
-    price_range = EXCLUDED.price_range;
+INSERT INTO barbers (id, user_id, bio, specialties, price_range)
+VALUES
+  ('b1', 'u1', 'Professional barber with 10 years of experience', ARRAY['Fade', 'Beard Trim'], '$20-$50'),
+  ('b2', 'u2', 'Specializing in modern cuts and styles', ARRAY['Pompadour', 'Undercut'], '$25-$60'),
+  ('b3', 'u3', 'Classic cuts and traditional styles', ARRAY['Classic Cut', 'Hot Towel Shave'], '$30-$70')
+ON CONFLICT (id) DO UPDATE SET
+  bio = EXCLUDED.bio,
+  specialties = EXCLUDED.specialties,
+  price_range = EXCLUDED.price_range;
 
 -- Insert test services
 INSERT INTO services (id, name, description, duration, price, barber_id)

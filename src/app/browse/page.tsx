@@ -3,15 +3,27 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Search } from 'lucide-react'
+import Link from 'next/link'
 
+// Type for the raw data structure from the database
+type BarberFromDB = {
+  id: string
+  name: string
+  location?: string
+  bio?: string
+  barbers: {
+    specialties: string[]
+    price_range: string
+  }[]
+}
+
+// Type for the transformed data used in the UI
 type Barber = {
   id: string
   name: string
-  image?: string
   location?: string
   specialties: string[]
   bio?: string
@@ -34,24 +46,33 @@ export default function BrowsePage() {
         .select(`
           id,
           name,
-          image_url,
           location,
-          specialties,
           bio,
-          price_range
+          barbers (
+            specialties,
+            price_range
+          )
         `)
         .eq('role', 'barber')
+        .order('name')
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
 
-      const formattedBarbers = data.map(barber => ({
+      if (!data) {
+        console.error('No data returned from Supabase')
+        return
+      }
+
+      const formattedBarbers = (data as BarberFromDB[]).map(barber => ({
         id: barber.id,
         name: barber.name,
-        image: barber.image_url,
         location: barber.location,
-        specialties: barber.specialties,
+        specialties: barber.barbers?.[0]?.specialties || [],
         bio: barber.bio,
-        priceRange: barber.price_range
+        priceRange: barber.barbers?.[0]?.price_range
       }))
 
       setBarbers(formattedBarbers)
@@ -79,51 +100,53 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex flex-col gap-8">
+    <div className="min-h-screen bg-[#181A20] py-10">
+      <div className="container mx-auto max-w-7xl flex flex-col gap-10">
         <div>
-          <h1 className="text-3xl font-bold mb-4">Find a Barber</h1>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <h1 className="text-4xl font-bold mb-6 text-white tracking-tight">Find a Barber</h1>
+          <div className="relative max-w-xl mx-auto">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#A1A1AA] h-5 w-5" />
             <Input
               placeholder="Search by name, location, or specialty..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-12 py-3 rounded-full bg-[#23243a] text-white border-none shadow focus:ring-2 focus:ring-primary/40 transition"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredBarbers.map((barber) => (
-            <Card key={barber.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={barber.image || "/placeholder.svg"} alt={barber.name} />
-                    <AvatarFallback>{barber.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle>{barber.name}</CardTitle>
-                    {barber.location && (
-                      <p className="text-sm text-gray-500">{barber.location}</p>
-                    )}
-                  </div>
+            <Card
+              key={barber.id}
+              className="flex flex-col rounded-2xl bg-[#23243a] border-none shadow-lg hover:shadow-2xl transition-shadow duration-200 group"
+            >
+              <CardHeader className="pb-2">
+                <div>
+                  <CardTitle className="text-white group-hover:text-primary transition-colors text-2xl font-semibold mb-1">
+                    {barber.name}
+                  </CardTitle>
+                  {barber.location && (
+                    <p className="text-sm text-[#A1A1AA]">{barber.location}</p>
+                  )}
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col justify-between">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {barber.specialties.map((specialty, index) => (
                     <span
                       key={index}
-                      className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
+                      className="px-3 py-1 bg-[#8E44AD] text-white rounded-full text-xs font-medium shadow-sm"
                     >
                       {specialty}
                     </span>
                   ))}
                 </div>
-                <Button asChild className="w-full">
-                  <a href={`/book/${barber.id}`}>Book Appointment</a>
+                <Button
+                  asChild
+                  className="w-full rounded-full py-2 font-semibold bg-primary hover:bg-primary/90 text-white shadow-md transition"
+                >
+                  <Link href={`/book/${barber.id}`}>Book Appointment</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -132,8 +155,8 @@ export default function BrowsePage() {
 
         {filteredBarbers.length === 0 && (
           <div className="text-center py-12">
-            <h3 className="text-lg font-medium">No barbers found</h3>
-            <p className="text-gray-500">Try adjusting your search</p>
+            <h3 className="text-lg font-medium text-white">No barbers found</h3>
+            <p className="text-[#A1A1AA]">Try adjusting your search</p>
           </div>
         )}
       </div>

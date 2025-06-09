@@ -4,7 +4,7 @@ export default function SettingsLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 bg-background">
       {children}
     </div>
   )

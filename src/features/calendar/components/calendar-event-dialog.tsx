@@ -1,123 +1,114 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog"
+import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar"
 import { Button } from "@/shared/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
-import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, Clock, Scissors, MapPin, MessageSquare } from "lucide-react"
-import type { CalendarEvent } from "@/shared/types/calendar"
-import Link from "next/link"
+import { Calendar, Clock, MapPin, Scissors, X } from "lucide-react"
 
-interface CalendarEventDialogProps {
-  event: CalendarEvent
-  userType: "client" | "barber"
-  onClose: () => void
+type Person = {
+  id: string
+  name: string
+  role: string
 }
 
-export function CalendarEventDialog({ event, userType, onClose }: CalendarEventDialogProps) {
-  const formatTimeRange = (start: string, end: string) => {
-    return `${new Date(start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${new Date(end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+type Event = {
+  id: string
+  title: string
+  start: Date
+  end: Date
+  barber: Person
+  client: Person
+  service: {
+    name: string
+    duration: number
+    price: number
   }
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+}
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <Badge className="bg-barber-500">Confirmed</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-500">Pending</Badge>
-      case "completed":
-        return <Badge className="bg-green-500">Completed</Badge>
-      case "cancelled":
-        return (
-          <Badge variant="outline" className="text-muted-foreground">
-            Cancelled
-          </Badge>
-        )
-      default:
-        return null
-    }
-  }
+interface CalendarEventDialogProps {
+  event: Event | null
+  onClose: () => void
+  onStatusChange: (eventId: string, status: Event['status']) => void
+}
 
-  const person = userType === "client" ? event.barber : event.client
+export function CalendarEventDialog({
+  event,
+  onClose,
+  onStatusChange,
+}: CalendarEventDialogProps) {
+  if (!event) return null
 
   return (
     <Dialog open={!!event} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{event.title}</span>
-            {getStatusBadge(event.status)}
-          </DialogTitle>
+          <DialogTitle>Appointment Details</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
+        <div className="grid gap-4 py-4">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback>{event.barber.name.charAt(0)}</AvatarFallback>
+            </Avatar>
             <div>
-              <p className="text-sm font-medium">Date</p>
-              <p>
-                {new Date(event.start).toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
+              <h3 className="font-medium">{event.barber.name}</h3>
+              <p className="text-sm text-muted-foreground">{event.barber.role}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">Time</p>
-              <p>{formatTimeRange(event.start, event.end)}</p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">
+                {event.start.toLocaleDateString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">
+                {event.start.toLocaleTimeString()} - {event.end.toLocaleTimeString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Scissors className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{event.service.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Barbershop Location</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Scissors className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Services</p>
-              <p>{event.services.join(", ")}</p>
+              <p className="text-sm font-medium">Status</p>
+              <p className="text-sm text-muted-foreground capitalize">{event.status}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Price</p>
+              <p className="text-sm text-muted-foreground">${event.service.price}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <MapPin className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">Location</p>
-              <p>Downtown Studio</p>
-            </div>
-          </div>
-
-          {person && (
-            <div className="flex items-start gap-3 pt-2">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={person.image || "/placeholder.svg"} alt={person.name} />
-                <AvatarFallback>{person.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">{userType === "client" ? "Barber" : "Client"}</p>
-                <p className="font-medium">{person.name}</p>
-              </div>
+          {event.status === 'pending' && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onStatusChange(event.id, 'cancelled')}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => onStatusChange(event.id, 'confirmed')}
+              >
+                Confirm
+              </Button>
             </div>
           )}
         </div>
-
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          {event.barber && (
-            <Button variant="outline" className="sm:flex-1" href={`/messages/${event.barber.id}`}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Message Barber
-            </Button>
-          )}
-          {event.status === "confirmed" && (
-            <Button variant="destructive" className="sm:flex-1">
-              Cancel Appointment
-            </Button>
-          )}
-          {event.status === "pending" && <Button className="sm:flex-1">Confirm Appointment</Button>}
-          {event.status === "completed" && <Button className="sm:flex-1">Book Again</Button>}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -1,5 +1,5 @@
 export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show"
-export type PaymentStatus = "pending" | "paid" | "refunded" | "failed"
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded"
 
 export type Barber = {
   id: string
@@ -10,34 +10,33 @@ export type Barber = {
 
 export type Booking = {
   id: string
-  barberId: string
+  barber_id: string
   barber: {
     id: string
     name: string
     image: string
     location: string
   }
-  clientId: string
+  client_id?: string | null
   client?: {
     id: string
     name: string
     image: string
   }
-  serviceId: string
+  service_id: string
   service: {
     id: string
     name: string
     price: number
   }
   date: Date
-  time: string
-  totalPrice: number
+  price: number
   status: BookingStatus
-  paymentStatus: PaymentStatus
+  payment_status: PaymentStatus
   notes?: string
-  guestName?: string
-  guestEmail?: string
-  guestPhone?: string
-  createdAt: string
-  updatedAt: string
+  guest_name?: string
+  guest_email?: string
+  guest_phone?: string
+  created_at: string
+  updated_at: string
 } 

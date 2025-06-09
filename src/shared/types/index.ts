@@ -11,59 +11,26 @@ export interface User {
   id: string
   name: string
   email: string
-  image?: string
-  role: "client" | "barber"
+  role: 'client' | 'barber'
   phone?: string
   location?: string
   description?: string
-  favorites?: string[]
-  wallet?: number
-  stripeCustomerId?: string
-  stripeAccountId?: string
   bio?: string
-  joinDate?: string
-  services?: Array<{
-    id: string
-    name: string
-    price: number
-    duration: number
-  }>
-  specialties?: string[]
-  portfolio?: string[]
-  isPublic?: boolean
+  favorites: string[]
+  joinDate: string
+  createdAt: string
+  updatedAt: string
 }
 
 // Barber Types
 export interface Barber {
   id: string
+  userId: string
   name: string
-  image: string
-  role: string
-  businessId?: string
-  businessName?: string
-  location: string
-  bio: string
+  location?: string
+  phone?: string
+  bio?: string
   specialties: string[]
-  rating: number
-  totalReviews: number
-  openToHire: boolean
-  distance?: number
-  priceRange: string
-  portfolio: string[]
-  nextAvailable: string
-  featured?: boolean
-  trending?: boolean
-  joinDate: string
-  bookings: number
-  totalClients: number
-  totalBookings: number
-  earnings: {
-    thisWeek: number
-    thisMonth: number
-    lastMonth: number
-  }
-  isFavorite?: boolean
-  availability: Record<string, { available: boolean; start: string; end: string }>
   services: Service[]
 }
 
@@ -71,46 +38,31 @@ export interface Barber {
 export interface Service {
   id: string
   name: string
-  description: string
+  description?: string
   duration: number
   price: number
-  barberId?: string
-  isFavorite?: boolean
+  barberId: string
 }
 
 // Booking Types
-export type BookingStatus = "upcoming" | "completed" | "cancelled"
-export type PaymentStatus = "pending" | "paid" | "refunded"
+export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
+export type PaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed'
 
 export interface Booking {
   id: string
   barberId: string
-  barber: {
-    id: string
-    name: string
-    image: string
-    location: string
-  }
   clientId: string
-  client?: {
-    id: string
-    name: string
-    image: string
-  }
   serviceId: string
-  service: {
-    id: string
-    name: string
-    price: number
-  }
   date: Date
-  time: string
-  totalPrice: number
   status: BookingStatus
   paymentStatus: PaymentStatus
+  price: number
+  createdAt: Date
+  updatedAt: Date
   notes?: string
-  createdAt: string
-  updatedAt: string
+  guestName?: string
+  guestEmail?: string
+  guestPhone?: string
 }
 
 // Message Types
@@ -120,7 +72,9 @@ export interface Message {
   senderId: string
   text: string
   timestamp: Date
-  status: "sending" | "sent" | "delivered" | "read"
+  status: 'sent' | 'delivered' | 'read'
+  createdAt: string
+  updatedAt: string
 }
 
 // Conversation Types
@@ -133,6 +87,8 @@ export interface Conversation {
     senderId: string
   }
   unreadCount: number
+  createdAt: string
+  updatedAt: string
 }
 
 // Helper Types
@@ -178,18 +134,49 @@ export interface JobApplication {
   coverLetter: string
 }
 
-// Review Types
-export interface Review {
+export interface CalendarEvent {
   id: string
-  barberId: string
-  clientId: string
-  rating: number
-  comment: string
+  title: string
+  start: Date
+  end: Date
+  allDay?: boolean
+  description?: string
+  location?: string
+  attendees?: string[]
+  status?: 'pending' | 'confirmed' | 'cancelled'
   createdAt: string
   updatedAt: string
-  client?: {
-    id: string
-    name: string
-    image: string
-  }
+}
+
+export interface Availability {
+  id: string
+  barberId: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface SpecialHours {
+  id: string
+  barberId: string
+  date: Date
+  startTime: string
+  endTime: string
+  isClosed: boolean
+  reason?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Notification {
+  id: string
+  userId: string
+  title: string
+  message: string
+  type: string
+  bookingId?: string
+  read: boolean
+  createdAt: Date
 } 

@@ -7,138 +7,152 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Switch } from '@/shared/components/ui/switch'
 import { Plus, Trash2 } from 'lucide-react'
-
-interface TimeSlot {
-  start: string
-  end: string
-}
+import { useToast } from '@/shared/components/ui/use-toast'
+import { supabase } from '@/shared/lib/supabase'
 
 interface Availability {
-  day: string
-  isAvailable: boolean
-  slots: TimeSlot[]
+  id?: string
+  barber_id: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  isAvailable?: boolean
 }
 
 interface WeeklyScheduleProps {
-  availability: Availability[]
-  onSave: (availability: Availability[]) => void
+  barberId: string
+  initialSchedule?: Availability[]
 }
 
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-export function WeeklySchedule({ availability, onSave }: WeeklyScheduleProps) {
-  const [schedule, setSchedule] = useState<Availability[]>(() => {
-    if (availability.length === 0) {
-      return DAYS.map(day => ({
-        day,
-        isAvailable: day !== 'sunday',
-        slots: [{ start: '09:00', end: '17:00' }]
-      }))
-    }
-    return availability
-  })
+export function WeeklySchedule({ barberId, initialSchedule }: WeeklyScheduleProps) {
+  const { toast } = useToast()
+  const [schedule, setSchedule] = useState<Availability[]>(
+    initialSchedule || DAYS.map((_, index) => ({
+      barber_id: barberId,
+      day_of_week: index,
+      start_time: '',
+      end_time: '',
+      isAvailable: false
+    }))
+  )
 
-  const handleToggleDay = (day: string) => {
+  const handleToggleDay = (dayOfWeek: number) => {
     setSchedule(schedule.map(item => 
-      item.day === day ? { ...item, isAvailable: !item.isAvailable } : item
-    ))
-  }
-
-  const handleAddSlot = (day: string) => {
-    setSchedule(schedule.map(item =>
-      item.day === day
-        ? { ...item, slots: [...item.slots, { start: '09:00', end: '17:00' }] }
+      item.day_of_week === dayOfWeek 
+        ? { 
+            ...item, 
+            start_time: item.start_time ? '' : '09:00',
+            end_time: item.end_time ? '' : '17:00'
+          } 
         : item
     ))
   }
 
-  const handleRemoveSlot = (day: string, index: number) => {
-    setSchedule(schedule.map(item =>
-      item.day === day
-        ? { ...item, slots: item.slots.filter((_, i) => i !== index) }
-        : item
-    ))
+  const handleTimeChange = (day: number, field: 'start_time' | 'end_time', value: string) => {
+    if (!value) return; // Don't update if value is empty
+    
+    setSchedule(prev => 
+      prev.map(slot => 
+        slot.day_of_week === day 
+          ? { ...slot, [field]: value }
+          : slot
+      )
+    );
   }
 
-  const handleSlotChange = (day: string, index: number, field: 'start' | 'end', value: string) => {
-    setSchedule(schedule.map(item =>
-      item.day === day
-        ? {
-            ...item,
-            slots: item.slots.map((slot, i) =>
-              i === index ? { ...slot, [field]: value } : slot
-            )
-          }
-        : item
-    ))
-  }
+  const handleSave = async () => {
+    try {
+      // Validate time slots
+      const validSlots = schedule.filter(day => {
+        if (!day.isAvailable) return false;
+        if (!day.start_time || !day.end_time) {
+          toast({
+            title: "Error",
+            description: `Please set both start and end times for ${DAYS[day.day_of_week]}`,
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      });
 
-  const handleSave = () => {
-    onSave(schedule)
-  }
+      if (validSlots.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please set at least one day's availability",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('availability')
+        .upsert(
+          validSlots.map(slot => ({
+            barber_id: barberId,
+            day_of_week: slot.day_of_week,
+            start_time: slot.start_time,
+            end_time: slot.end_time
+          }))
+        );
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Availability updated successfully",
+      });
+    } catch (error) {
+      console.error('Error saving availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save availability",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Weekly Schedule</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {schedule.map((day) => (
-          <div key={day.day} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={day.isAvailable}
-                  onCheckedChange={() => handleToggleDay(day.day)}
-                />
-                <Label className="capitalize">{day.day}</Label>
-              </div>
-              {day.isAvailable && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddSlot(day.day)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Slot
-                </Button>
-              )}
+      <CardContent className="space-y-4">
+        {schedule.map((slot) => (
+          <div key={slot.day_of_week} className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="flex items-center space-x-4">
+              <Switch
+                checked={slot.isAvailable}
+                onCheckedChange={(checked) => handleToggleDay(slot.day_of_week)}
+              />
+              <span className="font-medium">{DAYS[slot.day_of_week]}</span>
             </div>
-
-            {day.isAvailable && (
-              <div className="space-y-2">
-                {day.slots.map((slot, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      value={slot.start}
-                      onChange={(e) => handleSlotChange(day.day, index, 'start', e.target.value)}
-                      className="w-32"
-                    />
-                    <span>to</span>
-                    <Input
-                      type="time"
-                      value={slot.end}
-                      onChange={(e) => handleSlotChange(day.day, index, 'end', e.target.value)}
-                      className="w-32"
-                    />
-                    {day.slots.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveSlot(day.day, index)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+            {slot.isAvailable && (
+              <div className="flex items-center space-x-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`start-${slot.day_of_week}`}>Start Time</Label>
+                  <Input
+                    id={`start-${slot.day_of_week}`}
+                    type="time"
+                    value={slot.start_time}
+                    onChange={(e) => handleTimeChange(slot.day_of_week, 'start_time', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`end-${slot.day_of_week}`}>End Time</Label>
+                  <Input
+                    id={`end-${slot.day_of_week}`}
+                    type="time"
+                    value={slot.end_time}
+                    onChange={(e) => handleTimeChange(slot.day_of_week, 'end_time', e.target.value)}
+                  />
+                </div>
               </div>
             )}
           </div>
         ))}
-
         <Button onClick={handleSave} className="w-full">
           Save Schedule
         </Button>

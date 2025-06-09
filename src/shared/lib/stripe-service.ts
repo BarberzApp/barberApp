@@ -148,15 +148,29 @@ export const createPaymentIntent = async (
   customerId: string,
   metadata: Record<string, string> = {},
 ): Promise<PaymentIntent> => {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 800))
+  const response = await fetch('/api/payments/create-intent', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      amount,
+      currency,
+      metadata,
+    }),
+  })
 
+  if (!response.ok) {
+    throw new Error('Failed to create payment intent')
+  }
+
+  const data = await response.json()
   return {
-    id: `pi_${Math.random().toString(36).substring(2, 15)}`,
+    id: data.id,
     amount,
     currency,
-    status: "requires_confirmation",
-    clientSecret: `pi_secret_${Math.random().toString(36).substring(2, 15)}`,
+    status: "requires_payment_method",
+    clientSecret: data.client_secret,
     metadata,
   }
 }

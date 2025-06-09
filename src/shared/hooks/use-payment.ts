@@ -11,10 +11,26 @@ export function usePayment() {
   const createPaymentIntent = async (amount: number, currency: string, metadata?: Record<string, string>): Promise<PaymentIntent> => {
     setLoading(true)
     try {
-      // TODO: Implement actual payment intent creation
+      const response = await fetch('/api/payments/create-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          currency,
+          metadata,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create payment intent')
+      }
+
+      const data = await response.json()
       return {
-        id: 'pi_' + Math.random().toString(36).substr(2, 9),
-        client_secret: 'pi_' + Math.random().toString(36).substr(2, 9) + '_secret_' + Math.random().toString(36).substr(2, 9)
+        id: data.id,
+        client_secret: data.client_secret,
       }
     } finally {
       setLoading(false)
@@ -24,8 +40,20 @@ export function usePayment() {
   const confirmPayment = async (clientSecret: string, paymentMethodId: string): Promise<void> => {
     setLoading(true)
     try {
-      // TODO: Implement actual payment confirmation
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch('/api/payments/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientSecret,
+          paymentMethodId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to confirm payment')
+      }
     } finally {
       setLoading(false)
     }

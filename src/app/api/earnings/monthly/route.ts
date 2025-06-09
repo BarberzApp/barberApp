@@ -1,92 +1,88 @@
-import { NextResponse } from "next/server"
-import Stripe from "stripe"
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+import { supabase } from '@/shared/lib/supabase'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-05-28.basil",
-})
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    // Get the current user's session
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    const { searchParams } = new URL(request.url)
+    const barberId = searchParams.get('barberId')
+
+    if (!barberId) {
+      return NextResponse.json({ error: 'Barber ID is required' }, { status: 400 })
     }
 
-    // Get barber ID from the user's profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', session.user.id)
-      .single()
+    console.log('Fetching earnings for barber:', barberId)
 
-    if (!profile) {
-      return NextResponse.json(
-        { error: "Barber profile not found" },
-        { status: 404 }
-      )
-    }
-
+    // Get current month's earnings
     const now = new Date()
-    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const endOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
-    // Get current month's earnings for this barber
-    const currentMonthPayments = await stripe.paymentIntents.list({
-      created: {
-        gte: Math.floor(startOfCurrentMonth.getTime() / 1000),
-      },
-      limit: 100,
+    console.log('Date range for current month:', {
+      from: firstDayOfMonth.toISOString(),
+      to: lastDayOfMonth.toISOString()
     })
 
-    // Filter payments by barber ID in metadata
-    const currentMonthBarberPayments = currentMonthPayments.data.filter(
-      payment => payment.metadata?.barberId === profile.id
-    )
+    const { data: currentMonthData, error: currentError } = await supabase
+      .from('bookings')
+      .select('price')
+      .eq('barber_id', barberId)
+      .eq('payment_status', 'paid')
+      .gte('created_at', firstDayOfMonth.toISOString())
+      .lte('created_at', lastDayOfMonth.toISOString())
 
-    // Get previous month's earnings for this barber
-    const previousMonthPayments = await stripe.paymentIntents.list({
-      created: {
-        gte: Math.floor(startOfPreviousMonth.getTime() / 1000),
-        lt: Math.floor(endOfPreviousMonth.getTime() / 1000),
-      },
-      limit: 100,
+    if (currentError) {
+      console.error('Error fetching current month earnings:', currentError)
+      throw currentError
+    }
+
+    console.log('Current month bookings:', currentMonthData)
+
+    // Get previous month's earnings
+    const firstDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+
+    console.log('Date range for previous month:', {
+      from: firstDayOfPrevMonth.toISOString(),
+      to: lastDayOfPrevMonth.toISOString()
     })
 
-    // Filter payments by barber ID in metadata
-    const previousMonthBarberPayments = previousMonthPayments.data.filter(
-      payment => payment.metadata?.barberId === profile.id
-    )
+    const { data: prevMonthData, error: prevError } = await supabase
+      .from('bookings')
+      .select('price')
+      .eq('barber_id', barberId)
+      .eq('payment_status', 'paid')
+      .gte('created_at', firstDayOfPrevMonth.toISOString())
+      .lte('created_at', lastDayOfPrevMonth.toISOString())
 
-    // Calculate totals
-    const currentTotal = currentMonthBarberPayments.reduce((sum, payment) => sum + payment.amount, 0)
-    const previousTotal = previousMonthBarberPayments.reduce((sum, payment) => sum + payment.amount, 0)
+    if (prevError) {
+      console.error('Error fetching previous month earnings:', prevError)
+      throw prevError
+    }
 
-    // Calculate trend
-    const trend = currentTotal > previousTotal ? "up" : "down"
-    const percentage = previousTotal === 0 
-      ? 100 
-      : Math.round(Math.abs((currentTotal - previousTotal) / previousTotal) * 100)
+    console.log('Previous month bookings:', prevMonthData)
 
-    return NextResponse.json({
+    // Convert dollars to cents by multiplying by 100
+    const currentTotal = (currentMonthData?.reduce((sum, booking) => sum + booking.price, 0) || 0) * 100
+    const prevTotal = (prevMonthData?.reduce((sum, booking) => sum + booking.price, 0) || 0) * 100
+
+    console.log('Calculated totals:', {
+      currentTotal,
+      prevTotal
+    })
+
+    const percentage = prevTotal === 0 ? 100 : ((currentTotal - prevTotal) / prevTotal) * 100
+
+    const response = {
       current: currentTotal,
-      previous: previousTotal,
-      trend,
-      percentage,
-    })
+      previous: prevTotal,
+      trend: currentTotal >= prevTotal ? "up" : "down",
+      percentage: Math.abs(Math.round(percentage))
+    }
+
+    console.log('Sending response:', response)
+    return NextResponse.json(response)
   } catch (error) {
-    console.error("Error fetching monthly earnings:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch monthly earnings" },
-      { status: 500 }
-    )
+    console.error('Error fetching earnings:', error)
+    return NextResponse.json({ error: 'Failed to fetch earnings' }, { status: 500 })
   }
 } 

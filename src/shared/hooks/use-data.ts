@@ -6,8 +6,6 @@ export interface Barber {
   image: string
   location: string
   bio: string
-  rating: number
-  totalReviews: number
   totalClients: number
   totalBookings: number
   earnings: {
@@ -15,7 +13,6 @@ export interface Barber {
     thisMonth: number
     lastMonth: number
   }
-  reviews: Review[]
   specialties: string[]
   services: Service[]
   portfolio: string[]
@@ -26,24 +23,6 @@ export interface Barber {
   phone?: string
   bookingHistory?: Booking[]
   favoriteBarbers?: Barber[]
-}
-
-export interface Review {
-  id: string
-  rating: number
-  comment: string
-  client: {
-    id: string
-    name: string
-    image: string
-  }
-  barber: {
-    id: string
-    name: string
-    image: string
-  }
-  date: string
-  clientId: string
 }
 
 export interface Booking {
@@ -75,7 +54,6 @@ export function useData() {
   const [error, setError] = useState<string | null>(null)
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [reviews, setReviews] = useState<Review[]>([])
 
   const fetchData = async () => {
     setLoading(true)
@@ -115,7 +93,6 @@ export function useData() {
     error,
     barbers,
     bookings,
-    reviews,
     fetchData,
     updateBarber,
     addPortfolioImage,

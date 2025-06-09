@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/router"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
@@ -12,7 +12,7 @@ import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Textarea } from "@/shared/components/ui/textarea"
 import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, MapPin, Star, Upload, DollarSign, Clock, X, Building2 } from "lucide-react"
+import { Calendar, MapPin, Star, Upload, DollarSign, Clock, X, Building2, Scissors } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
 import Link from "next/link"
 import Image from "next/image"
@@ -23,6 +23,8 @@ import { Switch } from "@/shared/components/ui/switch"
 import { Service } from "@/shared/types"
 import { supabase } from '@/shared/lib/supabase'
 import { EarningsDashboard } from "@/shared/components/payment/earnings-dashboard"
+import { serviceService } from "@/shared/services/api"
+import { AvailabilityManager } from "./availability-manager"
 
 interface BarberProfileProps {
   user: User
@@ -47,571 +49,188 @@ interface Booking {
   status: string
 }
 
-export function BarberProfile({ user }: BarberProfileProps) {
+export function BarberProfile() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { updateBarber, loading: dataLoading } = useData()
   const { toast } = useToast()
-  const { updateProfile } = useAuth()
-  const { updateBarber, addPortfolioImage, removePortfolioImage, loading: dataLoading } = useData()
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [profileData, setProfileData] = useState({
-    name: user.name || "",
-    email: user.email || "",
-    phone: user.phone || "",
-    location: user.location || "",
-    bio: user.bio || "",
-  })
-  const [newService, setNewService] = useState({ 
-    name: "", 
-    price: "", 
-    duration: "",
-    description: "",
-    barberId: user.id 
-  })
-  const [newSpecialty, setNewSpecialty] = useState("")
-  const [services, setServices] = useState<Service[]>([])
-  const [specialties, setSpecialties] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [barberId, setBarberId] = useState<string>('')
 
-  const { barbers, loading, error } = useData()
-  const barber = barbers.find(b => b.id === user.id) || {
-    id: user.id,
-    name: user.name || "",
-    location: user.location || "",
-    bio: user.bio || "",
-    rating: 0,
-    totalReviews: 0,
-    totalClients: 0,
-    totalBookings: 0,
-    earnings: {
-      thisWeek: 0,
-      thisMonth: 0,
-      lastMonth: 0
-    },
-    specialties: [],
-    services: [],
-    joinDate: new Date().toLocaleDateString(),
-    nextAvailable: "Available now",
-    isPublic: false
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setProfileData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setNewService((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const addService = () => {
-    if (newService.name && newService.price && newService.duration) {
-      const price = Number.parseInt(newService.price)
-      const duration = Number.parseInt(newService.duration)
-
-      if (isNaN(price) || isNaN(duration)) {
-        toast({
-          title: "Invalid input",
-          description: "Price and duration must be numbers",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const newServiceObj: Service = {
-          id: `service_${Math.random().toString(36).substr(2, 9)}`,
-          name: newService.name,
-          price,
-          duration,
-        description: newService.description || "",
-        barberId: user.id
-      }
-
-      setServices([...services, newServiceObj])
-      setNewService({ name: "", price: "", duration: "", description: "", barberId: user.id })
+  useEffect(() => {
+    if (user) {
+      fetchBarberId()
     }
-  }
+  }, [user])
 
-  const removeService = (id: string) => {
-    setServices(services.filter((service) => service.id !== id))
-  }
-
-  const addSpecialty = () => {
-    if (newSpecialty && !specialties.includes(newSpecialty)) {
-      setSpecialties([...specialties, newSpecialty])
-      setNewSpecialty("")
-    }
-  }
-
-  const removeSpecialty = (specialty: string) => {
-    setSpecialties(specialties.filter((s) => s !== specialty))
-  }
-
-  const handleSave = async () => {
+  const fetchBarberId = async () => {
     try {
-      setIsSaving(true)
-      
-      // Check if user is logged in
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session) {
-        console.error('No valid session:', sessionError)
-        toast({
-          title: "Error",
-          description: "Please log in to update your profile",
-          variant: "destructive",
-        })
-        return
+      const { data, error } = await supabase
+        .from('barbers')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single()
+
+      if (error) throw error
+      if (data) {
+        setBarberId(data.id)
+      }
+    } catch (error) {
+      console.error('Error fetching barber ID:', error)
+    }
+  }
+
+  if (!user) {
+    router.push('/login')
+    return null
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      const formData = new FormData(e.currentTarget)
+      const data = {
+        bio: formData.get('bio') as string,
+        specialties: (formData.get('specialties') as string).split(',').map(s => s.trim()),
+        location: formData.get('location') as string,
+        phone: formData.get('phone') as string,
       }
 
-      // Only send fields that should be updated by the user
-      const updatedBarber = {
-        name: profileData.name,
-        location: profileData.location,
-        bio: profileData.bio,
-        services: services.map(service => ({
-          id: service.id,
-          name: service.name,
-          price: service.price,
-          duration: service.duration,
-          description: service.description || "",
-          barberId: barber.id
-        })),
-        specialties: specialties,
-        isPublic: barber.isPublic
-      }
-      
-      await updateBarber(barber.id, updatedBarber)
-    toast({
-        title: "Success",
-        description: "Profile updated successfully",
-    })
-    setIsEditing(false)
+      await updateBarber(user.id, data)
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
+      })
     } catch (error) {
       console.error('Error updating profile:', error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : 'Failed to update profile',
+        description: "Failed to update profile",
         variant: "destructive",
       })
     } finally {
-      setIsSaving(false)
+      setLoading(false)
     }
-  }
-
-  const renderStars = (rating: number) => {
-    return Array(5)
-      .fill(0)
-      .map((_, i) => (
-        <Star key={i} className={`h-4 w-4 ${i < rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`} />
-      ))
-  }
-
-  const handlePortfolioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    try {
-      const imageUrl = URL.createObjectURL(file)
-      addPortfolioImage(user.id, imageUrl)
-      
-      await updateProfile({
-        ...profileData
-      })
-
-      toast({
-        title: "Portfolio updated",
-        description: "Your portfolio has been updated successfully",
-      })
-    } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: "Failed to upload image",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleRemovePortfolioImage = async (index: number) => {
-    try {
-      removePortfolioImage(user.id, "")
-      
-      await updateProfile({
-        ...profileData
-      })
-
-      toast({
-        title: "Image removed",
-        description: "The image has been removed from your portfolio",
-      })
-    } catch (error) {
-      toast({
-        title: "Failed to remove image",
-        description: "Please try again",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleToggleIsPublic = async () => {
-    try {
-      setIsSaving(true)
-      const updatedBarber = {
-        ...barber,
-        isPublic: !barber.isPublic
-      }
-      
-      await updateBarber(barber.id, updatedBarber)
-      toast({
-        title: "Success",
-        description: `Profile is now ${!barber.isPublic ? 'public' : 'private'}`,
-      })
-    } catch (error) {
-      console.error('Error toggling profile visibility:', error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : 'Failed to update profile visibility',
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleBookingSort = (a: Booking, b: Booking) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime()
-  }
-
-  const handleReviewSubmit = (review: Review) => {
-    // ... existing code ...
-  }
-
-  const handleAvailabilityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // ... existing code ...
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-barber-600"></div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-red-500">Error loading profile: {error}</p>
-      </div>
-    )
   }
 
   return (
-    <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 mb-8">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-        <TabsTrigger value="services">Services</TabsTrigger>
-        <TabsTrigger value="settings">Settings</TabsTrigger>
-      </TabsList>
+    <div className="container mx-auto py-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-2">
+          <Tabs defaultValue="profile" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="availability">Availability</TabsTrigger>
+              {user?.role === 'barber' && (
+                <TabsTrigger value="earnings">Earnings</TabsTrigger>
+              )}
+            </TabsList>
 
-      <TabsContent value="overview">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-1">
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Your professional information</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center text-center">
-              <div className="relative mb-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarFallback>{user.name?.charAt(0) || "B"}</AvatarFallback>
-                </Avatar>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="absolute bottom-0 right-0 rounded-full bg-background border"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span className="sr-only">Upload avatar</span>
-                </Button>
-              </div>
-              <h3 className="text-xl font-bold">{user.name}</h3>
-              <div className="flex items-center text-sm text-muted-foreground mt-1">
-                <MapPin className="h-4 w-4 mr-1" />
-                <span>{barber.location}</span>
-              </div>
-              <div className="flex items-center text-sm text-muted-foreground mt-1">
-                <Calendar className="h-4 w-4 mr-1" />
-                <span>Member since {barber.joinDate}</span>
-              </div>
-              <p className="mt-4 text-sm">{barber.bio}</p>
-              <Button 
-                variant="outline" 
-                className="mt-4 w-full" 
-                onClick={() => {
-                  setIsEditing(true)
-                  // Find the settings tab trigger and click it
-                  const settingsTab = document.querySelector('[data-value="settings"]')
-                  if (settingsTab instanceof HTMLElement) {
-                    settingsTab.click()
-                  }
-                }}
-              >
-                Edit Profile
-              </Button>
-            </CardContent>
-          </Card>
+            <TabsContent value="profile">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-24 w-24">
+                      <AvatarFallback>{user.name?.charAt(0) || "B"}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <CardTitle className="text-2xl">{user.name}</CardTitle>
+                      <p className="text-muted-foreground">{user.email}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea
+                        id="bio"
+                        name="bio"
+                        placeholder="Tell us about yourself..."
+                        defaultValue={user.bio || ''}
+                      />
+                    </div>
 
-          <Card className="md:col-span-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="specialties">Specialties</Label>
+                      <Input
+                        id="specialties"
+                        name="specialties"
+                        placeholder="e.g. Fade, Beard Trim, Haircut"
+                        defaultValue={user.specialties?.join(', ') || ''}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Separate specialties with commas
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <Input
+                        id="location"
+                        name="location"
+                        placeholder="Your location"
+                        defaultValue={user.location || ''}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="Your phone number"
+                        defaultValue={user.phone || ''}
+                      />
+                    </div>
+
+                    <Button type="submit" disabled={loading || dataLoading}>
+                      {loading ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="availability">
+              {barberId && <AvailabilityManager barberId={barberId} />}
+            </TabsContent>
+
+            {user?.role === 'barber' && (
+              <TabsContent value="earnings">
+                {barberId && <EarningsDashboard barberId={barberId} />}
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
+
+        <div>
+          <Card>
             <CardHeader>
-              <CardTitle>Performance Overview</CardTitle>
-              <CardDescription>Your barber metrics</CardDescription>
+              <CardTitle>Quick Stats</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{barber.totalClients}</h4>
-                  <p className="text-sm text-muted-foreground">Total Clients</p>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Total Appointments: 0</span>
                 </div>
-                <div className="bg-muted/30 p-4 rounded-lg text-center">
-                  <h4 className="text-2xl font-bold">{barber.totalBookings}</h4>
-                  <p className="text-sm text-muted-foreground">Total Bookings</p>
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Average Rating: 0.0</span>
                 </div>
-              </div>
-
-              <div className="mt-6">
-                <EarningsDashboard />
+                <div className="flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Services Offered: 0</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
-      </TabsContent>
-
-      <TabsContent value="portfolio">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Portfolio</CardTitle>
-            <CardDescription>Showcase your best work</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[]}
-              <label className="relative aspect-[3/4] bg-muted rounded-md border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePortfolioUpload}
-                />
-                <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-sm font-medium">Add Photo</p>
-                <p className="text-xs text-muted-foreground">Upload a new image</p>
-              </label>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="services">
-        <Card>
-          <CardHeader>
-            <CardTitle>Services</CardTitle>
-            <CardDescription>Manage your service offerings</CardDescription>
-          </CardHeader>
-          <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input
-                  placeholder="Service name"
-                  value={newService.name}
-                      name="name"
-                      onChange={handleServiceChange}
-                    />
-                    <Input
-                  placeholder="Price"
-                  value={newService.price}
-                      name="price"
-                      type="number"
-                      onChange={handleServiceChange}
-                    />
-                    <Input
-                  placeholder="Duration (minutes)"
-                  value={newService.duration}
-                      name="duration"
-                      type="number"
-                      onChange={handleServiceChange}
-                    />
-                  </div>
-              <div className="mt-4">
-                <Textarea
-                  placeholder="Service description"
-                  value={newService.description}
-                  name="description"
-                  onChange={handleServiceChange}
-                />
-              </div>
-              <Button onClick={addService}>Add Service</Button>
-
-              <div className="space-y-4 mt-6">
-                {services.map((service) => (
-                  <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{service.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        ${service.price} • {service.duration} minutes
-                      </p>
-                      {service.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{service.description}</p>
-                      )}
-                </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeService(service.id)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="settings">
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
-            <CardDescription>Manage your account preferences</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Professional Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" name="name" value={profileData.name} onChange={handleChange} disabled={!isEditing} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={profileData.email}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={profileData.phone}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    value={profileData.location}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    name="bio"
-                    value={profileData.bio}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                    rows={4}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-lg font-medium">Specialties</h3>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a specialty"
-                  value={newSpecialty}
-                  onChange={(e) => setNewSpecialty(e.target.value)}
-                />
-                <Button onClick={addSpecialty}>Add</Button>
-                    </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {specialties.map((specialty) => (
-                  <Badge key={specialty} variant="secondary" className="flex items-center gap-1">
-                    {specialty}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-4 w-4 p-0 hover:bg-transparent"
-                      onClick={() => removeSpecialty(specialty)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-lg font-medium">Notification Preferences</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="email-notifications">Email Notifications</Label>
-                  <input type="checkbox" id="email-notifications" className="toggle" defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sms-notifications">SMS Notifications</Label>
-                  <input type="checkbox" id="sms-notifications" className="toggle" defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="booking-reminders">Booking Reminders</Label>
-                  <input type="checkbox" id="booking-reminders" className="toggle" defaultChecked />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-lg font-medium">Security</h3>
-              <Button variant="outline">Change Password</Button>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-lg font-medium">Danger Zone</h3>
-              <Button variant="destructive">Delete Account</Button>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-lg font-medium">Profile Visibility</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-4">
-                  <span className="font-medium">Show in Browse Page</span>
-                  <Switch
-                    checked={barber.isPublic}
-                    onCheckedChange={handleToggleIsPublic}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <Button 
-                onClick={handleSave} 
-                disabled={isSaving || dataLoading}
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+      </div>
+    </div>
   )
 }

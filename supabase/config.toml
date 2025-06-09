@@ -43,7 +43,7 @@ file_size_limit = "50MiB"
 # in emails.
 site_url = "http://localhost:3002"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = []
+additional_redirect_urls = ["http://localhost:3002/auth/callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (one
 # week).
 jwt_expiry = 3600
@@ -69,7 +69,7 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = true
+enable_confirmations = false
 secure_password_change = false
 max_frequency = "1m0s"
 otp_length = 6

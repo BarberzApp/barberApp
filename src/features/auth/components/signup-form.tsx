@@ -25,12 +25,15 @@ export function SignupForm() {
     setIsLoading(true)
 
     try {
-      await register(name, email, password, role)
-      setShowConfirmation(true)
+      const success = await register(name, email, password, role)
+      if (success) {
+        setShowConfirmation(true)
+      }
     } catch (error) {
+      console.error('Signup error:', error)
       toast({
         title: "Signup failed",
-        description: "Failed to create account. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create account. Please try again.",
         variant: "destructive",
       })
     } finally {
