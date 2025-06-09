@@ -28,12 +28,14 @@ type Event = {
 
 interface CalendarEventDialogProps {
   event: Event | null
+  userType: "client" | "barber"
   onClose: () => void
   onStatusChange: (eventId: string, status: Event['status']) => void
 }
 
 export function CalendarEventDialog({
   event,
+  userType,
   onClose,
   onStatusChange,
 }: CalendarEventDialogProps) {

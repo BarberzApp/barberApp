@@ -15,9 +15,10 @@ import type { CalendarEvent } from "@/shared/types/calendar"
 interface CalendarViewProps {
   userType: "client" | "barber"
   events: CalendarEvent[]
+  onStatusChange?: (eventId: string, status: CalendarEvent['status']) => void
 }
 
-export function CalendarView({ userType, events }: CalendarViewProps) {
+export function CalendarView({ userType, events, onStatusChange }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<"day" | "week" | "month">("week")
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
@@ -152,7 +153,12 @@ export function CalendarView({ userType, events }: CalendarViewProps) {
       </Card>
 
       {selectedEvent && (
-        <CalendarEventDialog event={selectedEvent} userType={userType} onClose={() => setSelectedEvent(null)} />
+        <CalendarEventDialog 
+          event={selectedEvent} 
+          userType={userType} 
+          onClose={() => setSelectedEvent(null)}
+          onStatusChange={onStatusChange || (() => {})}
+        />
       )}
     </div>
   )

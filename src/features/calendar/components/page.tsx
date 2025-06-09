@@ -12,7 +12,7 @@ import { Badge } from "@/shared/components/ui/badge"
 import dynamic from 'next/dynamic'
 import { Loader2 } from "lucide-react"
 import { BarberCard } from "@/shared/components/profile/barber-card"
-import type { Barber } from "@/shared/contexts/data-context"
+import type { Barber } from "@/shared/types"
 
 const Calendar = dynamic(
   () => import("@/shared/components/ui/calendar").then((mod) => mod.Calendar),

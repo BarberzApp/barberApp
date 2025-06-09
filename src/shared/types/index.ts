@@ -32,6 +32,14 @@ export interface Barber {
   bio?: string
   specialties: string[]
   services: Service[]
+  image: string
+  nextAvailable: string
+  openToHire: boolean
+  distance?: number
+  priceRange?: string
+  portfolio?: string[]
+  featured?: boolean
+  trending?: boolean
 }
 
 // Service Types

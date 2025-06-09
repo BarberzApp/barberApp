@@ -11,15 +11,21 @@ import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useRouter } from "next/navigation"
+import { Service } from "@/shared/types"
 
 interface Barber {
   id: string
+  userId: string
   name: string
+  location?: string
+  phone?: string
+  bio?: string
   specialties: string[]
-  image: string
-  location: string
-  nextAvailable: string
-  openToHire: boolean
+  services: Service[]
+  // Optional UI-specific properties
+  image?: string
+  nextAvailable?: string
+  openToHire?: boolean
   distance?: number
   priceRange?: string
   portfolio?: string[]
@@ -97,16 +103,20 @@ export function BarberCard({ barber }: BarberCardProps) {
                 ))}
               </div>
 
-              <div className="flex items-center text-sm text-muted-foreground mb-2">
-                <MapPin className="h-4 w-4 mr-1" />
-                <span>{barber.location}</span>
-                {barber.distance && <span className="ml-1">({barber.distance} miles away)</span>}
-              </div>
+              {barber.location && (
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  <span>{barber.location}</span>
+                  {barber.distance && <span className="ml-1">({barber.distance} miles away)</span>}
+                </div>
+              )}
 
-              <div className="flex items-center text-sm text-muted-foreground mb-2">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>Next Available: {barber.nextAvailable}</span>
-              </div>
+              {barber.nextAvailable && (
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span>Next Available: {barber.nextAvailable}</span>
+                </div>
+              )}
 
               {barber.priceRange && <div className="text-sm font-medium">Price Range: {barber.priceRange}</div>}
             </div>

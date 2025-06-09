@@ -25,7 +25,7 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
   if (!booking) return null
 
   const handleCancel = async () => {
-    if (!user) return
+    if (!user || !syncService) return
 
     setLoading(true)
     try {
@@ -62,7 +62,7 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">Time</h4>
-              <p>{booking.time}</p>
+              <p>{format(new Date(booking.date), 'p')}</p>
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">Service</h4>

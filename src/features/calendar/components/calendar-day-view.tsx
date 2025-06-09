@@ -108,7 +108,7 @@ export function CalendarDayView({ date, events, onEventClick }: CalendarDayViewP
                       {startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
                       {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
-                    {event.services && <div className="text-xs mt-1 opacity-90">{event.services.join(", ")}</div>}
+                    {event.service && <div className="text-xs mt-1 opacity-90">{event.service.name}</div>}
                   </div>
                 )
               })}

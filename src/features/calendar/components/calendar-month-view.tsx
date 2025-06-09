@@ -170,7 +170,7 @@ export function CalendarMonthView({ date, events, onEventClick }: CalendarMonthV
                             {new Date(event.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
                             {new Date(event.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
-                          <p>{event.services.join(", ")}</p>
+                          <p>{event.service.name}</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>
