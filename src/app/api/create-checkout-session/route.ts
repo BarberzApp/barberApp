@@ -8,8 +8,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   try {
-    const { amount, successUrl, cancelUrl, metadata } = await request.json()
+    console.log('Starting checkout session creation...')
+    const body = await request.json()
+    console.log('Request body:', body)
+    
+    const { amount, successUrl, cancelUrl, metadata } = body
 
+    if (!amount || !successUrl || !cancelUrl || !metadata) {
+      console.error('Missing required fields:', { amount, successUrl, cancelUrl, metadata })
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    console.log('Fetching barber details for ID:', metadata.barberId)
     // Get the barber's Stripe account ID
     const { data: barber, error } = await supabase
       .from('barbers')
@@ -17,8 +30,15 @@ export async function POST(request: Request) {
       .eq('id', metadata.barberId)
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase error:', error)
+      throw error
+    }
+
+    console.log('Barber data:', barber)
+
     if (!barber?.stripe_account_id) {
+      console.error('No Stripe account ID found for barber:', metadata.barberId)
       return NextResponse.json(
         { error: 'Barber has not set up their payment account' },
         { status: 400 }
@@ -30,6 +50,13 @@ export async function POST(request: Request) {
     const fee = Math.round(baseAmount * 0.13) // 13% platform fee
     const barberAmount = baseAmount - fee
 
+    console.log('Calculated amounts:', {
+      baseAmount,
+      fee,
+      barberAmount
+    })
+
+    console.log('Creating Stripe checkout session...')
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -57,11 +84,17 @@ export async function POST(request: Request) {
       },
     })
 
+    console.log('Checkout session created successfully:', {
+      sessionId: session.id,
+      amount: session.amount_total,
+      status: session.status
+    })
+
     return NextResponse.json({ sessionId: session.id })
   } catch (error) {
     console.error("Error creating checkout session:", error)
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      { error: error instanceof Error ? error.message : "Failed to create checkout session" },
       { status: 500 }
     )
   }

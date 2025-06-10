@@ -214,6 +214,19 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
               </Button>
             </div>
           )}
+
+          {hasStripeAccount && (
+            <div className="text-center space-y-4 border-t pt-8 w-full">
+              <Button
+                onClick={() => window.open('https://dashboard.stripe.com', '_blank')}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <CreditCard className="h-4 w-4" />
+                View Stripe Dashboard
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
