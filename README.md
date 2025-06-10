@@ -64,7 +64,7 @@ src/
    ```
 4. Run development server:
    ```bash
-   npm run dev
+   npm run dev -- -p 3002
    ```
 
 ## Development
