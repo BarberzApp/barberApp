@@ -81,14 +81,11 @@ src/
 - Write clean, maintainable code
 - Document complex logic
 
-### Testing
+### Testing (adding soon)
 - Unit tests for components
 - Integration tests for features
 - End-to-end testing
 - Performance testing
-
-## Future Features
-See the `future-features` directory for planned features that will be implemented in future releases.
 
 ## Contributing
 1. Fork the repository
