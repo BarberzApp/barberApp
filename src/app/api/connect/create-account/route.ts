@@ -27,83 +27,90 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 export async function POST(request: Request) {
   try {
-    const { barberId, email, name } = await request.json()
-    
-    if (!barberId || !email || !name) {
+    const { barberId } = await request.json()
+
+    if (!barberId) {
       return NextResponse.json(
-        { error: 'Missing required fields: barberId, email, and name are required' },
+        { error: 'Barber ID is required' },
         { status: 400 }
       )
     }
 
-    console.log('Creating Stripe account for barber:', { barberId, email, name })
+    // Get barber details
+    const { data: barber, error: barberError } = await supabase
+      .from('barbers')
+      .select('*')
+      .eq('id', barberId)
+      .single()
 
-    // Create a Stripe Connect account
-    console.log('Creating Stripe Connect account...')
+    if (barberError) {
+      console.error('Error fetching barber:', barberError)
+      return NextResponse.json(
+        { error: 'Failed to fetch barber details' },
+        { status: 500 }
+      )
+    }
+
+    // Check if barber already has a Stripe account
+    if (barber.stripe_account_id) {
+      return NextResponse.json(
+        { error: 'Barber already has a Stripe account' },
+        { status: 400 }
+      )
+    }
+
+    // Create Stripe Connect account
     const account = await stripe.accounts.create({
       type: 'express',
-      email,
+      country: 'US',
+      email: barber.email,
       business_type: 'individual',
       capabilities: {
         card_payments: { requested: true },
         transfers: { requested: true },
       },
       business_profile: {
-        name,
-        url: APP_URL,
-        mcc: '7299', // Hairdressers and barbers
-      },
-      settings: {
-        payouts: {
-          schedule: {
-            interval: 'manual', // Start with manual payouts for safety
-          },
-        },
+        name: barber.name,
+        url: `${process.env.NEXT_PUBLIC_APP_URL}/barber/${barber.id}`,
       },
     })
-    console.log('Stripe account created:', { accountId: account.id })
 
-    // Store the Stripe account ID in the barbers table
-    console.log('Storing Stripe account ID in database...')
+    // Create account link for onboarding
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=payments`,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=payments&success=true`,
+      type: 'account_onboarding',
+    })
+
+    // Update barber record with Stripe account ID
     const { error: updateError } = await supabase
       .from('barbers')
-      .update({ stripe_account_id: account.id })
+      .update({
+        stripe_account_id: account.id,
+        stripe_account_status: 'pending',
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', barberId)
 
     if (updateError) {
-      console.error('Error storing Stripe account ID:', updateError)
+      console.error('Error updating barber:', updateError)
+      // Attempt to delete the Stripe account since we couldn't save the ID
+      await stripe.accounts.del(account.id)
       return NextResponse.json(
-        { error: `Failed to store Stripe account ID: ${updateError.message}` },
+        { error: 'Failed to update barber record' },
         { status: 500 }
       )
     }
-    console.log('Stripe account ID stored successfully')
 
-    // Create an account link for onboarding
-    console.log('Creating account link for onboarding...')
-    const accountLink = await stripe.accountLinks.create({
-      account: account.id,
-      refresh_url: `${APP_URL}/settings?tab=earnings`,
-      return_url: `${APP_URL}/settings?tab=earnings`,
-      type: 'account_onboarding',
+    return NextResponse.json({
+      accountId: account.id,
+      accountLink: accountLink.url,
     })
-    console.log('Account link created:', { url: accountLink.url })
-
-    return NextResponse.json({ url: accountLink.url })
   } catch (error) {
-    console.error('Error creating Stripe Connect account:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    
-    // Handle specific Stripe errors
-    if (error instanceof Stripe.errors.StripeError) {
-      return NextResponse.json(
-        { error: `Stripe error: ${errorMessage}` },
-        { status: error.statusCode || 500 }
-      )
-    }
-
+    console.error('Error creating Stripe account:', error)
     return NextResponse.json(
-      { error: `Failed to create Stripe Connect account: ${errorMessage}` },
+      { error: error instanceof Error ? error.message : 'Failed to create Stripe account' },
       { status: 500 }
     )
   }

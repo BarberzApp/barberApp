@@ -54,7 +54,7 @@ interface DataContextType {
   // Booking methods
   createBooking: (booking: Omit<Booking, "id">) => Promise<string>
   updateBookingStatus: (id: string, status: Booking["status"]) => void
-  updatePaymentStatus: (id: string, status: Booking["paymentStatus"]) => void
+  updatePaymentStatus: (id: string, status: Booking["payment_status"]) => void
   getBookingsByBarberId: (barberId: string) => Booking[]
   getBookingsByClientId: (clientId: string) => Booking[]
 
@@ -188,16 +188,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const updatePaymentStatus = async (id: string, status: Booking["paymentStatus"]) => {
+  const updatePaymentStatus = async (id: string, status: Booking["payment_status"]) => {
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ paymentStatus: status })
+        .update({ payment_status: status })
         .eq('id', id)
       if (error) throw error
 
       setBookings(prev => prev.map(booking => 
-        booking.id === id ? { ...booking, paymentStatus: status } : booking
+        booking.id === id ? { ...booking, payment_status: status } : booking
       ))
     } catch (err) {
       console.error('Error updating payment status:', err)
@@ -205,11 +205,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const getBookingsByBarberId = (barberId: string) => 
-    bookings.filter(booking => booking.barberId === barberId)
+  const getBookingsByBarberId = (barberId: string) => {
+    return bookings.filter(booking => booking.barber_id === barberId)
+  }
 
-  const getBookingsByClientId = (clientId: string) => 
-    bookings.filter(booking => booking.clientId === clientId)
+  const getBookingsByClientId = (clientId: string) => {
+    return bookings.filter(booking => booking.client_id === clientId)
+  }
 
   const fetchBarbers = async () => {
     setLoading(true)
@@ -231,57 +233,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          barber:barbers (
-            id,
-            user_id,
-            bio,
-            specialties,
-            profiles!barbers_user_id_fkey (
-              name,
-              location,
-              phone
-            )
-          ),
-          service:services (
-            id,
-            name,
-            description,
-            duration,
-            price
-          )
-        `)
-        .order('date', { ascending: true })
-
+        .select('*')
       if (error) throw error
 
-      if (!data) {
-        setBookings([])
-        return
-      }
-
-      const formattedBookings = data.map(booking => ({
+      setBookings(data.map(booking => ({
         id: booking.id,
-        barberId: booking.barber_id,
-        clientId: booking.client_id,
-        serviceId: booking.service_id,
-        date: new Date(booking.date),
+        barber_id: booking.barber_id,
+        client_id: booking.client_id,
+        service_id: booking.service_id,
+        date: booking.date,
         status: booking.status,
-        paymentStatus: booking.payment_status || 'pending',
+        payment_status: booking.payment_status,
         price: booking.price,
-        createdAt: new Date(booking.created_at),
-        updatedAt: new Date(booking.updated_at),
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
         notes: booking.notes,
-        guestName: booking.guest_name,
-        guestEmail: booking.guest_email,
-        guestPhone: booking.guest_phone
-      }))
-
-      setBookings(formattedBookings)
-    } catch (error) {
-      console.error('Error fetching bookings:', error)
-      setError('Failed to load bookings')
+        guest_name: booking.guest_name,
+        guest_email: booking.guest_email,
+        guest_phone: booking.guest_phone
+      })))
+    } catch (err) {
+      console.error('Error fetching bookings:', err)
     }
   }
 

@@ -50,10 +50,10 @@ export const bookingService = {
     if (error) throw error
   },
 
-  async updatePaymentStatus(id: string, status: Booking['paymentStatus']) {
+  async updatePaymentStatus(id: string, status: Booking['payment_status']) {
     const { error } = await supabase
       .from('bookings')
-      .update({ paymentStatus: status })
+      .update({ payment_status: status })
       .eq('id', id)
     if (error) throw error
   },

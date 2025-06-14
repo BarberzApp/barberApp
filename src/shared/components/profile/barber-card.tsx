@@ -11,27 +11,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useRouter } from "next/navigation"
-import { Service } from "@/shared/types"
-
-interface Barber {
-  id: string
-  userId: string
-  name: string
-  location?: string
-  phone?: string
-  bio?: string
-  specialties: string[]
-  services: Service[]
-  // Optional UI-specific properties
-  image?: string
-  nextAvailable?: string
-  openToHire?: boolean
-  distance?: number
-  priceRange?: string
-  portfolio?: string[]
-  featured?: boolean
-  trending?: boolean
-}
+import { Service, Barber } from "@/shared/types"
 
 interface BarberCardProps {
   barber: Barber
@@ -111,14 +91,14 @@ export function BarberCard({ barber }: BarberCardProps) {
                 </div>
               )}
 
-              {barber.nextAvailable && (
+              {barber.next_available && (
                 <div className="flex items-center text-sm text-muted-foreground mb-2">
                   <Clock className="h-4 w-4 mr-1" />
-                  <span>Next Available: {barber.nextAvailable}</span>
+                  <span>Next Available: {barber.next_available}</span>
                 </div>
               )}
 
-              {barber.priceRange && <div className="text-sm font-medium">Price Range: {barber.priceRange}</div>}
+              {barber.price_range && <div className="text-sm font-medium">Price Range: {barber.price_range}</div>}
             </div>
           </CardContent>
 

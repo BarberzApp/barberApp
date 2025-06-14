@@ -1,5 +1,5 @@
 // User Types
-export type UserRole = "client" | "barber" | "admin"
+export type UserRole = 'client' | 'barber' | 'admin';
 
 export const USER_ROLES = {
   CLIENT: "client" as const,
@@ -8,69 +8,79 @@ export const USER_ROLES = {
 }
 
 export interface User {
-  id: string
-  name: string
-  email: string
-  role: 'client' | 'barber'
-  phone?: string
-  location?: string
-  description?: string
-  bio?: string
-  favorites: string[]
-  joinDate: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  location?: string;
+  description?: string;
+  bio?: string;
+  favorites: string[];
+  join_date: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Barber Types
 export interface Barber {
-  id: string
-  userId: string
-  name: string
-  location?: string
-  phone?: string
-  bio?: string
-  specialties: string[]
-  services: Service[]
-  image: string
-  nextAvailable: string
-  openToHire: boolean
-  distance?: number
-  priceRange?: string
-  portfolio?: string[]
-  featured?: boolean
-  trending?: boolean
+  id: string;
+  user_id: string;
+  name: string;
+  location?: string;
+  phone?: string;
+  bio?: string;
+  specialties: string[];
+  services: Service[];
+  image: string;
+  next_available?: string;
+  openToHire: boolean;
+  distance?: number;
+  price_range?: string;
+  portfolio?: string[];
+  featured?: boolean;
+  trending?: boolean;
+  stripe_account_id?: string;
+  created_at: string;
+  updated_at: string;
+  user?: User;
 }
 
 // Service Types
 export interface Service {
-  id: string
-  name: string
-  description?: string
-  duration: number
-  price: number
-  barberId: string
+  id: string;
+  barber_id: string;
+  name: string;
+  description?: string;
+  duration: number;
+  price: number;
+  created_at: string;
+  updated_at: string;
+  barber?: Barber;
 }
 
 // Booking Types
-export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
-export type PaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed'
+export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 export interface Booking {
-  id: string
-  barberId: string
-  clientId: string
-  serviceId: string
-  date: Date
-  status: BookingStatus
-  paymentStatus: PaymentStatus
-  price: number
-  createdAt: Date
-  updatedAt: Date
-  notes?: string
-  guestName?: string
-  guestEmail?: string
-  guestPhone?: string
+  id: string;
+  barber_id: string;
+  client_id?: string;
+  service_id: string;
+  date: string;
+  status: BookingStatus;
+  payment_status: PaymentStatus;
+  price: number;
+  notes?: string;
+  guest_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
+  created_at: string;
+  updated_at: string;
+  barber?: Barber;
+  service?: Service;
+  client?: User;
 }
 
 // Message Types
@@ -157,34 +167,38 @@ export interface CalendarEvent {
 }
 
 export interface Availability {
-  id: string
-  barberId: string
-  dayOfWeek: number
-  startTime: string
-  endTime: string
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  barber_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+  updated_at: string;
+  barber?: Barber;
 }
 
 export interface SpecialHours {
-  id: string
-  barberId: string
-  date: Date
-  startTime: string
-  endTime: string
-  isClosed: boolean
-  reason?: string
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  barber_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  is_closed: boolean;
+  reason?: string;
+  created_at: string;
+  updated_at: string;
+  barber?: Barber;
 }
 
 export interface Notification {
-  id: string
-  userId: string
-  title: string
-  message: string
-  type: string
-  bookingId?: string
-  read: boolean
-  createdAt: Date
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  booking_id?: string;
+  read: boolean;
+  created_at: string;
+  user?: User;
+  booking?: Booking;
 } 
