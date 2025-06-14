@@ -127,21 +127,35 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           email: barber.profiles.email,
           name: barber.profiles.name,
         }),
+      }).catch(error => {
+        console.error('Network error during fetch:', error)
+        throw new Error(`Network error: ${error.message}`)
       })
 
-      const responseData = await response.json()
+      if (!response) {
+        throw new Error('No response received from server')
+      }
+
+      let responseData
+      try {
+        responseData = await response.json()
+      } catch (error) {
+        console.error('Error parsing response:', error)
+        throw new Error('Invalid response from server')
+      }
 
       if (!response.ok) {
         console.error('Failed to create Stripe account:', responseData)
         throw new Error(responseData.error || 'Failed to create Stripe account')
       }
 
-      if (!responseData.url) {
+      const redirectUrl = responseData.url || responseData.accountLink
+      if (!redirectUrl) {
         throw new Error('No redirect URL received from Stripe')
       }
 
-      console.log('Stripe account created, redirecting to:', responseData.url)
-      window.location.href = responseData.url
+      console.log('Stripe account created, redirecting to:', redirectUrl)
+      window.location.href = redirectUrl
     } catch (error) {
       console.error('Error setting up payments:', error)
       toast({
@@ -151,6 +165,38 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       })
     } finally {
       setIsSettingUp(false)
+    }
+  }
+
+  const handleAccessDashboard = async () => {
+    console.log('Accessing Stripe dashboard for barber:', barberId)
+    try {
+      const response = await fetch('/api/connect/create-account-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ barberId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to access Stripe dashboard')
+      }
+
+      if (!data.url) {
+        throw new Error('No dashboard URL received')
+      }
+
+      window.location.href = data.url
+    } catch (error) {
+      console.error('Error accessing Stripe dashboard:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to access Stripe dashboard. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -218,12 +264,12 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           {hasStripeAccount && (
             <div className="text-center space-y-4 border-t pt-8 w-full">
               <Button
-                onClick={() => window.open('https://dashboard.stripe.com', '_blank')}
+                onClick={handleAccessDashboard}
                 variant="outline"
                 className="flex items-center gap-2"
               >
                 <CreditCard className="h-4 w-4" />
-                View Stripe Dashboard
+                Access Stripe Dashboard
               </Button>
             </div>
           )}

@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useToast } from '@/shared/components/ui/use-toast'
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/shared/components/ui/use-toast"
+import { useSync } from "@/shared/hooks/use-sync"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
-import { syncService } from '@/shared/lib/sync-service'
-import { supabase } from '@/shared/lib/supabase'
 
 export default function BookingSuccessPage({
   searchParams,
@@ -15,12 +14,17 @@ export default function BookingSuccessPage({
 }) {
   const router = useRouter()
   const { toast } = useToast()
+  const { syncService } = useSync()
   const sessionId = searchParams.session_id
 
   useEffect(() => {
     const createBooking = async () => {
       if (!sessionId) {
-        console.error('No session ID provided')
+        toast({
+          title: "Error",
+          description: "No session ID provided",
+          variant: "destructive",
+        })
         router.push('/')
         return
       }
@@ -45,6 +49,17 @@ export default function BookingSuccessPage({
 
         if (!syncService) {
           throw new Error('Sync service not available')
+        }
+
+        // Check if booking already exists
+        const existingBooking = await syncService.getBooking(metadata.bookingId)
+        if (existingBooking) {
+          console.log('Booking already exists:', existingBooking)
+          toast({
+            title: "Booking Confirmed",
+            description: "Your appointment has been scheduled successfully.",
+          })
+          return
         }
 
         // Use the base price from metadata
@@ -87,7 +102,7 @@ export default function BookingSuccessPage({
           date: metadata.date,
           price: basePrice,
           status: "confirmed",
-          payment_status: "paid",
+          payment_status: "succeeded",
           notes: metadata.notes || '',
           client_id: metadata.clientId || '00000000-0000-0000-0000-000000000000',
           guest_name: metadata.guestName || null,
@@ -116,7 +131,7 @@ export default function BookingSuccessPage({
     }
 
     createBooking()
-  }, [sessionId, router, toast])
+  }, [sessionId, router, toast, syncService])
 
   return (
     <div className="container max-w-2xl py-10">

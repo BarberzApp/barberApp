@@ -13,6 +13,13 @@ const REQUIRED_METADATA = {
 }
 
 export async function POST(request: Request) {
+  // Start a Supabase transaction
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) throw sessionError
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+
   try {
     console.log('Starting checkout session creation...')
     const body = await request.json()
@@ -94,15 +101,74 @@ export async function POST(request: Request) {
       )
     }
 
-    // Calculate amounts with 40/60 split
-    const platformFee = Math.round(baseAmount * 0.40) // 40% platform fee
-    const barberAmount = baseAmount - platformFee // 60% for barber
+    // Calculate fee split (60/40)
+    const platformFee = 338 // $3.38 in cents
+    const bocmShare = Math.round(platformFee * 0.60) // 60% of fee to BOCM
+    const barberShare = platformFee - bocmShare // 40% of fee to barber
+    const totalAmount = baseAmount + platformFee
 
     console.log('Calculated amounts:', {
       baseAmount,
       platformFee,
-      barberAmount
+      bocmShare,
+      barberShare,
+      totalAmount,
+      feeType: 'separate'
     })
+
+    // Create payment intent first
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalAmount,
+      currency: 'usd',
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      transfer_data: {
+        destination: barber.stripe_account_id,
+        amount: baseAmount + barberShare, // Barber gets full service amount plus 40% of fee
+      },
+      application_fee_amount: bocmShare, // BOCM gets 60% of fee
+      metadata: {
+        ...metadata,
+        clientId: clientId || 'guest',
+        feeType: 'separate',
+        feeAmount: '3.38',
+        bocmShare: bocmShare.toString(),
+        barberShare: barberShare.toString()
+      },
+    })
+
+    // Create initial booking record
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .insert({
+        barber_id: metadata.barberId,
+        service_id: metadata.serviceId,
+        date: metadata.date,
+        price: baseAmount,
+        status: 'payment_pending',
+        payment_status: 'pending',
+        payment_intent_id: paymentIntent.id,
+        client_id: clientId || null,
+        guest_name: metadata.guestName || null,
+        guest_email: metadata.guestEmail || null,
+        guest_phone: metadata.guestPhone || null,
+        notes: metadata.notes || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (bookingError) {
+      // If booking creation fails, cancel the payment intent
+      await stripe.paymentIntents.cancel(paymentIntent.id)
+      console.error('Error creating booking:', bookingError)
+      return NextResponse.json(
+        { error: 'Failed to create booking' },
+        { status: 500 }
+      )
+    }
 
     console.log('Creating Stripe checkout session...')
     const session = await stripe.checkout.sessions.create({
@@ -117,23 +183,38 @@ export async function POST(request: Request) {
             unit_amount: baseAmount,
           },
           quantity: 1,
+        },
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Platform Fee",
+              description: "Service and processing fee (60% BOCM, 40% Barber)"
+            },
+            unit_amount: platformFee,
+          },
+          quantity: 1,
         }
       ],
       mode: "payment",
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: {
-        ...metadata,
-        clientId: clientId || 'guest',
-        platformFee: platformFee.toString(),
-        barberAmount: barberAmount.toString()
-      },
       payment_intent_data: {
         transfer_data: {
           destination: barber.stripe_account_id,
-          amount: barberAmount,
+          amount: baseAmount + barberShare, // Barber gets full service amount plus 40% of fee
         },
-        application_fee_amount: platformFee,
+        application_fee_amount: bocmShare, // BOCM gets 60% of fee
+      },
+      metadata: {
+        ...metadata,
+        bookingId: booking.id,
+        clientId: clientId || 'guest',
+        platformFee: platformFee.toString(),
+        serviceAmount: baseAmount.toString(),
+        bocmShare: bocmShare.toString(),
+        barberShare: barberShare.toString(),
+        payment_intent_id: paymentIntent.id
       },
     })
 

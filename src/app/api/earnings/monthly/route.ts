@@ -63,13 +63,16 @@ export async function GET(request: Request) {
 
     console.log('Previous month bookings:', prevMonthData)
 
-    // Convert dollars to cents by multiplying by 100
-    const currentTotal = (currentMonthData?.reduce((sum, booking) => sum + booking.price, 0) || 0) * 100
-    const prevTotal = (prevMonthData?.reduce((sum, booking) => sum + booking.price, 0) || 0) * 100
+    // Convert dollars to cents by multiplying by 100 and add $3.38 flat fee per booking
+    const currentTotal = (currentMonthData?.reduce((sum, booking) => sum + (booking.price + 3.38), 0) || 0) * 100
+    const prevTotal = (prevMonthData?.reduce((sum, booking) => sum + (booking.price + 3.38), 0) || 0) * 100
 
     console.log('Calculated totals:', {
       currentTotal,
-      prevTotal
+      prevTotal,
+      currentBookings: currentMonthData?.length || 0,
+      prevBookings: prevMonthData?.length || 0,
+      feePerBooking: 3.38
     })
 
     const percentage = prevTotal === 0 ? 100 : ((currentTotal - prevTotal) / prevTotal) * 100

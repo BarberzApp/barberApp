@@ -9,11 +9,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 // Helper function to update booking status
-async function updateBookingStatus(bookingId: string, status: string, paymentIntentId?: string) {
+async function updateBookingStatus(
+  bookingId: string, 
+  status: string, 
+  paymentStatus: string,
+  paymentIntentId?: string
+) {
   const { error } = await supabase
     .from('bookings')
     .update({
       status,
+      payment_status: paymentStatus,
       payment_intent_id: paymentIntentId,
       updated_at: new Date().toISOString(),
     })
@@ -50,7 +56,43 @@ export async function POST(request: Request) {
     }
 
     // Handle specific events
-    switch (event.type) {
+    switch (event.type as string) {
+      case 'account.created': {
+        const account = event.data.object as Stripe.Account
+        console.log('Processing account.created event:', account.id)
+
+        // Get barber ID from metadata
+        const barberId = account.metadata?.barber_id
+        if (!barberId) {
+          console.error('No barber ID found in account metadata')
+          return NextResponse.json(
+            { error: 'No barber ID found' },
+            { status: 400 }
+          )
+        }
+
+        // Update barber's Stripe account ID
+        const { error: updateError } = await supabase
+          .from('barbers')
+          .update({
+            stripe_account_id: account.id,
+            stripe_account_status: 'pending',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', barberId)
+
+        if (updateError) {
+          console.error('Error updating barber:', updateError)
+          return NextResponse.json(
+            { error: 'Failed to update barber' },
+            { status: 500 }
+          )
+        }
+
+        console.log('Successfully saved Stripe account ID for barber:', barberId)
+        break
+      }
+
       case 'account.updated': {
         const account = event.data.object as Stripe.Account
         console.log('Processing account.updated event:', account.id)
@@ -129,6 +171,7 @@ export async function POST(request: Request) {
         await updateBookingStatus(
           session.metadata.bookingId,
           'confirmed',
+          'succeeded',
           session.payment_intent as string
         )
 
@@ -147,7 +190,11 @@ export async function POST(request: Request) {
           )
         }
 
-        await updateBookingStatus(session.metadata.bookingId, 'expired')
+        await updateBookingStatus(
+          session.metadata.bookingId,
+          'expired',
+          'failed'
+        )
         break
       }
 
@@ -170,7 +217,12 @@ export async function POST(request: Request) {
           )
         }
 
-        await updateBookingStatus(booking.id, 'confirmed', paymentIntent.id)
+        await updateBookingStatus(
+          booking.id,
+          'confirmed',
+          'succeeded',
+          paymentIntent.id
+        )
         break
       }
 
@@ -193,7 +245,19 @@ export async function POST(request: Request) {
           )
         }
 
-        await updateBookingStatus(booking.id, 'payment_failed', paymentIntent.id)
+        await updateBookingStatus(
+          booking.id,
+          'failed',
+          'failed',
+          paymentIntent.id
+        )
+
+        // Handle retry logic if needed
+        if (paymentIntent.next_action) {
+          console.log('Payment requires additional action:', paymentIntent.next_action)
+          // You might want to notify the user or handle the next action
+        }
+
         break
       }
 
@@ -216,7 +280,13 @@ export async function POST(request: Request) {
           )
         }
 
-        await updateBookingStatus(booking.id, 'refunded', charge.payment_intent as string)
+        const isPartialRefund = charge.amount_refunded < charge.amount
+        await updateBookingStatus(
+          booking.id,
+          isPartialRefund ? 'partially_refunded' : 'refunded',
+          isPartialRefund ? 'partially_refunded' : 'refunded',
+          charge.payment_intent as string
+        )
         break
       }
     }

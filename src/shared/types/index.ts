@@ -41,6 +41,7 @@ export interface Barber {
   featured?: boolean;
   trending?: boolean;
   stripe_account_id?: string;
+  stripe_account_status?: 'pending' | 'active' | 'deauthorized';
   created_at: string;
   updated_at: string;
   user?: User;
@@ -60,8 +61,23 @@ export interface Service {
 }
 
 // Booking Types
-export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type BookingStatus = 
+  | 'pending'         // Initial state
+  | 'payment_pending' // Awaiting payment
+  | 'confirmed'       // Payment successful
+  | 'completed'       // Service completed
+  | 'cancelled'       // Cancelled before service
+  | 'refunded'        // Payment refunded
+  | 'partially_refunded' // Partial refund
+  | 'failed'          // Payment failed
+  | 'expired'         // Payment expired
+
+export type PaymentStatus = 
+  | 'pending'
+  | 'succeeded'
+  | 'failed'
+  | 'refunded'
+  | 'partially_refunded'
 
 export interface Booking {
   id: string;
