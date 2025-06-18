@@ -2,6 +2,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/shared/components/ui/button"
 import {
   DropdownMenu,
@@ -24,25 +25,31 @@ import {
   Home,
   Search,
   Heart,
+  UserCircle,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export function Navbar() {
   const { user, logout } = useAuth()
   const router = useRouter()
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
+  const [pathname, setPathname] = useState('/')
   const isMobile = useMobile()
+
+  const updatePathname = useCallback(() => {
+    setPathname(window.location.pathname)
+  }, [])
+
+  useEffect(() => {
+    updatePathname()
+    window.addEventListener('popstate', updatePathname)
+    return () => window.removeEventListener('popstate', updatePathname)
+  }, [updatePathname])
 
   const roleSpecificNavItems = () => {
     if (!user) return []
 
     if (user.role === "barber") {
-      return [
-        {
-          href: "/settings",
-          icon: Settings,
-          label: "Settings",
-        },
-      ]
+      return []
     }
 
     return [
@@ -78,22 +85,24 @@ export function Navbar() {
         <div className="mr-4 flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Scissors className="h-6 w-6" />
-            <span className="hidden font-bold sm:inline-block">BarberHub</span>
+            <span className="hidden font-bold sm:inline-block">BOCM</span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
             <Link
               href="/"
-              className={`transition-colors hover:text-foreground/80 ${
+              className={cn(
+                "transition-colors hover:text-foreground/80",
                 pathname === "/" ? "text-foreground" : "text-foreground/60"
-              }`}
+              )}
             >
               <Home className="h-4 w-4" />
             </Link>
             <Link
               href="/browse"
-              className={`transition-colors hover:text-foreground/80 ${
+              className={cn(
+                "transition-colors hover:text-foreground/80",
                 pathname === "/browse" ? "text-foreground" : "text-foreground/60"
-              }`}
+              )}
             >
               <Search className="h-4 w-4" />
             </Link>
@@ -101,9 +110,10 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`transition-colors hover:text-foreground/80 ${
+                className={cn(
+                  "transition-colors hover:text-foreground/80",
                   pathname === item.href ? "text-foreground" : "text-foreground/60"
-                }`}
+                )}
               >
                 <item.icon className="h-4 w-4" />
               </Link>
@@ -129,6 +139,14 @@ export function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {user.role === "barber" && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings/barber-profile" className="cursor-pointer">
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      Barber Profile
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link href="/settings" className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />

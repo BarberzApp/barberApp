@@ -2,16 +2,18 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
-import { supabase } from '@/lib/supabase/client'
+import { supabase } from '@/shared/lib/supabase'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Button } from '@/shared/components/ui/button'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Upload } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useRouter } from 'next/navigation'
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
+import { Switch } from '@/shared/components/ui/switch'
 
 interface ProfileFormData {
   name: string
@@ -20,6 +22,14 @@ interface ProfileFormData {
   bio: string
   location: string
   description: string
+  specialties: string
+  businessName: string
+  isPublic: boolean
+  notifications: {
+    email: boolean
+    sms: boolean
+    marketing: boolean
+  }
 }
 
 export function ProfileSettings() {
@@ -27,10 +37,11 @@ export function ProfileSettings() {
   const [isBarber, setIsBarber] = useState(false)
   const [barberId, setBarberId] = useState<string | null>(null)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const { toast } = useToast()
   const { user, status } = useAuth()
   const router = useRouter()
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<ProfileFormData>()
+  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<ProfileFormData>()
 
   const fetchProfile = useCallback(async () => {
     if (!user) return
@@ -54,7 +65,11 @@ export function ProfileSettings() {
           .eq('user_id', user.id)
           .single()
 
-        if (barberError) throw barberError
+        if (barberError) {
+          console.error('Error fetching barber profile:', barberError);
+          router.push('/barber/onboarding');
+          return;
+        }
         if (barber) {
           setBarberId(barber.id)
           // Use barber's bio if available, otherwise use profile's bio
@@ -64,7 +79,15 @@ export function ProfileSettings() {
             phone: profile.phone || '',
             bio: barber.bio || profile.bio || '',
             location: profile.location || '',
-            description: profile.description || ''
+            description: profile.description || '',
+            specialties: barber.specialties?.join(', ') || '',
+            businessName: barber.business_name || '',
+            isPublic: profile.is_public || false,
+            notifications: {
+              email: profile.email_notifications || false,
+              sms: profile.sms_notifications || false,
+              marketing: profile.marketing_emails || false
+            }
           })
         }
       } else {
@@ -75,8 +98,21 @@ export function ProfileSettings() {
           phone: profile.phone || '',
           bio: profile.bio || '',
           location: profile.location || '',
-          description: profile.description || ''
+          description: profile.description || '',
+          specialties: '',
+          businessName: '',
+          isPublic: profile.is_public || false,
+          notifications: {
+            email: profile.email_notifications || false,
+            sms: profile.sms_notifications || false,
+            marketing: profile.marketing_emails || false
+          }
         })
+      }
+
+      // Set avatar URL if exists
+      if (profile.avatar_url) {
+        setAvatarUrl(profile.avatar_url)
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -88,7 +124,7 @@ export function ProfileSettings() {
     } finally {
       setIsInitialLoad(false)
     }
-  }, [user, reset, toast])
+  }, [user, reset, toast, router])
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -101,6 +137,47 @@ export function ProfileSettings() {
       fetchProfile()
     }
   }, [status, user, router, isInitialLoad, fetchProfile])
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || !e.target.files[0]) return
+      const file = e.target.files[0]
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${user?.id}/avatar.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      setAvatarUrl(publicUrl)
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user?.id)
+
+      if (updateError) throw updateError
+
+      toast({
+        title: 'Success',
+        description: 'Profile picture updated successfully',
+      })
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update profile picture. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
 
   const onSubmit = async (data: ProfileFormData) => {
     if (!user) {
@@ -124,6 +201,10 @@ export function ProfileSettings() {
           phone: data.phone,
           location: data.location,
           description: data.description,
+          is_public: data.isPublic,
+          email_notifications: data.notifications.email,
+          sms_notifications: data.notifications.sms,
+          marketing_emails: data.notifications.marketing,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -136,22 +217,13 @@ export function ProfileSettings() {
           .from('barbers')
           .update({
             bio: data.bio,
+            business_name: data.businessName,
+            specialties: data.specialties.split(',').map(s => s.trim()).filter(Boolean),
             updated_at: new Date().toISOString()
           })
-          .eq('id', barberId)
+          .eq('user_id', user.id)
 
         if (barberError) throw barberError
-      } else {
-        // For non-barbers, update bio in profile
-        const { error: bioError } = await supabase
-          .from('profiles')
-          .update({
-            bio: data.bio,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id)
-
-        if (bioError) throw bioError
       }
 
       // Fetch updated profile data after successful update
@@ -187,14 +259,33 @@ export function ProfileSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight">Profile Information</h3>
-        <p className="text-muted-foreground mt-1">Update your personal information and preferences.</p>
-      </div>
-
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardContent className="pt-6 space-y-6">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={avatarUrl || undefined} />
+                  <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                </Avatar>
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute bottom-0 right-0 p-1 bg-background border rounded-full cursor-pointer hover:bg-muted"
+                >
+                  <Upload className="h-4 w-4" />
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Basic Information */}
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
@@ -240,8 +331,34 @@ export function ProfileSettings() {
                   {...register('location')}
                 />
               </div>
+
+              {isBarber && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="businessName" className="text-sm font-medium">Business Name</Label>
+                    <Input
+                      id="businessName"
+                      type="text"
+                      className="h-11"
+                      {...register('businessName')}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="specialties" className="text-sm font-medium">Specialties</Label>
+                    <Input
+                      id="specialties"
+                      type="text"
+                      className="h-11"
+                      {...register('specialties')}
+                    />
+                    <p className="text-sm text-muted-foreground">Separate specialties with commas</p>
+                  </div>
+                </>
+              )}
             </div>
 
+            {/* Bio and Description */}
             <div className="space-y-2">
               <Label htmlFor="bio" className="text-sm font-medium">Bio</Label>
               <Textarea
@@ -260,6 +377,74 @@ export function ProfileSettings() {
                 className="resize-none"
                 {...register('description')}
               />
+            </div>
+
+            {/* Privacy Settings */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Public Profile</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow others to view your profile
+                  </p>
+                </div>
+                <Switch
+                  checked={watch('isPublic')}
+                  onCheckedChange={(checked) => reset({ ...watch(), isPublic: checked })}
+                />
+              </div>
+            </div>
+
+            {/* Notification Settings */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-medium">Notification Preferences</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Email Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications via email
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch('notifications.email')}
+                    onCheckedChange={(checked) => reset({ 
+                      ...watch(), 
+                      notifications: { ...watch('notifications'), email: checked }
+                    })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>SMS Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications via SMS
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch('notifications.sms')}
+                    onCheckedChange={(checked) => reset({ 
+                      ...watch(), 
+                      notifications: { ...watch('notifications'), sms: checked }
+                    })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Marketing Emails</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive marketing and promotional emails
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watch('notifications.marketing')}
+                    onCheckedChange={(checked) => reset({ 
+                      ...watch(), 
+                      notifications: { ...watch('notifications'), marketing: checked }
+                    })}
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

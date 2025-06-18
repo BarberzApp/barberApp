@@ -31,7 +31,7 @@ interface AuthContextType {
   isLoading: boolean
   status: "loading" | "authenticated" | "unauthenticated"
   login: (email: string, password: string) => Promise<boolean>
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<boolean>
+  register: (name: string, email: string, password: string, role: UserRole, businessName?: string) => Promise<boolean>
   logout: () => void
   updateProfile: (data: Partial<User>) => void
   addToFavorites: (barberId: string) => void
@@ -167,6 +167,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: profile.created_at,
         updatedAt: profile.updated_at
       });
+
+      // Ensure barber row exists after confirmation
+      if (profile.role === 'barber') {
+        const { data: barber, error: barberError } = await supabase
+          .from('barbers')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+        if (!barber) {
+          // Debugging: log current session user id and user_id to insert
+          const { data: sessionData } = await supabase.auth.getSession();
+          console.log('Current session user id:', sessionData?.session?.user?.id);
+          console.log('user_id to insert:', userId);
+          const { error: insertError } = await supabase
+            .from('barbers')
+            .insert({
+              user_id: userId,
+              business_name: profile.business_name || '',
+              status: 'pending',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          if (insertError) {
+            console.error('Failed to create barber profile after confirmation:', insertError);
+            toast({
+              title: "Barber profile creation failed",
+              description: insertError.message,
+              variant: "destructive",
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
       setUser(null);
@@ -317,12 +349,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, role: UserRole): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string, role: UserRole, businessName?: string): Promise<boolean> => {
     try {
-      console.log('Starting registration process...');
-      console.log('Registration data:', { name, email, role });
+      console.log('=== Registration Process Started ===');
+      console.log('Registration Data:', { name, email, role, businessName });
       
       // Create auth user with role in metadata
+      console.log('Creating auth user...');
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -330,12 +363,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             name,
             role,
+            business_name: businessName,
           }
         },
       });
 
       if (authError) {
-        console.error('Auth error:', authError);
+        console.error('Auth Error:', authError);
         toast({
           title: "Registration failed",
           description: authError.message,
@@ -344,15 +378,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      console.log('Auth data:', authData);
-      console.log('User metadata:', authData.user?.user_metadata);
+      console.log('Auth Data:', authData);
 
       if (authData.user) {
         // Check if email confirmation is required
         if (authData.user.identities?.length === 0) {
+          console.log('Email confirmation required');
           toast({
-            title: "Check your email",
-            description: "We've sent you a confirmation email. Please verify your email address to complete registration.",
+            title: "Check your email to confirm your account",
+            description: "We've sent you a confirmation email. Please verify your email address to complete registration. You won't be able to log in until you confirm.",
+            variant: "default",
           });
           return true;
         }
@@ -363,6 +398,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let retries = 3;
         
         while (retries > 0) {
+          console.log(`Fetching profile - Attempt ${4 - retries}/3...`);
           const result = await supabase
             .from('profiles')
             .select('*')
@@ -371,20 +407,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
           if (result.data) {
             profile = result.data;
+            console.log('Profile fetched successfully:', profile);
             break;
           }
           
           profileError = result.error;
+          console.log('Profile fetch attempt failed:', profileError);
           retries--;
           if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
 
-        console.log('Profile fetch result:', { profile, profileError });
-
         if (profileError || !profile) {
-          console.error('Profile fetch error:', profileError);
+          console.error('Profile Creation Failed:', profileError);
           toast({
             title: "Registration failed",
             description: "Failed to create user profile. Please try again.",
@@ -393,7 +429,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
 
+        // For barbers, create a business profile
+        if (role === 'barber' && businessName) {
+          console.log('Creating business profile...');
+          const { error: businessError } = await supabase
+            .from('barbers')
+            .insert({
+              id: authData.user.id,
+              user_id: authData.user.id,
+              business_name: businessName,
+              status: 'pending',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+
+          if (businessError) {
+            console.error('Business Profile Creation Failed:', businessError);
+            toast({
+              title: "Registration warning",
+              description: "Account created but business profile setup failed. Please complete setup in your profile.",
+              variant: "destructive",
+            });
+          } else {
+            console.log('Business profile created successfully');
+          }
+        }
+
         // Set user state
+        console.log('Setting user state...');
         setUser({
           id: authData.user.id,
           name: profile.name,
@@ -409,19 +472,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updatedAt: profile.updated_at
         });
 
+        console.log('Registration completed successfully');
         toast({
           title: "Registration successful",
-          description: "Welcome to BOCM!",
+          description: role === 'barber' 
+            ? "Welcome to BOCM! Please complete your business profile setup."
+            : "Welcome to BOCM!",
         });
-        
+
+        // Redirect barbers to onboarding page
+        if (role === 'barber') {
+          console.log('Redirecting to onboarding page...');
+          window.location.href = '/barber/onboarding';
+        }
+
         return true;
       }
+
       return false;
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Registration Process Failed:', error);
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "An error occurred during registration",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
       return false;

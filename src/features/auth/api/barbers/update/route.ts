@@ -28,7 +28,7 @@ export async function PUT(request: Request) {
     const { data, error } = await supabase
       .from('barbers')
       .update(updates)
-      .eq('id', id)
+      .eq('user_id', id)
       .select()
       .single()
 

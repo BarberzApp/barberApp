@@ -8,22 +8,26 @@ ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE special_hours DISABLE ROW LEVEL SECURITY;
 
 -- Drop all existing policies
-DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
-DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
-DROP POLICY IF EXISTS "Barbers are viewable by everyone" ON barbers;
-DROP POLICY IF EXISTS "Barbers can manage own profile" ON barbers;
-DROP POLICY IF EXISTS "Services are viewable by everyone" ON services;
-DROP POLICY IF EXISTS "Barbers can manage own services" ON services;
-DROP POLICY IF EXISTS "Bookings are viewable by involved parties" ON bookings;
-DROP POLICY IF EXISTS "Authenticated users can create bookings" ON bookings;
-DROP POLICY IF EXISTS "Users can update own bookings" ON bookings;
 DROP POLICY IF EXISTS "Availability is viewable by everyone" ON availability;
 DROP POLICY IF EXISTS "Barbers can manage own availability" ON availability;
-DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+DROP POLICY IF EXISTS "Barbers are viewable by everyone" ON barbers;
+DROP POLICY IF EXISTS "Barbers can update own profile" ON barbers;
+DROP POLICY IF EXISTS "Barbers can view own profile" ON barbers;
+DROP POLICY IF EXISTS "Enable insert for barbers" ON barbers;
+DROP POLICY IF EXISTS "Enable insert for bookings" ON bookings;
+DROP POLICY IF EXISTS "Users can update own bookings" ON bookings;
+DROP POLICY IF EXISTS "Users can view own bookings" ON bookings;
 DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
-DROP POLICY IF EXISTS "Special hours are viewable by everyone" ON special_hours;
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON profiles;
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own username" ON profiles;
+DROP POLICY IF EXISTS "Users can view profiles by username" ON profiles;
+DROP POLICY IF EXISTS "Barbers can manage own services" ON services;
+DROP POLICY IF EXISTS "Services are viewable by everyone" ON services;
 DROP POLICY IF EXISTS "Barbers can manage own special hours" ON special_hours;
+DROP POLICY IF EXISTS "Special hours are viewable by everyone" ON special_hours;
 
 -- Grant necessary permissions to roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;

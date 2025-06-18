@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { Button } from '@/shared/components/ui/button'
@@ -26,7 +26,6 @@ export function ServicesSettings() {
   const [isLoading, setIsLoading] = useState(false)
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [barberId, setBarberId] = useState<string | null>(null)
-  const supabase = createClient()
   const { toast } = useToast()
   const { user } = useAuth()
   const { register, handleSubmit, reset, formState: { errors }, setValue } = useForm<ServiceFormData>()

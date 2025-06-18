@@ -2,34 +2,53 @@ import { supabase } from '@/shared/lib/supabase';
 import { NotificationService } from './notification-service';
 import { Booking, BookingStatus, PaymentStatus } from '../types';
 
+export interface CreateBookingInput extends Omit<Booking, 'id' | 'created_at' | 'updated_at'> {
+  payment_intent_id: string;
+  platform_fee?: number;
+  barber_payout?: number;
+}
+
 export class BookingService {
-  static async createBooking(booking: Omit<Booking, 'id' | 'created_at' | 'updated_at'>): Promise<Booking> {
+  static async createBooking(booking: CreateBookingInput): Promise<Booking> {
     try {
       // Validate booking data
       if (!booking.barber_id || !booking.service_id || !booking.date || !booking.price) {
         throw new Error('Missing required booking fields');
       }
 
+      if (!booking.payment_intent_id) {
+        throw new Error('Payment intent ID is required');
+      }
+
       if (!booking.client_id && (!booking.guest_name || !booking.guest_email || !booking.guest_phone)) {
         throw new Error('Either client_id or guest information must be provided');
       }
 
-      if (booking.price <= 0) {
-        throw new Error('Price must be greater than 0');
+      if (booking.price < 0) {
+        throw new Error('Price cannot be negative');
       }
 
       if (new Date(booking.date) <= new Date()) {
         throw new Error('Booking date must be in the future');
       }
 
+      // Standardize guest information
+      const bookingData = {
+        ...booking,
+        client_id: booking.client_id || null,
+        guest_name: booking.guest_name || null,
+        guest_email: booking.guest_email || null,
+        guest_phone: booking.guest_phone || null,
+        status: 'pending' as BookingStatus,
+        payment_status: 'pending' as PaymentStatus,
+        platform_fee: booking.platform_fee || 0,
+        barber_payout: booking.barber_payout || 0
+      };
+
       // Create booking
       const { data, error } = await supabase
         .from('bookings')
-        .insert({
-          ...booking,
-          status: 'pending' as BookingStatus,
-          payment_status: 'pending' as PaymentStatus
-        })
+        .insert(bookingData)
         .select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)')
         .single();
 

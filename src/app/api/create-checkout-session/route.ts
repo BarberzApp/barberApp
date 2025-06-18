@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     console.log('Request body:', body)
     
-    const { amount, successUrl, cancelUrl, metadata, clientId } = body
+    const { amount, successUrl, cancelUrl, metadata, clientId, customerPaysFee } = body
 
     // Validate basic required fields
     if (!amount || !successUrl || !cancelUrl || !metadata) {
@@ -105,18 +105,73 @@ export async function POST(request: Request) {
     const platformFee = 338 // $3.38 in cents
     const bocmShare = Math.round(platformFee * 0.60) // 60% of fee to BOCM
     const barberShare = platformFee - bocmShare // 40% of fee to barber
+
+    // If customer is only paying the fee (no cut)
+    if (baseAmount === 0) {
+      const totalAmount = platformFee
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: totalAmount,
+        currency: 'usd',
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        transfer_data: {
+          destination: barber.stripe_account_id,
+          amount: barberShare, // Barber gets 40% of the fee
+        },
+        application_fee_amount: bocmShare, // BOCM gets 60% of the fee
+        metadata: {
+          ...metadata,
+          clientId: clientId || 'guest',
+          feeType: 'fee_only',
+          feeAmount: '3.38',
+          bocmShare: bocmShare.toString(),
+          barberShare: barberShare.toString()
+        },
+      })
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: "Processing Fee",
+                description: "Payment processing fee (60% BOCM, 40% Barber)"
+              },
+              unit_amount: platformFee,
+            },
+            quantity: 1,
+          }
+        ],
+        mode: "payment",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        payment_intent_data: {
+          transfer_data: {
+            destination: barber.stripe_account_id,
+            amount: barberShare,
+          },
+          application_fee_amount: bocmShare,
+        },
+        metadata: {
+          ...metadata,
+          feeType: 'fee_only',
+          platformFee: platformFee.toString(),
+          bocmShare: bocmShare.toString(),
+          barberShare: barberShare.toString(),
+          payment_intent_id: paymentIntent.id
+        },
+      })
+
+      return NextResponse.json({ sessionId: session.id })
+    }
+
+    // If customer is paying both fee and cut
     const totalAmount = baseAmount + platformFee
 
-    console.log('Calculated amounts:', {
-      baseAmount,
-      platformFee,
-      bocmShare,
-      barberShare,
-      totalAmount,
-      feeType: 'separate'
-    })
-
-    // Create payment intent first
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount,
       currency: 'usd',
@@ -125,13 +180,13 @@ export async function POST(request: Request) {
       },
       transfer_data: {
         destination: barber.stripe_account_id,
-        amount: baseAmount + barberShare, // Barber gets full service amount plus 40% of fee
+        amount: baseAmount + barberShare, // Barber gets full cut + 40% of fee
       },
       application_fee_amount: bocmShare, // BOCM gets 60% of fee
       metadata: {
         ...metadata,
         clientId: clientId || 'guest',
-        feeType: 'separate',
+        feeType: 'fee_and_cut',
         feeAmount: '3.38',
         bocmShare: bocmShare.toString(),
         barberShare: barberShare.toString()
@@ -154,6 +209,8 @@ export async function POST(request: Request) {
         guest_email: metadata.guestEmail || null,
         guest_phone: metadata.guestPhone || null,
         notes: metadata.notes || '',
+        platform_fee: bocmShare,
+        barber_payout: baseAmount + barberShare,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -161,7 +218,6 @@ export async function POST(request: Request) {
       .single()
 
     if (bookingError) {
-      // If booking creation fails, cancel the payment intent
       await stripe.paymentIntents.cancel(paymentIntent.id)
       console.error('Error creating booking:', bookingError)
       return NextResponse.json(
@@ -170,7 +226,6 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Creating Stripe checkout session...')
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -188,8 +243,8 @@ export async function POST(request: Request) {
           price_data: {
             currency: "usd",
             product_data: {
-              name: "Platform Fee",
-              description: "Service and processing fee (60% BOCM, 40% Barber)"
+              name: "Processing Fee",
+              description: "Payment processing fee (60% BOCM, 40% Barber)"
             },
             unit_amount: platformFee,
           },
@@ -202,9 +257,9 @@ export async function POST(request: Request) {
       payment_intent_data: {
         transfer_data: {
           destination: barber.stripe_account_id,
-          amount: baseAmount + barberShare, // Barber gets full service amount plus 40% of fee
+          amount: baseAmount + barberShare,
         },
-        application_fee_amount: bocmShare, // BOCM gets 60% of fee
+        application_fee_amount: bocmShare,
       },
       metadata: {
         ...metadata,
@@ -214,7 +269,8 @@ export async function POST(request: Request) {
         serviceAmount: baseAmount.toString(),
         bocmShare: bocmShare.toString(),
         barberShare: barberShare.toString(),
-        payment_intent_id: paymentIntent.id
+        payment_intent_id: paymentIntent.id,
+        feeType: 'fee_and_cut'
       },
     })
 

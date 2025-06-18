@@ -12,6 +12,11 @@ interface MonthlyEarnings {
   previous: number
   trend: "up" | "down"
   percentage: number
+  breakdown: {
+    serviceFees: number
+    platformFees: number
+    totalEarnings: number
+  }
 }
 
 interface BarberProfile {
@@ -221,15 +226,16 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
     <Card className="min-h-[400px]">
       <CardHeader>
         <CardTitle>Monthly Earnings</CardTitle>
-        <CardDescription>Your earnings trend for this month</CardDescription>
+        <CardDescription>Your earnings breakdown for this month</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col items-center space-y-8">
-          <div className="text-center space-y-4">
+        <div className="flex flex-col space-y-8">
+          {/* Main Earnings Display */}
+          <div className="text-center space-y-4 bg-muted/50 p-6 rounded-lg">
             <div className="text-4xl font-bold">
               ${earnings?.current ? (earnings.current / 100).toFixed(2) : "0.00"}
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center space-x-2">
               {earnings?.trend === "up" ? (
                 <TrendingUp className="h-5 w-5 text-green-500" />
               ) : (
@@ -241,8 +247,37 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
             </div>
           </div>
 
+          {/* Earnings Breakdown */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold">Earnings Breakdown</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-card border rounded-lg p-4 space-y-2">
+                <div className="text-sm text-muted-foreground">Service Fees</div>
+                <div className="text-2xl font-semibold">
+                  ${earnings?.breakdown?.serviceFees ? (earnings.breakdown.serviceFees / 100).toFixed(2) : "0.00"}
+                </div>
+                <div className="text-xs text-muted-foreground">From haircut services</div>
+              </div>
+              <div className="bg-card border rounded-lg p-4 space-y-2">
+                <div className="text-sm text-muted-foreground">Platform Fees</div>
+                <div className="text-2xl font-semibold">
+                  ${earnings?.breakdown?.platformFees ? (earnings.breakdown.platformFees / 100).toFixed(2) : "0.00"}
+                </div>
+                <div className="text-xs text-muted-foreground">Processing fees</div>
+              </div>
+              <div className="bg-card border rounded-lg p-4 space-y-2">
+                <div className="text-sm text-muted-foreground">Total Earnings</div>
+                <div className="text-2xl font-semibold">
+                  ${earnings?.breakdown?.totalEarnings ? (earnings.breakdown.totalEarnings / 100).toFixed(2) : "0.00"}
+                </div>
+                <div className="text-xs text-muted-foreground">Your payout amount</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Setup Section */}
           {!hasStripeAccount && (
-            <div className="text-center space-y-4 border-t pt-8 w-full">
+            <div className="text-center space-y-4 border-t pt-8">
               <p className="text-muted-foreground">
                 Set up your payment account to start receiving payments
               </p>
@@ -261,8 +296,9 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
             </div>
           )}
 
+          {/* Stripe Dashboard Access */}
           {hasStripeAccount && (
-            <div className="text-center space-y-4 border-t pt-8 w-full">
+            <div className="text-center space-y-4 border-t pt-8">
               <Button
                 onClick={handleAccessDashboard}
                 variant="outline"

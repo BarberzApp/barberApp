@@ -1,42 +1,50 @@
 -- Fix barbers table constraints
-ALTER TABLE barbers
-    ALTER COLUMN user_id SET NOT NULL,
-    ADD CONSTRAINT barbers_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE,
-    ADD CONSTRAINT barbers_specialties_check CHECK (array_length(specialties, 1) <= 10);
+ALTER TABLE barbers ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE barbers ADD CONSTRAINT barbers_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+ALTER TABLE barbers ADD CONSTRAINT barbers_specialties_check CHECK (array_length(specialties, 1) <= 10);
+ALTER TABLE barbers ADD CONSTRAINT barbers_stripe_account_status_check CHECK (stripe_account_status IN ('pending', 'active', 'restricted', 'disabled'));
+ALTER TABLE barbers ADD CONSTRAINT barbers_user_id_key UNIQUE (user_id);
+
+-- Fix profiles table constraints
+ALTER TABLE profiles ADD CONSTRAINT profiles_email_key UNIQUE (email);
+ALTER TABLE profiles ADD CONSTRAINT profiles_username_key UNIQUE (username);
+ALTER TABLE profiles ADD CONSTRAINT username_format CHECK (username ~ '^[a-zA-Z0-9_]{3,30}$');
+ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('client', 'barber', 'admin'));
 
 -- Fix bookings table constraints
-ALTER TABLE bookings
-    ADD CONSTRAINT bookings_client_or_guest_check CHECK (
-        (client_id IS NOT NULL) OR 
-        (guest_name IS NOT NULL AND guest_email IS NOT NULL AND guest_phone IS NOT NULL)
-    ),
-    ADD CONSTRAINT bookings_price_check CHECK (price > 0),
-    ADD CONSTRAINT bookings_date_check CHECK (date > NOW()),
-    ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
-    ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'));
+ALTER TABLE bookings ADD CONSTRAINT bookings_client_or_guest_check CHECK (
+    (client_id IS NOT NULL) OR 
+    (guest_name IS NOT NULL AND guest_email IS NOT NULL AND guest_phone IS NOT NULL)
+);
+ALTER TABLE bookings ADD CONSTRAINT bookings_price_check CHECK (price > 0);
+ALTER TABLE bookings ADD CONSTRAINT bookings_date_check CHECK (date > NOW());
+ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled'));
+ALTER TABLE bookings ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'));
+ALTER TABLE bookings ADD CONSTRAINT bookings_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE;
+ALTER TABLE bookings ADD CONSTRAINT bookings_client_id_fkey FOREIGN KEY (client_id) REFERENCES profiles(id) ON DELETE SET NULL;
+ALTER TABLE bookings ADD CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE RESTRICT;
 
 -- Fix services table constraints
-ALTER TABLE services
-    ADD CONSTRAINT services_price_check CHECK (price > 0),
-    ADD CONSTRAINT services_duration_check CHECK (duration > 0 AND duration <= 480), -- Max 8 hours
-    ADD CONSTRAINT services_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE;
+ALTER TABLE services ADD CONSTRAINT services_price_check CHECK (price > 0);
+ALTER TABLE services ADD CONSTRAINT services_duration_check CHECK (duration > 0 AND duration <= 480); -- Max 8 hours
+ALTER TABLE services ADD CONSTRAINT services_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE;
+ALTER TABLE services ADD CONSTRAINT services_barber_name_key UNIQUE (barber_id, name);
 
 -- Fix availability table constraints
-ALTER TABLE availability
-    ADD CONSTRAINT availability_day_of_week_check CHECK (day_of_week >= 0 AND day_of_week <= 6),
-    ADD CONSTRAINT availability_time_check CHECK (start_time < end_time),
-    ADD CONSTRAINT availability_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE;
+ALTER TABLE availability ADD CONSTRAINT availability_day_of_week_check CHECK (day_of_week >= 0 AND day_of_week <= 6);
+ALTER TABLE availability ADD CONSTRAINT availability_time_check CHECK (start_time < end_time);
+ALTER TABLE availability ADD CONSTRAINT availability_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE;
+ALTER TABLE availability ADD CONSTRAINT availability_barber_day_key UNIQUE (barber_id, day_of_week);
 
 -- Fix special_hours table constraints
-ALTER TABLE special_hours
-    ADD CONSTRAINT special_hours_time_check CHECK (start_time < end_time),
-    ADD CONSTRAINT special_hours_date_check CHECK (date >= CURRENT_DATE),
-    ADD CONSTRAINT special_hours_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE;
+ALTER TABLE special_hours ADD CONSTRAINT special_hours_time_check CHECK (start_time < end_time);
+ALTER TABLE special_hours ADD CONSTRAINT special_hours_date_check CHECK (date >= CURRENT_DATE);
+ALTER TABLE special_hours ADD CONSTRAINT special_hours_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE;
+ALTER TABLE special_hours ADD CONSTRAINT special_hours_barber_date_key UNIQUE (barber_id, date);
 
 -- Fix notifications table constraints
-ALTER TABLE notifications
-    ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE,
-    ADD CONSTRAINT notifications_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE;
+ALTER TABLE notifications ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+ALTER TABLE notifications ADD CONSTRAINT notifications_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE;
 
 -- Add indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_bookings_barber_id ON bookings(barber_id);

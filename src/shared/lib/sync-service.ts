@@ -104,7 +104,7 @@ class SyncService {
     const { data, error } = await supabase
       .from('bookings')
       .insert(booking)
-      .select('*, barber:barber_id(*), service:service_id(*)')
+      .select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)')
       .single()
 
     if (error) throw error

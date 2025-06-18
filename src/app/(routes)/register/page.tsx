@@ -62,12 +62,16 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      await register(formData.name, formData.email, formData.password, role)
-      toast({
-        title: "Registration successful",
-        description: "Welcome to BarberHub!",
-      })
-      router.push('/')
+      const success = await register(formData.name, formData.email, formData.password, role)
+      if (success) {
+        toast({
+          title: "Registration successful",
+          description: role === "barber" 
+            ? "Welcome to BarberHub! Please complete your business profile setup."
+            : "Welcome to BarberHub!",
+        })
+        router.push(role === "barber" ? "/barber/onboarding" : "/")
+      }
     } catch (err) {
       setError('Failed to create account')
       toast({

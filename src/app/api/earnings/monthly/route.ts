@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
     const { data: currentMonthData, error: currentError } = await supabase
       .from('bookings')
-      .select('price')
+      .select('price, platform_fee, barber_payout')
       .eq('barber_id', barberId)
       .eq('payment_status', 'paid')
       .gte('created_at', firstDayOfMonth.toISOString())
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
     const { data: prevMonthData, error: prevError } = await supabase
       .from('bookings')
-      .select('price')
+      .select('price, platform_fee, barber_payout')
       .eq('barber_id', barberId)
       .eq('payment_status', 'paid')
       .gte('created_at', firstDayOfPrevMonth.toISOString())
@@ -63,16 +63,31 @@ export async function GET(request: Request) {
 
     console.log('Previous month bookings:', prevMonthData)
 
-    // Convert dollars to cents by multiplying by 100 and add $3.38 flat fee per booking
-    const currentTotal = (currentMonthData?.reduce((sum, booking) => sum + (booking.price + 3.38), 0) || 0) * 100
-    const prevTotal = (prevMonthData?.reduce((sum, booking) => sum + (booking.price + 3.38), 0) || 0) * 100
+    // Calculate current month breakdown
+    const currentBreakdown = currentMonthData?.reduce((acc, booking) => ({
+      serviceFees: acc.serviceFees + (booking.price || 0),
+      platformFees: acc.platformFees + (booking.platform_fee || 0),
+      totalEarnings: acc.totalEarnings + (booking.barber_payout || 0)
+    }), { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
+
+    // Calculate previous month breakdown
+    const prevBreakdown = prevMonthData?.reduce((acc, booking) => ({
+      serviceFees: acc.serviceFees + (booking.price || 0),
+      platformFees: acc.platformFees + (booking.platform_fee || 0),
+      totalEarnings: acc.totalEarnings + (booking.barber_payout || 0)
+    }), { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
+
+    // Convert to cents
+    const currentTotal = currentBreakdown.totalEarnings * 100
+    const prevTotal = prevBreakdown.totalEarnings * 100
 
     console.log('Calculated totals:', {
       currentTotal,
       prevTotal,
       currentBookings: currentMonthData?.length || 0,
       prevBookings: prevMonthData?.length || 0,
-      feePerBooking: 3.38
+      currentBreakdown,
+      prevBreakdown
     })
 
     const percentage = prevTotal === 0 ? 100 : ((currentTotal - prevTotal) / prevTotal) * 100
@@ -81,7 +96,12 @@ export async function GET(request: Request) {
       current: currentTotal,
       previous: prevTotal,
       trend: currentTotal >= prevTotal ? "up" : "down",
-      percentage: Math.abs(Math.round(percentage))
+      percentage: Math.abs(Math.round(percentage)),
+      breakdown: {
+        serviceFees: currentBreakdown.serviceFees * 100,
+        platformFees: currentBreakdown.platformFees * 100,
+        totalEarnings: currentBreakdown.totalEarnings * 100
+      }
     }
 
     console.log('Sending response:', response)

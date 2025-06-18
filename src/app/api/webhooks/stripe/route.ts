@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
-import { supabase } from '@/shared/lib/supabase'
+import { supabaseAdmin } from "@/shared/lib/supabase"
+import { headers } from "next/headers"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing STRIPE_SECRET_KEY')
+}
+
+if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  throw new Error('Missing STRIPE_WEBHOOK_SECRET')
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-05-28.basil",
 })
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const supabase = supabaseAdmin
 
 // Helper function to update booking status
 async function updateBookingStatus(
@@ -31,29 +40,23 @@ async function updateBookingStatus(
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
+  const body = await req.text()
+  const signature = headers().get('stripe-signature')
+
+  if (!signature) {
+    return NextResponse.json(
+      { error: 'Missing stripe-signature header' },
+      { status: 400 }
+    )
+  }
+
   try {
-    const body = await request.text()
-    const signature = request.headers.get('stripe-signature')
-
-    if (!signature) {
-      return NextResponse.json(
-        { error: 'No signature found' },
-        { status: 400 }
-      )
-    }
-
-    // Verify webhook signature
-    let event: Stripe.Event
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err)
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 400 }
-      )
-    }
+    const event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET
+    )
 
     // Handle specific events
     switch (event.type as string) {
@@ -202,27 +205,101 @@ export async function POST(request: Request) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('Processing payment_intent.succeeded event:', paymentIntent.id)
 
-        // Find booking with this payment intent ID
-        const { data: booking, error: findError } = await supabase
+        // Store the successful payment in Supabase
+        const { error: paymentError } = await supabase.from('payments').insert({
+          payment_intent_id: paymentIntent.id,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          status: paymentIntent.status,
+          barber_stripe_account_id: paymentIntent.transfer_data?.destination,
+          platform_fee: paymentIntent.application_fee_amount,
+          created_at: new Date().toISOString(),
+        })
+
+        if (paymentError) {
+          console.error('Error storing payment in Supabase:', paymentError)
+          return NextResponse.json(
+            { error: 'Error storing payment' },
+            { status: 500 }
+          )
+        }
+
+        // Check if a booking already exists for this payment intent
+        const { data: existingBooking, error: findError } = await supabase
           .from('bookings')
           .select('id')
           .eq('payment_intent_id', paymentIntent.id)
           .single()
 
-        if (findError) {
+        if (!existingBooking) {
+          // Create the booking using metadata
+          const meta = paymentIntent.metadata || {}
+          const { barber_id, service_id, date, notes, guest_name, guest_email, guest_phone, client_id } = meta
+          if (!barber_id || !service_id || !date) {
+            console.error('Missing required booking metadata in payment intent')
+            return NextResponse.json(
+              { error: 'Missing required booking metadata' },
+              { status: 400 }
+            )
+          }
+
+          // (Optional) Look up the service price
+          let price = 0
+          let platform_fee = paymentIntent.application_fee_amount || 0
+          let barber_payout = paymentIntent.amount - platform_fee
+          const { data: service } = await supabase
+            .from('services')
+            .select('price')
+            .eq('id', service_id)
+            .single()
+          if (service && service.price) {
+            price = Number(service.price)
+          }
+
+          const { error: createError } = await supabase.from('bookings').insert({
+            barber_id,
+            service_id,
+            date,
+            status: 'confirmed',
+            payment_status: 'succeeded',
+            payment_intent_id: paymentIntent.id,
+            price,
+            platform_fee,
+            barber_payout,
+            notes: notes || null,
+            guest_name: guest_name || null,
+            guest_email: guest_email || null,
+            guest_phone: guest_phone || null,
+            client_id: client_id || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+
+          if (createError) {
+            console.error('Error creating booking after payment:', createError)
+            return NextResponse.json(
+              { error: 'Error creating booking after payment' },
+              { status: 500 }
+            )
+          }
+
+          console.log('Booking created after payment for payment_intent:', paymentIntent.id)
+        } else if (findError && typeof findError === 'object' && (findError as any).code !== 'PGRST116') {
+          // Only log error if it's not the 'no rows' error
           console.error('Error finding booking:', findError)
           return NextResponse.json(
             { error: 'Failed to find booking' },
             { status: 500 }
           )
+        } else {
+          // Booking already exists, just update status
+          await updateBookingStatus(
+            existingBooking.id,
+            'confirmed',
+            'succeeded',
+            paymentIntent.id
+          )
         }
-
-        await updateBookingStatus(
-          booking.id,
-          'confirmed',
-          'succeeded',
-          paymentIntent.id
-        )
         break
       }
 
@@ -295,8 +372,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error processing webhook:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to process webhook' },
-      { status: 500 }
+      { error: 'Webhook error' },
+      { status: 400 }
     )
   }
 } 

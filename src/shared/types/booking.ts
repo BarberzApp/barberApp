@@ -1,5 +1,5 @@
 export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show"
-export type PaymentStatus = "pending" | "paid" | "failed" | "refunded"
+export type PaymentStatus = "pending" | "succeeded" | "failed" | "refunded"
 
 export type Barber = {
   id: string
@@ -8,35 +8,25 @@ export type Barber = {
   location?: string
 }
 
-export type Booking = {
+export interface Booking {
   id: string
   barber_id: string
-  barber: {
-    id: string
-    name: string
-    image: string
-    location: string
-  }
-  client_id?: string | null
-  client?: {
-    id: string
-    name: string
-    image: string
-  }
+  client_id: string | null
   service_id: string
-  service: {
-    id: string
-    name: string
-    price: number
-  }
-  date: Date
-  price: number
+  date: string
   status: BookingStatus
+  price: number
   payment_status: PaymentStatus
-  notes?: string
-  guest_name?: string
-  guest_email?: string
-  guest_phone?: string
+  payment_intent_id: string
+  platform_fee: number
+  barber_payout: number
+  guest_name: string | null
+  guest_email: string | null
+  guest_phone: string | null
+  notes: string | null
   created_at: string
   updated_at: string
+  barber?: any // Replace with proper barber type
+  service?: any // Replace with proper service type
+  client?: any // Replace with proper client type
 } 

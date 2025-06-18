@@ -48,7 +48,7 @@ interface DataContextType {
   setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>
 
   // Barber methods
-  getBarberById: (id: string) => Barber | undefined
+  getBarberById: (user_id: string) => Barber | undefined
   updateBarber: (id: string, data: Partial<Barber>) => void
 
   // Booking methods
@@ -134,18 +134,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   // Barber methods
-  const getBarberById = (id: string) => barbers.find(barber => barber.id === id)
+  const getBarberById = (user_id: string) => barbers.find(barber => barber.user_id === user_id)
 
-  const updateBarber = async (id: string, data: Partial<Barber>) => {
+  const updateBarber = async (user_id: string, data: Partial<Barber>) => {
     try {
+      // Only include barber-specific fields that exist in the Barber type
+      const barberData: Partial<Barber> = {
+        bio: data.bio,
+        specialties: data.specialties,
+        updated_at: new Date().toISOString()
+      }
+
       const { error } = await supabase
         .from('barbers')
-        .update(data)
-        .eq('id', id)
+        .update(barberData)
+        .eq('user_id', user_id)
       if (error) throw error
 
       setBarbers(prev => prev.map(barber => 
-        barber.id === id ? { ...barber, ...data } : barber
+        barber.user_id === user_id ? { ...barber, ...barberData } : barber
       ))
     } catch (err) {
       console.error('Error updating barber:', err)

@@ -173,7 +173,7 @@ export default function BookingsPage() {
                         <div className="flex items-center text-sm">
                           <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
                           <span>
-                            {booking.date.toLocaleDateString("en-US", {
+                            {new Date(booking.date).toLocaleDateString("en-US", {
                               weekday: "short",
                               month: "short",
                               day: "numeric",
@@ -183,10 +183,9 @@ export default function BookingsPage() {
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
                           <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                          <span>{booking.date.toLocaleTimeString("en-US", {
-                            hour: "numeric",
+                          <span>{new Date(booking.date).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
                             minute: "2-digit",
-                            hour12: true
                           })}</span>
                         </div>
 
@@ -256,7 +255,7 @@ export default function BookingsPage() {
                         <div className="flex items-center text-sm">
                           <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
                           <span>
-                            {booking.date.toLocaleDateString("en-US", {
+                            {new Date(booking.date).toLocaleDateString("en-US", {
                               weekday: "short",
                               month: "short",
                               day: "numeric",
@@ -266,10 +265,9 @@ export default function BookingsPage() {
 
                         <div className="flex items-center text-sm mt-1 sm:mt-0">
                           <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                          <span>{booking.date.toLocaleTimeString("en-US", {
-                            hour: "numeric",
+                          <span>{new Date(booking.date).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
                             minute: "2-digit",
-                            hour12: true
                           })}</span>
                         </div>
 

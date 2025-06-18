@@ -3,21 +3,21 @@ import type { Barber, Booking, Service } from '@/shared/types'
 
 // Barber service
 export const barberService = {
-  async getBarberById(id: string) {
+  async getBarberById(user_id: string) {
     const { data, error } = await supabase
       .from('barbers')
       .select('*')
-      .eq('id', id)
+      .eq('user_id', user_id)
       .single()
     if (error) throw error
     return data
   },
 
-  async updateBarber(id: string, data: Partial<Barber>) {
+  async updateBarber(user_id: string, data: Partial<Barber>) {
     const { error } = await supabase
       .from('barbers')
       .update(data)
-      .eq('id', id)
+      .eq('user_id', user_id)
     if (error) throw error
   },
 
@@ -62,7 +62,7 @@ export const bookingService = {
     const { data, error } = await supabase
       .from('bookings')
       .select('*')
-      .eq('barberId', barberId)
+      .eq('barber_id', barberId)
     if (error) throw error
     return data
   },
@@ -71,7 +71,7 @@ export const bookingService = {
     const { data, error } = await supabase
       .from('bookings')
       .select('*')
-      .eq('clientId', clientId)
+      .eq('client_id', clientId)
     if (error) throw error
     return data
   }
@@ -101,7 +101,7 @@ export const serviceService = {
     const { data, error } = await supabase
       .from('services')
       .select('*')
-      .eq('barberId', barberId)
+      .eq('barber_id', barberId)
     if (error) throw error
     return data
   }

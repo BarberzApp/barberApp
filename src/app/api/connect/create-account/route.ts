@@ -3,42 +3,35 @@ import Stripe from 'stripe'
 import { supabase } from '@/shared/lib/supabase'
 
 if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
+  throw new Error('Missing STRIPE_SECRET_KEY')
 }
 
-// Get the base URL for the current environment
 const getBaseUrl = () => {
-  // For testing, use a hardcoded domain
-  return 'https://barber-app.vercel.app'
-}
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://barber-app.vercel.app';
+  } else {
+    return 'http://localhost:3002';
+  }
+};
 
-const APP_URL = getBaseUrl()
-console.log('Using app URL:', APP_URL)
+const APP_URL = getBaseUrl();
+console.log('Using app URL:', APP_URL);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-05-28.basil',
 })
 
-export async function POST(request: Request) {
+// Always use the production URL for business_profile.url
+const getBusinessProfileUrl = (barberId: string) => `https://barber-app.vercel.app/barber/${barberId}`;
+
+export async function POST(req: Request) {
   try {
-    // Add CORS headers
-    const headers = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    }
+    const { barberId, email } = await req.json()
 
-    // Handle preflight requests
-    if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { headers })
-    }
-
-    const { barberId } = await request.json()
-
-    if (!barberId) {
+    if (!barberId || !email) {
       return NextResponse.json(
-        { error: 'Barber ID is required' },
-        { status: 400, headers }
+        { error: 'Barber ID and email are required' },
+        { status: 400 }
       )
     }
 
@@ -53,7 +46,7 @@ export async function POST(request: Request) {
       console.error('Error fetching barber:', barberError)
       return NextResponse.json(
         { error: 'Failed to fetch barber details' },
-        { status: 500, headers }
+        { status: 500 }
       )
     }
 
@@ -61,48 +54,36 @@ export async function POST(request: Request) {
     if (barber.stripe_account_id) {
       return NextResponse.json(
         { error: 'Barber already has a Stripe account' },
-        { status: 400, headers }
+        { status: 400 }
       )
     }
 
-    // Ensure we have a valid domain for the business profile URL
-    const businessProfileUrl = `${APP_URL}/barber/${barber.id}`
+    // Always use the production URL for business_profile.url
+    const businessProfileUrl = getBusinessProfileUrl(barber.id);
     console.log('Business profile URL:', businessProfileUrl)
 
-    // Create Stripe Connect account
+    // Create a Stripe Connect Express account
     const account = await stripe.accounts.create({
       type: 'express',
-      country: 'US',
-      email: barber.email,
-      business_type: 'individual',
+      email,
+      business_profile: {
+        url: businessProfileUrl
+      },
+      metadata: {
+        barber_id: barberId,
+      },
       capabilities: {
         card_payments: { requested: true },
         transfers: { requested: true },
       },
-      business_profile: {
-        name: barber.name,
-        url: businessProfileUrl,
-      },
-      settings: {
-        payouts: {
-          schedule: {
-            interval: 'manual' // For testing, use manual payouts
-          }
-        }
-      },
-      metadata: {
-        environment: 'test',
-        barber_id: barberId
-      }
     })
 
-    // Create account link for onboarding
+    // Create an account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
-      refresh_url: `${APP_URL}/settings?tab=payments`,
-      return_url: `${APP_URL}/settings?tab=payments&success=true`,
+      refresh_url: `${APP_URL}/barber/connect/refresh`,
+      return_url: `${APP_URL}/barber/connect/return`,
       type: 'account_onboarding',
-      collect: 'eventually_due' // For testing, collect all requirements upfront
     })
 
     // Update barber record with Stripe account ID
@@ -121,24 +102,19 @@ export async function POST(request: Request) {
       await stripe.accounts.del(account.id)
       return NextResponse.json(
         { error: 'Failed to update barber record' },
-        { status: 500, headers }
+        { status: 500 }
       )
     }
 
     return NextResponse.json({
-      accountId: account.id,
       url: accountLink.url,
-      accountLink: accountLink.url,
-    }, { headers })
+      accountId: account.id,
+    })
   } catch (error) {
-    console.error('Error creating Stripe account:', error)
+    console.error('Error creating Stripe Connect account:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create Stripe account' },
-      { status: 500, headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      }}
+      { error: 'Error creating Stripe Connect account' },
+      { status: 500 }
     )
   }
 } 

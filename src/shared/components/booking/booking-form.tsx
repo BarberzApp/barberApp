@@ -52,6 +52,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
   const [paymentIntent, setPaymentIntent] = useState<any>(null)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [bookedTimes, setBookedTimes] = useState<Set<string>>(new Set())
+  const [paymentType, setPaymentType] = useState<'fee' | 'full'>('full')
 
   useEffect(() => {
     if (isOpen) {
@@ -199,56 +200,44 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       // Combine date and time into a single timestamp
       const [hours, minutes] = formData.time.split(':')
       const bookingDate = new Date(date)
-      bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+      bookingDate.setHours(Number(hours), Number(minutes), 0, 0)
 
-      // Create checkout session
-      const response = await fetch('/api/create-checkout-session', {
+      // Prepare booking and guest info
+      const bookingPayload = {
+        barberId,
+        serviceId: formData.serviceId,
+        date: bookingDate.toISOString(),
+        notes: formData.notes,
+        guestName: formData.guestName,
+        guestEmail: formData.guestEmail,
+        guestPhone: formData.guestPhone,
+        clientId: user ? user.id : null,
+        paymentType,
+      }
+
+      // Call payment API to create PaymentIntent/Checkout session
+      const response = await fetch('/api/payments/create-booking-payment', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: selectedService.price * 100, // Base amount in cents
-          successUrl: `${window.location.origin}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/booking/cancel`,
-          metadata: {
-            serviceId: selectedService.id,
-            barberId,
-            date: bookingDate.toISOString(),
-            basePrice: selectedService.price,
-            notes: formData.notes || '',
-            // Include client_id if user is authenticated
-            ...(user ? { clientId: user.id } : {}),
-            // Include guest information if user is not authenticated
-            ...(!user ? {
-              guestName: formData.guestName,
-              guestEmail: formData.guestEmail,
-              guestPhone: formData.guestPhone,
-            } : {})
-          }
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingPayload),
       })
-
+      const data = await response.json()
       if (!response.ok) {
-        throw new Error('Failed to create checkout session')
+        throw new Error(data.error || 'Failed to create payment session')
       }
 
-      const { sessionId } = await response.json()
-      const stripe = await stripePromise
-      if (!stripe) throw new Error('Stripe failed to load')
-
-      // Redirect to Stripe Checkout
-      const { error } = await stripe.redirectToCheckout({ sessionId })
-      if (error) {
-        throw error
-      }
+      // Show payment form or redirect to Stripe
+      // (Assume you use Stripe Elements or Checkout)
+      setPaymentIntent(data)
+      setShowPaymentForm(true)
     } catch (error) {
-      console.error('Error creating checkout session:', error)
+      console.error('Error creating payment session:', error)
       toast({
         title: "Error",
-        description: "Failed to process payment. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create payment session.",
         variant: "destructive",
       })
+    } finally {
       setLoading(false)
     }
   }
@@ -281,16 +270,19 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
         client_id: 'guest',
         barber_id: barberId,
         service_id: formData.serviceId,
-        date: new Date(bookingDate.toISOString()),
+        date: bookingDate.toISOString(),
         price: selectedService.price,
         status: "confirmed",
-        payment_status: "paid",
+        payment_status: "succeeded",
         notes: formData.notes,
         guest_name: formData.guestName,
         guest_email: formData.guestEmail,
         guest_phone: formData.guestPhone,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        payment_intent_id: '', // Placeholder, update with real value if available
+        platform_fee: 0, // Placeholder, update with real value if available
+        barber_payout: 0 // Placeholder, update with real value if available
       })
 
       toast({
@@ -442,6 +434,30 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Payment Option</Label>
+              <div className="flex flex-col gap-2">
+                <label>
+                  <input
+                    type="radio"
+                    value="fee"
+                    checked={paymentType === 'fee'}
+                    onChange={() => setPaymentType('fee')}
+                  />{' '}
+                  Pay only platform fee
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    value="full"
+                    checked={paymentType === 'full'}
+                    onChange={() => setPaymentType('full')}
+                  />{' '}
+                  Pay full amount (service + fee)
+                </label>
+              </div>
             </div>
 
             <DialogFooter>

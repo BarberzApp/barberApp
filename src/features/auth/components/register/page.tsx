@@ -73,12 +73,23 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      await register(formData.name, formData.email, formData.password, role)
-      toast({
-        title: "Registration successful",
-        description: "Welcome to BarberHub!",
-      })
-      router.push('/')
+      const success = await register(
+        formData.name,
+        formData.email,
+        formData.password,
+        role,
+        role === "barber" ? formData.businessName : undefined
+      )
+
+      if (success) {
+        toast({
+          title: "Registration successful",
+          description: role === "barber" 
+            ? "Welcome to BarberHub! Please complete your business profile setup."
+            : "Welcome to BarberHub!",
+        })
+        router.push(role === "barber" ? "/barber/onboarding" : "/")
+      }
     } catch (err) {
       setError('Failed to create account')
       toast({
@@ -115,9 +126,9 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="client-name">Full Name</Label>
+                  <Label htmlFor="name">Full Name</Label>
                   <Input
-                    id="client-name"
+                    id="name"
                     name="name"
                     placeholder="John Doe"
                     required
@@ -126,9 +137,9 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="client-email">Email</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="client-email"
+                    id="email"
                     name="email"
                     type="email"
                     placeholder="you@example.com"
@@ -138,9 +149,9 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="client-password">Password</Label>
+                  <Label htmlFor="password">Password</Label>
                   <Input
-                    id="client-password"
+                    id="password"
                     name="password"
                     type="password"
                     required
@@ -149,9 +160,9 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="client-confirm-password">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <Input
-                    id="client-confirm-password"
+                    id="confirmPassword"
                     name="confirmPassword"
                     type="password"
                     required
@@ -215,6 +226,17 @@ export default function RegisterPage() {
                     placeholder="you@example.com"
                     required
                     value={formData.email}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="business-name">Business Name</Label>
+                  <Input
+                    id="business-name"
+                    name="businessName"
+                    placeholder="Your Business Name"
+                    required
+                    value={formData.businessName}
                     onChange={handleChange}
                   />
                 </div>

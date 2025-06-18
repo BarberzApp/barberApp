@@ -24,6 +24,8 @@ interface PaymentIntent {
   client_secret: string
 }
 
+type PaymentOption = 'fee_only' | 'fee_and_cut'
+
 export function PaymentForm() {
   const { user } = useAuth()
   const { createPaymentIntent, confirmPayment } = usePayment()
@@ -32,6 +34,7 @@ export function PaymentForm() {
   const [paymentMethod, setPaymentMethod] = useState<string>("")
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [intent, setIntent] = useState<PaymentIntent | null>(null)
+  const [paymentOption, setPaymentOption] = useState<PaymentOption>('fee_and_cut')
 
   const handlePaymentMethodSelect = (pm: PaymentMethod) => {
     setPaymentMethod(pm.id)
@@ -80,22 +83,45 @@ export function PaymentForm() {
     <Card>
       <CardHeader>
         <CardTitle>Payment Details</CardTitle>
-        <CardDescription>Description</CardDescription>
+        <CardDescription>Choose your payment option</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Service Amount</span>
-              <span>$0.00</span>
+          <RadioGroup
+            value={paymentOption}
+            onValueChange={(value) => setPaymentOption(value as PaymentOption)}
+            className="space-y-2"
+          >
+            <div className="flex items-center space-x-2 border rounded-md p-3">
+              <RadioGroupItem value="fee_and_cut" id="fee_and_cut" />
+              <Label htmlFor="fee_and_cut" className="flex items-center gap-2 cursor-pointer">
+                <Wallet className="h-4 w-4" />
+                <span>Pay for service + processing fee</span>
+              </Label>
             </div>
+            <div className="flex items-center space-x-2 border rounded-md p-3">
+              <RadioGroupItem value="fee_only" id="fee_only" />
+              <Label htmlFor="fee_only" className="flex items-center gap-2 cursor-pointer">
+                <CreditCard className="h-4 w-4" />
+                <span>Pay processing fee only</span>
+              </Label>
+            </div>
+          </RadioGroup>
+
+          <div className="space-y-2">
+            {paymentOption === 'fee_and_cut' && (
+              <div className="flex justify-between text-sm">
+                <span>Service Amount</span>
+                <span>$0.00</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
-              <span>Platform Fee</span>
-              <span>$0.00</span>
+              <span>Processing Fee</span>
+              <span>$3.38</span>
             </div>
             <div className="flex justify-between font-medium">
               <span>Total</span>
-              <span>$0.00</span>
+              <span>${paymentOption === 'fee_and_cut' ? '3.38' : '3.38'}</span>
             </div>
           </div>
 
@@ -123,7 +149,7 @@ export function PaymentForm() {
             type="submit"
             disabled={loading}
           >
-            {loading ? "Processing..." : "Pay $0.00"}
+            {loading ? "Processing..." : `Pay $${paymentOption === 'fee_and_cut' ? '3.38' : '3.38'}`}
           </Button>
         </CardFooter>
       </form>

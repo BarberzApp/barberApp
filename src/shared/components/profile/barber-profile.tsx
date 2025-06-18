@@ -12,7 +12,7 @@ import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Textarea } from "@/shared/components/ui/textarea"
 import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, MapPin, Star, Upload, DollarSign, Clock, X, Building2, Scissors } from "lucide-react"
+import { Calendar, MapPin, Star, Upload, DollarSign, Clock, X, Building2, Scissors, Settings } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
 import Link from "next/link"
 import Image from "next/image"
@@ -56,10 +56,16 @@ export function BarberProfile() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [barberId, setBarberId] = useState<string>('')
+  const [stats, setStats] = useState({
+    totalAppointments: 0,
+    averageRating: 0,
+    servicesCount: 0
+  })
 
   useEffect(() => {
     if (user) {
       fetchBarberId()
+      fetchStats()
     }
   }, [user])
 
@@ -80,6 +86,40 @@ export function BarberProfile() {
     }
   }
 
+  const fetchStats = async () => {
+    try {
+      // Fetch appointments count
+      const { count: appointmentsCount } = await supabase
+        .from('appointments')
+        .select('*', { count: 'exact' })
+        .eq('barber_id', barberId)
+
+      // Fetch services count
+      const { count: servicesCount } = await supabase
+        .from('services')
+        .select('*', { count: 'exact' })
+        .eq('barber_id', barberId)
+
+      // Fetch average rating
+      const { data: reviews } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('barber_id', barberId)
+
+      const averageRating = reviews?.length 
+        ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length 
+        : 0
+
+      setStats({
+        totalAppointments: appointmentsCount || 0,
+        averageRating: Number(averageRating.toFixed(1)),
+        servicesCount: servicesCount || 0
+      })
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
+  }
+
   if (!user) {
     router.push('/login')
     return null
@@ -91,14 +131,26 @@ export function BarberProfile() {
 
     try {
       const formData = new FormData(e.currentTarget)
-      const data = {
+      const barberData = {
         bio: formData.get('bio') as string,
         specialties: (formData.get('specialties') as string).split(',').map(s => s.trim()),
         location: formData.get('location') as string,
-        phone: formData.get('phone') as string,
       }
 
-      await updateBarber(user.id, data)
+      // Update barber profile
+      await updateBarber(user.id, barberData)
+
+      // Update phone in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          phone: formData.get('phone') as string,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+
+      if (profileError) throw profileError
+
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully",

@@ -7,12 +7,12 @@ import { ShareSettings } from './share-settings'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { Card } from '@/shared/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
-import { User, Scissors, Share2, Calendar, DollarSign } from 'lucide-react'
+import { User, Scissors, Share2, Calendar, DollarSign, Bell, Lock } from 'lucide-react'
 import { AvailabilityManager } from '@/shared/components/profile/availability-manager'
 import { EarningsDashboard } from '@/shared/components/payment/earnings-dashboard'
 import { supabase } from '@/shared/lib/supabase'
 
-type Tab = 'profile' | 'services' | 'availability' | 'share' | 'earnings'
+type Tab = 'profile' | 'services' | 'availability' | 'share' | 'earnings' | 'notifications' | 'security'
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile')
@@ -44,15 +44,15 @@ export function SettingsPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 bg-background">
-      <Card className="w-full max-w-2xl border-none shadow-lg bg-card">
+      <Card className="w-full max-w-4xl border-none shadow-lg bg-card">
         <div className="px-6 pt-8 pb-4 text-center">
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground mt-2 text-base">
-            Manage your profile, services, and sharing preferences.
+            Manage your profile, services, and preferences.
           </p>
         </div>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as Tab)} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 p-1 bg-muted/50 rounded-md mb-2">
+          <TabsList className="grid w-full grid-cols-7 p-1 bg-muted/50 rounded-md mb-2">
             <TabsTrigger 
               value="profile" 
               className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -92,6 +92,20 @@ export function SettingsPage() {
                 </TabsTrigger>
               </>
             )}
+            <TabsTrigger 
+              value="notifications" 
+              className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+            <TabsTrigger 
+              value="security" 
+              className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Lock className="h-4 w-4" />
+              Security
+            </TabsTrigger>
           </TabsList>
 
           <div className="p-6 bg-card rounded-b-md">
@@ -114,6 +128,24 @@ export function SettingsPage() {
                 </TabsContent>
               </>
             )}
+            <TabsContent value="notifications" className="mt-0">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-2xl font-semibold tracking-tight">Notification Settings</h3>
+                  <p className="text-muted-foreground mt-1">Manage your notification preferences.</p>
+                </div>
+                {/* Add notification settings component here */}
+              </div>
+            </TabsContent>
+            <TabsContent value="security" className="mt-0">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-2xl font-semibold tracking-tight">Security Settings</h3>
+                  <p className="text-muted-foreground mt-1">Manage your account security.</p>
+                </div>
+                {/* Add security settings component here */}
+              </div>
+            </TabsContent>
           </div>
         </Tabs>
       </Card>
