@@ -19,6 +19,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-05-28.basil',
 })
 
+// Type definitions
+interface CreateAccountRequest {
+  barberId: string
+}
+
 export async function POST(request: Request) {
   try {
     // Add CORS headers
@@ -33,11 +38,20 @@ export async function POST(request: Request) {
       return new NextResponse(null, { headers })
     }
 
-    const { barberId } = await request.json()
+    const body = await request.json() as CreateAccountRequest
+    const { barberId } = body
 
-    if (!barberId) {
+    // Input validation
+    if (!barberId || typeof barberId !== 'string') {
       return NextResponse.json(
-        { error: 'Barber ID is required' },
+        { error: 'Barber ID is required and must be a string' },
+        { status: 400, headers }
+      )
+    }
+
+    if (barberId.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Barber ID cannot be empty' },
         { status: 400, headers }
       )
     }
@@ -57,10 +71,25 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!barber) {
+      return NextResponse.json(
+        { error: 'Barber not found' },
+        { status: 404, headers }
+      )
+    }
+
     // Check if barber already has a Stripe account
     if (barber.stripe_account_id) {
       return NextResponse.json(
         { error: 'Barber already has a Stripe account' },
+        { status: 400, headers }
+      )
+    }
+
+    // Validate barber email
+    if (!barber.email || typeof barber.email !== 'string' || !barber.email.includes('@')) {
+      return NextResponse.json(
+        { error: 'Valid barber email is required' },
         { status: 400, headers }
       )
     }
@@ -134,11 +163,13 @@ export async function POST(request: Request) {
     console.error('Error creating Stripe account:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create Stripe account' },
-      { status: 500, headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      }}
+      {
+        status: 500, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
+      }
     )
   }
-} 
+}

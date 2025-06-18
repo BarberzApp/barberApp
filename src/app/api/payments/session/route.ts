@@ -19,6 +19,22 @@ export async function GET(request: Request) {
       )
     }
 
+    // Validate session ID format
+    if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Invalid session ID format' },
+        { status: 400 }
+      )
+    }
+
+    // Basic validation for Stripe session ID format
+    if (!sessionId.startsWith('cs_')) {
+      return NextResponse.json(
+        { error: 'Invalid Stripe session ID format' },
+        { status: 400 }
+      )
+    }
+
     console.log('Retrieving Stripe session:', sessionId)
     const session = await stripe.checkout.sessions.retrieve(sessionId)
     console.log('Retrieved session data:', {
@@ -78,4 +94,4 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
-} 
+}

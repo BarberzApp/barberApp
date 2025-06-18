@@ -11,6 +11,13 @@ export async function POST() {
       payment_method_types: ["card"],
     })
 
+    if (!setupIntent.client_secret) {
+      return NextResponse.json(
+        { error: "Failed to generate client secret" },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ clientSecret: setupIntent.client_secret })
   } catch (error) {
     console.error("Error creating setup intent:", error)
@@ -19,4 +26,4 @@ export async function POST() {
       { status: 500 }
     )
   }
-} 
+}

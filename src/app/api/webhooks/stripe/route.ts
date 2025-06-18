@@ -10,11 +10,28 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 // Helper function to update booking status
 async function updateBookingStatus(
-  bookingId: string, 
-  status: string, 
+  bookingId: string,
+  status: string,
   paymentStatus: string,
   paymentIntentId?: string
 ) {
+  // Validate inputs
+  if (!bookingId || typeof bookingId !== 'string') {
+    throw new Error('Invalid booking ID')
+  }
+
+  if (!status || typeof status !== 'string') {
+    throw new Error('Invalid status')
+  }
+
+  if (!paymentStatus || typeof paymentStatus !== 'string') {
+    throw new Error('Invalid payment status')
+  }
+
+  if (paymentIntentId !== undefined && typeof paymentIntentId !== 'string') {
+    throw new Error('Invalid payment intent ID')
+  }
+
   const { error } = await supabase
     .from('bookings')
     .update({
@@ -43,6 +60,15 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate webhook secret is configured
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRET is not configured')
+      return NextResponse.json(
+        { error: 'Webhook secret not configured' },
+        { status: 500 }
+      )
+    }
+
     // Verify webhook signature
     let event: Stripe.Event
     try {
@@ -55,11 +81,27 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate event type
+    if (!event.type || typeof event.type !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid event type' },
+        { status: 400 }
+      )
+    }
+
     // Handle specific events
     switch (event.type as string) {
       case 'account.created': {
         const account = event.data.object as Stripe.Account
         console.log('Processing account.created event:', account.id)
+
+        // Validate account object
+        if (!account.id || typeof account.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid account ID' },
+            { status: 400 }
+          )
+        }
 
         // Get barber ID from metadata
         const barberId = account.metadata?.barber_id
@@ -97,6 +139,14 @@ export async function POST(request: Request) {
         const account = event.data.object as Stripe.Account
         console.log('Processing account.updated event:', account.id)
 
+        // Validate account object
+        if (!account.id || typeof account.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid account ID' },
+            { status: 400 }
+          )
+        }
+
         // Find barber with this Stripe account ID
         const { data: barber, error: findError } = await supabase
           .from('barbers')
@@ -109,6 +159,13 @@ export async function POST(request: Request) {
           return NextResponse.json(
             { error: 'Failed to find barber' },
             { status: 500 }
+          )
+        }
+
+        if (!barber) {
+          return NextResponse.json(
+            { error: 'Barber not found' },
+            { status: 404 }
           )
         }
 
@@ -136,6 +193,14 @@ export async function POST(request: Request) {
         const application = event.data.object as Stripe.Application
         console.log('Processing account.application.deauthorized event:', application.id)
 
+        // Validate application object
+        if (!application.id || typeof application.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid application ID' },
+            { status: 400 }
+          )
+        }
+
         // Find and update barber's status
         const { error: updateError } = await supabase
           .from('barbers')
@@ -160,6 +225,14 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session
         console.log('Processing checkout.session.completed event:', session.id)
 
+        // Validate session object
+        if (!session.id || typeof session.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid session ID' },
+            { status: 400 }
+          )
+        }
+
         if (!session.metadata?.bookingId) {
           console.error('No booking ID found in session metadata')
           return NextResponse.json(
@@ -182,6 +255,14 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session
         console.log('Processing checkout.session.expired event:', session.id)
 
+        // Validate session object
+        if (!session.id || typeof session.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid session ID' },
+            { status: 400 }
+          )
+        }
+
         if (!session.metadata?.bookingId) {
           console.error('No booking ID found in session metadata')
           return NextResponse.json(
@@ -202,6 +283,14 @@ export async function POST(request: Request) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('Processing payment_intent.succeeded event:', paymentIntent.id)
 
+        // Validate payment intent object
+        if (!paymentIntent.id || typeof paymentIntent.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid payment intent ID' },
+            { status: 400 }
+          )
+        }
+
         // Find booking with this payment intent ID
         const { data: booking, error: findError } = await supabase
           .from('bookings')
@@ -214,6 +303,13 @@ export async function POST(request: Request) {
           return NextResponse.json(
             { error: 'Failed to find booking' },
             { status: 500 }
+          )
+        }
+
+        if (!booking) {
+          return NextResponse.json(
+            { error: 'Booking not found' },
+            { status: 404 }
           )
         }
 
@@ -230,6 +326,14 @@ export async function POST(request: Request) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         console.log('Processing payment_intent.payment_failed event:', paymentIntent.id)
 
+        // Validate payment intent object
+        if (!paymentIntent.id || typeof paymentIntent.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid payment intent ID' },
+            { status: 400 }
+          )
+        }
+
         // Find booking with this payment intent ID
         const { data: booking, error: findError } = await supabase
           .from('bookings')
@@ -242,6 +346,13 @@ export async function POST(request: Request) {
           return NextResponse.json(
             { error: 'Failed to find booking' },
             { status: 500 }
+          )
+        }
+
+        if (!booking) {
+          return NextResponse.json(
+            { error: 'Booking not found' },
+            { status: 404 }
           )
         }
 
@@ -265,6 +376,21 @@ export async function POST(request: Request) {
         const charge = event.data.object as Stripe.Charge
         console.log('Processing charge.refunded event:', charge.id)
 
+        // Validate charge object
+        if (!charge.id || typeof charge.id !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid charge ID' },
+            { status: 400 }
+          )
+        }
+
+        if (!charge.payment_intent || typeof charge.payment_intent !== 'string') {
+          return NextResponse.json(
+            { error: 'Invalid payment intent reference' },
+            { status: 400 }
+          )
+        }
+
         // Find booking with this payment intent ID
         const { data: booking, error: findError } = await supabase
           .from('bookings')
@@ -277,6 +403,13 @@ export async function POST(request: Request) {
           return NextResponse.json(
             { error: 'Failed to find booking' },
             { status: 500 }
+          )
+        }
+
+        if (!booking) {
+          return NextResponse.json(
+            { error: 'Booking not found' },
+            { status: 404 }
           )
         }
 
@@ -299,4 +432,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-} 
+}

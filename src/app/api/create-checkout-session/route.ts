@@ -12,6 +12,27 @@ const REQUIRED_METADATA = {
   GUEST: ['guestName', 'guestEmail', 'guestPhone']
 }
 
+// Type definitions
+interface CheckoutMetadata {
+  barberId: string
+  serviceId: string
+  date: string
+  basePrice: string
+  guestName?: string
+  guestEmail?: string
+  guestPhone?: string
+  notes?: string
+  [key: string]: string | undefined
+}
+
+interface CheckoutSessionRequest {
+  amount: string | number
+  successUrl: string
+  cancelUrl: string
+  metadata: CheckoutMetadata
+  clientId?: string | null
+}
+
 export async function POST(request: Request) {
   // Start a Supabase transaction
   const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -22,7 +43,7 @@ export async function POST(request: Request) {
 
   try {
     console.log('Starting checkout session creation...')
-    const body = await request.json()
+    const body = await request.json() as CheckoutSessionRequest
     console.log('Request body:', body)
     
     const { amount, successUrl, cancelUrl, metadata, clientId } = body
@@ -32,6 +53,32 @@ export async function POST(request: Request) {
       console.error('Missing required fields:', { amount, successUrl, cancelUrl, metadata })
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Validate field types
+    if (typeof successUrl !== 'string' || typeof cancelUrl !== 'string') {
+      return NextResponse.json(
+        { error: 'URLs must be strings' },
+        { status: 400 }
+      )
+    }
+
+    // Validate URLs
+    try {
+      new URL(successUrl)
+      new URL(cancelUrl)
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Invalid URL format' },
+        { status: 400 }
+      )
+    }
+
+    if (typeof metadata !== 'object' || metadata === null) {
+      return NextResponse.json(
+        { error: 'Metadata must be an object' },
         { status: 400 }
       )
     }
@@ -46,6 +93,16 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate metadata field types
+    for (const field of REQUIRED_METADATA.ALL) {
+      if (typeof metadata[field] !== 'string') {
+        return NextResponse.json(
+          { error: `${field} must be a string` },
+          { status: 400 }
+        )
+      }
+    }
+
     // If no clientId, validate guest information
     if (!clientId) {
       const missingGuestFields = REQUIRED_METADATA.GUEST.filter(field => !metadata[field])
@@ -56,14 +113,55 @@ export async function POST(request: Request) {
           { status: 400 }
         )
       }
+
+      // Validate guest email format
+      if (metadata.guestEmail && !metadata.guestEmail.includes('@')) {
+        return NextResponse.json(
+          { error: 'Invalid guest email format' },
+          { status: 400 }
+        )
+      }
+
+      // Validate guest phone format (basic validation)
+      if (metadata.guestPhone && metadata.guestPhone.length < 10) {
+        return NextResponse.json(
+          { error: 'Invalid guest phone number' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Validate clientId if provided
+    if (clientId !== undefined && clientId !== null && typeof clientId !== 'string') {
+      return NextResponse.json(
+        { error: 'Client ID must be a string or null' },
+        { status: 400 }
+      )
     }
 
     // Validate amount
-    const baseAmount = parseFloat(amount)
+    const baseAmount = parseFloat(String(amount))
     if (isNaN(baseAmount) || baseAmount <= 0) {
       console.error('Invalid amount:', amount)
       return NextResponse.json(
         { error: 'Invalid amount' },
+        { status: 400 }
+      )
+    }
+
+    // Validate amount is in cents and is an integer
+    if (!Number.isInteger(baseAmount)) {
+      return NextResponse.json(
+        { error: 'Amount must be an integer in cents' },
+        { status: 400 }
+      )
+    }
+
+    // Validate date format (basic ISO date validation)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}/
+    if (!dateRegex.test(metadata.date)) {
+      return NextResponse.json(
+        { error: 'Invalid date format' },
         { status: 400 }
       )
     }
@@ -232,4 +330,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-} 
+}
