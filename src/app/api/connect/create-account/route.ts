@@ -8,7 +8,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 const getBaseUrl = () => {
   if (process.env.NODE_ENV === 'production') {
-    return 'https://barber-app.vercel.app';
+    return process.env.NEXT_PUBLIC_APP_URL || 'https://barber-app-five.vercel.app';
   } else {
     return 'http://localhost:3002';
   }
@@ -27,8 +27,11 @@ interface CreateAccountRequest {
   email: string
 }
 
-// Always use the production URL for business_profile.url
-const getBusinessProfileUrl = (barberId: string) => `https://barber-app.vercel.app/barber/${barberId}`;
+// Use environment variable for business profile URL
+const getBusinessProfileUrl = (barberId: string) => {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://barber-app-five.vercel.app';
+  return `${appUrl}/barber/${barberId}`;
+};
 
 export async function POST(request: Request) {
   try {
