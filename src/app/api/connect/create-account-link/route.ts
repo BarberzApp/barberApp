@@ -10,13 +10,27 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-05-28.basil',
 })
 
+// Type definitions
+interface AccountLinkRequest {
+  barberId: string
+}
+
 export async function POST(request: Request) {
   try {
-    const { barberId } = await request.json()
+    const body = await request.json() as AccountLinkRequest
+    const { barberId } = body
 
-    if (!barberId) {
+    // Input validation
+    if (!barberId || typeof barberId !== 'string') {
       return NextResponse.json(
-        { error: 'Barber ID is required' },
+        { error: 'Barber ID is required and must be a string' },
+        { status: 400 }
+      )
+    }
+
+    if (barberId.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Barber ID cannot be empty' },
         { status: 400 }
       )
     }
@@ -36,10 +50,26 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!barber) {
+      return NextResponse.json(
+        { error: 'Barber not found' },
+        { status: 404 }
+      )
+    }
+
     if (!barber?.stripe_account_id) {
       return NextResponse.json(
         { error: 'No Stripe account found' },
         { status: 400 }
+      )
+    }
+
+    // Validate environment variable
+    if (!process.env.NEXT_PUBLIC_APP_URL) {
+      console.error('NEXT_PUBLIC_APP_URL is not set')
+      return NextResponse.json(
+        { error: 'Application URL not configured' },
+        { status: 500 }
       )
     }
 
@@ -52,6 +82,13 @@ export async function POST(request: Request) {
       collect: 'eventually_due' // For testing, collect all requirements upfront
     })
 
+    if (!accountLink.url) {
+      return NextResponse.json(
+        { error: 'Failed to generate account link' },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ url: accountLink.url })
   } catch (error) {
     console.error('Error creating account link:', error)
@@ -60,4 +97,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-} 
+}

@@ -21,17 +21,62 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-05-28.basil',
 })
 
+// Type definitions
+interface CreateAccountRequest {
+  barberId: string
+  email: string
+}
+
 // Always use the production URL for business_profile.url
 const getBusinessProfileUrl = (barberId: string) => `https://barber-app.vercel.app/barber/${barberId}`;
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { barberId, email } = await req.json()
+    // Handle preflight requests
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { 
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
+      })
+    }
 
-    if (!barberId || !email) {
+    const body = await request.json() as CreateAccountRequest
+    const { barberId, email } = body
+
+    // Input validation
+    if (!barberId || typeof barberId !== 'string') {
       return NextResponse.json(
-        { error: 'Barber ID and email are required' },
-        { status: 400 }
+        { error: 'Barber ID is required and must be a string' },
+        { status: 400, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
+      )
+    }
+
+    if (barberId.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Barber ID cannot be empty' },
+        { status: 400, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
+      )
+    }
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return NextResponse.json(
+        { error: 'Valid email is required' },
+        { status: 400, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
       )
     }
 
@@ -46,7 +91,22 @@ export async function POST(req: Request) {
       console.error('Error fetching barber:', barberError)
       return NextResponse.json(
         { error: 'Failed to fetch barber details' },
-        { status: 500 }
+        { status: 500, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
+      )
+    }
+
+    if (!barber) {
+      return NextResponse.json(
+        { error: 'Barber not found' },
+        { status: 404, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
       )
     }
 
@@ -54,7 +114,23 @@ export async function POST(req: Request) {
     if (barber.stripe_account_id) {
       return NextResponse.json(
         { error: 'Barber already has a Stripe account' },
-        { status: 400 }
+        { status: 400, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
+      )
+    }
+
+    // Validate barber email
+    if (!barber.email || typeof barber.email !== 'string' || !barber.email.includes('@')) {
+      return NextResponse.json(
+        { error: 'Valid barber email is required' },
+        { status: 400, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
       )
     }
 
@@ -102,19 +178,33 @@ export async function POST(req: Request) {
       await stripe.accounts.del(account.id)
       return NextResponse.json(
         { error: 'Failed to update barber record' },
-        { status: 500 }
+        { status: 500, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }}
       )
     }
 
     return NextResponse.json({
       url: accountLink.url,
       accountId: account.id,
-    })
+    }, { headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    }})
   } catch (error) {
     console.error('Error creating Stripe Connect account:', error)
     return NextResponse.json(
-      { error: 'Error creating Stripe Connect account' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Failed to create Stripe account' },
+      {
+        status: 500, headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
+      }
     )
   }
-} 
+}

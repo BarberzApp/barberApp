@@ -3,6 +3,19 @@ import { supabase } from '@/shared/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
+// Type definitions
+interface EarningsResponse {
+  current: number
+  previous: number
+  trend: 'up' | 'down'
+  percentage: number
+  breakdown?: {
+    serviceFees: number
+    platformFees: number
+    totalEarnings: number
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -10,6 +23,11 @@ export async function GET(request: Request) {
 
     if (!barberId) {
       return NextResponse.json({ error: 'Barber ID is required' }, { status: 400 })
+    }
+
+    // Validate barber ID format
+    if (typeof barberId !== 'string' || barberId.trim().length === 0) {
+      return NextResponse.json({ error: 'Invalid Barber ID format' }, { status: 400 })
     }
 
     console.log('Fetching earnings for barber:', barberId)
@@ -63,6 +81,24 @@ export async function GET(request: Request) {
 
     console.log('Previous month bookings:', prevMonthData)
 
+    // Validate booking data
+    if (!Array.isArray(currentMonthData) || !Array.isArray(prevMonthData)) {
+      return NextResponse.json({ error: 'Invalid booking data format' }, { status: 500 })
+    }
+
+    // Validate prices in bookings
+    const validatePrices = (bookings: any[]): boolean => {
+      return bookings.every(booking => 
+        booking && 
+        typeof booking.price === 'number' && 
+        booking.price >= 0
+      )
+    }
+
+    if (!validatePrices(currentMonthData) || !validatePrices(prevMonthData)) {
+      return NextResponse.json({ error: 'Invalid price data in bookings' }, { status: 500 })
+    }
+
     // Calculate current month breakdown
     const currentBreakdown = currentMonthData?.reduce((acc, booking) => ({
       serviceFees: acc.serviceFees + (booking.price || 0),
@@ -92,7 +128,7 @@ export async function GET(request: Request) {
 
     const percentage = prevTotal === 0 ? 100 : ((currentTotal - prevTotal) / prevTotal) * 100
 
-    const response = {
+    const response: EarningsResponse = {
       current: currentTotal,
       previous: prevTotal,
       trend: currentTotal >= prevTotal ? "up" : "down",
@@ -110,4 +146,4 @@ export async function GET(request: Request) {
     console.error('Error fetching earnings:', error)
     return NextResponse.json({ error: 'Failed to fetch earnings' }, { status: 500 })
   }
-} 
+}
