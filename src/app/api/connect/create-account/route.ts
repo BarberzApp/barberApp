@@ -122,18 +122,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate barber email
-    if (!barber.email || typeof barber.email !== 'string' || !barber.email.includes('@')) {
-      return NextResponse.json(
-        { error: 'Valid barber email is required' },
-        { status: 400, headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }}
-      )
-    }
-
     // Always use the production URL for business_profile.url
     const businessProfileUrl = getBusinessProfileUrl(barber.id);
     console.log('Business profile URL:', businessProfileUrl)
@@ -163,6 +151,8 @@ export async function POST(request: Request) {
     })
 
     // Update barber record with Stripe account ID
+    console.log('Saving Stripe account ID to database:', account.id, 'for barber:', barberId);
+    
     const { error: updateError } = await supabase
       .from('barbers')
       .update({
@@ -185,6 +175,8 @@ export async function POST(request: Request) {
         }}
       )
     }
+
+    console.log('Successfully saved Stripe account ID to database');
 
     return NextResponse.json({
       url: accountLink.url,

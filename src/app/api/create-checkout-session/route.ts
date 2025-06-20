@@ -31,6 +31,7 @@ interface CheckoutSessionRequest {
   cancelUrl: string
   metadata: CheckoutMetadata
   clientId?: string | null
+  customerPaysFee?: boolean
 }
 
 export async function POST(request: Request) {

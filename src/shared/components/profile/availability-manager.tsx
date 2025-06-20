@@ -5,8 +5,10 @@ import { Card } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Label } from '@/shared/components/ui/label'
 import { Input } from '@/shared/components/ui/input'
+import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { supabase } from '@/shared/lib/supabase'
 import { toast } from 'sonner'
+import { Calendar, Clock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 
 interface Availability {
   day_of_week: number
@@ -16,13 +18,15 @@ interface Availability {
 
 interface AvailabilityManagerProps {
   barberId: string
+  onUpdate?: () => void
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
+export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerProps) {
   const [availability, setAvailability] = useState<Availability[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     fetchAvailability()
@@ -85,7 +89,7 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
 
   const saveAvailability = async () => {
     try {
-      setIsLoading(true)
+      setIsSaving(true)
       
       // Validate data
       const invalidTimes = availability.filter(avail => 
@@ -122,71 +126,120 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
       // Refresh the data
       await fetchAvailability()
       toast.success('Availability updated successfully')
+      
+      // Call onUpdate to refresh settings data
+      onUpdate?.()
     } catch (error) {
       console.error('Error saving availability:', error)
       toast.error('Failed to save availability')
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
+  }
+
+  const getAvailableDaysCount = () => {
+    return availability.filter(avail => avail.start_time && avail.end_time).length
   }
 
   if (isLoading) {
     return (
-      <Card className="p-6">
-        <div className="flex items-center justify-center min-h-[200px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          <h3 className="text-lg font-medium">Availability</h3>
         </div>
-      </Card>
+        <Card className="p-6">
+          <div className="flex items-center justify-center min-h-[200px]">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Manage Availability</h2>
-      <div className="space-y-6">
-        {DAYS.map((dayName, index) => {
-          const day = availability.find(avail => avail.day_of_week === index)
-          const isAvailable = !!day
-
-          return (
-            <div key={dayName} className="flex items-center gap-4">
-              <div className="w-32">
-                <Label>{dayName}</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="time"
-                  value={day?.start_time || '09:00'}
-                  onChange={(e) => handleTimeChange(index, 'start_time', e.target.value)}
-                  disabled={!isAvailable}
-                  className="w-32"
-                />
-                <span>to</span>
-                <Input
-                  type="time"
-                  value={day?.end_time || '17:00'}
-                  onChange={(e) => handleTimeChange(index, 'end_time', e.target.value)}
-                  disabled={!isAvailable}
-                  className="w-32"
-                />
-              </div>
-              <Button
-                variant={isAvailable ? "default" : "outline"}
-                onClick={() => toggleAvailability(index)}
-              >
-                {isAvailable ? 'Available' : 'Unavailable'}
-              </Button>
-            </div>
-          )
-        })}
-        <Button 
-          onClick={saveAvailability} 
-          disabled={isLoading}
-          className="w-full mt-6"
-        >
-          Save Availability
-        </Button>
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <Calendar className="h-5 w-5" />
+        <h3 className="text-lg font-medium">Availability</h3>
       </div>
-    </Card>
+
+      {/* Status Alert */}
+      {getAvailableDaysCount() === 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            You haven't set any availability yet. Set your working hours to start accepting bookings.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {getAvailableDaysCount() > 0 && (
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+            You have {getAvailableDaysCount()} day{getAvailableDaysCount() !== 1 ? 's' : ''} available for bookings.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card className="p-6">
+        <div className="space-y-6">
+          {DAYS.map((dayName, index) => {
+            const day = availability.find(avail => avail.day_of_week === index)
+            const isAvailable = !!day
+
+            return (
+              <div key={dayName} className="flex items-center gap-4">
+                <div className="w-32">
+                  <Label className="font-medium">{dayName}</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    value={day?.start_time || '09:00'}
+                    onChange={(e) => handleTimeChange(index, 'start_time', e.target.value)}
+                    disabled={!isAvailable}
+                    className="w-32"
+                  />
+                  <span className="text-muted-foreground">to</span>
+                  <Input
+                    type="time"
+                    value={day?.end_time || '17:00'}
+                    onChange={(e) => handleTimeChange(index, 'end_time', e.target.value)}
+                    disabled={!isAvailable}
+                    className="w-32"
+                  />
+                </div>
+                <Button
+                  variant={isAvailable ? "default" : "outline"}
+                  onClick={() => toggleAvailability(index)}
+                  className="min-w-[120px]"
+                >
+                  {isAvailable ? 'Available' : 'Unavailable'}
+                </Button>
+              </div>
+            )
+          })}
+          <Button 
+            onClick={saveAvailability} 
+            disabled={isSaving}
+            className="w-full mt-6"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Clock className="mr-2 h-4 w-4" />
+                Save Availability
+              </>
+            )}
+          </Button>
+        </div>
+      </Card>
+    </div>
   )
 } 

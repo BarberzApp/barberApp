@@ -129,6 +129,7 @@ export async function POST(request: Request) {
           .update({
             stripe_account_id: account.id,
             stripe_account_status: 'pending',
+            stripe_account_ready: false,
             updated_at: new Date().toISOString(),
           })
           .eq('id', barberId)
@@ -184,6 +185,7 @@ export async function POST(request: Request) {
           .from('barbers')
           .update({
             stripe_account_status: account.charges_enabled ? 'active' : 'pending',
+            stripe_account_ready: account.charges_enabled && account.details_submitted,
             updated_at: new Date().toISOString(),
           })
           .eq('id', barber.id)
@@ -216,6 +218,7 @@ export async function POST(request: Request) {
           .from('barbers')
           .update({
             stripe_account_status: 'deauthorized',
+            stripe_account_ready: false,
             updated_at: new Date().toISOString(),
           })
           .eq('stripe_account_id', application.id)
@@ -301,31 +304,14 @@ export async function POST(request: Request) {
           )
         }
 
-        // Store the successful payment in Supabase
-        const { error: paymentError } = await supabase.from('payments').insert({
-          payment_intent_id: paymentIntent.id,
-          amount: paymentIntent.amount,
-          currency: paymentIntent.currency,
-          status: paymentIntent.status,
-          barber_stripe_account_id: paymentIntent.transfer_data?.destination,
-          platform_fee: paymentIntent.application_fee_amount,
-          created_at: new Date().toISOString(),
-        })
-
-        if (paymentError) {
-          console.error('Error storing payment in Supabase:', paymentError)
-          return NextResponse.json(
-            { error: 'Error storing payment' },
-            { status: 500 }
-          )
-        }
-
         // Check if a booking already exists for this payment intent
         const { data: existingBooking, error: findError } = await supabase
           .from('bookings')
           .select('id')
           .eq('payment_intent_id', paymentIntent.id)
           .single()
+
+        let bookingId: string | null = null
 
         if (!existingBooking) {
           // Create the booking using metadata
@@ -352,7 +338,7 @@ export async function POST(request: Request) {
             price = Number(service.price)
           }
 
-          const { error: createError } = await supabase.from('bookings').insert({
+          const { data: newBooking, error: createError } = await supabase.from('bookings').insert({
             barber_id,
             service_id,
             date,
@@ -369,7 +355,7 @@ export async function POST(request: Request) {
             client_id: client_id || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          })
+          }).select('id').single()
 
           if (createError) {
             console.error('Error creating booking after payment:', createError)
@@ -379,6 +365,7 @@ export async function POST(request: Request) {
             )
           }
 
+          bookingId = newBooking.id
           console.log('Booking created after payment for payment_intent:', paymentIntent.id)
         } else if (findError && typeof findError === 'object' && (findError as any).code !== 'PGRST116') {
           // Only log error if it's not the 'no rows' error
@@ -389,12 +376,37 @@ export async function POST(request: Request) {
           )
         } else {
           // Booking already exists, just update status
+          bookingId = existingBooking.id
           await updateBookingStatus(
             existingBooking.id,
             'confirmed',
             'succeeded',
             paymentIntent.id
           )
+        }
+
+        // Store the successful payment in Supabase with all required fields
+        if (bookingId) {
+          const { error: paymentError } = await supabase.from('payments').insert({
+            payment_intent_id: paymentIntent.id,
+            amount: paymentIntent.amount, // Already in cents from Stripe
+            currency: paymentIntent.currency,
+            status: paymentIntent.status,
+            barber_stripe_account_id: paymentIntent.transfer_data?.destination,
+            platform_fee: paymentIntent.application_fee_amount || 0,
+            barber_payout: paymentIntent.amount - (paymentIntent.application_fee_amount || 0),
+            booking_id: bookingId, // ✅ Now properly set
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(), // ✅ Now properly set
+          })
+
+          if (paymentError) {
+            console.error('Error storing payment in Supabase:', paymentError)
+            return NextResponse.json(
+              { error: 'Error storing payment' },
+              { status: 500 }
+            )
+          }
         }
         break
       }
@@ -491,12 +503,34 @@ export async function POST(request: Request) {
         }
 
         const isPartialRefund = charge.amount_refunded < charge.amount
+        const refundStatus = isPartialRefund ? 'partially_refunded' : 'refunded'
+        
         await updateBookingStatus(
           booking.id,
-          isPartialRefund ? 'partially_refunded' : 'refunded',
-          isPartialRefund ? 'partially_refunded' : 'refunded',
+          refundStatus,
+          refundStatus,
           charge.payment_intent as string
         )
+
+        // Create a refund payment record
+        const { error: refundError } = await supabase.from('payments').insert({
+          payment_intent_id: charge.payment_intent,
+          amount: -charge.amount_refunded, // Negative amount for refunds
+          currency: charge.currency,
+          status: refundStatus,
+          barber_stripe_account_id: typeof charge.transfer === 'string' ? charge.transfer : charge.transfer?.destination,
+          platform_fee: 0, // No platform fee on refunds
+          barber_payout: -charge.amount_refunded, // Negative payout for refunds
+          booking_id: booking.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+        if (refundError) {
+          console.error('Error storing refund payment record:', refundError)
+          // Don't fail the webhook for this, just log the error
+        }
+
         break
       }
     }

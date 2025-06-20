@@ -176,7 +176,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   const handleAccessDashboard = async () => {
     console.log('Accessing Stripe dashboard for barber:', barberId)
     try {
-      const response = await fetch('/api/connect/create-account-link', {
+      const response = await fetch('/api/connect/create-dashboard-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

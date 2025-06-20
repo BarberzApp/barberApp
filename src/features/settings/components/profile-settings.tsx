@@ -8,8 +8,9 @@ import { Label } from '@/shared/components/ui/label'
 import { Button } from '@/shared/components/ui/button'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { Loader2, Upload } from 'lucide-react'
+import { Loader2, Upload, CheckCircle, AlertCircle } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
+import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
@@ -32,16 +33,43 @@ interface ProfileFormData {
   }
 }
 
-export function ProfileSettings() {
+interface ProfileSettingsProps {
+  onUpdate?: () => void
+}
+
+export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isBarber, setIsBarber] = useState(false)
   const [barberId, setBarberId] = useState<string | null>(null)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
   const { toast } = useToast()
   const { user, status } = useAuth()
   const router = useRouter()
   const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<ProfileFormData>()
+
+  const validateForm = (data: ProfileFormData): boolean => {
+    const errors: {[key: string]: string} = {}
+    
+    if (!data.name?.trim()) errors.name = 'Full name is required'
+    if (!data.email?.trim()) errors.email = 'Email is required'
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      errors.email = 'Please enter a valid email address'
+    }
+    if (data.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(data.phone.replace(/\s/g, ''))) {
+      errors.phone = 'Please enter a valid phone number'
+    }
+    if (isBarber && !data.businessName?.trim()) {
+      errors.businessName = 'Business name is required for barbers'
+    }
+    if (isBarber && !data.bio?.trim()) {
+      errors.bio = 'Bio is required for barbers'
+    }
+    
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const fetchProfile = useCallback(async () => {
     if (!user) return
@@ -142,6 +170,26 @@ export function ProfileSettings() {
     try {
       if (!e.target.files || !e.target.files[0]) return
       const file = e.target.files[0]
+      
+      // Validate file type and size
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please select an image file.',
+          variant: 'destructive',
+        })
+        return
+      }
+      
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: 'File too large',
+          description: 'Please select an image smaller than 5MB.',
+          variant: 'destructive',
+        })
+        return
+      }
+      
       const fileExt = file.name.split('.').pop()
       const filePath = `${user?.id}/avatar.${fileExt}`
 
@@ -169,6 +217,9 @@ export function ProfileSettings() {
         title: 'Success',
         description: 'Profile picture updated successfully',
       })
+      
+      // Call onUpdate to refresh settings data
+      onUpdate?.()
     } catch (error) {
       console.error('Error uploading avatar:', error)
       toast({
@@ -184,6 +235,16 @@ export function ProfileSettings() {
       toast({
         title: 'Error',
         description: 'You must be logged in to update your profile',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate form
+    if (!validateForm(data)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fix the errors before saving.',
         variant: 'destructive',
       })
       return
@@ -233,6 +294,9 @@ export function ProfileSettings() {
         title: 'Success',
         description: 'Profile updated successfully',
       })
+      
+      // Call onUpdate to refresh settings data
+      onUpdate?.()
     } catch (error) {
       console.error('Error updating profile:', error)
       toast({
@@ -271,7 +335,7 @@ export function ProfileSettings() {
                 </Avatar>
                 <label
                   htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 p-1 bg-background border rounded-full cursor-pointer hover:bg-muted"
+                  className="absolute bottom-0 right-0 p-1 bg-background border rounded-full cursor-pointer hover:bg-muted transition-colors"
                 >
                   <Upload className="h-4 w-4" />
                   <input
@@ -283,30 +347,41 @@ export function ProfileSettings() {
                   />
                 </label>
               </div>
+              <p className="text-sm text-muted-foreground text-center">
+                Click the upload icon to change your profile picture
+              </p>
             </div>
 
             {/* Basic Information */}
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+                <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
                 <Input
                   id="name"
-                  className="h-11"
+                  className={`h-11 ${validationErrors.name ? 'border-red-500' : ''}`}
                   {...register('name', { required: 'Full name is required' })}
+                  placeholder="Enter your full name"
                 />
+                {validationErrors.name && (
+                  <p className="text-sm text-red-500">{validationErrors.name}</p>
+                )}
                 {errors.name && (
                   <p className="text-sm text-destructive">{errors.name.message}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email *</Label>
                 <Input
                   id="email"
                   type="email"
-                  className="h-11"
+                  className={`h-11 ${validationErrors.email ? 'border-red-500' : ''}`}
                   {...register('email', { required: 'Email is required' })}
+                  placeholder="Enter your email address"
                 />
+                {validationErrors.email && (
+                  <p className="text-sm text-red-500">{validationErrors.email}</p>
+                )}
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email.message}</p>
                 )}
@@ -317,9 +392,13 @@ export function ProfileSettings() {
                 <Input
                   id="phone"
                   type="tel"
-                  className="h-11"
+                  className={`h-11 ${validationErrors.phone ? 'border-red-500' : ''}`}
                   {...register('phone')}
+                  placeholder="(555) 123-4567"
                 />
+                {validationErrors.phone && (
+                  <p className="text-sm text-red-500">{validationErrors.phone}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -329,19 +408,24 @@ export function ProfileSettings() {
                   type="text"
                   className="h-11"
                   {...register('location')}
+                  placeholder="City, State"
                 />
               </div>
 
               {isBarber && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="businessName" className="text-sm font-medium">Business Name</Label>
+                    <Label htmlFor="businessName" className="text-sm font-medium">Business Name *</Label>
                     <Input
                       id="businessName"
                       type="text"
-                      className="h-11"
+                      className={`h-11 ${validationErrors.businessName ? 'border-red-500' : ''}`}
                       {...register('businessName')}
+                      placeholder="Enter your business name"
                     />
+                    {validationErrors.businessName && (
+                      <p className="text-sm text-red-500">{validationErrors.businessName}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -351,6 +435,7 @@ export function ProfileSettings() {
                       type="text"
                       className="h-11"
                       {...register('specialties')}
+                      placeholder="Haircuts, Beard Trims, Fades, etc."
                     />
                     <p className="text-sm text-muted-foreground">Separate specialties with commas</p>
                   </div>
@@ -360,13 +445,19 @@ export function ProfileSettings() {
 
             {/* Bio and Description */}
             <div className="space-y-2">
-              <Label htmlFor="bio" className="text-sm font-medium">Bio</Label>
+              <Label htmlFor="bio" className="text-sm font-medium">
+                Bio {isBarber && '*'}
+              </Label>
               <Textarea
                 id="bio"
                 rows={4}
-                className="resize-none"
+                className={`resize-none ${validationErrors.bio ? 'border-red-500' : ''}`}
                 {...register('bio')}
+                placeholder={isBarber ? "Tell clients about your experience and what makes you unique..." : "Tell us about yourself..."}
               />
+              {validationErrors.bio && (
+                <p className="text-sm text-red-500">{validationErrors.bio}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -376,6 +467,7 @@ export function ProfileSettings() {
                 rows={4}
                 className="resize-none"
                 {...register('description')}
+                placeholder="Additional information about yourself or your business..."
               />
             </div>
 

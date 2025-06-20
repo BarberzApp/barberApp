@@ -11,13 +11,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 })
 
 // Type definitions
-interface AccountLinkRequest {
+interface DashboardLinkRequest {
   barberId: string
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as AccountLinkRequest
+    const body = await request.json() as DashboardLinkRequest
     const { barberId } = body
 
     // Input validation
@@ -66,30 +66,24 @@ export async function POST(request: Request) {
 
     // Validate environment variable
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002';
-    console.log('Using app URL for account link:', appUrl);
+    console.log('Using app URL for dashboard link:', appUrl);
 
-    // Create account link for dashboard access
-    const accountLink = await stripe.accountLinks.create({
-      account: barber.stripe_account_id,
-      refresh_url: `${appUrl}/barber/connect/refresh`,
-      return_url: `${appUrl}/barber/connect/return`,
-      type: 'account_onboarding',
-      collect: 'eventually_due' // For testing, collect all requirements upfront
-    })
+    // Create login link for dashboard access
+    const loginLink = await stripe.accounts.createLoginLink(barber.stripe_account_id)
 
-    if (!accountLink.url) {
+    if (!loginLink.url) {
       return NextResponse.json(
-        { error: 'Failed to generate account link' },
+        { error: 'Failed to generate dashboard link' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ url: accountLink.url })
+    return NextResponse.json({ url: loginLink.url })
   } catch (error) {
-    console.error('Error creating account link:', error)
+    console.error('Error creating dashboard link:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create account link' },
+      { error: error instanceof Error ? error.message : 'Failed to create dashboard link' },
       { status: 500 }
     )
   }
-}
+} 
