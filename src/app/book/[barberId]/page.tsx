@@ -57,36 +57,73 @@ export default function BookPage() {
 
   const fetchBarberDetails = async () => {
     try {
-      // First, get the barber's profile
-      const { data: profileData, error: profileError } = await supabase
+      let profileData: any = null;
+      let barberData: any = null;
+
+      // First, try to find a profile with this ID
+      const { data: profileResult, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', barberId)
         .single()
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError)
-        throw profileError
-      }
+      if (profileResult) {
+        // If we found a profile, this is a user ID
+        profileData = profileResult;
+        
+        // Then, get the barber's details using the user_id
+        const { data: barberResult, error: barberError } = await supabase
+          .from('barbers')
+          .select('*')
+          .eq('user_id', profileData.id)
+          .single()
 
-      if (!profileData) {
-        throw new Error('Profile not found')
-      }
+        if (barberError) {
+          console.error('Error fetching barber:', barberError)
+          throw barberError
+        }
 
-      // Then, get the barber's details
-      const { data: barberData, error: barberError } = await supabase
-        .from('barbers')
-        .select('*')
-        .eq('user_id', profileData.id)
-        .single()
+        if (!barberResult) {
+          throw new Error('Barber not found')
+        }
 
-      if (barberError) {
-        console.error('Error fetching barber:', barberError)
-        throw barberError
-      }
+        barberData = barberResult;
+      } else {
+        // If no profile found, try to find a barber directly with this ID
+        const { data: barberResult, error: barberError } = await supabase
+          .from('barbers')
+          .select('*')
+          .eq('id', barberId)
+          .single()
 
-      if (!barberData) {
-        throw new Error('Barber not found')
+        if (barberError) {
+          console.error('Error fetching barber:', barberError)
+          throw barberError
+        }
+
+        if (!barberResult) {
+          throw new Error('Barber not found')
+        }
+
+        barberData = barberResult;
+
+        // Get the profile data using the barber's user_id
+        const { data: profileResult, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', barberData.user_id)
+          .single()
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError)
+          throw profileError
+        }
+
+        if (!profileResult) {
+          throw new Error('Profile not found')
+        }
+
+        profileData = profileResult;
       }
 
       // Finally, get the barber's services
