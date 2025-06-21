@@ -316,8 +316,8 @@ export async function POST(request: Request) {
         if (!existingBooking) {
           // Create the booking using metadata
           const meta = paymentIntent.metadata || {}
-          const { barber_id, service_id, date, notes, guest_name, guest_email, guest_phone, client_id } = meta
-          if (!barber_id || !service_id || !date) {
+          const { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId } = meta
+          if (!barberId || !serviceId || !date) {
             console.error('Missing required booking metadata in payment intent')
             return NextResponse.json(
               { error: 'Missing required booking metadata' },
@@ -332,15 +332,15 @@ export async function POST(request: Request) {
           const { data: service } = await supabase
             .from('services')
             .select('price')
-            .eq('id', service_id)
+            .eq('id', serviceId)
             .single()
           if (service && service.price) {
             price = Number(service.price)
           }
 
           const { data: newBooking, error: createError } = await supabase.from('bookings').insert({
-            barber_id,
-            service_id,
+            barber_id: barberId,
+            service_id: serviceId,
             date,
             status: 'confirmed',
             payment_status: 'succeeded',
@@ -349,10 +349,10 @@ export async function POST(request: Request) {
             platform_fee,
             barber_payout,
             notes: notes || null,
-            guest_name: guest_name || null,
-            guest_email: guest_email || null,
-            guest_phone: guest_phone || null,
-            client_id: client_id || null,
+            guest_name: guestName || null,
+            guest_email: guestEmail || null,
+            guest_phone: guestPhone || null,
+            client_id: clientId || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }).select('id').single()
