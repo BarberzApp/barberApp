@@ -352,7 +352,7 @@ export async function POST(request: Request) {
             guest_name: guestName || null,
             guest_email: guestEmail || null,
             guest_phone: guestPhone || null,
-            client_id: clientId || null,
+            client_id: clientId === 'guest' ? null : clientId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }).select('id').single()
