@@ -12,6 +12,7 @@ export default function DebugStripePage() {
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [debugData, setDebugData] = useState<any>(null)
   const [searchResults, setSearchResults] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
@@ -99,6 +100,8 @@ export default function DebugStripePage() {
     setSuccessMessage(null)
 
     try {
+      console.log('Updating database with Stripe account ID:', stripeAccountId)
+      
       const response = await fetch('/api/connect/update-account-id', {
         method: 'POST',
         headers: {
@@ -111,6 +114,7 @@ export default function DebugStripePage() {
       })
 
       const data = await response.json()
+      console.log('Update response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update database')
@@ -124,9 +128,59 @@ export default function DebugStripePage() {
       }, 1000)
       
     } catch (err) {
+      console.error('Error updating database:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const refreshStripeStatus = async () => {
+    if (!user) {
+      setError('No user found. Please log in.')
+      return
+    }
+
+    setRefreshing(true)
+    setError(null)
+    setSuccessMessage(null)
+
+    try {
+      console.log('Refreshing Stripe account status for user:', user.id)
+      
+      const response = await fetch('/api/connect/refresh-account-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId: user.id
+        }),
+      })
+
+      const data = await response.json()
+      console.log('Refresh response:', data)
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to refresh status')
+      }
+
+      if (data.success) {
+        setSuccessMessage(`Account status refreshed! Previous: ${data.data.previousStatus}, Current: ${data.data.currentStatus}`)
+        
+        // Refresh the debug data to show the updated status
+        setTimeout(() => {
+          checkStatus()
+        }, 1000)
+      } else {
+        setSuccessMessage(data.message || 'No Stripe account found')
+      }
+      
+    } catch (err) {
+      console.error('Error refreshing Stripe status:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -169,6 +223,11 @@ export default function DebugStripePage() {
                 {searching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Search className="mr-2 h-4 w-4" />
                 Search Stripe Accounts
+              </Button>
+              <Button onClick={refreshStripeStatus} disabled={refreshing} variant="outline">
+                {refreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Clock className="mr-2 h-4 w-4" />
+                Refresh Stripe Status
               </Button>
             </div>
 
@@ -351,8 +410,8 @@ export default function DebugStripePage() {
                               )}
                               
                               {/* Show update button if this account is not in the database */}
-                              {searchResults.suggestions && 
-                               !searchResults.suggestions.hasStripeIdInDatabase && (
+                              {(!debugData?.barber?.stripe_account_id || 
+                                debugData.barber.stripe_account_id !== account.id) && (
                                 <div className="mt-3 pt-3 border-t">
                                   <Button 
                                     onClick={() => updateDatabaseWithAccountId(account.id)}

@@ -84,8 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return
+
       console.log('Auth state change:', event, session?.user?.email)
-      
+
       if (event === 'SIGNED_IN' && session?.user) {
         console.log('User signed in:', session.user.email)
         await fetchUserProfile(session.user.id)
@@ -108,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [user])
+  }, [])
 
   const fetchUserProfile = async (userId: string) => {
     try {

@@ -33,6 +33,32 @@ const getBusinessProfileUrl = (barberId: string) => {
   return `${appUrl}/barber/${barberId}`;
 };
 
+// Helper function to check and update Stripe account status
+async function checkAndUpdateStripeAccountStatus(barberId: string, stripeAccountId: string) {
+  try {
+    const account = await stripe.accounts.retrieve(stripeAccountId)
+    
+    const { error: updateError } = await supabase
+      .from('barbers')
+      .update({
+        stripe_account_status: account.charges_enabled ? 'active' : 'pending',
+        stripe_account_ready: account.charges_enabled && account.details_submitted,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', barberId)
+
+    if (updateError) {
+      console.error('Error updating account status:', updateError)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error checking Stripe account status:', error)
+    return false
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // Handle preflight requests
@@ -113,16 +139,97 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if barber already has a Stripe account
+    // Check if barber already has a Stripe account in database
     if (barber.stripe_account_id) {
-      return NextResponse.json(
-        { error: 'Barber already has a Stripe account' },
-        { status: 400, headers: {
+      // Check if the existing account is still valid
+      try {
+        const existingAccount = await stripe.accounts.retrieve(barber.stripe_account_id)
+        console.log('Found existing Stripe account:', existingAccount.id)
+        
+        // Update the account status based on current Stripe status
+        await checkAndUpdateStripeAccountStatus(barberId, existingAccount.id)
+
+        // Create a new account link for the existing account
+        const accountLink = await stripe.accountLinks.create({
+          account: existingAccount.id,
+          refresh_url: `${APP_URL}/barber/connect/refresh`,
+          return_url: `${APP_URL}/barber/connect/return`,
+          type: 'account_onboarding',
+        })
+
+        return NextResponse.json({
+          url: accountLink.url,
+          accountId: existingAccount.id,
+          existing: true,
+        }, { headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
-        }}
+        }})
+      } catch (stripeError) {
+        console.log('Existing account not found or invalid, will create new one')
+        // Continue to create new account
+      }
+    }
+
+    // Check for existing Stripe accounts with this email
+    try {
+      const existingAccounts = await stripe.accounts.list({
+        limit: 10,
+      })
+
+      const matchingAccount = existingAccounts.data.find(account => 
+        account.email === email && account.type === 'express'
       )
+
+      if (matchingAccount) {
+        console.log('Found existing Stripe account with email:', matchingAccount.id)
+        
+        // Update barber record with existing Stripe account ID
+        const { error: updateError } = await supabase
+          .from('barbers')
+          .update({
+            stripe_account_id: matchingAccount.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', barberId)
+
+        if (updateError) {
+          console.error('Error updating barber with existing account:', updateError)
+          return NextResponse.json(
+            { error: 'Failed to update barber record with existing account' },
+            { status: 500, headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'POST, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type',
+            }}
+          )
+        }
+
+        // Update the account status based on current Stripe status
+        await checkAndUpdateStripeAccountStatus(barberId, matchingAccount.id)
+
+        // Create an account link for the existing account
+        const accountLink = await stripe.accountLinks.create({
+          account: matchingAccount.id,
+          refresh_url: `${APP_URL}/barber/connect/refresh`,
+          return_url: `${APP_URL}/barber/connect/return`,
+          type: 'account_onboarding',
+        })
+
+        return NextResponse.json({
+          url: accountLink.url,
+          accountId: matchingAccount.id,
+          existing: true,
+        }, { headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }})
+      }
+    } catch (searchError) {
+      console.log('Error searching for existing accounts, will create new one:', searchError)
+      // Continue to create new account
     }
 
     // Always use the production URL for business_profile.url

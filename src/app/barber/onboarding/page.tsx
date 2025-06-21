@@ -591,7 +591,23 @@ export default function BarberOnboardingPage() {
       const data = await response.json();
 
       if (data.url) {
-        window.location.href = data.url;
+        // Show different message based on whether it's an existing account
+        if (data.existing) {
+          toast({
+            title: 'Existing Account Found',
+            description: 'We found your existing Stripe account. Redirecting you to complete setup...',
+          });
+        } else {
+          toast({
+            title: 'Account Created',
+            description: 'Your Stripe account has been created. Redirecting you to complete setup...',
+          });
+        }
+        
+        // Small delay to show the toast before redirecting
+        setTimeout(() => {
+          window.location.href = data.url;
+        }, 1500);
       } else {
         throw new Error('No URL returned from Stripe');
       }

@@ -29,6 +29,33 @@ export default function StripeConnectReturnPage() {
         console.log('Checking Stripe status for user:', user.id);
         console.log('User email:', user.email);
         
+        // Double-check session is still valid
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setStripeStatus("error");
+          setLoading(false);
+          return;
+        }
+        
+        if (!session) {
+          console.log('No active session found');
+          setStripeStatus("error");
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Session is valid, user ID:', session.user.id);
+        
+        // Refresh session if needed (this helps prevent session expiration during Stripe flow)
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.warn('Session refresh warning:', refreshError);
+          // Don't fail the flow for refresh errors, continue with current session
+        } else if (refreshedSession) {
+          console.log('Session refreshed successfully');
+        }
+        
         const { data: barber, error } = await supabase
           .from("barbers")
           .select("id, stripe_account_status")
@@ -99,6 +126,37 @@ export default function StripeConnectReturnPage() {
       }
     } catch (error) {
       console.error('Error refreshing onboarding:', error);
+    }
+  };
+
+  const retryAuthCheck = async () => {
+    console.log('Retrying authentication check...');
+    setLoading(true);
+    
+    try {
+      // Force a session refresh
+      const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.error('Failed to refresh session:', refreshError);
+        setLoading(false);
+        return;
+      }
+      
+      if (session) {
+        console.log('Session refreshed successfully, retrying status check');
+        // Trigger a re-render by updating a state
+        setLoading(false);
+        // Small delay to ensure state updates
+        setTimeout(() => {
+          setLoading(true);
+        }, 100);
+      } else {
+        console.log('No session after refresh');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error in retryAuthCheck:', error);
+      setLoading(false);
     }
   };
 
