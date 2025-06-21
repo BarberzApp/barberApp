@@ -106,42 +106,32 @@ export default function BookingSuccessPage({
           barber_payout: barberPayout
         })
 
-        // Use Supabase directly instead of sync service to avoid type issues
-        const { data: booking, error: bookingError } = await supabaseAdmin
-          .from('bookings')
-          .insert({
+        // Use the API route to create the booking
+        const bookingResponse = await fetch('/api/bookings/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             barber_id: metadata.barberId,
             service_id: metadata.serviceId,
             date: metadata.date,
             price: bookingPrice,
-            status: "confirmed",
-            payment_status: "succeeded",
-            payment_intent_id: session.payment_intent || '',
-            platform_fee: platformFee,
-            barber_payout: barberPayout,
-            notes: metadata.notes || '',
-            client_id: metadata.clientId === 'guest' ? null : metadata.clientId,
+            client_id: metadata.clientId,
             guest_name: metadata.guestName || null,
             guest_email: metadata.guestEmail || null,
             guest_phone: metadata.guestPhone || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            payment_intent_id: session.payment_intent || '',
+            platform_fee: platformFee,
+            barber_payout: barberPayout,
+            notes: metadata.notes || null
           })
-          .select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)')
-          .single()
+        })
 
-        if (bookingError) {
-          console.error('Supabase booking error:', bookingError)
-          console.error('Error details:', {
-            message: bookingError.message,
-            details: bookingError.details,
-            hint: bookingError.hint,
-            code: bookingError.code
-          })
-          throw new Error(`Database error: ${bookingError.message}`)
+        if (!bookingResponse.ok) {
+          const errorData = await bookingResponse.json()
+          throw new Error(`Failed to create booking: ${errorData.error || bookingResponse.statusText}`)
         }
 
-        console.log('Booking created successfully:', booking)
+        const { booking } = await bookingResponse.json()
 
         toast({
           title: "Booking Confirmed",
