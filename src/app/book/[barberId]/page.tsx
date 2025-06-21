@@ -427,10 +427,10 @@ function BookPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#181A20] py-4 sm:py-10">
+    <div className="min-h-screen bg-[#181A20] py-2 sm:py-4 md:py-10">
       {/* Mobile fallback notice */}
       {isMobile && (
-        <div className="container mx-auto max-w-5xl mb-4 sm:mb-6 px-4">
+        <div className="container mx-auto max-w-5xl mb-3 sm:mb-4 px-3 sm:px-4">
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-3">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,11 +445,11 @@ function BookPageContent() {
         </div>
       )}
 
-      <div className="container mx-auto max-w-5xl px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10">
-          <div className="lg:col-span-2">
+      <div className="container mx-auto max-w-5xl px-3 sm:px-4">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:gap-10">
+          <div className="w-full">
             <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-3 sm:pb-4">
                 <div className="flex items-center gap-3 sm:gap-4">
                   <Avatar className="h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0">
                     <AvatarFallback className="text-lg sm:text-2xl bg-primary text-white">
@@ -517,7 +517,7 @@ function BookPageContent() {
 
                 <Button
                   onClick={() => setShowBookingForm(true)}
-                  className="w-full rounded-full bg-primary text-white py-3 text-base sm:text-lg font-semibold"
+                  className="w-full rounded-full bg-primary text-white py-3 text-base sm:text-lg font-semibold min-h-[44px]"
                 >
                   Book Appointment
                 </Button>
@@ -525,9 +525,9 @@ function BookPageContent() {
             </Card>
           </div>
 
-          <div className="lg:col-span-1">
-            <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg lg:sticky lg:top-10">
-              <CardHeader className="pb-4">
+          <div className="w-full">
+            <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
+              <CardHeader className="pb-3 sm:pb-4">
                 <CardTitle className="text-white text-base sm:text-lg">Contact Info</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 sm:space-y-4">
@@ -592,11 +592,56 @@ export default function BookPage() {
       <Head>
         <title>Book Appointment</title>
         <meta name="description" content="Book an appointment with your preferred barber" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <style jsx global>{`
+          /* Ensure proper portrait mode handling */
+          @media screen and (orientation: portrait) {
+            .min-h-screen {
+              min-height: 100vh;
+              min-height: 100dvh;
+            }
+            .container {
+              padding-left: 1rem;
+              padding-right: 1rem;
+            }
+            /* Ensure text is readable in portrait */
+            .text-sm {
+              font-size: 0.875rem;
+              line-height: 1.25rem;
+            }
+            .text-base {
+              font-size: 1rem;
+              line-height: 1.5rem;
+            }
+            /* Ensure buttons are touch-friendly */
+            button {
+              min-height: 44px;
+            }
+          }
+          /* Mobile-specific fixes */
+          @media screen and (max-width: 640px) {
+            .container {
+              padding-left: 0.75rem;
+              padding-right: 0.75rem;
+            }
+            .grid {
+              grid-template-columns: 1fr;
+            }
+            .lg\\:grid-cols-3 {
+              grid-template-columns: 1fr;
+            }
+            .lg\\:col-span-2 {
+              grid-column: 1;
+            }
+            .lg\\:col-span-1 {
+              grid-column: 1;
+            }
+          }
+        `}</style>
       </Head>
       <BookPageContent />
     </ErrorBoundary>
