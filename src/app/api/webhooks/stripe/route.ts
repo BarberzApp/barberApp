@@ -317,6 +317,11 @@ export async function POST(request: Request) {
           // Create the booking using metadata
           const meta = paymentIntent.metadata || {}
           const { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId } = meta
+          
+          // Debug logging
+          console.log('Payment intent metadata:', meta)
+          console.log('Extracted values:', { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId })
+          
           if (!barberId || !serviceId || !date) {
             console.error('Missing required booking metadata in payment intent')
             return NextResponse.json(
@@ -356,6 +361,11 @@ export async function POST(request: Request) {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }).select('id').single()
+
+          // Debug logging for the insert operation
+          console.log('Inserting booking with client_id:', clientId === 'guest' ? null : clientId)
+          console.log('Original clientId from metadata:', clientId)
+          console.log('Condition check result:', clientId === 'guest')
 
           if (createError) {
             console.error('Error creating booking after payment:', createError)

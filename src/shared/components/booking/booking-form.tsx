@@ -211,7 +211,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
         guestName: formData.guestName,
         guestEmail: formData.guestEmail,
         guestPhone: formData.guestPhone,
-        clientId: user ? user.id : null,
+        clientId: user?.id || null,
         paymentType,
       }
 
