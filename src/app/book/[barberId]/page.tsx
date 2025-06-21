@@ -11,6 +11,7 @@ import { Service } from '@/shared/types/service'
 import { useToast } from '@/shared/components/ui/use-toast'
 import Link from 'next/link'
 import Head from 'next/head'
+import './portrait-fixes.css'
 
 type Barber = {
   id: string
@@ -111,21 +112,28 @@ function BookPageContent() {
   // Safely extract barberId from params
   const barberId = Array.isArray(params.barberId) ? params.barberId[0] : params.barberId
 
-  // Detect mobile device
+  // Detect mobile device - Universal detection
   useEffect(() => {
     const checkMobile = () => {
-      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
-      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase())
-      setIsMobile(isMobileDevice)
+      // Universal mobile detection
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS|FxiOS/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
+        window.matchMedia('(max-width: 768px)').matches;
+      
+      setIsMobile(isMobileDevice);
     }
     
-    checkMobile()
+    checkMobile();
   }, [])
 
   // Check if we're in a mobile browser and handle PWA/service worker interference
   useEffect(() => {
     const checkMobileAndPWA = () => {
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      // Universal mobile detection
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS|FxiOS/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
+        window.matchMedia('(max-width: 768px)').matches;
+      
       const isPWA = (window.navigator as any).standalone || 
         window.matchMedia('(display-mode: standalone)').matches;
       
@@ -427,7 +435,7 @@ function BookPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#181A20] py-2 sm:py-4 md:py-10">
+    <div className="min-h-screen bg-[#181A20] py-2 sm:py-4 md:py-10 overflow-x-hidden">
       {/* Mobile fallback notice */}
       {isMobile && (
         <div className="container mx-auto max-w-5xl mb-3 sm:mb-4 px-3 sm:px-4">
@@ -445,8 +453,8 @@ function BookPageContent() {
         </div>
       )}
 
-      <div className="container mx-auto max-w-5xl px-3 sm:px-4">
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:gap-10">
+      <div className="container mx-auto max-w-5xl px-3 sm:px-4 w-full">
+        <div className="flex flex-col space-y-4 sm:space-y-6 lg:space-y-10">
           <div className="w-full">
             <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
               <CardHeader className="pb-3 sm:pb-4">
@@ -592,56 +600,25 @@ export default function BookPage() {
       <Head>
         <title>Book Appointment</title>
         <meta name="description" content="Book an appointment with your preferred barber" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <style jsx global>{`
-          /* Ensure proper portrait mode handling */
-          @media screen and (orientation: portrait) {
-            .min-h-screen {
-              min-height: 100vh;
-              min-height: 100dvh;
+        <meta name="theme-color" content="#181A20" />
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            html, body {
+              overflow-x: hidden;
+              width: 100%;
+              -webkit-text-size-adjust: 100%;
+              -ms-text-size-adjust: 100%;
             }
-            .container {
-              padding-left: 1rem;
-              padding-right: 1rem;
+            * {
+              box-sizing: border-box;
             }
-            /* Ensure text is readable in portrait */
-            .text-sm {
-              font-size: 0.875rem;
-              line-height: 1.25rem;
-            }
-            .text-base {
-              font-size: 1rem;
-              line-height: 1.5rem;
-            }
-            /* Ensure buttons are touch-friendly */
-            button {
-              min-height: 44px;
-            }
-          }
-          /* Mobile-specific fixes */
-          @media screen and (max-width: 640px) {
-            .container {
-              padding-left: 0.75rem;
-              padding-right: 0.75rem;
-            }
-            .grid {
-              grid-template-columns: 1fr;
-            }
-            .lg\\:grid-cols-3 {
-              grid-template-columns: 1fr;
-            }
-            .lg\\:col-span-2 {
-              grid-column: 1;
-            }
-            .lg\\:col-span-1 {
-              grid-column: 1;
-            }
-          }
-        `}</style>
+          `
+        }} />
       </Head>
       <BookPageContent />
     </ErrorBoundary>
