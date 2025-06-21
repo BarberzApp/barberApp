@@ -572,6 +572,43 @@ export default function BarberOnboardingPage() {
         return;
       }
 
+      // First, check if there's already a Stripe account and refresh its status
+      const refreshResponse = await fetch('/api/connect/refresh-account-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        
+        if (refreshData.success && refreshData.data.hasStripeAccount) {
+          // Update the local state to reflect the refreshed status
+          setStripeStatus(refreshData.data.currentStatus);
+          setFormData(prev => ({
+            ...prev,
+            stripeConnected: refreshData.data.currentStatus === 'active'
+          }));
+          
+          if (refreshData.data.currentStatus === 'active') {
+            toast({
+              title: 'Stripe Account Active',
+              description: 'Your Stripe account is already active and ready to accept payments!',
+            });
+            return;
+          } else if (refreshData.data.currentStatus === 'pending') {
+            toast({
+              title: 'Account Pending',
+              description: 'Your Stripe account is being reviewed. This usually takes 1-2 business days.',
+            });
+            return;
+          }
+        }
+      }
+
+      // If no active account found, create a new one
       const response = await fetch('/api/connect/create-account', {
         method: 'POST',
         headers: {

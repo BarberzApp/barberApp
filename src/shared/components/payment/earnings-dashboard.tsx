@@ -47,6 +47,26 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   const checkStripeAccount = async () => {
     console.log('Checking Stripe account for barber:', barberId)
     try {
+      // First, try to refresh the account status from Stripe
+      const refreshResponse = await fetch('/api/connect/refresh-account-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: barberId }),
+      });
+
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        console.log('Stripe account refresh result:', refreshData);
+        
+        if (refreshData.success && refreshData.data.hasStripeAccount) {
+          setHasStripeAccount(true);
+          return;
+        }
+      }
+
+      // Fallback to checking the database directly
       const { data, error } = await supabase
         .from('barbers')
         .select('stripe_account_id')
@@ -92,6 +112,38 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
     console.log('Starting payment setup for barber:', barberId)
     setIsSettingUp(true)
     try {
+      // First, check if there's already a Stripe account and refresh its status
+      const refreshResponse = await fetch('/api/connect/refresh-account-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: barberId }),
+      });
+
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        
+        if (refreshData.success && refreshData.data.hasStripeAccount) {
+          // Update the local state to reflect the refreshed status
+          setHasStripeAccount(true);
+          
+          if (refreshData.data.currentStatus === 'active') {
+            toast({
+              title: 'Stripe Account Active',
+              description: 'Your Stripe account is already active and ready to accept payments!',
+            });
+            return;
+          } else if (refreshData.data.currentStatus === 'pending') {
+            toast({
+              title: 'Account Pending',
+              description: 'Your Stripe account is being reviewed. This usually takes 1-2 business days.',
+            });
+            return;
+          }
+        }
+      }
+
       // Get barber's email and name
       console.log('Fetching barber details...')
       const { data: barber, error: barberError } = await supabase

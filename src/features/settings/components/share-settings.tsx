@@ -4,22 +4,27 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
-import { Card, CardContent } from '@/shared/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Copy, Share2, Link, QrCode, ExternalLink, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
+import { Label as UILabel } from '@/shared/components/ui/label'
+import { Switch } from '@/shared/components/ui/switch'
+
+interface ProfileData {
+  name?: string
+  business_name?: string
+  is_public?: boolean
+}
 
 export function ShareSettings() {
   const { user } = useAuth()
   const { toast } = useToast()
   const [copied, setCopied] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [profileData, setProfileData] = useState<{
-    name?: string
-    business_name?: string
-    is_public?: boolean
-  }>({})
+  const [profileData, setProfileData] = useState<ProfileData>({})
+  const [barberId, setBarberId] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -47,7 +52,7 @@ export function ShareSettings() {
       if (user?.role === 'barber') {
         const { data: barber, error: barberError } = await supabase
           .from('barbers')
-          .select('business_name')
+          .select('id, business_name')
           .eq('user_id', user.id)
           .single()
 
@@ -57,6 +62,7 @@ export function ShareSettings() {
 
         if (barber) {
           barberData = { business_name: barber.business_name }
+          setBarberId(barber.id)
         }
       }
 
@@ -68,7 +74,10 @@ export function ShareSettings() {
     }
   }
 
-  const bookingLink = `${window.location.origin}/book/${user?.id}`
+  // Use barber ID for the booking link if available, otherwise use user ID as fallback
+  const bookingLink = barberId 
+    ? `${window.location.origin}/book/${barberId}`
+    : `${window.location.origin}/book/${user?.id}`
 
   const copyToClipboard = async () => {
     try {
@@ -160,116 +169,93 @@ export function ShareSettings() {
       )}
 
       <Card>
-        <CardContent className="pt-6 space-y-6">
-          <div>
-            <h4 className="text-sm font-medium text-foreground mb-2">Your Booking Link</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              Share this link with your clients to let them book appointments with you.
-            </p>
-            
-            <div className="flex gap-2">
-              <Input
-                readOnly
-                value={bookingLink}
-                className="flex-1"
-                placeholder="Loading..."
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={copyToClipboard}
-                className={copied ? "bg-green-50 border-green-200" : ""}
-                title="Copy link"
-              >
-                {copied ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={shareLink}
-                title="Share link"
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={openBookingLink}
-                title="Open booking page"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </div>
+        <CardHeader>
+          <CardTitle>Booking Link</CardTitle>
+          <CardDescription>
+            Share this link with your clients so they can book appointments with you.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <input
+              type="text"
+              value={bookingLink}
+              readOnly
+              className="flex-1 bg-transparent border-none outline-none text-sm"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={copyToClipboard}
+              className="h-8 w-8 p-0"
+            >
+              {copied ? (
+                <Copy className="h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <h5 className="text-sm font-medium text-foreground">Quick Actions</h5>
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  className="w-full justify-start"
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy Link
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={shareLink}
-                  className="w-full justify-start"
-                >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share Link
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openBookingLink}
-                  className="w-full justify-start"
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  View Booking Page
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h5 className="text-sm font-medium text-foreground">How it works</h5>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <div className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                  <p>Share this link with your clients</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                  <p>Clients can view your services and availability</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                  <p>They can book appointments directly through the link</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                  <p>You'll receive notifications for new bookings</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t">
-            <h5 className="text-sm font-medium text-foreground mb-2">Tips for sharing</h5>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>• Add this link to your social media profiles</p>
-              <p>• Include it in your business cards or flyers</p>
-              <p>• Send it directly to clients via text or email</p>
-              <p>• Consider creating a QR code for easy mobile access</p>
-            </div>
+          <div className="flex gap-2">
+            <Button onClick={shareLink} className="flex-1">
+              <Share2 className="mr-2 h-4 w-4" />
+              Share Link
+            </Button>
+            <Button onClick={openBookingLink} variant="outline">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Link
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {user?.role === 'barber' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Visibility</CardTitle>
+            <CardDescription>
+              Control whether your profile appears in search results.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <UILabel>Public Profile</UILabel>
+                <p className="text-sm text-muted-foreground">
+                  Allow clients to find and book with you
+                </p>
+              </div>
+              <Switch
+                checked={profileData.is_public || false}
+                onCheckedChange={async (checked: boolean) => {
+                  try {
+                    const { error } = await supabase
+                      .from('profiles')
+                      .update({ is_public: checked })
+                      .eq('id', user.id)
+
+                    if (error) throw error
+
+                    setProfileData((prev: ProfileData) => ({ ...prev, is_public: checked }))
+                    toast({
+                      title: "Profile updated",
+                      description: `Your profile is now ${checked ? 'public' : 'private'}.`,
+                    })
+                  } catch (error) {
+                    console.error('Error updating profile visibility:', error)
+                    toast({
+                      title: "Error",
+                      description: "Failed to update profile visibility.",
+                      variant: "destructive",
+                    })
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 } 
