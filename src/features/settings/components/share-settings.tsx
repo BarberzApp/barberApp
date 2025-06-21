@@ -263,6 +263,29 @@ export function ShareSettings() {
               </AlertDescription>
             </Alert>
           )}
+
+          {/* PWA Instructions */}
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <h4 className="font-medium text-sm">📱 How to Share Your Booking Link</h4>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 font-medium">1.</span>
+                <span>Copy the link above and share it via text, email, or social media</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 font-medium">2.</span>
+                <span>When clients click the link, it will open in their browser</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 font-medium">3.</span>
+                <span>For the best experience, clients can install the app from their browser</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500 font-medium">4.</span>
+                <span>The link works on all devices - phones, tablets, and computers</span>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -3,19 +3,39 @@
   "short_name": "BOCM",
   "description": "Book and manage barber appointments",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "categories": ["business", "lifestyle"],
+  "lang": "en",
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/apple-icon.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Barbers",
+      "short_name": "Browse",
+      "description": "Find and book with barbers",
+      "url": "/browse",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 } 

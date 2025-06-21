@@ -106,6 +106,7 @@ function BookPageContent() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [showMobileFallback, setShowMobileFallback] = useState(false)
 
   // Safely extract barberId from params
   const barberId = Array.isArray(params.barberId) ? params.barberId[0] : params.barberId
@@ -121,78 +122,27 @@ function BookPageContent() {
     checkMobile()
   }, [])
 
-  // Add a simple fallback for mobile users
+  // Check if we're in a mobile browser and handle PWA/service worker interference
   useEffect(() => {
-    if (isMobile) {
-      // Add CSS to ensure proper portrait mode handling
-      const style = document.createElement('style')
-      style.textContent = `
-        @media screen and (orientation: portrait) {
-          .min-h-screen {
-            min-height: 100vh;
-            min-height: 100dvh;
+    const checkMobileAndPWA = () => {
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isPWA = (window.navigator as any).standalone || 
+        window.matchMedia('(display-mode: standalone)').matches;
+      
+      // Only show fallback if we're on mobile, not in PWA, and page hasn't loaded after timeout
+      if (isMobile && !isPWA) {
+        const timer = setTimeout(() => {
+          if (!barber && !loading) {
+            setShowMobileFallback(true);
           }
-          .container {
-            padding-left: 1rem;
-            padding-right: 1rem;
-          }
-        }
-        @media screen and (max-width: 640px) {
-          .container {
-            padding-left: 0.75rem;
-            padding-right: 0.75rem;
-          }
-        }
-      `
-      document.head.appendChild(style)
-
-      // Add a simple fallback link in case the page gets stuck
-      const fallbackDiv = document.createElement('div')
-      fallbackDiv.id = 'mobile-fallback'
-      fallbackDiv.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: #181A20;
-        color: white;
-        padding: 20px;
-        text-align: center;
-        z-index: 9999;
-        display: none;
-      `
-      fallbackDiv.innerHTML = `
-        <h2>Having trouble loading?</h2>
-        <p>Try opening this link in your browser:</p>
-        <a href="${window.location.href}" target="_blank" style="color: #8B5CF6; text-decoration: underline;">
-          Open in Browser
-        </a>
-        <br><br>
-        <button onclick="window.location.reload()" style="background: #8B5CF6; color: white; border: none; padding: 10px 20px; border-radius: 5px;">
-          Try Again
-        </button>
-      `
-      document.body.appendChild(fallbackDiv)
-
-      // Show fallback after 15 seconds
-      setTimeout(() => {
-        const fallback = document.getElementById('mobile-fallback')
-        if (fallback && loading) {
-          fallback.style.display = 'block'
-        }
-      }, 15000)
-
-      return () => {
-        const fallback = document.getElementById('mobile-fallback')
-        if (fallback) {
-          fallback.remove()
-        }
-        if (style) {
-          style.remove()
-        }
+        }, 5000); // 5 second timeout
+        
+        return () => clearTimeout(timer);
       }
-    }
-  }, [isMobile, loading])
+    };
+    
+    checkMobileAndPWA();
+  }, [barber, loading]);
 
   useEffect(() => {
     try {
@@ -432,6 +382,48 @@ function BookPageContent() {
         </div>
       </div>
     )
+  }
+
+  // Show mobile fallback if page doesn't load
+  if (showMobileFallback) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="space-y-4">
+            <h1 className="text-2xl font-bold text-foreground">Having trouble loading?</h1>
+            <p className="text-muted-foreground">
+              The booking page seems to be taking longer than expected. Try one of these options:
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="w-full"
+            >
+              Try Again
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => window.open(window.location.href, '_blank')}
+              className="w-full"
+            >
+              Open in New Tab
+            </Button>
+            
+            <div className="text-sm text-muted-foreground">
+              <p>If the problem persists, try:</p>
+              <ul className="mt-2 space-y-1 text-left">
+                <li>• Refreshing the page</li>
+                <li>• Opening in a different browser</li>
+                <li>• Checking your internet connection</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

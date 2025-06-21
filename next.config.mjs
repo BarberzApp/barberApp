@@ -28,5 +28,25 @@ export default withPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development'
+  disable: process.env.NODE_ENV === 'development',
+  // Ensure PWA handles all routes including booking links
+  runtimeCaching: [
+    {
+      urlPattern: /^https?.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'offlineCache',
+        expiration: {
+          maxEntries: 200,
+        },
+      },
+    },
+  ],
+  // Add scope to ensure PWA handles all routes
+  scope: '/',
+  // Ensure PWA is installed and handles external links
+  buildExcludes: [/middleware-manifest\.json$/],
+  // Add navigation fallback for better PWA experience
+  navigateFallback: '/',
+  navigateFallbackAllowlist: [/^(?!\/__).*/],
 })(nextConfig);
