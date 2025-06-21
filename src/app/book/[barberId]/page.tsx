@@ -124,6 +124,28 @@ function BookPageContent() {
   // Add a simple fallback for mobile users
   useEffect(() => {
     if (isMobile) {
+      // Add CSS to ensure proper portrait mode handling
+      const style = document.createElement('style')
+      style.textContent = `
+        @media screen and (orientation: portrait) {
+          .min-h-screen {
+            min-height: 100vh;
+            min-height: 100dvh;
+          }
+          .container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+          }
+        }
+        @media screen and (max-width: 640px) {
+          .container {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+          }
+        }
+      `
+      document.head.appendChild(style)
+
       // Add a simple fallback link in case the page gets stuck
       const fallbackDiv = document.createElement('div')
       fallbackDiv.id = 'mobile-fallback'
@@ -164,6 +186,9 @@ function BookPageContent() {
         const fallback = document.getElementById('mobile-fallback')
         if (fallback) {
           fallback.remove()
+        }
+        if (style) {
+          style.remove()
         }
       }
     }
@@ -305,26 +330,26 @@ function BookPageContent() {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+        <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold mb-2 text-white">Something went wrong</h1>
-            <p className="text-gray-400 mb-6">{error}</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Something went wrong</h1>
+            <p className="text-gray-400 mb-6 text-sm sm:text-base">{error}</p>
           </div>
           
           <div className="space-y-3">
             <Button 
               onClick={() => window.location.reload()} 
-              className="w-full rounded-full bg-primary text-white px-6 py-3"
+              className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base"
             >
               Try Again
             </Button>
-            <Button asChild variant="outline" className="w-full rounded-full">
+            <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
               <Link href="/browse">Browse Barbers</Link>
             </Button>
           </div>
@@ -335,10 +360,10 @@ function BookPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-white">Loading barber details...</p>
+          <p className="text-white text-sm sm:text-base">Loading barber details...</p>
           {isMobile && (
             <p className="text-sm text-gray-400 mt-2">If this takes too long, try refreshing the page</p>
           )}
@@ -349,23 +374,23 @@ function BookPageContent() {
 
   if (!barberId) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+        <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold mb-2 text-white">Invalid Booking Link</h1>
-            <p className="text-gray-400 mb-6">This booking link appears to be invalid or has expired.</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Invalid Booking Link</h1>
+            <p className="text-gray-400 mb-6 text-sm sm:text-base">This booking link appears to be invalid or has expired.</p>
           </div>
           
           <div className="space-y-3">
-            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3">
+            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base">
               <Link href="/browse">Browse Available Barbers</Link>
             </Button>
-            <Button asChild variant="outline" className="w-full rounded-full">
+            <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
               <Link href="/">Go to Homepage</Link>
             </Button>
           </div>
@@ -380,23 +405,23 @@ function BookPageContent() {
 
   if (!barber) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+        <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold mb-2 text-white">Barber Not Found</h1>
-            <p className="text-gray-400 mb-6">The barber you're looking for doesn't exist or has been removed from the platform.</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Barber Not Found</h1>
+            <p className="text-gray-400 mb-6 text-sm sm:text-base">The barber you're looking for doesn't exist or has been removed from the platform.</p>
           </div>
           
           <div className="space-y-3">
-            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3">
+            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base">
               <Link href="/browse">Browse Available Barbers</Link>
             </Button>
-            <Button asChild variant="outline" className="w-full rounded-full">
+            <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
               <Link href="/">Go to Homepage</Link>
             </Button>
           </div>
@@ -410,17 +435,17 @@ function BookPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#181A20] py-10">
+    <div className="min-h-screen bg-[#181A20] py-4 sm:py-10">
       {/* Mobile fallback notice */}
       {isMobile && (
-        <div className="container mx-auto max-w-5xl mb-6">
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+        <div className="container mx-auto max-w-5xl mb-4 sm:mb-6 px-4">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 sm:p-4">
             <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div>
-                <p className="text-blue-400 text-sm font-medium">Mobile User?</p>
+              <div className="min-w-0">
+                <p className="text-blue-400 text-xs sm:text-sm font-medium">Mobile User?</p>
                 <p className="text-blue-300 text-xs">If you're having trouble, try opening this link in your browser instead of the app.</p>
               </div>
             </div>
@@ -428,121 +453,123 @@ function BookPageContent() {
         </div>
       )}
 
-      <div className="container mx-auto max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-10">
-        <div className="md:col-span-2">
-          <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarFallback className="text-2xl bg-primary text-white">
-                    {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
-                  </AvatarFallback>
-                </Avatar>
+      <div className="container mx-auto max-w-5xl px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10">
+          <div className="lg:col-span-2">
+            <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <Avatar className="h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0">
+                    <AvatarFallback className="text-lg sm:text-2xl bg-primary text-white">
+                      {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-xl sm:text-2xl text-white truncate">{barber.name || 'Unknown Barber'}</CardTitle>
+                    {barber.location && (
+                      <p className="text-gray-400 text-sm sm:text-base truncate">{barber.location}</p>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 sm:space-y-6">
+                {barber.bio && (
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold text-white mb-2">About</h3>
+                    <p className="text-gray-300 text-sm sm:text-base">{barber.bio}</p>
+                  </div>
+                )}
+                
+                {barber.specialties && barber.specialties.length > 0 && (
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold text-white mb-2">Specialties</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {barber.specialties.map((specialty, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 sm:px-3 sm:py-1 bg-primary/20 text-primary rounded-full text-xs sm:text-sm"
+                        >
+                          {specialty}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <CardTitle className="text-2xl text-white">{barber.name || 'Unknown Barber'}</CardTitle>
-                  {barber.location && (
-                    <p className="text-gray-400">{barber.location}</p>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {barber.bio && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-2">About</h3>
-                  <p className="text-gray-300">{barber.bio}</p>
-                </div>
-              )}
-              
-              {barber.specialties && barber.specialties.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-2">Specialties</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {barber.specialties.map((specialty, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm"
-                      >
-                        {specialty}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
-                <div className="space-y-3">
-                  {barber.services && barber.services.length > 0 ? (
-                    barber.services.map((service) => (
-                      <div
-                        key={service.id}
-                        className="flex justify-between items-center p-4 bg-[#2a2d3a] rounded-lg"
-                      >
-                        <div>
-                          <h4 className="font-medium text-white">{service.name}</h4>
-                          {service.description && (
-                            <p className="text-sm text-gray-400">{service.description}</p>
-                          )}
-                          <p className="text-sm text-gray-400">{service.duration} minutes</p>
+                  <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Services</h3>
+                  <div className="space-y-2 sm:space-y-3">
+                    {barber.services && barber.services.length > 0 ? (
+                      barber.services.map((service) => (
+                        <div
+                          key={service.id}
+                          className="flex justify-between items-start p-3 sm:p-4 bg-[#2a2d3a] rounded-lg"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium text-white text-sm sm:text-base">{service.name}</h4>
+                            {service.description && (
+                              <p className="text-gray-400 text-xs sm:text-sm mt-1">{service.description}</p>
+                            )}
+                            <p className="text-gray-400 text-xs sm:text-sm mt-1">{service.duration} minutes</p>
+                          </div>
+                          <div className="text-right ml-3 flex-shrink-0">
+                            <p className="font-semibold text-white text-sm sm:text-base">${service.price}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-white">${service.price}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400 text-center py-4">No services available</p>
-                  )}
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-center py-4 text-sm sm:text-base">No services available</p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <Button
-                onClick={() => setShowBookingForm(true)}
-                className="w-full rounded-full bg-primary text-white py-3 text-lg font-semibold"
-              >
-                Book Appointment
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+                <Button
+                  onClick={() => setShowBookingForm(true)}
+                  className="w-full rounded-full bg-primary text-white py-3 text-base sm:text-lg font-semibold"
+                >
+                  Book Appointment
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
 
-        <div className="md:col-span-1">
-          <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg sticky top-10">
-            <CardHeader>
-              <CardTitle className="text-white">Contact Info</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {barber.phone && (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
+          <div className="lg:col-span-1">
+            <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg lg:sticky lg:top-10">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white text-base sm:text-lg">Contact Info</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 sm:space-y-4">
+                {barber.phone && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-gray-400 text-xs sm:text-sm">Phone</p>
+                      <p className="text-white text-sm sm:text-base truncate">{barber.phone}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Phone</p>
-                    <p className="text-white">{barber.phone}</p>
+                )}
+                
+                {barber.location && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-gray-400 text-xs sm:text-sm">Location</p>
+                      <p className="text-white text-sm sm:text-base truncate">{barber.location}</p>
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {barber.location && (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Location</p>
-                    <p className="text-white">{barber.location}</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 
@@ -573,6 +600,11 @@ export default function BookPage() {
       <Head>
         <title>Book Appointment</title>
         <meta name="description" content="Book an appointment with your preferred barber" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </Head>
       <BookPageContent />
     </ErrorBoundary>
