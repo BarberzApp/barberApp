@@ -606,6 +606,7 @@ export default function BookPage() {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#181A20" />
+        <link rel="icon" href="/icons/icon-192x192.png" />
         <style dangerouslySetInnerHTML={{
           __html: `
             html, body {
