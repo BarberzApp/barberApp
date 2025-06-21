@@ -49,7 +49,13 @@ export function Navbar() {
     if (!user) return []
 
     if (user.role === "barber") {
-      return []
+      return [
+        {
+          href: "/calendar",
+          icon: Calendar,
+          label: "Calendar",
+        },
+      ]
     }
 
     return [

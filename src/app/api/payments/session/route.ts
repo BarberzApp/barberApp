@@ -60,13 +60,24 @@ export async function GET(request: Request) {
     }
 
     // Verify all required metadata is present
-    const requiredMetadata = ['serviceId', 'barberId', 'date', 'basePrice']
+    const requiredMetadata = ['serviceId', 'barberId', 'date']
     const missingMetadata = requiredMetadata.filter(field => !session.metadata?.[field])
     
     if (missingMetadata.length > 0) {
       console.error('Missing required metadata:', missingMetadata)
       return NextResponse.json(
         { error: `Missing required booking data: ${missingMetadata.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // For fee-only payments, basePrice is not required
+    // For full payments, basePrice should be present
+    const paymentType = session.metadata?.paymentType
+    if (paymentType !== 'fee' && !session.metadata?.basePrice) {
+      console.error('Missing basePrice for non-fee payment')
+      return NextResponse.json(
+        { error: 'Missing required booking data: basePrice' },
         { status: 400 }
       )
     }

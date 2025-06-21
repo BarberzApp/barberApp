@@ -6,6 +6,7 @@ import { useToast } from "@/shared/components/ui/use-toast"
 import { useSync } from "@/shared/hooks/use-sync"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
+import { supabase } from "@/shared/lib/supabase"
 
 export default function BookingSuccessPage({
   searchParams,
@@ -62,10 +63,27 @@ export default function BookingSuccessPage({
           return
         }
 
-        // Use the base price from metadata
-        const basePrice = parseFloat(metadata.basePrice);
-        if (isNaN(basePrice)) {
-          console.error('Invalid price in metadata:', metadata.basePrice)
+        // Use the appropriate price from metadata
+        const paymentType = metadata.paymentType
+        let bookingPrice = 0
+        let platformFee = null
+        let barberPayout = null
+        
+        if (paymentType === 'fee') {
+          // For fee-only payments, use servicePrice (which is the actual service cost)
+          bookingPrice = parseFloat(metadata.servicePrice || '0')
+          // For fee-only payments, set platform_fee and barber_payout to NULL
+          // since the customer is only paying the fee, not the service
+        } else {
+          // For full payments, use basePrice (which should be the service price)
+          bookingPrice = parseFloat(metadata.basePrice || metadata.servicePrice || '0')
+          // For full payments, include the fee split
+          platformFee = parseInt(metadata.bocmShare || '0')
+          barberPayout = parseInt(metadata.barberShare || '0')
+        }
+        
+        if (isNaN(bookingPrice)) {
+          console.error('Invalid price in metadata:', { basePrice: metadata.basePrice, servicePrice: metadata.servicePrice })
           throw new Error('Invalid price in session metadata')
         }
 
@@ -89,28 +107,50 @@ export default function BookingSuccessPage({
           barber_id: metadata.barberId,
           service_id: metadata.serviceId,
           date: metadata.date,
-          price: basePrice,
-          client_id: metadata.clientId || '00000000-0000-0000-0000-000000000000',
-          guest_name: metadata.guestName || null,
-          guest_email: metadata.guestEmail || null,
-          guest_phone: metadata.guestPhone || null
-        })
-
-        const booking = await syncService.createBooking({
-          barber_id: metadata.barberId,
-          service_id: metadata.serviceId,
-          date: metadata.date,
-          price: basePrice,
-          status: "confirmed",
-          payment_status: "succeeded",
-          notes: metadata.notes || '',
-          client_id: metadata.clientId || '00000000-0000-0000-0000-000000000000',
+          price: bookingPrice,
+          client_id: metadata.clientId || null,
           guest_name: metadata.guestName || null,
           guest_email: metadata.guestEmail || null,
           guest_phone: metadata.guestPhone || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          payment_intent_id: session.payment_intent || '',
+          platform_fee: platformFee,
+          barber_payout: barberPayout
         })
+
+        // Use Supabase directly instead of sync service to avoid type issues
+        const { data: booking, error: bookingError } = await supabase
+          .from('bookings')
+          .insert({
+            barber_id: metadata.barberId,
+            service_id: metadata.serviceId,
+            date: metadata.date,
+            price: bookingPrice,
+            status: "confirmed",
+            payment_status: "succeeded",
+            payment_intent_id: session.payment_intent || '',
+            platform_fee: platformFee,
+            barber_payout: barberPayout,
+            notes: metadata.notes || '',
+            client_id: metadata.clientId || null,
+            guest_name: metadata.guestName || null,
+            guest_email: metadata.guestEmail || null,
+            guest_phone: metadata.guestPhone || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)')
+          .single()
+
+        if (bookingError) {
+          console.error('Supabase booking error:', bookingError)
+          console.error('Error details:', {
+            message: bookingError.message,
+            details: bookingError.details,
+            hint: bookingError.hint,
+            code: bookingError.code
+          })
+          throw new Error(`Database error: ${bookingError.message}`)
+        }
 
         console.log('Booking created successfully:', booking)
 
@@ -120,6 +160,11 @@ export default function BookingSuccessPage({
         })
       } catch (error) {
         console.error('Error creating booking:', error)
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          sessionId
+        })
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
         toast({
           title: "Error",

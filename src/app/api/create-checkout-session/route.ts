@@ -35,306 +35,109 @@ interface CheckoutSessionRequest {
 }
 
 export async function POST(request: Request) {
-  // Start a Supabase transaction
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-  if (sessionError) throw sessionError
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError) throw userError
-
   try {
     console.log('Starting checkout session creation...')
-    const body = await request.json() as CheckoutSessionRequest
+    const body = await request.json()
     console.log('Request body:', body)
     
-    const { amount, successUrl, cancelUrl, metadata, clientId, customerPaysFee } = body
+    const { 
+      barberId, 
+      serviceId, 
+      date, 
+      notes, 
+      guestName, 
+      guestEmail, 
+      guestPhone, 
+      clientId, 
+      paymentType 
+    } = body
 
-    // Validate basic required fields
-    if (!amount || !successUrl || !cancelUrl || !metadata) {
-      console.error('Missing required fields:', { amount, successUrl, cancelUrl, metadata })
+    // Validate required fields
+    if (!barberId || !serviceId || !date) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'barberId, serviceId, and date are required' },
         { status: 400 }
       )
     }
 
-    // Validate field types
-    if (typeof successUrl !== 'string' || typeof cancelUrl !== 'string') {
-      return NextResponse.json(
-        { error: 'URLs must be strings' },
-        { status: 400 }
-      )
-    }
-
-    // Validate URLs
-    try {
-      new URL(successUrl)
-      new URL(cancelUrl)
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Invalid URL format' },
-        { status: 400 }
-      )
-    }
-
-    if (typeof metadata !== 'object' || metadata === null) {
-      return NextResponse.json(
-        { error: 'Metadata must be an object' },
-        { status: 400 }
-      )
-    }
-
-    // Validate metadata fields
-    const missingFields = REQUIRED_METADATA.ALL.filter(field => !metadata[field])
-    if (missingFields.length > 0) {
-      console.error('Missing required metadata fields:', missingFields)
-      return NextResponse.json(
-        { error: `Missing required booking data: ${missingFields.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
-    // Validate metadata field types
-    for (const field of REQUIRED_METADATA.ALL) {
-      if (typeof metadata[field] !== 'string') {
-        return NextResponse.json(
-          { error: `${field} must be a string` },
-          { status: 400 }
-        )
-      }
-    }
-
-    // If no clientId, validate guest information
-    if (!clientId) {
-      const missingGuestFields = REQUIRED_METADATA.GUEST.filter(field => !metadata[field])
-      if (missingGuestFields.length > 0) {
-        console.error('Missing guest information:', missingGuestFields)
-        return NextResponse.json(
-          { error: `Missing guest information: ${missingGuestFields.join(', ')}` },
-          { status: 400 }
-        )
-      }
-
-      // Validate guest email format
-      if (metadata.guestEmail && !metadata.guestEmail.includes('@')) {
-        return NextResponse.json(
-          { error: 'Invalid guest email format' },
-          { status: 400 }
-        )
-      }
-
-      // Validate guest phone format (basic validation)
-      if (metadata.guestPhone && metadata.guestPhone.length < 10) {
-        return NextResponse.json(
-          { error: 'Invalid guest phone number' },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Validate clientId if provided
-    if (clientId !== undefined && clientId !== null && typeof clientId !== 'string') {
-      return NextResponse.json(
-        { error: 'Client ID must be a string or null' },
-        { status: 400 }
-      )
-    }
-
-    // Validate amount
-    const baseAmount = parseFloat(String(amount))
-    if (isNaN(baseAmount) || baseAmount <= 0) {
-      console.error('Invalid amount:', amount)
-      return NextResponse.json(
-        { error: 'Invalid amount' },
-        { status: 400 }
-      )
-    }
-
-    // Validate amount is in cents and is an integer
-    if (!Number.isInteger(baseAmount)) {
-      return NextResponse.json(
-        { error: 'Amount must be an integer in cents' },
-        { status: 400 }
-      )
-    }
-
-    // Validate date format (basic ISO date validation)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}/
-    if (!dateRegex.test(metadata.date)) {
-      return NextResponse.json(
-        { error: 'Invalid date format' },
-        { status: 400 }
-      )
-    }
-
-    console.log('Fetching barber details for ID:', metadata.barberId)
-    // Get the barber's Stripe account ID and status
-    const { data: barber, error } = await supabase
+    // Get the barber's Stripe account ID
+    const { data: barber, error: barberError } = await supabase
       .from('barbers')
       .select('stripe_account_id, stripe_account_status')
-      .eq('id', metadata.barberId)
+      .eq('id', barberId)
       .single()
 
-    if (error) {
-      console.error('Supabase error:', error)
-      throw error
-    }
-
-    console.log('Barber data:', barber)
-
-    // Check if barber has a Stripe account
-    if (!barber?.stripe_account_id) {
-      console.error('No Stripe account ID found for barber:', metadata.barberId)
+    if (barberError || !barber?.stripe_account_id) {
       return NextResponse.json(
-        { error: 'Barber has not set up their payment account' },
+        { error: 'Barber Stripe account not found or not ready' },
         { status: 400 }
       )
     }
 
-    // Check if barber's Stripe account is active
+    // Verify the barber's Stripe account is active
     if (barber.stripe_account_status !== 'active') {
-      console.error('Barber Stripe account not active:', barber.stripe_account_status)
       return NextResponse.json(
-        { error: 'Barber payment account is not active' },
+        { error: 'Barber account is not ready to accept payments' },
         { status: 400 }
       )
     }
 
-    // Calculate fee split (60/40)
+    // Get service details
+    const { data: service, error: serviceError } = await supabase
+      .from('services')
+      .select('name, price, duration')
+      .eq('id', serviceId)
+      .single()
+
+    if (serviceError || !service?.price) {
+      return NextResponse.json(
+        { error: 'Service not found or missing price' },
+        { status: 400 }
+      )
+    }
+
+    const servicePrice = Math.round(Number(service.price) * 100) // Convert to cents
     const platformFee = 338 // $3.38 in cents
     const bocmShare = Math.round(platformFee * 0.60) // 60% of fee to BOCM
     const barberShare = platformFee - bocmShare // 40% of fee to barber
 
-    // If customer is only paying the fee (no cut)
-    if (baseAmount === 0) {
-      const totalAmount = platformFee
+    // Determine payment amount based on payment type
+    let totalAmount: number
+    let lineItems: any[] = []
+    let transferAmount: number
+
+    if (paymentType === 'fee') {
+      // Customer only pays the platform fee
+      totalAmount = platformFee
+      transferAmount = barberShare // Barber gets 40% of fee
       
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: totalAmount,
-        currency: 'usd',
-        automatic_payment_methods: {
-          enabled: true,
-        },
-        transfer_data: {
-          destination: barber.stripe_account_id,
-          amount: barberShare, // Barber gets 40% of the fee
-        },
-        application_fee_amount: bocmShare, // BOCM gets 60% of the fee
-        metadata: {
-          ...metadata,
-          clientId: clientId || 'guest',
-          feeType: 'fee_only',
-          feeAmount: '3.38',
-          bocmShare: bocmShare.toString(),
-          barberShare: barberShare.toString()
-        },
-      })
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: "Processing Fee",
-                description: "Payment processing fee (60% BOCM, 40% Barber)"
-              },
-              unit_amount: platformFee,
-            },
-            quantity: 1,
-          }
-        ],
-        mode: "payment",
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        payment_intent_data: {
-          transfer_data: {
-            destination: barber.stripe_account_id,
-            amount: barberShare,
-          },
-          application_fee_amount: bocmShare,
-        },
-        metadata: {
-          ...metadata,
-          feeType: 'fee_only',
-          platformFee: platformFee.toString(),
-          bocmShare: bocmShare.toString(),
-          barberShare: barberShare.toString(),
-          payment_intent_id: paymentIntent.id
-        },
-      })
-
-      return NextResponse.json({ sessionId: session.id })
-    }
-
-    // If customer is paying both fee and cut
-    const totalAmount = baseAmount + platformFee
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalAmount,
-      currency: 'usd',
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      transfer_data: {
-        destination: barber.stripe_account_id,
-        amount: baseAmount + barberShare, // Barber gets full cut + 40% of fee
-      },
-      application_fee_amount: bocmShare, // BOCM gets 60% of fee
-      metadata: {
-        ...metadata,
-        clientId: clientId || 'guest',
-        feeType: 'fee_and_cut',
-        feeAmount: '3.38',
-        bocmShare: bocmShare.toString(),
-        barberShare: barberShare.toString()
-      },
-    })
-
-    // Create initial booking record
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .insert({
-        barber_id: metadata.barberId,
-        service_id: metadata.serviceId,
-        date: metadata.date,
-        price: baseAmount,
-        status: 'payment_pending',
-        payment_status: 'pending',
-        payment_intent_id: paymentIntent.id,
-        client_id: clientId || null,
-        guest_name: metadata.guestName || null,
-        guest_email: metadata.guestEmail || null,
-        guest_phone: metadata.guestPhone || null,
-        notes: metadata.notes || '',
-        platform_fee: bocmShare,
-        barber_payout: baseAmount + barberShare,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (bookingError) {
-      await stripe.paymentIntents.cancel(paymentIntent.id)
-      console.error('Error creating booking:', bookingError)
-      return NextResponse.json(
-        { error: 'Failed to create booking' },
-        { status: 500 }
-      )
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
+      lineItems = [
         {
           price_data: {
             currency: "usd",
             product_data: {
-              name: "Service Payment",
+              name: "Processing Fee",
+              description: "Payment processing fee"
             },
-            unit_amount: baseAmount,
+            unit_amount: platformFee,
+          },
+          quantity: 1,
+        }
+      ]
+    } else {
+      // Customer pays full amount (service + fee)
+      totalAmount = servicePrice + platformFee
+      transferAmount = servicePrice + barberShare // Barber gets full service price + 40% of fee
+      
+      lineItems = [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: service.name,
+              description: `Duration: ${service.duration} minutes`
+            },
+            unit_amount: servicePrice,
           },
           quantity: 1,
         },
@@ -343,43 +146,62 @@ export async function POST(request: Request) {
             currency: "usd",
             product_data: {
               name: "Processing Fee",
-              description: "Payment processing fee (60% BOCM, 40% Barber)"
+              description: "Payment processing fee"
             },
             unit_amount: platformFee,
           },
           quantity: 1,
         }
-      ],
+      ]
+    }
+
+    // Create success and cancel URLs
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
+    const successUrl = `${baseUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${baseUrl}/booking/cancel`
+
+    // Create Stripe Checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
       mode: "payment",
       success_url: successUrl,
       cancel_url: cancelUrl,
       payment_intent_data: {
         transfer_data: {
           destination: barber.stripe_account_id,
-          amount: baseAmount + barberShare,
         },
         application_fee_amount: bocmShare,
       },
       metadata: {
-        ...metadata,
-        bookingId: booking.id,
+        barberId,
+        serviceId,
+        date,
+        notes: notes || '',
+        guestName: guestName || '',
+        guestEmail: guestEmail || '',
+        guestPhone: guestPhone || '',
         clientId: clientId || 'guest',
+        serviceName: service.name,
+        servicePrice: servicePrice.toString(),
         platformFee: platformFee.toString(),
-        serviceAmount: baseAmount.toString(),
+        paymentType,
+        feeType: paymentType === 'fee' ? 'fee_only' : 'fee_and_cut',
         bocmShare: bocmShare.toString(),
-        barberShare: barberShare.toString(),
-        payment_intent_id: paymentIntent.id,
-        feeType: 'fee_and_cut'
+        barberShare: barberShare.toString()
       },
     })
 
     console.log('Checkout session created successfully:', {
       sessionId: session.id,
-      amount: session.amount_total,
-      status: session.status
+      url: session.url,
+      amount: session.amount_total
     })
 
-    return NextResponse.json({ sessionId: session.id })
+    return NextResponse.json({ 
+      url: session.url,
+      sessionId: session.id 
+    })
   } catch (error) {
     console.error("Error creating checkout session:", error)
     return NextResponse.json(

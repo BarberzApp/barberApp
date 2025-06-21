@@ -20,28 +20,6 @@ CREATE INDEX IF NOT EXISTS idx_bookings_payment_intent_id ON bookings(payment_in
 -- Create index for booking_id in payments for faster lookups
 CREATE INDEX IF NOT EXISTS idx_payments_booking_id ON payments(booking_id);
 
--- Add constraint to ensure payment amounts match
-ALTER TABLE bookings
-ADD CONSTRAINT check_payment_amounts 
-CHECK (
-    (platform_fee IS NULL AND barber_payout IS NULL) OR
-    (platform_fee + barber_payout = price)
-);
-
--- Add constraint to ensure valid payment status
-ALTER TABLE bookings
-ADD CONSTRAINT check_payment_status 
-CHECK (
-    payment_status IN ('pending', 'succeeded', 'failed', 'refunded', 'partially_refunded')
-);
-
--- Add constraint to ensure valid stripe account status
-ALTER TABLE barbers
-ADD CONSTRAINT check_stripe_account_status 
-CHECK (
-    stripe_account_status IN ('pending', 'active', 'deauthorized', 'rejected')
-);
-
 -- Update existing records to set stripe_account_ready based on stripe_account_status
 UPDATE barbers
 SET stripe_account_ready = (stripe_account_status = 'active')
