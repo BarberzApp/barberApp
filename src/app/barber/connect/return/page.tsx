@@ -6,10 +6,10 @@ import { supabase } from "@/shared/lib/supabase";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
-import { CheckCircle, AlertCircle, Clock, XCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, XCircle, Loader2 } from "lucide-react";
 
 export default function StripeConnectReturnPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
@@ -17,11 +17,17 @@ export default function StripeConnectReturnPage() {
 
   useEffect(() => {
     const checkStripeStatus = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log('No user found, setting loading to false');
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       
       try {
         console.log('Checking Stripe status for user:', user.id);
+        console.log('User email:', user.email);
         
         const { data: barber, error } = await supabase
           .from("barbers")
@@ -52,8 +58,11 @@ export default function StripeConnectReturnPage() {
       setLoading(false);
     };
     
-    checkStripeStatus();
-  }, [user]);
+    // Only check status when auth is not loading and we have a user
+    if (!authLoading) {
+      checkStripeStatus();
+    }
+  }, [user, authLoading]);
 
   const handleRefreshOnboarding = async () => {
     if (!barberId) {
@@ -93,11 +102,60 @@ export default function StripeConnectReturnPage() {
     }
   };
 
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if user is not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+            </div>
+            <CardTitle className="text-xl">Authentication Required</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="mb-6 text-muted-foreground">
+              You need to be logged in to check your Stripe account status. Please log in and try again.
+            </p>
+            <div className="space-y-2">
+              <Button onClick={() => router.push("/login")} className="w-full">
+                Log In
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push("/")} 
+                className="w-full"
+              >
+                Go Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show loading while checking Stripe status
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-4">Checking your Stripe account status...</span>
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Checking your Stripe account status...</p>
+          <p className="text-sm text-muted-foreground mt-2">User: {user.email}</p>
+        </div>
       </div>
     );
   }
@@ -155,14 +213,16 @@ export default function StripeConnectReturnPage() {
               </Button>
               <Button 
                 onClick={() => {
-                  console.log('Test button clicked');
+                  console.log('Debug button clicked');
+                  console.log('Current user:', user);
                   console.log('Current barberId:', barberId);
                   console.log('Current stripeStatus:', stripeStatus);
+                  router.push('/debug-stripe');
                 }}
                 variant="outline"
                 className="w-full"
               >
-                Debug Info
+                Debug Status
               </Button>
               <Button 
                 variant="outline" 
@@ -229,6 +289,13 @@ export default function StripeConnectReturnPage() {
                 Try Again
               </Button>
               <Button 
+                onClick={() => router.push('/debug-stripe')}
+                variant="outline"
+                className="w-full"
+              >
+                Debug Status
+              </Button>
+              <Button 
                 variant="outline" 
                 onClick={() => router.push("/settings")} 
                 className="w-full"
@@ -261,11 +328,11 @@ export default function StripeConnectReturnPage() {
               Go to Settings
             </Button>
             <Button 
-              variant="outline" 
-              onClick={() => router.push("/settings")} 
+              onClick={() => router.push('/debug-stripe')}
+              variant="outline"
               className="w-full"
             >
-              Go to Settings
+              Debug Status
             </Button>
           </div>
         </CardContent>

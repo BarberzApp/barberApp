@@ -26,7 +26,7 @@
   },
   "auth": {
     "enabled": true,
-    "site_url": "http://localhost:3002",
+    "site_url": "https://barber-app-five.vercel.app",
     "additional_redirect_urls": [],
     "jwt_expiry": 3600,
     "enable_signup": true,
