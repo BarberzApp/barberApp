@@ -7,10 +7,11 @@ import { Input } from '@/shared/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { Copy, Share2, Link, QrCode, ExternalLink, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Copy, Share2, Link, QrCode, ExternalLink, CheckCircle, AlertCircle, Loader2, Download } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { Label as UILabel } from '@/shared/components/ui/label'
 import { Switch } from '@/shared/components/ui/switch'
+import QRCode from 'react-qr-code'
 
 interface ProfileData {
   name?: string
@@ -25,6 +26,7 @@ export function ShareSettings() {
   const [isLoading, setIsLoading] = useState(true)
   const [profileData, setProfileData] = useState<ProfileData>({})
   const [barberId, setBarberId] = useState<string | null>(null)
+  const [showQR, setShowQR] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -78,13 +80,36 @@ export function ShareSettings() {
   // Use production domain to ensure the link is publicly accessible
   const getBookingLink = () => {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://barber-app-five.vercel.app'
-    const id = barberId || user?.id
-    return `${baseUrl}/book/${id}`
+    
+    // Always use barber ID if available, as it's more reliable
+    if (barberId) {
+      return `${baseUrl}/book/${barberId}`
+    }
+    
+    // Fallback to user ID only if no barber ID is available
+    if (user?.id) {
+      return `${baseUrl}/book/${user.id}`
+    }
+    
+    // If neither is available, return a placeholder
+    return `${baseUrl}/book/placeholder`
   }
 
   const bookingLink = getBookingLink()
 
+  // Validate that the booking link will work
+  const isLinkValid = barberId || user?.id
+
   const copyToClipboard = async () => {
+    if (!isLinkValid) {
+      toast({
+        title: "Cannot copy link",
+        description: "Please complete your barber profile first.",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       await navigator.clipboard.writeText(bookingLink)
       setCopied(true)
@@ -103,6 +128,15 @@ export function ShareSettings() {
   }
 
   const shareLink = async () => {
+    if (!isLinkValid) {
+      toast({
+        title: "Cannot share link",
+        description: "Please complete your barber profile first.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -126,6 +160,14 @@ export function ShareSettings() {
   }
 
   const openBookingLink = () => {
+    if (!isLinkValid) {
+      toast({
+        title: "Cannot open link",
+        description: "Please complete your barber profile first.",
+        variant: "destructive",
+      })
+      return
+    }
     window.open(bookingLink, '_blank')
   }
 
@@ -203,15 +245,24 @@ export function ShareSettings() {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={shareLink} className="flex-1">
+            <Button onClick={shareLink} className="flex-1" disabled={!isLinkValid}>
               <Share2 className="mr-2 h-4 w-4" />
               Share Link
             </Button>
-            <Button onClick={openBookingLink} variant="outline">
+            <Button onClick={openBookingLink} variant="outline" disabled={!isLinkValid}>
               <ExternalLink className="mr-2 h-4 w-4" />
               Open Link
             </Button>
           </div>
+
+          {!isLinkValid && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Please complete your barber profile to generate a valid booking link.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
@@ -257,6 +308,82 @@ export function ShareSettings() {
                   }
                 }}
               />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* QR Code Section - Only show if link is valid */}
+      {isLinkValid && (
+        <Card>
+          <CardHeader>
+            <CardTitle>QR Code</CardTitle>
+            <CardDescription>
+              Scan this QR code to book an appointment with you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {showQR && (
+              <div className="flex items-center justify-center p-4 bg-white rounded-lg">
+                <QRCode 
+                  value={bookingLink} 
+                  size={200}
+                  level="M"
+                  fgColor="#000000"
+                  bgColor="#FFFFFF"
+                />
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowQR(!showQR)}
+                className="flex-1"
+              >
+                <QrCode className="mr-2 h-4 w-4" />
+                {showQR ? 'Hide' : 'Show'} QR Code
+              </Button>
+              {showQR && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Simple download approach
+                    const svg = document.querySelector('svg')
+                    if (svg) {
+                      const svgData = new XMLSerializer().serializeToString(svg)
+                      const canvas = document.createElement('canvas')
+                      const ctx = canvas.getContext('2d')
+                      const img = new Image()
+                      img.onload = () => {
+                        canvas.width = img.width
+                        canvas.height = img.height
+                        ctx?.drawImage(img, 0, 0)
+                        canvas.toBlob((blob) => {
+                          if (blob) {
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = 'booking-qr-code.png'
+                            document.body.appendChild(a)
+                            a.click()
+                            document.body.removeChild(a)
+                            URL.revokeObjectURL(url)
+                            toast({
+                              title: "QR Code Downloaded",
+                              description: "The QR code has been saved to your device.",
+                            })
+                          }
+                        })
+                      }
+                      img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+                    }
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
