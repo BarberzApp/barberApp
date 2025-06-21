@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useCallback, useMemo } from "react"
 import Link from "next/link"
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 import { Home, Search, Calendar, User, Menu, Clock, Briefcase, Heart, Users, DollarSign } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/components/ui/sheet"
@@ -11,9 +11,16 @@ import { useAuth } from "@/features/auth/hooks/use-auth"
 
 export function MobileNav() {
   const router = useRouter()
-  const pathname = router.pathname
+  const [pathname, setPathname] = React.useState("")
   const { user } = useAuth()
   const [isOpen, setIsOpen] = React.useState(false)
+
+  // Get current pathname safely
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPathname(window.location.pathname)
+    }
+  }, [])
 
   const baseNavItems = [
     { name: "Home", href: "/", icon: Home },

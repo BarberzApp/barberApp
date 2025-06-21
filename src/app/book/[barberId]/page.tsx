@@ -185,6 +185,11 @@ function BookPageContent() {
         .eq('id', barberId)
         .single()
 
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', profileError)
+        // Continue to try barber lookup
+      }
+
       if (profileResult) {
         // If we found a profile, this is a user ID
         profileData = profileResult;
@@ -215,7 +220,7 @@ function BookPageContent() {
           .single()
 
         if (barberError) {
-          console.error('Error fetching barber:', barberError)
+          console.error('Error fetching barber directly:', barberError)
           throw barberError
         }
 
@@ -224,8 +229,8 @@ function BookPageContent() {
         }
 
         barberData = barberResult;
-
-        // Get the profile data using the barber's user_id
+        
+        // Get the profile data for this barber
         const { data: profileResult, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -233,54 +238,48 @@ function BookPageContent() {
           .single()
 
         if (profileError) {
-          console.error('Error fetching profile:', profileError)
-          throw profileError
+          console.error('Error fetching profile for barber:', profileError)
+          // Continue without profile data
+        } else {
+          profileData = profileResult;
         }
-
-        if (!profileResult) {
-          throw new Error('Profile not found')
-        }
-
-        profileData = profileResult;
       }
 
-      // Finally, get the barber's services
-      const { data: servicesData, error: servicesError } = await supabase
+      // Get services for this barber
+      const { data: servicesResult, error: servicesError } = await supabase
         .from('services')
         .select('*')
         .eq('barber_id', barberData.id)
 
       if (servicesError) {
         console.error('Error fetching services:', servicesError)
-        throw servicesError
+        // Continue without services
       }
 
-      setBarber({
+      // Transform the data to match our Barber type
+      const transformedBarber: Barber = {
         id: barberData.id,
         userId: barberData.user_id,
-        name: profileData.name || '',
-        location: profileData.location || '',
-        phone: profileData.phone || '',
-        bio: barberData.bio || '',
+        name: profileData?.name || 'Unknown Barber',
+        location: profileData?.location || null,
+        phone: profileData?.phone || null,
+        bio: barberData.bio || null,
         specialties: barberData.specialties || [],
-        services: (servicesData || []).map(service => ({
+        services: servicesResult?.map(service => ({
           id: service.id,
           name: service.name,
-          description: service.description || undefined,
+          description: service.description,
           duration: service.duration,
           price: service.price,
           barberId: service.barber_id
-        })),
-      })
-    } catch (error) {
-      console.error('Error fetching barber details:', error)
-      setError('Failed to load barber details')
-      toast({
-        title: 'Error',
-        description: 'Failed to load barber details. Please try again.',
-        variant: 'destructive',
-      })
-    } finally {
+        })) || []
+      }
+
+      setBarber(transformedBarber)
+      setLoading(false)
+    } catch (err: any) {
+      console.error('Error fetching barber details:', err)
+      setError(err.message || 'Failed to load barber details')
       setLoading(false)
     }
   }
