@@ -60,24 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        // Check for existing session in localStorage
-        const storedSession = localStorage.getItem('barber-app-auth')
-        if (storedSession) {
-          const { session, expiresAt } = JSON.parse(storedSession)
-          if (new Date(expiresAt) > new Date()) {
-            // Session is still valid
-            if (session?.user) {
-              await fetchUserProfile(session.user.id)
-              return
-            }
-          }
-        }
-
-        // If no valid stored session, check current session
+        // Check current session from Supabase (this handles refresh tokens automatically)
         const { data: { session } } = await supabase.auth.getSession()
+        
         if (session?.user) {
+          console.log('Found existing session for user:', session.user.email)
           await fetchUserProfile(session.user.id)
         } else {
+          console.log('No active session found')
           setUser(null)
         }
       } catch (error) {
@@ -94,17 +84,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.email)
+      
       if (event === 'SIGNED_IN' && session?.user) {
+        console.log('User signed in:', session.user.email)
         await fetchUserProfile(session.user.id)
-        // Store session with expiration
-        const sessionData = {
-          session,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-        }
-        localStorage.setItem('barber-app-auth', JSON.stringify(sessionData))
       } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out')
         setUser(null)
-        localStorage.removeItem('barber-app-auth')
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        console.log('Token refreshed for user:', session.user.email)
+        // Token was refreshed, ensure user is still set
+        if (!user) {
+          await fetchUserProfile(session.user.id)
+        }
+      } else if (event === 'USER_UPDATED' && session?.user) {
+        console.log('User updated:', session.user.email)
+        await fetchUserProfile(session.user.id)
       }
     })
 
@@ -112,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [user])
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -248,37 +244,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 2. Fetch profile with optimized query
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          barbers (
-            id,
-            specialties,
-            price_range,
-            next_available
-          )
-        `)
+        .select('*')
         .eq('id', authData.user.id)
         .single();
 
       if (profileError || !profile) {
         console.error('Profile fetch error:', profileError);
-        // Sign out if profile doesn't exist
-        await supabase.auth.signOut();
-        
-        const errorMessage = profileError?.code === 'PGRST116' 
-          ? "User profile not found. Please contact support."
-          : "Failed to load user profile. Please try again.";
-          
         toast({
           title: "Login failed",
-          description: errorMessage,
+          description: "Failed to load user profile. Please try again.",
           variant: "destructive",
         });
         return false;
       }
 
-      // 3. Set user state with profile data and barber info if applicable
-      const userData = {
+      // 3. Set user state
+      setUser({
         id: authData.user.id,
         name: profile.name,
         email: profile.email,
@@ -290,56 +271,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         favorites: profile.favorites,
         joinDate: profile.join_date,
         createdAt: profile.created_at,
-        updatedAt: profile.updated_at,
-        ...(profile.role === 'barber' && profile.barbers?.[0] ? {
-          barberId: profile.barbers[0].id,
-          specialties: profile.barbers[0].specialties,
-          priceRange: profile.barbers[0].price_range,
-          nextAvailable: profile.barbers[0].next_available
-        } : {})
-      };
+        updatedAt: profile.updated_at
+      });
 
-      setUser(userData);
-
-      // 4. Store session with expiration
-      const sessionData = {
-        user: authData.user,
-        session: authData.session,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-      };
-      localStorage.setItem('barber-app-auth', JSON.stringify(sessionData));
-
-      // 5. Set up session refresh
-      const refreshInterval = setInterval(async () => {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error || !session) {
-          clearInterval(refreshInterval);
-          await logout();
-          return;
-        }
-        // Update session in storage
-        localStorage.setItem('barber-app-auth', JSON.stringify({
-          ...sessionData,
-          session
-        }));
-      }, 15 * 60 * 1000); // Refresh every 15 minutes
-
-      // Store refresh interval ID for cleanup
-      localStorage.setItem('refresh-interval-id', refreshInterval.toString());
-
+      console.log('Login successful for user:', profile.email);
       toast({
         title: "Login successful",
-        description: "Welcome back!",
+        description: `Welcome back, ${profile.name}!`,
       });
-      
+
       return true;
     } catch (error) {
-      console.error('Login error:', error);
-      // Clear any partial session data
-      await supabase.auth.signOut();
-      localStorage.removeItem('barber-app-auth');
-      localStorage.removeItem('refresh-interval-id');
-      
+      console.error('Login process failed:', error);
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -503,18 +446,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      // Clear refresh interval
-      const intervalId = localStorage.getItem('refresh-interval-id');
-      if (intervalId) {
-        clearInterval(parseInt(intervalId));
-        localStorage.removeItem('refresh-interval-id');
-      }
-
       // Sign out from Supabase
       await supabase.auth.signOut();
-      
-      // Clear local storage
-      localStorage.removeItem('barber-app-auth');
       
       // Reset user state
       setUser(null);
