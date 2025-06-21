@@ -10,6 +10,7 @@ import { BookingForm } from '@/shared/components/booking/booking-form'
 import { Service } from '@/shared/types/service'
 import { useToast } from '@/shared/components/ui/use-toast'
 import Link from 'next/link'
+import Head from 'next/head'
 
 type Barber = {
   id: string
@@ -64,18 +65,28 @@ class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4 text-white">Something went wrong</h1>
-            <p className="text-gray-400 mb-4">An unexpected error occurred. Please try again.</p>
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="rounded-full bg-primary text-white px-6 py-2 mr-2"
-            >
-              Reload Page
-            </Button>
-            <Button asChild className="rounded-full bg-gray-600 text-white px-6 py-2">
-              <Link href="/browse">Browse Barbers</Link>
-            </Button>
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold mb-2 text-white">Something went wrong</h1>
+              <p className="text-gray-400 mb-6">An unexpected error occurred. Please try again.</p>
+            </div>
+            
+            <div className="space-y-3">
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="w-full rounded-full bg-primary text-white px-6 py-3"
+              >
+                Reload Page
+              </Button>
+              <Button asChild variant="outline" className="w-full rounded-full">
+                <Link href="/browse">Browse Barbers</Link>
+              </Button>
+            </div>
           </div>
         </div>
       )
@@ -94,9 +105,69 @@ function BookPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showBookingForm, setShowBookingForm] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Safely extract barberId from params
   const barberId = Array.isArray(params.barberId) ? params.barberId[0] : params.barberId
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase())
+      setIsMobile(isMobileDevice)
+    }
+    
+    checkMobile()
+  }, [])
+
+  // Add a simple fallback for mobile users
+  useEffect(() => {
+    if (isMobile) {
+      // Add a simple fallback link in case the page gets stuck
+      const fallbackDiv = document.createElement('div')
+      fallbackDiv.id = 'mobile-fallback'
+      fallbackDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #181A20;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        z-index: 9999;
+        display: none;
+      `
+      fallbackDiv.innerHTML = `
+        <h2>Having trouble loading?</h2>
+        <p>Try opening this link in your browser:</p>
+        <a href="${window.location.href}" target="_blank" style="color: #8B5CF6; text-decoration: underline;">
+          Open in Browser
+        </a>
+        <br><br>
+        <button onclick="window.location.reload()" style="background: #8B5CF6; color: white; border: none; padding: 10px 20px; border-radius: 5px;">
+          Try Again
+        </button>
+      `
+      document.body.appendChild(fallbackDiv)
+
+      // Show fallback after 15 seconds
+      setTimeout(() => {
+        const fallback = document.getElementById('mobile-fallback')
+        if (fallback && loading) {
+          fallback.style.display = 'block'
+        }
+      }, 15000)
+
+      return () => {
+        const fallback = document.getElementById('mobile-fallback')
+        if (fallback) {
+          fallback.remove()
+        }
+      }
+    }
+  }, [isMobile, loading])
 
   useEffect(() => {
     try {
@@ -235,18 +306,28 @@ function BookPageContent() {
   if (error) {
     return (
       <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4 text-white">Something went wrong</h1>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="rounded-full bg-primary text-white px-6 py-2 mr-2"
-          >
-            Try Again
-          </Button>
-          <Button asChild className="rounded-full bg-gray-600 text-white px-6 py-2">
-            <Link href="/browse">Browse Barbers</Link>
-          </Button>
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold mb-2 text-white">Something went wrong</h1>
+            <p className="text-gray-400 mb-6">{error}</p>
+          </div>
+          
+          <div className="space-y-3">
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="w-full rounded-full bg-primary text-white px-6 py-3"
+            >
+              Try Again
+            </Button>
+            <Button asChild variant="outline" className="w-full rounded-full">
+              <Link href="/browse">Browse Barbers</Link>
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -258,6 +339,9 @@ function BookPageContent() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-white">Loading barber details...</p>
+          {isMobile && (
+            <p className="text-sm text-gray-400 mt-2">If this takes too long, try refreshing the page</p>
+          )}
         </div>
       </div>
     )
@@ -327,6 +411,23 @@ function BookPageContent() {
 
   return (
     <div className="min-h-screen bg-[#181A20] py-10">
+      {/* Mobile fallback notice */}
+      {isMobile && (
+        <div className="container mx-auto max-w-5xl mb-6">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-blue-400 text-sm font-medium">Mobile User?</p>
+                <p className="text-blue-300 text-xs">If you're having trouble, try opening this link in your browser instead of the app.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-10">
         <div className="md:col-span-2">
           <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
@@ -469,6 +570,10 @@ function BookPageContent() {
 export default function BookPage() {
   return (
     <ErrorBoundary>
+      <Head>
+        <title>Book Appointment</title>
+        <meta name="description" content="Book an appointment with your preferred barber" />
+      </Head>
       <BookPageContent />
     </ErrorBoundary>
   )
