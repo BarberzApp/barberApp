@@ -31,7 +31,21 @@ export async function POST(request: Request) {
       .eq('user_id', userId)
       .single()
 
+    console.log('Barber query result:', { barber, barberError })
+
     if (barberError || !barber) {
+      console.log('No barber record found for user ID:', userId)
+      console.log('Barber error:', barberError)
+      
+      // Let's also check if there are any barber records at all
+      const { data: allBarbers, error: allBarbersError } = await supabase
+        .from('barbers')
+        .select('id, user_id, stripe_account_id')
+        .limit(5)
+      
+      console.log('All barbers in database:', allBarbers)
+      console.log('All barbers error:', allBarbersError)
+      
       return NextResponse.json(
         { error: 'Barber record not found' },
         { status: 404 }

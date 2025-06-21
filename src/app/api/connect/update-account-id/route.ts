@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { supabase } from '@/shared/lib/supabase'
+import { supabaseAdmin } from '@/shared/lib/supabase'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY')
@@ -38,9 +38,9 @@ export async function POST(request: Request) {
     }
 
     // Get the barber record
-    const { data: barber, error: barberError } = await supabase
+    const { data: barber, error: barberError } = await supabaseAdmin
       .from('barbers')
-      .select('id, user_id, business_name')
+      .select('id, user_id, business_name, stripe_account_status')
       .eq('user_id', userId)
       .single()
 
@@ -55,7 +55,14 @@ export async function POST(request: Request) {
     console.log('Found barber record:', barber.id)
 
     // Update the barber record with the Stripe account information
-    const { error: updateError } = await supabase
+    console.log('About to update barber record:', {
+      barberId: barber.id,
+      stripeAccountId: stripeAccountId,
+      currentStatus: barber.stripe_account_status,
+      newStatus: stripeAccount.charges_enabled ? 'active' : 'pending'
+    })
+    
+    const { data: updateData, error: updateError } = await supabaseAdmin
       .from('barbers')
       .update({
         stripe_account_id: stripeAccountId,
@@ -64,6 +71,9 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', barber.id)
+      .select() // Add select to see what was actually updated
+
+    console.log('Update result:', { updateData, updateError })
 
     if (updateError) {
       console.error('Error updating barber:', updateError)
@@ -73,7 +83,14 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Successfully updated barber record with Stripe account ID')
+    // Verify the update worked
+    const { data: verifyData, error: verifyError } = await supabaseAdmin
+      .from('barbers')
+      .select('stripe_account_id, stripe_account_status, stripe_account_ready')
+      .eq('id', barber.id)
+      .single()
+
+    console.log('Verification after update:', { verifyData, verifyError })
 
     return NextResponse.json({
       success: true,

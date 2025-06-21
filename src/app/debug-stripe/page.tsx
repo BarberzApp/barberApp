@@ -184,6 +184,35 @@ export default function DebugStripePage() {
     }
   }
 
+  const showAllBarbers = async () => {
+    if (!user) {
+      setError('No user found. Please log in.')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/connect/debug-all-barbers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+      console.log('All barbers in database:', data)
+      
+      if (data.barbers) {
+        setSuccessMessage(`Found ${data.barbers.length} barber records. Check console for details.`)
+      } else {
+        setError('Failed to fetch barber records')
+      }
+      
+    } catch (err) {
+      console.error('Error fetching all barbers:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
+  }
+
   useEffect(() => {
     if (user) {
       checkStatus()
@@ -228,6 +257,11 @@ export default function DebugStripePage() {
                 {refreshing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Clock className="mr-2 h-4 w-4" />
                 Refresh Stripe Status
+              </Button>
+              <Button onClick={showAllBarbers} disabled={loading} variant="outline">
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Database className="mr-2 h-4 w-4" />
+                Show All Barbers
               </Button>
             </div>
 
