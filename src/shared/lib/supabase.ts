@@ -4,12 +4,21 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+// Check for required environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+  console.error('Missing Supabase environment variables:', {
+    url: supabaseUrl ? 'present' : 'missing',
+    anonKey: supabaseAnonKey ? 'present' : 'missing'
+  })
+  
+  // In development, throw an error
+  if (process.env.NODE_ENV === 'development') {
+    throw new Error('Missing Supabase environment variables')
+  }
 }
 
 // Create a single Supabase client instance for the entire app
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -19,9 +28,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: {
       getItem: (key) => {
         if (typeof window === 'undefined') return null
-        const value = window.localStorage.getItem(key)
-        if (!value) return null
         try {
+          const value = window.localStorage.getItem(key)
+          if (!value) return null
           const { session, expiresAt } = JSON.parse(value)
           if (new Date(expiresAt) <= new Date()) {
             // Session expired, remove it
@@ -29,21 +38,30 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
             return null
           }
           return session
-        } catch {
+        } catch (error) {
+          console.error('Error reading from localStorage:', error)
           return null
         }
       },
       setItem: (key, value) => {
         if (typeof window === 'undefined') return
-        const sessionData = {
-          session: value,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+        try {
+          const sessionData = {
+            session: value,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+          }
+          window.localStorage.setItem(key, JSON.stringify(sessionData))
+        } catch (error) {
+          console.error('Error writing to localStorage:', error)
         }
-        window.localStorage.setItem(key, JSON.stringify(sessionData))
       },
       removeItem: (key) => {
         if (typeof window === 'undefined') return
-        window.localStorage.removeItem(key)
+        try {
+          window.localStorage.removeItem(key)
+        } catch (error) {
+          console.error('Error removing from localStorage:', error)
+        }
       }
     }
   },
@@ -58,7 +76,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 // Create a Supabase client with the service role key for admin operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey, {
+export const supabaseAdmin = createClient(supabaseUrl || '', supabaseServiceKey || supabaseAnonKey || '', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

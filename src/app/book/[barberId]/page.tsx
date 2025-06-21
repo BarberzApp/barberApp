@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/shared/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
@@ -42,20 +42,84 @@ type BarberFromDB = {
   }>
 }
 
-export default function BookPage() {
-  const { barberId } = useParams()
+// Error boundary component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4 text-white">Something went wrong</h1>
+            <p className="text-gray-400 mb-4">An unexpected error occurred. Please try again.</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="rounded-full bg-primary text-white px-6 py-2 mr-2"
+            >
+              Reload Page
+            </Button>
+            <Button asChild className="rounded-full bg-gray-600 text-white px-6 py-2">
+              <Link href="/browse">Browse Barbers</Link>
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
+function BookPageContent() {
+  const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const [barber, setBarber] = useState<Barber | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showBookingForm, setShowBookingForm] = useState(false)
 
+  // Safely extract barberId from params
+  const barberId = Array.isArray(params.barberId) ? params.barberId[0] : params.barberId
+
   useEffect(() => {
-    fetchBarberDetails()
+    try {
+      if (barberId) {
+        fetchBarberDetails()
+      } else {
+        setLoading(false)
+        setError('Invalid barber ID')
+      }
+    } catch (err) {
+      console.error('Error in useEffect:', err)
+      setError('Failed to load page')
+      setLoading(false)
+    }
   }, [barberId])
 
   const fetchBarberDetails = async () => {
+    if (!barberId) {
+      setLoading(false)
+      setError('Invalid barber ID')
+      return
+    }
+
     try {
       let profileData: any = null;
       let barberData: any = null;
@@ -156,6 +220,7 @@ export default function BookPage() {
       })
     } catch (error) {
       console.error('Error fetching barber details:', error)
+      setError('Failed to load barber details')
       toast({
         title: 'Error',
         description: 'Failed to load barber details. Please try again.',
@@ -166,10 +231,48 @@ export default function BookPage() {
     }
   }
 
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4 text-white">Something went wrong</h1>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="rounded-full bg-primary text-white px-6 py-2 mr-2"
+          >
+            Try Again
+          </Button>
+          <Button asChild className="rounded-full bg-gray-600 text-white px-6 py-2">
+            <Link href="/browse">Browse Barbers</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-white">Loading barber details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!barberId) {
+    return (
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4 text-white">Invalid Link</h1>
+          <p className="text-gray-400 mb-4">The booking link appears to be invalid.</p>
+          <Button asChild className="rounded-full bg-primary text-white px-6 py-2">
+            <Link href="/browse">Browse Barbers</Link>
+          </Button>
+        </div>
       </div>
     )
   }
@@ -179,6 +282,7 @@ export default function BookPage() {
       <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4 text-white">Barber not found</h1>
+          <p className="text-gray-400 mb-4">The barber you're looking for doesn't exist or has been removed.</p>
           <Button asChild className="rounded-full bg-primary text-white px-6 py-2">
             <Link href="/browse">Back to Browse</Link>
           </Button>
@@ -195,90 +299,143 @@ export default function BookPage() {
             <CardHeader>
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarFallback className="text-2xl bg-primary text-white">{barber.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="text-2xl bg-primary text-white">
+                    {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
-                  <CardTitle className="text-3xl text-white font-bold mb-1 tracking-tight">{barber.name}</CardTitle>
-                  {barber.bio && <p className="text-[#A1A1AA] mt-1">{barber.bio}</p>}
+                  <CardTitle className="text-2xl text-white">{barber.name || 'Unknown Barber'}</CardTitle>
+                  {barber.location && (
+                    <p className="text-gray-400">{barber.location}</p>
+                  )}
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-8">
-                <div>
-                  <h3 className="font-semibold mb-2 text-white">Specialties</h3>
+              {barber.bio && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-2">About</h3>
+                  <p className="text-gray-300">{barber.bio}</p>
+                </div>
+              )}
+              
+              {barber.specialties && barber.specialties.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-2">Specialties</h3>
                   <div className="flex flex-wrap gap-2">
                     {barber.specialties.map((specialty, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-[#8E44AD] text-white rounded-full text-xs font-medium shadow-sm"
+                        className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm"
                       >
                         {specialty}
                       </span>
                     ))}
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <h3 className="font-semibold mb-2 text-white">Services</h3>
-                  <div className="space-y-3">
-                    {barber.services.map((service) => (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
+                <div className="space-y-3">
+                  {barber.services && barber.services.length > 0 ? (
+                    barber.services.map((service) => (
                       <div
                         key={service.id}
-                        className="flex justify-between items-center p-4 bg-[#292B36] rounded-xl shadow group hover:bg-primary/10 transition"
+                        className="flex justify-between items-center p-4 bg-[#2a2d3a] rounded-lg"
                       >
                         <div>
-                          <h4 className="font-semibold text-white group-hover:text-primary transition-colors">{service.name}</h4>
+                          <h4 className="font-medium text-white">{service.name}</h4>
                           {service.description && (
-                            <p className="text-xs text-[#A1A1AA] mt-1">{service.description}</p>
+                            <p className="text-sm text-gray-400">{service.description}</p>
                           )}
+                          <p className="text-sm text-gray-400">{service.duration} minutes</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-white group-hover:text-primary transition-colors">${service.price}</p>
-                          <p className="text-xs text-[#A1A1AA]">{service.duration} min</p>
+                          <p className="font-semibold text-white">${service.price}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-400 text-center py-4">No services available</p>
+                  )}
                 </div>
               </div>
+
+              <Button
+                onClick={() => setShowBookingForm(true)}
+                className="w-full rounded-full bg-primary text-white py-3 text-lg font-semibold"
+              >
+                Book Appointment
+              </Button>
             </CardContent>
           </Card>
         </div>
 
-        <div>
-          <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
+        <div className="md:col-span-1">
+          <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg sticky top-10">
             <CardHeader>
-              <CardTitle className="text-xl text-white font-bold">Book Appointment</CardTitle>
+              <CardTitle className="text-white">Contact Info</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Button
-                className="w-full rounded-full py-3 font-semibold bg-primary hover:bg-primary/90 text-white shadow-md transition text-lg"
-                onClick={() => setShowBookingForm(true)}
-              >
-                Select Date & Time
-              </Button>
+            <CardContent className="space-y-4">
+              {barber.phone && (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Phone</p>
+                    <p className="text-white">{barber.phone}</p>
+                  </div>
+                </div>
+              )}
+              
+              {barber.location && (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Location</p>
+                    <p className="text-white">{barber.location}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
 
       {showBookingForm && (
-        <BookingForm
-          isOpen={showBookingForm}
-          onClose={() => setShowBookingForm(false)}
-          selectedDate={selectedDate || new Date()}
-          barberId={barber.id}
-          onBookingCreated={(booking) => {
-            setShowBookingForm(false)
-            toast({
-              title: 'Success',
-              description: 'Appointment booked successfully!',
-            })
-            router.push('/calendar')
-          }}
-        />
+        <ErrorBoundary>
+          <BookingForm
+            isOpen={showBookingForm}
+            onClose={() => setShowBookingForm(false)}
+            selectedDate={selectedDate || new Date()}
+            barberId={barber.id}
+            onBookingCreated={(booking) => {
+              setShowBookingForm(false)
+              toast({
+                title: 'Booking Created!',
+                description: 'Your appointment has been scheduled successfully.',
+              })
+            }}
+          />
+        </ErrorBoundary>
       )}
     </div>
+  )
+}
+
+export default function BookPage() {
+  return (
+    <ErrorBoundary>
+      <BookPageContent />
+    </ErrorBoundary>
   )
 } 
