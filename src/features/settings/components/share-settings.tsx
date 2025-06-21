@@ -75,9 +75,14 @@ export function ShareSettings() {
   }
 
   // Use barber ID for the booking link if available, otherwise use user ID as fallback
-  const bookingLink = barberId 
-    ? `${window.location.origin}/book/${barberId}`
-    : `${window.location.origin}/book/${user?.id}`
+  // Use production domain to ensure the link is publicly accessible
+  const getBookingLink = () => {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://barber-app-five.vercel.app'
+    const id = barberId || user?.id
+    return `${baseUrl}/book/${id}`
+  }
+
+  const bookingLink = getBookingLink()
 
   const copyToClipboard = async () => {
     try {
