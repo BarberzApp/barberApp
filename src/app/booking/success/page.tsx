@@ -6,7 +6,7 @@ import { useToast } from "@/shared/components/ui/use-toast"
 import { useSync } from "@/shared/hooks/use-sync"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
-import { supabase } from "@/shared/lib/supabase"
+import { supabaseAdmin } from "@/shared/lib/supabase"
 
 export default function BookingSuccessPage({
   searchParams,
@@ -50,17 +50,6 @@ export default function BookingSuccessPage({
 
         if (!syncService) {
           throw new Error('Sync service not available')
-        }
-
-        // Check if booking already exists
-        const existingBooking = await syncService.getBooking(metadata.bookingId)
-        if (existingBooking) {
-          console.log('Booking already exists:', existingBooking)
-          toast({
-            title: "Booking Confirmed",
-            description: "Your appointment has been scheduled successfully.",
-          })
-          return
         }
 
         // Use the appropriate price from metadata
@@ -118,7 +107,7 @@ export default function BookingSuccessPage({
         })
 
         // Use Supabase directly instead of sync service to avoid type issues
-        const { data: booking, error: bookingError } = await supabase
+        const { data: booking, error: bookingError } = await supabaseAdmin
           .from('bookings')
           .insert({
             barber_id: metadata.barberId,
