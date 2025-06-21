@@ -42,6 +42,7 @@ export default function StripeConnectReturnPage() {
           setBarberId(barber.id);
           setStripeStatus(barber?.stripe_account_status || null);
           console.log('Stripe status set to:', barber?.stripe_account_status);
+          console.log('Barber ID set to:', barber.id);
         }
       } catch (error) {
         console.error("Error in checkStripeStatus:", error);
@@ -151,6 +152,17 @@ export default function StripeConnectReturnPage() {
             <div className="space-y-2">
               <Button onClick={handleRefreshOnboarding} className="w-full">
                 Continue Onboarding
+              </Button>
+              <Button 
+                onClick={() => {
+                  console.log('Test button clicked');
+                  console.log('Current barberId:', barberId);
+                  console.log('Current stripeStatus:', stripeStatus);
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                Debug Info
               </Button>
               <Button 
                 variant="outline" 
