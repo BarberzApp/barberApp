@@ -8,10 +8,11 @@ import { Button } from "@/shared/components/ui/button"
 import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card"
+import { Card, CardContent, CardFooter } from "@/shared/components/ui/card"
 import { Checkbox } from "@/shared/components/ui/checkbox"
 import { Scissors, User } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
+import supabase from "@/supabaseClient"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -81,6 +82,20 @@ export default function RegisterPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoogleSignUp = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    })
+    if (error) {
+      console.error('Google signup error:', error.message)
+      toast({
+        title: 'Error',
+        description: 'Could not sign up with Google',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -264,6 +279,17 @@ export default function RegisterPage() {
                 </form>
               </TabsContent>
             </Tabs>
+
+            <div className="my-4 flex items-center justify-center">
+              <span className="text-muted-foreground text-sm">or</span>
+            </div>
+
+            <Button 
+              onClick={handleGoogleSignUp} 
+              className="w-full h-11 border border-gray-300 bg-white text-black hover:bg-gray-100"
+            >
+              Sign up with Google
+            </Button>
           </CardContent>
           <CardFooter className="flex justify-center pb-6">
             <p className="text-sm text-muted-foreground">
@@ -277,4 +303,4 @@ export default function RegisterPage() {
       </div>
     </div>
   )
-} 
+}

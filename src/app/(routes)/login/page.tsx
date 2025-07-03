@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import supabase from '@/supabaseClient'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -18,7 +19,6 @@ export default function LoginPage() {
   const { login, user } = useAuth()
   const { toast } = useToast()
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       router.push(user.role === 'barber' ? '/settings' : '/browse')
@@ -32,14 +32,11 @@ export default function LoginPage() {
     try {
       const success = await login(email, password)
       if (success) {
-        // Check for redirect URL
         const redirectUrl = sessionStorage.getItem('redirectAfterLogin')
         if (redirectUrl) {
           sessionStorage.removeItem('redirectAfterLogin')
           router.push(redirectUrl)
         }
-        // Note: The useEffect above will handle the role-based redirect
-        // once the user state is updated
       }
     } catch (error) {
       toast({
@@ -49,6 +46,20 @@ export default function LoginPage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    })
+    if (error) {
+      console.error('Google login error:', error.message)
+      toast({
+        title: 'Error',
+        description: 'Could not sign in with Google',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -100,6 +111,17 @@ export default function LoginPage() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
+
+          <div className="my-4 flex items-center justify-center">
+            <span className="text-muted-foreground text-sm">or</span>
+          </div>
+
+          <Button 
+            onClick={handleGoogleLogin} 
+            className="w-full h-11 border border-gray-300 bg-white text-black hover:bg-gray-100"
+          >
+            Sign in with Google
+          </Button>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-sm text-center text-muted-foreground">
@@ -112,4 +134,4 @@ export default function LoginPage() {
       </Card>
     </div>
   )
-} 
+}
