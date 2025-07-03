@@ -25,26 +25,31 @@ export interface User {
 // Barber Types
 export interface Barber {
   id: string;
-  user_id: string;
   name: string;
-  location?: string;
+  email: string;
   phone?: string;
+  location?: string;
   bio?: string;
+  businessName?: string;
   specialties: string[];
   services: Service[];
-  image: string;
-  next_available?: string;
-  openToHire: boolean;
-  distance?: number;
-  price_range?: string;
+  priceRange?: string;
+  nextAvailable?: string;
+  rating?: number;
+  image?: string;
   portfolio?: string[];
-  featured?: boolean;
   trending?: boolean;
-  stripe_account_id?: string;
-  stripe_account_status?: 'pending' | 'active' | 'deauthorized';
-  created_at: string;
-  updated_at: string;
-  user?: User;
+  openToHire?: boolean;
+  isPublic?: boolean;
+  // Social media fields
+  instagram?: string;
+  twitter?: string;
+  tiktok?: string;
+  facebook?: string;
+  // Additional fields
+  joinDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Service Types

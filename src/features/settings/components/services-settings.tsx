@@ -15,13 +15,15 @@ interface Service {
   name: string
   duration: number // in minutes
   price: number
+  description?: string
   barber_id: string
 }
 
 interface ServiceFormData {
   name: string
-  duration: number
   price: number
+  duration: number
+  description: string
 }
 
 interface ServicesSettingsProps {
@@ -127,24 +129,50 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       setIsLoading(true)
       if (editingService) {
         // Update existing service
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('services')
-          .update(data)
+          .update({
+            name: data.name,
+            price: data.price,
+            duration: data.duration,
+            description: data.description,
+          })
           .eq('id', editingService.id)
-          .eq('barber_id', barberId)
 
-        if (error) throw error
+        if (updateError) {
+          console.error('Error updating service:', updateError)
+          toast({
+            title: 'Error',
+            description: 'Failed to update service. Please try again.',
+            variant: 'destructive',
+          })
+          return
+        }
         toast({
           title: 'Success',
           description: 'Service updated successfully',
         })
       } else {
         // Add new service
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('services')
-          .insert([{ ...data, barber_id: barberId }])
+          .insert({
+            barber_id: barberId,
+            name: data.name,
+            price: data.price,
+            duration: data.duration,
+            description: data.description,
+          })
 
-        if (error) throw error
+        if (insertError) {
+          console.error('Error creating service:', insertError)
+          toast({
+            title: 'Error',
+            description: 'Failed to create service. Please try again.',
+            variant: 'destructive',
+          })
+          return
+        }
         toast({
           title: 'Success',
           description: 'Service added successfully',
@@ -216,6 +244,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
     setValue('name', service.name)
     setValue('duration', service.duration)
     setValue('price', service.price)
+    setValue('description', service.description || '')
   }
 
   // Cancel editing
@@ -327,6 +356,22 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                 )}
                 {errors.price && (
                   <p className="mt-1 text-sm text-destructive">{errors.price.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="description" className="block text-sm font-medium text-foreground">
+                  Description
+                </Label>
+                <Input
+                  type="text"
+                  id="description"
+                  className={validationErrors.description ? 'border-red-500' : ''}
+                  {...register('description')}
+                  placeholder="Enter a description for the service"
+                />
+                {validationErrors.description && (
+                  <p className="mt-1 text-sm text-red-500">{validationErrors.description}</p>
                 )}
               </div>
             </div>

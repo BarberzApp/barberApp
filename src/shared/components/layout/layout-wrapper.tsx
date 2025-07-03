@@ -13,7 +13,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
     <ThemeProvider
       attribute="class"
       defaultTheme="system"
-      enableSystem
+      enableSystem={false}
       disableTransitionOnChange
     >
       <div className="relative min-h-screen bg-background flex flex-col">

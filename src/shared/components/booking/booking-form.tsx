@@ -1,21 +1,23 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog'
+import { Textarea } from '@/shared/components/ui/textarea'
+import { Card, CardContent } from '@/shared/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Booking } from '@/shared/types/booking'
 import { Service } from '@/shared/types/service'
 import { syncService } from '@/shared/lib/sync-service'
 import { supabase } from '@/shared/lib/supabase'
 import { Calendar } from '@/shared/components/ui/calendar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { useAuth } from '@/shared/hooks/use-auth'
 import { CalendarIcon, Clock, User, CreditCard, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/features/auth/hooks/use-auth'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -43,7 +45,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
   })
   const [date, setDate] = useState<Date>(selectedDate)
   const [bookedTimes, setBookedTimes] = useState<Set<string>>(new Set())
-  const [paymentType, setPaymentType] = useState<'fee' | 'full'>('full')
+  const [paymentType] = useState<'fee'>('fee')
   const [selectedService, setSelectedService] = useState<Service | null>(null)
 
   useEffect(() => {
@@ -434,26 +436,9 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
               Payment Option
             </Label>
             <div className="space-y-2">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="fee"
-                  checked={paymentType === 'fee'}
-                  onChange={() => setPaymentType('fee')}
-                  className="text-primary"
-                />
+              <div className="flex items-center space-x-2">
                 <span className="text-sm">Pay only platform fee ($3.38)</span>
-              </label>
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="radio"
-                  value="full"
-                  checked={paymentType === 'full'}
-                  onChange={() => setPaymentType('full')}
-                  className="text-primary"
-                />
-                <span className="text-sm">Pay full amount (${selectedService ? selectedService.price : 0} + $3.38 fee = ${selectedService ? (selectedService.price + 3.38).toFixed(2) : 0})</span>
-              </label>
+              </div>
             </div>
           </div>
 

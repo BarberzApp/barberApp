@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/shared/lib/supabase";
 import { useAuth } from "@/features/auth/hooks/use-auth";
+import { validateSession, attemptSessionRecovery, isSessionReadyForStripeConnect } from "@/shared/lib/session-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
-import { CheckCircle, AlertCircle, Clock, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, XCircle, Loader2, RefreshCw } from "lucide-react";
 
 export default function StripeConnectReturnPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -14,11 +15,22 @@ export default function StripeConnectReturnPage() {
   const [loading, setLoading] = useState(true);
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [barberId, setBarberId] = useState<string | null>(null);
+  const [authRetryCount, setAuthRetryCount] = useState(0);
+  const [sessionRecoveryAttempted, setSessionRecoveryAttempted] = useState(false);
+
+  // Maximum number of auth retry attempts
+  const MAX_AUTH_RETRIES = 3;
 
   useEffect(() => {
     const checkStripeStatus = async () => {
+      if (!user && authRetryCount < MAX_AUTH_RETRIES) {
+        console.log(`No user found, attempting auth recovery (attempt ${authRetryCount + 1}/${MAX_AUTH_RETRIES})`);
+        await attemptAuthRecovery();
+        return;
+      }
+      
       if (!user) {
-        console.log('No user found, setting loading to false');
+        console.log('No user found after all retry attempts, setting loading to false');
         setLoading(false);
         return;
       }
@@ -29,31 +41,13 @@ export default function StripeConnectReturnPage() {
         console.log('Checking Stripe status for user:', user.id);
         console.log('User email:', user.email);
         
-        // Double-check session is still valid
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+        // Use the new session utility for validation
+        const sessionReady = await isSessionReadyForStripeConnect();
+        if (!sessionReady) {
+          console.log('Session not ready for Stripe Connect');
           setStripeStatus("error");
           setLoading(false);
           return;
-        }
-        
-        if (!session) {
-          console.log('No active session found');
-          setStripeStatus("error");
-          setLoading(false);
-          return;
-        }
-        
-        console.log('Session is valid, user ID:', session.user.id);
-        
-        // Refresh session if needed (this helps prevent session expiration during Stripe flow)
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) {
-          console.warn('Session refresh warning:', refreshError);
-          // Don't fail the flow for refresh errors, continue with current session
-        } else if (refreshedSession) {
-          console.log('Session refreshed successfully');
         }
         
         const { data: barber, error } = await supabase
@@ -89,7 +83,39 @@ export default function StripeConnectReturnPage() {
     if (!authLoading) {
       checkStripeStatus();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, authRetryCount]);
+
+  const attemptAuthRecovery = async () => {
+    if (sessionRecoveryAttempted) {
+      console.log('Session recovery already attempted');
+      setAuthRetryCount(prev => prev + 1);
+      return;
+    }
+
+    setSessionRecoveryAttempted(true);
+    console.log('Attempting session recovery...');
+    
+    try {
+      // Use the new session recovery utility
+      const recoverySuccessful = await attemptSessionRecovery(1);
+      
+      if (recoverySuccessful) {
+        console.log('Session recovered successfully');
+        // Reset retry count and recovery flag
+        setAuthRetryCount(0);
+        setSessionRecoveryAttempted(false);
+        // Force a re-render by updating loading state
+        setLoading(false);
+        setTimeout(() => setLoading(true), 100);
+      } else {
+        console.log('Session recovery failed');
+        setAuthRetryCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error in session recovery:', error);
+      setAuthRetryCount(prev => prev + 1);
+    }
+  };
 
   const handleRefreshOnboarding = async () => {
     if (!barberId) {
@@ -132,18 +158,15 @@ export default function StripeConnectReturnPage() {
   const retryAuthCheck = async () => {
     console.log('Retrying authentication check...');
     setLoading(true);
+    setAuthRetryCount(0);
+    setSessionRecoveryAttempted(false);
     
     try {
-      // Force a session refresh
-      const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError) {
-        console.error('Failed to refresh session:', refreshError);
-        setLoading(false);
-        return;
-      }
+      // Use the new session validation utility
+      const result = await validateSession(true);
       
-      if (session) {
-        console.log('Session refreshed successfully, retrying status check');
+      if (result.isValid) {
+        console.log('Session validated successfully, retrying status check');
         // Trigger a re-render by updating a state
         setLoading(false);
         // Small delay to ensure state updates
@@ -151,7 +174,7 @@ export default function StripeConnectReturnPage() {
           setLoading(true);
         }, 100);
       } else {
-        console.log('No session after refresh');
+        console.log('Session validation failed:', result.error);
         setLoading(false);
       }
     } catch (error) {
@@ -172,7 +195,40 @@ export default function StripeConnectReturnPage() {
     );
   }
 
-  // Show login prompt if user is not authenticated
+  // Show authentication recovery UI if user is not authenticated but we're still retrying
+  if (!user && authRetryCount < MAX_AUTH_RETRIES) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+            <CardTitle className="text-xl">Recovering Session</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="mb-6 text-muted-foreground">
+              We're recovering your session after returning from Stripe. This may take a moment...
+            </p>
+            <div className="space-y-2">
+              <Button onClick={retryAuthCheck} className="w-full">
+                Try Again
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push("/login")} 
+                className="w-full"
+              >
+                Log In Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show login prompt if user is not authenticated after all retries
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

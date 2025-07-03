@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ["class"],
+  // darkMode disabled - using base colors only
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -24,6 +24,16 @@ module.exports = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        primary: '#41644A', // Hunter Green
+        secondary: '#595082', // Ultra Violet
+        saffron: '#F8C662',
+        darkpurple: '#2C263F',
+        darkgreen: '#213722',
+        huntergreen: '#41644A',
+        ultraviolet: '#595082',
+        darkpurple: '#2C263F',
+        huntergreen: '#41644A',
+        darkgreen: '#213722',
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -55,6 +65,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['SF Pro Display', 'Inter', 'sans-serif'],
+        bebas: ['Bebas Neue', 'cursive', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

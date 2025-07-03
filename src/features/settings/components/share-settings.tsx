@@ -215,77 +215,104 @@ export function ShareSettings() {
         </Alert>
       )}
 
-      <Card>
+      <Card className="border-2 border-primary bg-primary/10 shadow-lg mb-6">
         <CardHeader>
-          <CardTitle>Booking Link</CardTitle>
-          <CardDescription>
-            Share this link with your clients so they can book appointments with you.
+          <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
+            <Link className="h-6 w-6" />
+            Share Your Booking Link
+          </CardTitle>
+          <CardDescription className="text-base text-primary/80">
+            This is your personal booking link. Share it with clients to get more appointments!
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+          <div className="flex flex-col md:flex-row items-center gap-3 p-3 bg-white rounded-lg border border-primary/20">
             <input
               type="text"
               value={bookingLink}
               readOnly
-              className="flex-1 bg-transparent border-none outline-none text-sm"
+              className="flex-1 bg-transparent border-none outline-none text-lg font-mono text-primary"
             />
             <Button
-              variant="ghost"
+              variant="default"
               size="sm"
               onClick={copyToClipboard}
-              className="h-8 w-8 p-0"
+              className="h-10 px-4 font-semibold"
             >
               {copied ? (
-                <Copy className="h-4 w-4 text-green-500" />
+                <span className="flex items-center gap-1"><CheckCircle className="h-4 w-4 text-green-500" /> Copied!</span>
               ) : (
-                <Copy className="h-4 w-4" />
+                <span className="flex items-center gap-1"><Copy className="h-4 w-4" /> Copy Link</span>
               )}
             </Button>
-          </div>
-
-          <div className="flex gap-2">
-            <Button onClick={shareLink} className="flex-1" disabled={!isLinkValid}>
-              <Share2 className="mr-2 h-4 w-4" />
-              Share Link
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={shareLink}
+              className="h-10 px-4 font-semibold"
+              disabled={!isLinkValid}
+            >
+              <Share2 className="h-4 w-4 mr-1" /> Share
             </Button>
-            <Button onClick={openBookingLink} variant="outline" disabled={!isLinkValid}>
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open Link
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowQR(!showQR)}
+              className="h-10 px-4 font-semibold"
+              disabled={!isLinkValid}
+            >
+              <QrCode className="h-4 w-4 mr-1" /> {showQR ? 'Hide' : 'Show'} QR
             </Button>
           </div>
-
-          {!isLinkValid && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Please complete your barber profile to generate a valid booking link.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* PWA Instructions */}
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-            <h4 className="font-medium text-sm">📱 How to Share Your Booking Link</h4>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500 font-medium">1.</span>
-                <span>Copy the link above and share it via text, email, or social media</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500 font-medium">2.</span>
-                <span>When clients click the link, it will open in their browser</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500 font-medium">3.</span>
-                <span>For the best experience, clients can install the app from their browser</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500 font-medium">4.</span>
-                <span>The link works on all devices - phones, tablets, and computers</span>
-              </div>
+          {showQR && (
+            <div className="flex flex-col items-center justify-center p-4 bg-white rounded-lg border border-primary/20">
+              <QRCode 
+                value={bookingLink} 
+                size={180}
+                level="M"
+                fgColor="#000000"
+                bgColor="#FFFFFF"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const svg = document.querySelector('svg')
+                  if (svg) {
+                    const svgData = new XMLSerializer().serializeToString(svg)
+                    const canvas = document.createElement('canvas')
+                    const ctx = canvas.getContext('2d')
+                    const img = new Image()
+                    img.onload = () => {
+                      canvas.width = img.width
+                      canvas.height = img.height
+                      ctx?.drawImage(img, 0, 0)
+                      canvas.toBlob((blob) => {
+                        if (blob) {
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = 'booking-qr-code.png'
+                          document.body.appendChild(a)
+                          a.click()
+                          document.body.removeChild(a)
+                          URL.revokeObjectURL(url)
+                          toast({
+                            title: "QR Code Downloaded",
+                            description: "The QR code has been saved to your device.",
+                          })
+                        }
+                      })
+                    }
+                    img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+                  }
+                }}
+                className="mt-2"
+              >
+                <Download className="mr-2 h-4 w-4" /> Download QR
+              </Button>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -331,82 +358,6 @@ export function ShareSettings() {
                   }
                 }}
               />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* QR Code Section - Only show if link is valid */}
-      {isLinkValid && (
-        <Card>
-          <CardHeader>
-            <CardTitle>QR Code</CardTitle>
-            <CardDescription>
-              Scan this QR code to book an appointment with you.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {showQR && (
-              <div className="flex items-center justify-center p-4 bg-white rounded-lg">
-                <QRCode 
-                  value={bookingLink} 
-                  size={200}
-                  level="M"
-                  fgColor="#000000"
-                  bgColor="#FFFFFF"
-                />
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowQR(!showQR)}
-                className="flex-1"
-              >
-                <QrCode className="mr-2 h-4 w-4" />
-                {showQR ? 'Hide' : 'Show'} QR Code
-              </Button>
-              {showQR && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    // Simple download approach
-                    const svg = document.querySelector('svg')
-                    if (svg) {
-                      const svgData = new XMLSerializer().serializeToString(svg)
-                      const canvas = document.createElement('canvas')
-                      const ctx = canvas.getContext('2d')
-                      const img = new Image()
-                      img.onload = () => {
-                        canvas.width = img.width
-                        canvas.height = img.height
-                        ctx?.drawImage(img, 0, 0)
-                        canvas.toBlob((blob) => {
-                          if (blob) {
-                            const url = URL.createObjectURL(blob)
-                            const a = document.createElement('a')
-                            a.href = url
-                            a.download = 'booking-qr-code.png'
-                            document.body.appendChild(a)
-                            a.click()
-                            document.body.removeChild(a)
-                            URL.revokeObjectURL(url)
-                            toast({
-                              title: "QR Code Downloaded",
-                              description: "The QR code has been saved to your device.",
-                            })
-                          }
-                        })
-                      }
-                      img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
-                    }
-                  }}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>

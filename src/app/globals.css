@@ -1,52 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 271 76% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 271 76% 53%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 271 76% 53%;
+    --background: #262b2e;
+    --foreground: #fff;
+    --card: #fff; /* fallback, not used directly */
+    --card-foreground: #262b2e;
+    --popover: #fff;
+    --popover-foreground: #262b2e;
+    --primary: #262b2e;
+    --primary-foreground: #fff;
+    --secondary: #c98f42;
+    --secondary-foreground: #262b2e;
+    --muted: #f5f5f5;
+    --muted-foreground: #b0b0b0;
+    --accent: #8d7250;
+    --accent-foreground: #fff;
+    --destructive: #ff4d4f;
+    --destructive-foreground: #fff;
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --ring: #8d7250;
     --radius: 0.5rem;
+    --saffron: #8d7250;
+    --darkpurple: #d4c5b0;
+    --darkgreen: #FFFFFF;
+    /* Social Media Colors */
+    --booking-highlight: #ff3b30;
+    --social-instagram: #e1306c;
+    --social-twitter: #1da1f2;
+    --social-tiktok: #000000;
+    --social-facebook: #1877f3;
   }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 271 76% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 271 76% 53%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 271 76% 53%;
-  }
+  /* Dark mode disabled - using base colors only */
 }
 
 @layer base {
@@ -55,6 +44,8 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    background-color: var(--background) !important;
+    color: var(--foreground);
   }
   ::selection {
     @apply bg-primary/20 text-primary;
@@ -84,6 +75,74 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  
+  /* Modern Font Weights */
+  .font-light { font-weight: 300; }
+  .font-medium { font-weight: 500; }
+  .font-semibold { font-weight: 600; }
+  .font-bold { font-weight: 700; }
+  
+  /* Social Media Color Utilities */
+  .text-booking-highlight { color: hsl(var(--booking-highlight)); }
+  .text-social-instagram { color: hsl(var(--social-instagram)); }
+  .text-social-twitter { color: hsl(var(--social-twitter)); }
+  .text-social-tiktok { color: hsl(var(--social-tiktok)); }
+  .text-social-facebook { color: hsl(var(--social-facebook)); }
+  
+  .bg-booking-highlight { background-color: hsl(var(--booking-highlight)); }
+  .bg-social-instagram { background-color: hsl(var(--social-instagram)); }
+  .bg-social-twitter { background-color: hsl(var(--social-twitter)); }
+  .bg-social-tiktok { background-color: hsl(var(--social-tiktok)); }
+  .bg-social-facebook { background-color: hsl(var(--social-facebook)); }
+  
+  /* Enhanced Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+  
+  /* Loading States */
+  .loading-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  .font-bebas {
+    font-family: 'Bebas Neue', cursive, sans-serif;
+    letter-spacing: 0.02em;
+  }
+
+  .bg-cream {
+    background-color: #FFF9F0;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 @layer components {
@@ -107,4 +166,29 @@
     placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 
     focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50;
   }
-} 
+  
+  /* Enhanced Card Styles */
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  /* Enhanced Button Styles */
+  .btn-booking-highlight {
+    @apply bg-booking-highlight text-white hover:bg-booking-highlight/90 shadow-lg;
+  }
+  
+  /* Loading Skeleton Styles */
+  .skeleton-card {
+    @apply animate-pulse rounded-lg bg-muted;
+  }
+  
+  .skeleton-text {
+    @apply animate-pulse rounded bg-muted;
+  }
+  
+  .skeleton-avatar {
+    @apply animate-pulse rounded-full bg-muted;
+  }
+}
+
+/* Landing root override removed - base colors are now applied globally */ 

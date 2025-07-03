@@ -10,8 +10,13 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu"
 import { NotificationService, Notification } from "@/shared/lib/notification-service"
-import { useAuth } from "@/shared/hooks/use-auth"
+import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useEffect, useState } from "react"
+import { Badge } from '@/shared/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
+import { ScrollArea } from '@/shared/components/ui/scroll-area'
+import { supabase } from '@/shared/lib/supabase'
+import { Notification as NotificationType } from '@/shared/types'
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])

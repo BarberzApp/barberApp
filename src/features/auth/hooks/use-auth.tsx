@@ -58,6 +58,108 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true
 
+    const fetchUserProfile = async (userId: string) => {
+      try {
+        let profile = null;
+        let profileError = null;
+        const maxRetries = 3;
+        const retryDelay = 1000; // 1 second
+
+        for (let i = 0; i < maxRetries; i++) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+          if (data) {
+            profile = data;
+            break;
+          }
+
+          if (error) {
+            profileError = error;
+            // If it's not a "not found" error, break immediately
+            if (error.code !== 'PGRST116') {
+              break;
+            }
+          }
+
+          // Wait before retrying
+          if (i < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+          }
+        }
+
+        if (!profile) {
+          console.error('Error fetching user profile:', profileError);
+          if (mounted) {
+            setUser(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (mounted) {
+          setUser({
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            role: profile.role,
+            phone: profile.phone,
+            location: profile.location,
+            description: profile.bio,
+            bio: profile.bio,
+            favorites: profile.favorites,
+            joinDate: profile.join_date,
+            createdAt: profile.created_at,
+            updatedAt: profile.updated_at
+          });
+          setIsLoading(false);
+        }
+
+        // Ensure barber row exists after confirmation
+        if (profile.role === 'barber') {
+          const { data: barber, error: barberError } = await supabase
+            .from('barbers')
+            .select('id')
+            .eq('user_id', userId)
+            .single();
+          if (!barber) {
+            // Debugging: log current session user id and user_id to insert
+            const { data: sessionData } = await supabase.auth.getSession();
+            console.log('Current session user id:', sessionData?.session?.user?.id);
+            console.log('user_id to insert:', userId);
+            const { error: insertError } = await supabase
+              .from('barbers')
+              .insert({
+                user_id: userId,
+                business_name: profile.business_name || '',
+                status: 'pending',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+            if (insertError) {
+              console.error('Failed to create barber profile after confirmation:', insertError);
+              if (mounted) {
+                toast({
+                  title: "Barber profile creation failed",
+                  description: insertError.message,
+                  variant: "destructive",
+                });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in fetchUserProfile:', error);
+        if (mounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
+    };
+
     const initializeAuth = async () => {
       try {
         // Check current session from Supabase (this handles refresh tokens automatically)
@@ -68,13 +170,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await fetchUserProfile(session.user.id)
         } else {
           console.log('No active session found')
-          setUser(null)
+          if (mounted) {
+            setUser(null)
+            setIsLoading(false)
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
-        setUser(null)
-      } finally {
         if (mounted) {
+          setUser(null)
           setIsLoading(false)
         }
       }
@@ -90,14 +194,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === 'SIGNED_IN' && session?.user) {
         console.log('User signed in:', session.user.email)
+        // Don't set loading to true here as it might conflict with login function
         await fetchUserProfile(session.user.id)
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out')
-        setUser(null)
+        if (mounted) {
+          setUser(null)
+          setIsLoading(false)
+        }
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         console.log('Token refreshed for user:', session.user.email)
         // Token was refreshed, ensure user is still set
-        if (!user) {
+        if (mounted && !user) {
           await fetchUserProfile(session.user.id)
         }
       } else if (event === 'USER_UPDATED' && session?.user) {
@@ -110,103 +218,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [])
-
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      let profile = null;
-      let profileError = null;
-      const maxRetries = 3;
-      const retryDelay = 1000; // 1 second
-
-      for (let i = 0; i < maxRetries; i++) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (data) {
-          profile = data;
-          break;
-        }
-
-        if (error) {
-          profileError = error;
-          // If it's not a "not found" error, break immediately
-          if (error.code !== 'PGRST116') {
-            break;
-          }
-        }
-
-        // Wait before retrying
-        if (i < maxRetries - 1) {
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-        }
-      }
-
-      if (!profile) {
-        console.error('Error fetching user profile:', profileError);
-        setUser(null);
-        return;
-      }
-
-      setUser({
-        id: userId,
-        name: profile.name,
-        email: profile.email,
-        role: profile.role,
-        phone: profile.phone,
-        location: profile.location,
-        description: profile.bio,
-        bio: profile.bio,
-        favorites: profile.favorites,
-        joinDate: profile.join_date,
-        createdAt: profile.created_at,
-        updatedAt: profile.updated_at
-      });
-
-      // Ensure barber row exists after confirmation
-      if (profile.role === 'barber') {
-        const { data: barber, error: barberError } = await supabase
-          .from('barbers')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-        if (!barber) {
-          // Debugging: log current session user id and user_id to insert
-          const { data: sessionData } = await supabase.auth.getSession();
-          console.log('Current session user id:', sessionData?.session?.user?.id);
-          console.log('user_id to insert:', userId);
-          const { error: insertError } = await supabase
-            .from('barbers')
-            .insert({
-              user_id: userId,
-              business_name: profile.business_name || '',
-              status: 'pending',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-          if (insertError) {
-            console.error('Failed to create barber profile after confirmation:', insertError);
-            toast({
-              title: "Barber profile creation failed",
-              description: insertError.message,
-              variant: "destructive",
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, []) // Empty dependency array since fetchUserProfile is now defined inside
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      // Set loading state during login
+      setIsLoading(true)
+      
       // 1. First authenticate the user with rate limiting check
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
         email, 
@@ -291,6 +309,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
       return false;
+    } finally {
+      // Always ensure loading is set to false
+      setIsLoading(false);
     }
   };
 

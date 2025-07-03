@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Progress } from '@/shared/components/ui/progress'
-import { CheckCircle, AlertCircle, Loader2, CreditCard, Building, Scissors } from 'lucide-react'
+import { CheckCircle, AlertCircle, Loader2, CreditCard, Building, Scissors, X } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 
 const steps = [
@@ -49,6 +49,12 @@ interface FormData {
   specialties: string
   services: Array<{ name: string; price: number; duration: number }>
   stripeConnected: boolean
+  socialMedia: {
+    instagram: string
+    twitter: string
+    tiktok: string
+    facebook: string
+  }
 }
 
 interface ValidationErrors {
@@ -65,6 +71,7 @@ export default function BarberOnboardingPage() {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [stripeStatus, setStripeStatus] = useState<string | null>(null)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
+  const [showCompleteBanner, setShowCompleteBanner] = useState(true)
 
   useEffect(() => {
     setIsRouterReady(true)
@@ -76,15 +83,26 @@ export default function BarberOnboardingPage() {
       if (!user) return;
       
       try {
-        // Fetch barber data
-        const { data: barber, error: barberError } = await supabase
+        // Fetch barber profile data
+        const { data: barberData, error: barberError } = await supabase
           .from('barbers')
-          .select('id, business_name, bio, specialties, stripe_account_status, stripe_account_id')
+          .select('*')
           .eq('user_id', user.id)
-          .single();
+          .single()
 
-        if (barberError && barberError.code !== 'PGRST116') {
-          console.error('Error fetching barber data:', barberError);
+        if (barberData) {
+          setFormData(prev => ({
+            ...prev,
+            businessName: barberData.business_name || '',
+            bio: barberData.bio || '',
+            specialties: barberData.specialties?.join(', ') || '',
+            socialMedia: {
+              instagram: barberData.instagram || '',
+              twitter: barberData.twitter || '',
+              tiktok: barberData.tiktok || '',
+              facebook: barberData.facebook || '',
+            }
+          }))
         }
 
         // Fetch profile data
@@ -148,11 +166,11 @@ export default function BarberOnboardingPage() {
 
         // Fetch services for this barber
         let services: Array<{ name: string; price: number; duration: number }> = [];
-        if (barber?.id) {
+        if (barberData?.id) {
           const { data: existingServices, error: servicesError } = await supabase
             .from('services')
             .select('name, price, duration')
-            .eq('barber_id', barber.id);
+            .eq('barber_id', barberData.id);
 
           if (servicesError) {
             console.error('Error fetching services:', servicesError);
@@ -167,21 +185,18 @@ export default function BarberOnboardingPage() {
 
         setFormData(prev => ({
           ...prev,
-          businessName: barber?.business_name || '',
-          bio: barber?.bio || '',
-          specialties: Array.isArray(barber?.specialties) ? barber.specialties.join(', ') : (barber?.specialties || ''),
           phone: profile?.phone || '',
           address,
           city,
           state,
           zipCode,
           services,
-          stripeConnected: barber?.stripe_account_status === 'active'
+          stripeConnected: barberData?.stripe_account_status === 'active'
         }));
 
         // Only set Stripe status if they have actually started the Stripe Connect process
-        if (barber?.stripe_account_id) {
-          setStripeStatus(barber?.stripe_account_status || null);
+        if (barberData?.stripe_account_id) {
+          setStripeStatus(barberData?.stripe_account_status || null);
         } else {
           setStripeStatus(null);
         }
@@ -291,7 +306,13 @@ export default function BarberOnboardingPage() {
     bio: '',
     specialties: '',
     services: [],
-    stripeConnected: false
+    stripeConnected: false,
+    socialMedia: {
+      instagram: '',
+      twitter: '',
+      tiktok: '',
+      facebook: '',
+    }
   })
 
   const validateStep = (stepIndex: number): boolean => {
@@ -353,14 +374,30 @@ export default function BarberOnboardingPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
     
-    // Clear validation error when user starts typing
+    // Handle nested social media fields
+    if (name.startsWith('socialMedia.')) {
+      const socialMediaField = name.split('.')[1] as keyof typeof formData.socialMedia
+      setFormData(prev => ({
+        ...prev,
+        socialMedia: {
+          ...prev.socialMedia,
+          [socialMediaField]: value
+        }
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    }
+    
+    // Clear validation error for this field
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({ ...prev, [name]: '' }));
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
     }
   }
 
@@ -440,6 +477,10 @@ export default function BarberOnboardingPage() {
             business_name: formData.businessName,
             bio: formData.bio,
             specialties: formData.specialties.split(',').map(s => s.trim()).filter(s => s),
+            instagram: formData.socialMedia.instagram,
+            twitter: formData.socialMedia.twitter,
+            tiktok: formData.socialMedia.tiktok,
+            facebook: formData.socialMedia.facebook,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
 
@@ -456,6 +497,10 @@ export default function BarberOnboardingPage() {
           business_name: formData.businessName,
           bio: formData.bio,
           specialties: formData.specialties.split(',').map(s => s.trim()).filter(s => s),
+          instagram: formData.socialMedia.instagram,
+          twitter: formData.socialMedia.twitter,
+          tiktok: formData.socialMedia.tiktok,
+          facebook: formData.socialMedia.facebook,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user?.id)
@@ -780,6 +825,60 @@ export default function BarberOnboardingPage() {
                 List your specialties to help clients find you
               </p>
             </div>
+
+            {/* Social Media Section */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-medium">Social Media (Optional)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Add your social media links to help clients connect with you
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.instagram">Instagram</Label>
+                <Input
+                  id="socialMedia.instagram"
+                  name="socialMedia.instagram"
+                  value={formData.socialMedia.instagram}
+                  onChange={handleChange}
+                  placeholder="https://instagram.com/yourusername"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.twitter">Twitter/X</Label>
+                <Input
+                  id="socialMedia.twitter"
+                  name="socialMedia.twitter"
+                  value={formData.socialMedia.twitter}
+                  onChange={handleChange}
+                  placeholder="https://twitter.com/yourusername"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.tiktok">TikTok</Label>
+                <Input
+                  id="socialMedia.tiktok"
+                  name="socialMedia.tiktok"
+                  value={formData.socialMedia.tiktok}
+                  onChange={handleChange}
+                  placeholder="https://tiktok.com/@yourusername"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.facebook">Facebook</Label>
+                <Input
+                  id="socialMedia.facebook"
+                  name="socialMedia.facebook"
+                  value={formData.socialMedia.facebook}
+                  onChange={handleChange}
+                  placeholder="https://facebook.com/yourusername"
+                />
+              </div>
+            </div>
           </div>
         )
       case 1:
@@ -822,10 +921,11 @@ export default function BarberOnboardingPage() {
                     <Input
                       id={`service-${index}-price`}
                       type="number"
-                      value={isNaN(service.price) ? '' : service.price}
+                      value={service.price || ''}
                       onChange={(e) => {
                         const val = e.target.value;
-                        handleServiceChange(index, 'price', val === '' ? 0 : parseFloat(val));
+                        const numVal = val === '' ? 0 : parseFloat(val);
+                        handleServiceChange(index, 'price', numVal);
                       }}
                       className={validationErrors[`service-${index}-price`] ? 'border-red-500' : ''}
                       min="0"
@@ -841,10 +941,11 @@ export default function BarberOnboardingPage() {
                     <Input
                       id={`service-${index}-duration`}
                       type="number"
-                      value={isNaN(service.duration) ? '' : service.duration}
+                      value={service.duration || ''}
                       onChange={(e) => {
                         const val = e.target.value;
-                        handleServiceChange(index, 'duration', val === '' ? 30 : parseInt(val));
+                        const numVal = val === '' ? 0 : parseInt(val);
+                        handleServiceChange(index, 'duration', numVal);
                       }}
                       className={validationErrors[`service-${index}-duration`] ? 'border-red-500' : ''}
                       min="15"
@@ -958,6 +1059,39 @@ export default function BarberOnboardingPage() {
 
   return (
     <div className="container max-w-2xl py-8">
+      {/* Onboarding Complete Banner */}
+      {onboardingComplete && showCompleteBanner && (
+        <div className="relative mb-8">
+          <Card className="border-none bg-green-50 shadow-lg w-full max-w-2xl mx-auto">
+            <button
+              className="absolute top-3 right-3 text-green-700 hover:text-green-900 rounded-full p-1 focus:outline-none"
+              aria-label="Dismiss"
+              onClick={() => setShowCompleteBanner(false)}
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <CardContent className="pt-6 pb-6">
+              <div className="flex flex-col items-center text-center gap-2">
+                <div className="flex items-center justify-center mb-2">
+                  <span className="inline-flex items-center justify-center rounded-full bg-green-100 p-3">
+                    <CheckCircle className="h-8 w-8 text-green-600" />
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-green-800">Onboarding Complete!</h3>
+                <p className="text-sm text-green-700 max-w-md">
+                  Your profile is now complete. You can now manage your account and bookings.
+                </p>
+                <Button
+                  onClick={() => router.push('/settings/barber-profile')}
+                  className="mt-3 bg-[#7C3AED] hover:bg-[#6a2fc9] text-white font-semibold px-6 py-2 rounded-full shadow"
+                >
+                  Go to Profile
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       <div className="space-y-8">
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">Complete Your Profile</h1>
@@ -1061,31 +1195,6 @@ export default function BarberOnboardingPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Completion Button */}
-        {onboardingComplete && (
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-6">
-              <div className="text-center space-y-4">
-                <div className="flex justify-center">
-                  <CheckCircle className="h-12 w-12 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-green-800">Onboarding Complete!</h3>
-                  <p className="text-sm text-green-700 mt-1">
-                    Your profile is now complete. You can continue to settings to manage your account.
-                  </p>
-                </div>
-                <Button
-                  onClick={() => router.push('/settings')}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Go to Settings
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   )

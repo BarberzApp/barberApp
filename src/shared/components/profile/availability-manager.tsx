@@ -183,38 +183,38 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
         </Alert>
       )}
 
-      <Card className="p-6">
+      <Card className="p-3 sm:p-6">
         <div className="space-y-6">
           {DAYS.map((dayName, index) => {
             const day = availability.find(avail => avail.day_of_week === index)
             const isAvailable = !!day
 
             return (
-              <div key={dayName} className="flex items-center gap-4">
-                <div className="w-32">
-                  <Label className="font-medium">{dayName}</Label>
+              <div key={dayName} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full">
+                <div className="w-full sm:w-32 mb-1 sm:mb-0">
+                  <Label className="font-medium text-base sm:text-sm">{dayName}</Label>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
                   <Input
                     type="time"
                     value={day?.start_time || '09:00'}
                     onChange={(e) => handleTimeChange(index, 'start_time', e.target.value)}
                     disabled={!isAvailable}
-                    className="w-32"
+                    className="w-full sm:w-32"
                   />
-                  <span className="text-muted-foreground">to</span>
+                  <span className="text-muted-foreground hidden sm:inline">to</span>
                   <Input
                     type="time"
                     value={day?.end_time || '17:00'}
                     onChange={(e) => handleTimeChange(index, 'end_time', e.target.value)}
                     disabled={!isAvailable}
-                    className="w-32"
+                    className="w-full sm:w-32"
                   />
                 </div>
                 <Button
                   variant={isAvailable ? "default" : "outline"}
                   onClick={() => toggleAvailability(index)}
-                  className="min-w-[120px]"
+                  className="w-full sm:w-auto mt-2 sm:mt-0"
                 >
                   {isAvailable ? 'Available' : 'Unavailable'}
                 </Button>
@@ -224,7 +224,8 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
           <Button 
             onClick={saveAvailability} 
             disabled={isSaving}
-            className="w-full mt-6"
+            className="w-full mt-6 mb-2 sm:mb-0"
+            style={{ zIndex: 20 }}
           >
             {isSaving ? (
               <>

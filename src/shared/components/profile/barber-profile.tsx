@@ -4,50 +4,36 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
 import { Button } from "@/shared/components/ui/button"
 import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Textarea } from "@/shared/components/ui/textarea"
 import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, MapPin, Star, Upload, DollarSign, Clock, X, Building2, Scissors, Settings } from "lucide-react"
+import { Calendar, Star, Scissors } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
-import Link from "next/link"
-import Image from "next/image"
-import type { User } from "@/features/auth/hooks/use-auth"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useData } from "../../hooks/use-data"
-import { Switch } from "@/shared/components/ui/switch"
-import { Service } from "@/shared/types"
 import { supabase } from '@/shared/lib/supabase'
-import { EarningsDashboard } from "@/shared/components/payment/earnings-dashboard"
-import { serviceService } from "@/shared/services/api"
-import { AvailabilityManager } from "./availability-manager"
+import { BARBER_SPECIALTIES, getFilteredSpecialties } from '@/shared/constants/specialties'
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/shared/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/components/ui/popover"
 
-interface BarberProfileProps {
-  user: User
-}
 
-interface Review {
-  id: string
-  rating: number
-  comment: string
-  user: {
-    name: string
-    avatar: string
-  }
-  date: string
-}
-
-interface Booking {
-  id: string
-  date: string
-  time: string
-  service: string
-  status: string
-}
 
 export function BarberProfile() {
   const router = useRouter()
@@ -61,6 +47,8 @@ export function BarberProfile() {
     averageRating: 0,
     servicesCount: 0
   })
+  const [specialtiesOpen, setSpecialtiesOpen] = useState(false)
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(user?.specialties || [])
 
   useEffect(() => {
     if (user) {
@@ -133,7 +121,7 @@ export function BarberProfile() {
       const formData = new FormData(e.currentTarget)
       const barberData = {
         bio: formData.get('bio') as string,
-        specialties: (formData.get('specialties') as string).split(',').map(s => s.trim()),
+        specialties: selectedSpecialties,
         location: formData.get('location') as string,
       }
 
@@ -171,16 +159,7 @@ export function BarberProfile() {
     <div className="container mx-auto py-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <Tabs defaultValue="profile" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="availability">Availability</TabsTrigger>
-              {user?.role === 'barber' && (
-                <TabsTrigger value="earnings">Earnings</TabsTrigger>
-              )}
-            </TabsList>
-
-            <TabsContent value="profile">
+          <div className="space-y-4">
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-4">
@@ -207,15 +186,65 @@ export function BarberProfile() {
 
                     <div className="space-y-2">
                       <Label htmlFor="specialties">Specialties</Label>
-                      <Input
-                        id="specialties"
-                        name="specialties"
-                        placeholder="e.g. Fade, Beard Trim, Haircut"
-                        defaultValue={user.specialties?.join(', ') || ''}
-                      />
+                      <Popover open={specialtiesOpen} onOpenChange={setSpecialtiesOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={specialtiesOpen}
+                            className="w-full justify-between"
+                          >
+                            {selectedSpecialties.length > 0 
+                              ? `${selectedSpecialties.length} specialty(ies) selected`
+                              : "Search and select specialties..."
+                            }
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search specialties..." />
+                            <CommandList>
+                              <CommandEmpty>No specialty found.</CommandEmpty>
+                              <CommandGroup>
+                                {BARBER_SPECIALTIES.map((specialty) => (
+                                  <CommandItem
+                                    key={specialty}
+                                    value={specialty}
+                                    onSelect={() => {
+                                      setSelectedSpecialties(prev => 
+                                        prev.includes(specialty)
+                                          ? prev.filter(s => s !== specialty)
+                                          : [...prev, specialty]
+                                      )
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedSpecialties.includes(specialty) ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {specialty}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <p className="text-sm text-muted-foreground">
-                        Separate specialties with commas
+                        Select the services you specialize in
                       </p>
+                      {selectedSpecialties.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {selectedSpecialties.map((specialty) => (
+                            <Badge key={specialty} variant="secondary" className="text-xs">
+                              {specialty}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -245,18 +274,7 @@ export function BarberProfile() {
                   </form>
                 </CardContent>
               </Card>
-            </TabsContent>
-
-            <TabsContent value="availability">
-              {barberId && <AvailabilityManager barberId={barberId} />}
-            </TabsContent>
-
-            {user?.role === 'barber' && (
-              <TabsContent value="earnings">
-                {barberId && <EarningsDashboard barberId={barberId} />}
-              </TabsContent>
-            )}
-          </Tabs>
+            </div>
         </div>
 
         <div>

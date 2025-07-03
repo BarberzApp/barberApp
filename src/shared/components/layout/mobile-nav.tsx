@@ -25,7 +25,7 @@ export function MobileNav() {
   const baseNavItems = [
     { name: "Home", href: "/", icon: Home },
     { name: "Browse", href: "/browse", icon: Search },
-    { name: "Profile", href: "/profile", icon: User },
+    { name: "Profile", href: "/settings/barber-profile", icon: User },
   ]
 
   const navigation = useMemo(() => {
@@ -51,25 +51,9 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
-        <div className="flex justify-around items-center h-16">
-          {navItems.slice(0, 5).map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full ${
-                pathname === item.href ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-xs mt-1">{item.name}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
+      {/* Removed Bottom Navigation Bar */}
 
-      {/* Mobile Menu Sheet */}
+      {/* Mobile Menu Sheet (Sidebar) */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden">
@@ -78,6 +62,11 @@ export function MobileNav() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+          {/* Branding at the top */}
+          <div className="flex items-center gap-2 mb-6">
+            <img src="/icons/icon-192x192.svg" alt="BOCM Logo" className="h-8 w-8" />
+            <span className="font-bold text-lg text-[#7C3AED]">BOCM</span>
+          </div>
           <nav className="flex flex-col gap-4">
             {navItems.map((item) => (
               <Link

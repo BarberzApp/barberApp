@@ -15,6 +15,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Switch } from '@/shared/components/ui/switch'
+import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 
 interface ProfileFormData {
   name: string
@@ -23,9 +24,15 @@ interface ProfileFormData {
   bio: string
   location: string
   description: string
-  specialties: string
+  specialties: string[]
   businessName: string
   isPublic: boolean
+  socialMedia: {
+    instagram: string
+    twitter: string
+    tiktok: string
+    facebook: string
+  }
   notifications: {
     email: boolean
     sms: boolean
@@ -108,9 +115,15 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             bio: barber.bio || profile.bio || '',
             location: profile.location || '',
             description: profile.description || '',
-            specialties: barber.specialties?.join(', ') || '',
+            specialties: barber.specialties || [],
             businessName: barber.business_name || '',
             isPublic: profile.is_public || false,
+            socialMedia: {
+              instagram: barber.instagram || '',
+              twitter: barber.twitter || '',
+              tiktok: barber.tiktok || '',
+              facebook: barber.facebook || ''
+            },
             notifications: {
               email: profile.email_notifications || false,
               sms: profile.sms_notifications || false,
@@ -127,9 +140,15 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           bio: profile.bio || '',
           location: profile.location || '',
           description: profile.description || '',
-          specialties: '',
+                      specialties: [],
           businessName: '',
           isPublic: profile.is_public || false,
+          socialMedia: {
+            instagram: '',
+            twitter: '',
+            tiktok: '',
+            facebook: ''
+          },
           notifications: {
             email: profile.email_notifications || false,
             sms: profile.sms_notifications || false,
@@ -164,7 +183,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
     if (user && isInitialLoad) {
       fetchProfile()
     }
-  }, [status, user, router, isInitialLoad, fetchProfile])
+  }, [status, user, isInitialLoad])
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -279,7 +298,11 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           .update({
             bio: data.bio,
             business_name: data.businessName,
-            specialties: data.specialties.split(',').map(s => s.trim()).filter(Boolean),
+            specialties: data.specialties,
+            instagram: data.socialMedia.instagram,
+            twitter: data.socialMedia.twitter,
+            tiktok: data.socialMedia.tiktok,
+            facebook: data.socialMedia.facebook,
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id)
@@ -430,14 +453,13 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
 
                   <div className="space-y-2">
                     <Label htmlFor="specialties" className="text-sm font-medium">Specialties</Label>
-                    <Input
-                      id="specialties"
-                      type="text"
-                      className="h-11"
-                      {...register('specialties')}
-                      placeholder="Haircuts, Beard Trims, Fades, etc."
+                    <SpecialtyAutocomplete
+                      value={watch('specialties')}
+                      onChange={(value) => reset({ ...watch(), specialties: value })}
+                      placeholder="Search and select your specialties..."
+                      maxSelections={15}
                     />
-                    <p className="text-sm text-muted-foreground">Separate specialties with commas</p>
+                    <p className="text-sm text-muted-foreground">Select the services you specialize in</p>
                   </div>
                 </>
               )}
@@ -468,6 +490,51 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                 className="resize-none"
                 {...register('description')}
                 placeholder="Additional information about yourself or your business..."
+              />
+            </div>
+
+            {/* Social Media */}
+            <div className="space-y-2">
+              <Label htmlFor="socialMedia.instagram" className="text-sm font-medium">Instagram</Label>
+              <Input
+                id="socialMedia.instagram"
+                type="text"
+                className="h-11"
+                {...register('socialMedia.instagram')}
+                placeholder="Enter your Instagram URL"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="socialMedia.twitter" className="text-sm font-medium">Twitter</Label>
+              <Input
+                id="socialMedia.twitter"
+                type="text"
+                className="h-11"
+                {...register('socialMedia.twitter')}
+                placeholder="Enter your Twitter URL"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="socialMedia.tiktok" className="text-sm font-medium">TikTok</Label>
+              <Input
+                id="socialMedia.tiktok"
+                type="text"
+                className="h-11"
+                {...register('socialMedia.tiktok')}
+                placeholder="Enter your TikTok URL"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="socialMedia.facebook" className="text-sm font-medium">Facebook</Label>
+              <Input
+                id="socialMedia.facebook"
+                type="text"
+                className="h-11"
+                {...register('socialMedia.facebook')}
+                placeholder="Enter your Facebook URL"
               />
             </div>
 

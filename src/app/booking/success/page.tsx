@@ -7,6 +7,7 @@ import { useSync } from "@/shared/hooks/use-sync"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { supabaseAdmin } from "@/shared/lib/supabase"
+import { calculateFeeBreakdown, calculateBarberPayout, calculatePlatformFee } from "@/shared/lib/fee-calculator"
 
 export default function BookingSuccessPage({
   searchParams,
@@ -52,6 +53,22 @@ export default function BookingSuccessPage({
           throw new Error('Sync service not available')
         }
 
+        // Check if booking already exists for this payment intent
+        const { data: existingBooking } = await supabaseAdmin
+          .from('bookings')
+          .select('id')
+          .eq('payment_intent_id', session.payment_intent)
+          .single()
+
+        if (existingBooking) {
+          console.log('Booking already exists for payment intent:', session.payment_intent)
+          toast({
+            title: "Booking Confirmed",
+            description: "Your appointment has been scheduled successfully.",
+          })
+          return
+        }
+
         // Use the appropriate price from metadata
         const paymentType = metadata.paymentType
         let bookingPrice = 0
@@ -61,14 +78,15 @@ export default function BookingSuccessPage({
         if (paymentType === 'fee') {
           // For fee-only payments, use servicePrice (which is the actual service cost)
           bookingPrice = parseFloat(metadata.servicePrice || '0')
-          // For fee-only payments, set platform_fee and barber_payout to NULL
-          // since the customer is only paying the fee, not the service
+          // For fee-only payments, barber still gets their 40% share of the fee
+          platformFee = parseInt(metadata.bocmShare || '0') || calculatePlatformFee('fee')
+          barberPayout = parseInt(metadata.barberShare || '0') || calculateBarberPayout(0, 'fee')
         } else {
           // For full payments, use basePrice (which should be the service price)
           bookingPrice = parseFloat(metadata.basePrice || metadata.servicePrice || '0')
           // For full payments, include the fee split
-          platformFee = parseInt(metadata.bocmShare || '0')
-          barberPayout = parseInt(metadata.barberShare || '0')
+          platformFee = parseInt(metadata.bocmShare || '0') || calculatePlatformFee('full')
+          barberPayout = parseInt(metadata.barberShare || '0') || calculateBarberPayout(bookingPrice * 100, 'full')
         }
         
         if (isNaN(bookingPrice)) {

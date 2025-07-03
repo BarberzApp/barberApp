@@ -2,7 +2,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/features/auth/hooks/use-auth"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useCallback } from "react"
 import { Button } from "@/shared/components/ui/button"
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
-import { ModeToggle } from "@/shared/components/theme/mode-toggle"
+// ModeToggle removed - dark mode disabled
 import { MobileNav } from "@/shared/components/layout/mobile-nav"
 import { useMobile } from "@/shared/hooks/use-mobile"
 import {
@@ -30,13 +30,16 @@ import {
 import { cn } from "@/lib/utils"
 
 export function Navbar() {
-  const { user, logout } = useAuth()
-  const router = useRouter()
-  const [pathname, setPathname] = useState('/')
+  const router = useRouter();
+  const { user } = useAuth();
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (pathname === '/') return null;
+
+  const { logout } = useAuth()
   const isMobile = useMobile()
 
   const updatePathname = useCallback(() => {
-    setPathname(window.location.pathname)
+    // setPathname(window.location.pathname)
   }, [])
 
   useEffect(() => {
@@ -89,10 +92,10 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         <div className="mr-4 flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <Scissors className="h-6 w-6" />
-            <span className="hidden font-bold sm:inline-block">BOCM</span>
-          </Link>
+          <div className="mr-6 flex items-center space-x-2">
+            <img src="/logo.png" alt="BOCM Logo" className="h-8 w-8" />
+            <span className="hidden font-bold sm:inline-block text-[#7C3AED]">BOCM</span>
+          </div>
           <nav className="flex items-center space-x-6 text-sm font-medium">
             <Link
               href="/"
@@ -127,7 +130,6 @@ export function Navbar() {
           </nav>
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <ModeToggle />
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -145,14 +147,12 @@ export function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {user.role === "barber" && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings/barber-profile" className="cursor-pointer">
-                      <UserCircle className="mr-2 h-4 w-4" />
-                      Barber Profile
-                    </Link>
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/barber-profile" className="cursor-pointer">
+                    <UserCircle className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings" className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />

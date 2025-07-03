@@ -483,8 +483,8 @@ export default function BarberCalendar() {
                     <span className={cn(
                       "ml-1 px-2 py-1 rounded-full text-xs font-medium",
                       selectedEvent.extendedProps.status === 'confirmed' 
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                        ? "bg-green-100 text-green-800"
+: "bg-yellow-100 text-yellow-800"
                     )}>
                       {selectedEvent.extendedProps.status}
                     </span>

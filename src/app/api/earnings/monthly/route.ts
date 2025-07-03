@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/shared/lib/supabase'
+import { calculateFeeBreakdown } from '@/shared/lib/fee-calculator'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
       .from('bookings')
       .select('price, platform_fee, barber_payout')
       .eq('barber_id', barberId)
-      .eq('payment_status', 'paid')
+      .eq('payment_status', 'succeeded')
       .gte('created_at', firstDayOfMonth.toISOString())
       .lte('created_at', lastDayOfMonth.toISOString())
 
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
       .from('bookings')
       .select('price, platform_fee, barber_payout')
       .eq('barber_id', barberId)
-      .eq('payment_status', 'paid')
+      .eq('payment_status', 'succeeded')
       .gte('created_at', firstDayOfPrevMonth.toISOString())
       .lte('created_at', lastDayOfPrevMonth.toISOString())
 
@@ -100,18 +101,32 @@ export async function GET(request: Request) {
     }
 
     // Calculate current month breakdown
-    const currentBreakdown = currentMonthData?.reduce((acc, booking) => ({
-      serviceFees: acc.serviceFees + (booking.price || 0),
-      platformFees: acc.platformFees + (booking.platform_fee || 0),
-      totalEarnings: acc.totalEarnings + (booking.barber_payout || 0)
-    }), { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
+    const currentBreakdown = currentMonthData?.reduce((acc, booking) => {
+      const price = booking.price || 0
+      const platformFee = booking.platform_fee || 0
+      const barberPayout = booking.barber_payout || 0
+      
+      console.log('Processing booking:', { price, platformFee, barberPayout })
+      
+      return {
+        serviceFees: acc.serviceFees + price,
+        platformFees: acc.platformFees + platformFee,
+        totalEarnings: acc.totalEarnings + barberPayout
+      }
+    }, { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
 
     // Calculate previous month breakdown
-    const prevBreakdown = prevMonthData?.reduce((acc, booking) => ({
-      serviceFees: acc.serviceFees + (booking.price || 0),
-      platformFees: acc.platformFees + (booking.platform_fee || 0),
-      totalEarnings: acc.totalEarnings + (booking.barber_payout || 0)
-    }), { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
+    const prevBreakdown = prevMonthData?.reduce((acc, booking) => {
+      const price = booking.price || 0
+      const platformFee = booking.platform_fee || 0
+      const barberPayout = booking.barber_payout || 0
+      
+      return {
+        serviceFees: acc.serviceFees + price,
+        platformFees: acc.platformFees + platformFee,
+        totalEarnings: acc.totalEarnings + barberPayout
+      }
+    }, { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
 
     // Convert to cents
     const currentTotal = currentBreakdown.totalEarnings * 100

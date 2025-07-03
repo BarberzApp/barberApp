@@ -104,4 +104,18 @@ src/
 5. Create a Pull Request
 
 ## License
-MIT License - see LICENSE file for details 
+MIT License - see LICENSE file for details
+
+## 📣 Prominent Booking Link for Barbers
+
+Barbers now see a highly visible, easy-to-share booking link banner at the top of their dashboard and settings. This link is the main way for clients to book appointments. Barbers are encouraged to copy, share, or download a QR code for their booking link and send it to clients via text, social media, or in person.
+
+**How it works:**
+- The booking link is always visible at the top of the dashboard and settings.
+- Barbers can copy the link, share it using their device's share menu, or download a QR code for print or digital sharing.
+- This feature is designed to maximize bookings and make it easy for barbers to grow their business.
+
+**Why this matters:**
+- The booking link is the main entry point for new clients.
+- Making it prominent ensures every barber knows to share it as much as possible.
+- More shared links = more bookings! 
