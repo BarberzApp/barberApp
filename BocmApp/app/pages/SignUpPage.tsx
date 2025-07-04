@@ -1,4 +1,3 @@
-// screens/SignUpPage.tsx
 import React, { useState } from 'react';
 import {
     View,
@@ -25,30 +24,33 @@ type UserType = 'client' | 'barber';
 
 export default function SignUpPage() {
     const navigation = useNavigation<SignUpScreenNavigationProp>();
-    const { register } = useAuth();
+    const { register, user } = useAuth();
     const [userType, setUserType] = useState<UserType>('client');
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [businessName, setBusinessName] = useState('');
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSignUp = async () => {
-        // Validate form
         if (!fullName || !email || !password || !confirmPassword) {
             Alert.alert('Error', 'Please fill all fields');
             return;
         }
 
-        // Email validation
+        if (userType === 'barber' && !businessName) {
+            Alert.alert('Error', 'Please enter your business name');
+            return;
+        }
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             Alert.alert('Error', 'Please enter a valid email address');
             return;
         }
 
-        // Password validation
         if (password.length < 6) {
             Alert.alert('Error', 'Password must be at least 6 characters long');
             return;
@@ -67,26 +69,49 @@ export default function SignUpPage() {
         setIsLoading(true);
 
         try {
-            const success = await register(fullName, email, password, userType);
+            const success = await register(
+                fullName, 
+                email, 
+                password, 
+                userType,
+                userType === 'barber' ? businessName : undefined
+            );
+            
             if (success) {
-                Alert.alert(
-                    'Registration Successful',
-                    userType === 'barber' 
-                        ? 'Welcome to BarberHub! Please complete your business profile setup.'
-                        : 'Welcome to BarberHub!',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => {
-                                if (userType === 'barber') {
-                                    navigation.navigate('BarberOnboarding' as any); // Update with your onboarding screen
-                                } else {
-                                    navigation.navigate('FindBarber');
+                // Check if email confirmation is required
+                const needsEmailConfirmation = !user;
+                
+                if (needsEmailConfirmation) {
+                    Alert.alert(
+                        'Check Your Email',
+                        'We\'ve sent you a confirmation email. Please verify your email address to complete registration.',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => navigation.navigate('Login')
+                            }
+                        ]
+                    );
+                } else {
+                    Alert.alert(
+                        'Registration Successful',
+                        userType === 'barber' 
+                            ? 'Welcome to BarberHub! Please complete your business profile setup.'
+                            : 'Welcome to BarberHub!',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => {
+                                    if (userType === 'barber') {
+                                        navigation.navigate('BarberOnboarding' as any);
+                                    } else {
+                                        navigation.navigate('FindBarber');
+                                    }
                                 }
                             }
-                        }
-                    ]
-                );
+                        ]
+                    );
+                }
             } else {
                 Alert.alert('Registration Failed', 'An error occurred during registration. Please try again.');
             }
@@ -102,7 +127,6 @@ export default function SignUpPage() {
     };
 
     const handleTermsPress = () => {
-        // Navigate to terms and conditions
         Alert.alert('Info', 'Terms and conditions page coming soon!');
     };
 
@@ -117,7 +141,6 @@ export default function SignUpPage() {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={tw`flex-1 justify-center items-center px-6 py-8`}>
-                        {/* Header */}
                         <View style={tw`mb-6`}>
                             <Text style={tw`text-white text-3xl font-bold text-center`}>
                                 Create your account
@@ -127,9 +150,7 @@ export default function SignUpPage() {
                             </Text>
                         </View>
 
-                        {/* Sign Up Form Container */}
                         <View style={tw`w-full max-w-md bg-gray-800 rounded-2xl p-8`}>
-                            {/* User Type Selection */}
                             <View style={tw`flex-row mb-6`}>
                                 <TouchableOpacity
                                     style={tw`flex-1 py-3 rounded-l-lg ${
@@ -159,9 +180,7 @@ export default function SignUpPage() {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Form Fields */}
                             <View>
-                                {/* Full Name Field */}
                                 <View style={tw`mb-4`}>
                                     <Text style={tw`text-gray-300 text-sm mb-2`}>Full Name</Text>
                                     <TextInput
@@ -176,7 +195,22 @@ export default function SignUpPage() {
                                     />
                                 </View>
 
-                                {/* Email Field */}
+                                {userType === 'barber' && (
+                                    <View style={tw`mb-4`}>
+                                        <Text style={tw`text-gray-300 text-sm mb-2`}>Business Name</Text>
+                                        <TextInput
+                                            style={tw`bg-gray-900 text-white px-4 py-3 rounded-lg`}
+                                            placeholder="Your Barbershop Name"
+                                            placeholderTextColor="#6B7280"
+                                            value={businessName}
+                                            onChangeText={setBusinessName}
+                                            autoCapitalize="words"
+                                            autoCorrect={false}
+                                            editable={!isLoading}
+                                        />
+                                    </View>
+                                )}
+
                                 <View style={tw`mb-4`}>
                                     <Text style={tw`text-gray-300 text-sm mb-2`}>Email</Text>
                                     <TextInput
@@ -192,7 +226,6 @@ export default function SignUpPage() {
                                     />
                                 </View>
 
-                                {/* Password Field */}
                                 <View style={tw`mb-4`}>
                                     <Text style={tw`text-gray-300 text-sm mb-2`}>Password</Text>
                                     <TextInput
@@ -203,11 +236,13 @@ export default function SignUpPage() {
                                         onChangeText={setPassword}
                                         secureTextEntry
                                         autoCapitalize="none"
+                                        autoCorrect={false}
+                                        autoComplete="off"
+                                        textContentType="none"
                                         editable={!isLoading}
                                     />
                                 </View>
 
-                                {/* Confirm Password Field */}
                                 <View style={tw`mb-6`}>
                                     <Text style={tw`text-gray-300 text-sm mb-2`}>Confirm Password</Text>
                                     <TextInput
@@ -218,11 +253,13 @@ export default function SignUpPage() {
                                         onChangeText={setConfirmPassword}
                                         secureTextEntry
                                         autoCapitalize="none"
+                                        autoCorrect={false}
+                                        autoComplete="off"
+                                        textContentType="none"
                                         editable={!isLoading}
                                     />
                                 </View>
 
-                                {/* Terms and Conditions */}
                                 <TouchableOpacity
                                     style={tw`flex-row items-center mb-6`}
                                     onPress={() => setAgreeToTerms(!agreeToTerms)}
@@ -246,7 +283,6 @@ export default function SignUpPage() {
                                     </Text>
                                 </TouchableOpacity>
 
-                                {/* Sign Up Button */}
                                 {isLoading ? (
                                     <View style={tw`bg-purple-600 py-4 rounded-lg`}>
                                         <ActivityIndicator color="white" />
@@ -262,7 +298,6 @@ export default function SignUpPage() {
                                     </Button>
                                 )}
 
-                                {/* Sign In Link */}
                                 <View style={tw`mt-6 flex-row justify-center`}>
                                     <Text style={tw`text-gray-400`}>
                                         Already have an account?{' '}

@@ -1,4 +1,3 @@
-// screens/BarberOnboardingPage.tsx
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -18,38 +17,25 @@ import tw from 'twrnc';
 import { RootStackParamList, Service } from '../types/types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { 
-    Building, 
-    Scissors, 
-    CreditCard, 
-    CheckCircle, 
-    AlertCircle, 
-    Loader2 
-} from 'lucide-react-native';
+import Icon from 'react-native-vector-icons/Feather';
 
 type BarberOnboardingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BarberOnboarding'>;
 
 const steps = [
     {
         id: 'business',
-        title: 'Business Information',
-        description: 'Tell us about your business',
-        icon: Building,
-        required: ['businessName', 'phone', 'address', 'city', 'state', 'zipCode', 'bio']
+        title: 'Business Info',
+        subtitle: 'Tell us about you',
     },
     {
         id: 'services',
-        title: 'Services & Pricing',
-        description: 'Set up your services and pricing',
-        icon: Scissors,
-        required: ['services']
+        title: 'Services',
+        subtitle: 'What you offer',
     },
     {
         id: 'stripe',
-        title: 'Payment Setup',
-        description: 'Connect your Stripe account to receive payments',
-        icon: CreditCard,
-        required: ['stripeConnected']
+        title: 'Payments',
+        subtitle: 'Connect Stripe',
     },
 ];
 
@@ -66,19 +52,12 @@ interface FormData {
     stripeConnected: boolean;
 }
 
-interface ValidationErrors {
-    [key: string]: string;
-}
-
 export default function BarberOnboardingPage() {
     const navigation = useNavigation<BarberOnboardingNavigationProp>();
-    const { user } = useAuth();
+    const { user, userProfile } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [isRouterReady, setIsRouterReady] = useState(false);
-    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [stripeStatus, setStripeStatus] = useState<string | null>(null);
-    const [onboardingComplete, setOnboardingComplete] = useState(false);
     const [initialDataLoading, setInitialDataLoading] = useState(true);
 
     const [formData, setFormData] = useState<FormData>({
@@ -90,43 +69,30 @@ export default function BarberOnboardingPage() {
         zipCode: '',
         bio: '',
         specialties: '',
-        services: [],
+        services: [
+            { name: 'Haircut', price: 30, duration: 30 },
+            { name: 'Beard Trim', price: 20, duration: 20 },
+        ],
         stripeConnected: false
     });
 
-    useEffect(() => {
-        setIsRouterReady(true);
-    }, []);
-
-    // Prefill form with existing data
     useEffect(() => {
         const fetchProfileData = async () => {
             if (!user) return;
             
             try {
-                // Fetch barber data
-                const { data: barber, error: barberError } = await supabase
+                const { data: barber } = await supabase
                     .from('barbers')
                     .select('id, business_name, bio, specialties, stripe_account_status, stripe_account_id')
                     .eq('user_id', user.id)
                     .single();
 
-                if (barberError && barberError.code !== 'PGRST116') {
-                    console.error('Error fetching barber data:', barberError);
-                }
-
-                // Fetch profile data
-                const { data: profile, error: profileError } = await supabase
+                const { data: profile } = await supabase
                     .from('profiles')
                     .select('phone, location')
                     .eq('id', user.id)
                     .single();
 
-                if (profileError && profileError.code !== 'PGRST116') {
-                    console.error('Error fetching profile data:', profileError);
-                }
-
-                // Parse location
                 let address = '', city = '', state = '', zipCode = '';
                 if (profile?.location) {
                     const location = profile.location.trim();
@@ -139,15 +105,14 @@ export default function BarberOnboardingPage() {
                     }
                 }
 
-                // Fetch services for this barber
                 let services: Array<{ name: string; price: number; duration: number }> = [];
                 if (barber?.id) {
-                    const { data: existingServices, error: servicesError } = await supabase
+                    const { data: existingServices } = await supabase
                         .from('services')
                         .select('name, price, duration')
                         .eq('barber_id', barber.id);
 
-                    if (!servicesError && Array.isArray(existingServices)) {
+                    if (existingServices && existingServices.length > 0) {
                         services = existingServices.map(s => ({
                             name: s.name || '',
                             price: typeof s.price === 'number' ? s.price : 0,
@@ -166,15 +131,11 @@ export default function BarberOnboardingPage() {
                     city,
                     state,
                     zipCode,
-                    services,
+                    services: services.length > 0 ? services : prev.services,
                     stripeConnected: barber?.stripe_account_status === 'active'
                 }));
 
-                if (barber?.stripe_account_id) {
-                    setStripeStatus(barber?.stripe_account_status || null);
-                } else {
-                    setStripeStatus(null);
-                }
+                setStripeStatus(barber?.stripe_account_status || null);
             } catch (error) {
                 console.error('Error fetching profile data:', error);
             } finally {
@@ -182,151 +143,69 @@ export default function BarberOnboardingPage() {
             }
         };
 
-        if (isRouterReady && user) {
+        if (user) {
             fetchProfileData();
         }
-    }, [isRouterReady, user]);
-
-    // Check if user is a barber and onboarding is incomplete
-    useEffect(() => {
-        if (isRouterReady && user) {
-            if (user.user_metadata?.role !== 'barber') {
-                navigation.navigate('FindBarber');
-                return;
-            }
-
-            // Check if onboarding is already complete
-            const checkOnboarding = async () => {
-                try {
-                    const { data: barber } = await supabase
-                        .from('barbers')
-                        .select('business_name, bio, specialties')
-                        .eq('user_id', user.id)
-                        .single();
-
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('phone, location')
-                        .eq('id', user.id)
-                        .single();
-
-                    const hasBusinessInfo = barber?.business_name && barber?.bio && barber?.specialties && barber.specialties.length > 0;
-                    const hasContactInfo = profile?.phone && profile?.location;
-
-                    if (hasBusinessInfo && hasContactInfo) {
-                        setOnboardingComplete(true);
-                    } else {
-                        setOnboardingComplete(false);
-                    }
-                } catch (error) {
-                    console.error('Error checking onboarding status:', error);
-                }
-            };
-
-            checkOnboarding();
-        }
-    }, [isRouterReady, user, navigation]);
+    }, [user]);
 
     const validateStep = (stepIndex: number): boolean => {
-        const errors: ValidationErrors = {};
-
         if (stepIndex === 0) {
-            // Business Information validation
-            if (!formData.businessName.trim()) errors.businessName = 'Business name is required';
-            if (!formData.phone.trim()) errors.phone = 'Phone number is required';
-            if (!formData.address.trim()) errors.address = 'Address is required';
-            if (!formData.city.trim()) errors.city = 'City is required';
-            if (!formData.state.trim()) errors.state = 'State is required';
-            if (!formData.zipCode.trim()) errors.zipCode = 'ZIP code is required';
-            if (!formData.bio.trim()) errors.bio = 'Bio is required';
+            if (!formData.businessName.trim() || !formData.phone.trim() || 
+                !formData.address.trim() || !formData.city.trim() || 
+                !formData.state.trim() || !formData.zipCode.trim() || 
+                !formData.bio.trim()) {
+                Alert.alert('Missing Information', 'Please fill in all required fields');
+                return false;
+            }
             
-            // Phone validation
             const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-            if (formData.phone && !phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
-                errors.phone = 'Please enter a valid phone number';
+            if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+                Alert.alert('Invalid Phone', 'Please enter a valid phone number');
+                return false;
             }
 
-            // ZIP code validation
             const zipRegex = /^\d{5}(-\d{4})?$/;
-            if (formData.zipCode && !zipRegex.test(formData.zipCode)) {
-                errors.zipCode = 'Please enter a valid ZIP code';
+            if (!zipRegex.test(formData.zipCode)) {
+                Alert.alert('Invalid ZIP', 'Please enter a valid ZIP code');
+                return false;
             }
         }
 
         if (stepIndex === 1) {
-            // Services validation
             if (formData.services.length === 0) {
-                errors.services = 'At least one service is required';
-            } else {
-                formData.services.forEach((service, index) => {
-                    if (!service.name.trim()) {
-                        errors[`service-${index}-name`] = 'Service name is required';
-                    }
-                    if (!service.price || service.price <= 0) {
-                        errors[`service-${index}-price`] = 'Valid price is required';
-                    }
-                    if (!service.duration || service.duration < 15) {
-                        errors[`service-${index}-duration`] = 'Duration must be at least 15 minutes';
-                    }
-                });
+                Alert.alert('No Services', 'Please add at least one service');
+                return false;
+            }
+            
+            for (const service of formData.services) {
+                if (!service.name.trim() || service.price <= 0 || service.duration < 15) {
+                    Alert.alert('Invalid Service', 'Please check all services have valid information');
+                    return false;
+                }
             }
         }
 
-        if (stepIndex === 2) {
-            // Stripe validation
-            if (!formData.stripeConnected) {
-                errors.stripeConnected = 'Stripe account must be connected';
-            }
+        if (stepIndex === 2 && !formData.stripeConnected) {
+            Alert.alert('Payment Setup Required', 'Please connect your Stripe account to receive payments');
+            return false;
         }
 
-        setValidationErrors(errors);
-        return Object.keys(errors).length === 0;
+        return true;
     };
 
-    const handleServiceChange = (index: number, field: string, value: string | number) => {
-        setFormData((prev) => ({
-            ...prev,
-            services: prev.services.map((service, i) =>
-                i === index ? { ...service, [field]: value } : service
-            ),
-        }));
-        
-        // Clear validation error when user starts typing
-        const errorKey = `service-${index}-${field}`;
-        if (validationErrors[errorKey]) {
-            setValidationErrors(prev => ({ ...prev, [errorKey]: '' }));
+    const handleNext = async () => {
+        if (!validateStep(currentStep)) return;
+
+        if (currentStep < steps.length - 1) {
+            setCurrentStep(currentStep + 1);
+        } else {
+            await handleSubmit();
         }
-    };
-
-    const addService = () => {
-        setFormData((prev) => ({
-            ...prev,
-            services: [...prev.services, { name: '', price: 0, duration: 30 }],
-        }));
-    };
-
-    const removeService = (index: number) => {
-        setFormData((prev) => ({
-            ...prev,
-            services: prev.services.filter((_, i) => i !== index),
-        }));
     };
 
     const handleSubmit = async () => {
-        if (!isRouterReady) {
-            console.log('Router not ready, waiting...');
-            return;
-        }
-
-        // Validate current step
-        if (!validateStep(currentStep)) {
-            Alert.alert('Validation Error', 'Please fix the errors before continuing.');
-            return;
-        }
-
         setLoading(true);
         try {
-            // Update business profile
             const { error: barberError } = await supabase
                 .from('barbers')
                 .upsert({
@@ -339,7 +218,6 @@ export default function BarberOnboardingPage() {
 
             if (barberError) throw barberError;
 
-            // Update phone and location in profiles table
             const { error: profileError } = await supabase
                 .from('profiles')
                 .update({
@@ -351,44 +229,39 @@ export default function BarberOnboardingPage() {
 
             if (profileError) throw profileError;
 
-            // Add services
             if (formData.services.length > 0 && user) {
-                const { data: barberRow, error: barberIdError } = await supabase
+                const { data: barberRow } = await supabase
                     .from('barbers')
                     .select('id')
                     .eq('user_id', user.id)
                     .single();
                 
-                if (barberIdError || !barberRow) throw barberIdError || new Error('No barber row found');
-                
-                const barberId = barberRow.id;
-                
-                // Delete existing services
-                await supabase.from('services').delete().eq('barber_id', barberId);
-                
-                // Insert new services
-                const { error: servicesError } = await supabase
-                    .from('services')
-                    .insert(
-                        formData.services.map(service => ({
-                            barber_id: barberId,
-                            name: service.name,
-                            price: service.price,
-                            duration: service.duration,
-                        }))
-                    );
-                
-                if (servicesError) throw servicesError;
+                if (barberRow) {
+                    await supabase.from('services').delete().eq('barber_id', barberRow.id);
+                    
+                    const { error: servicesError } = await supabase
+                        .from('services')
+                        .insert(
+                            formData.services.map(service => ({
+                                barber_id: barberRow.id,
+                                name: service.name,
+                                price: service.price,
+                                duration: service.duration,
+                            }))
+                        );
+                    
+                    if (servicesError) throw servicesError;
+                }
             }
 
-            Alert.alert('Success', 'Your business profile has been updated successfully.');
-
-            // Move to next step or complete
-            if (currentStep < steps.length - 1) {
-                setCurrentStep(currentStep + 1);
-            } else {
-                navigation.navigate('Settings' as any);
-            }
+            Alert.alert(
+                'Success!',
+                'Your barber profile is now complete.',
+                [{
+                    text: 'OK',
+                    onPress: () => navigation.navigate('Settings' as any)
+                }]
+            );
         } catch (error) {
             console.error('Error updating profile:', error);
             Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -398,33 +271,19 @@ export default function BarberOnboardingPage() {
     };
 
     const handleStripeConnect = async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            
-            const { data: barber, error: barberError } = await supabase
-                .from('barbers')
-                .select('id')
-                .eq('user_id', user?.id)
-                .single();
-                
-            if (barberError || !barber?.id) {
-                Alert.alert('Error', 'Could not find your barber profile. Please complete your business info first.');
-                return;
-            }
-
-            // In a real app, you would call your API to create Stripe account
             Alert.alert(
-                'Stripe Connect',
-                'This would redirect you to Stripe to complete your account setup. For now, we\'ll simulate the connection.',
+                'Connect Stripe',
+                'This will redirect you to Stripe to complete your account setup.',
                 [
+                    { text: 'Cancel', style: 'cancel' },
                     {
-                        text: 'OK',
+                        text: 'Continue',
                         onPress: async () => {
-                            // Simulate Stripe connection
                             setFormData(prev => ({ ...prev, stripeConnected: true }));
                             setStripeStatus('active');
                             
-                            // Update in database
                             await supabase
                                 .from('barbers')
                                 .update({
@@ -437,8 +296,7 @@ export default function BarberOnboardingPage() {
                 ]
             );
         } catch (error) {
-            console.error('Error creating Stripe account:', error);
-            Alert.alert('Error', 'Failed to create Stripe account. Please try again.');
+            Alert.alert('Error', 'Failed to connect Stripe account.');
         } finally {
             setLoading(false);
         }
@@ -448,327 +306,262 @@ export default function BarberOnboardingPage() {
         switch (currentStep) {
             case 0:
                 return (
-                    <View style={tw`px-5`}>
-                        <View style={tw`mb-4`}>
-                            <Text style={tw`text-gray-300 text-sm mb-2`}>Business Name *</Text>
-                            <TextInput
-                                style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg ${validationErrors.businessName ? 'border-2 border-red-500' : ''}`}
-                                value={formData.businessName}
-                                onChangeText={(text) => {
-                                    setFormData(prev => ({ ...prev, businessName: text }));
-                                    if (validationErrors.businessName) {
-                                        setValidationErrors(prev => ({ ...prev, businessName: '' }));
-                                    }
-                                }}
-                                placeholder="Enter your business name"
-                                placeholderTextColor="#6B7280"
-                            />
-                            {validationErrors.businessName && (
-                                <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors.businessName}</Text>
-                            )}
-                        </View>
-
-                        <View style={tw`mb-4`}>
-                            <Text style={tw`text-gray-300 text-sm mb-2`}>Phone Number *</Text>
-                            <TextInput
-                                style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg ${validationErrors.phone ? 'border-2 border-red-500' : ''}`}
-                                value={formData.phone}
-                                onChangeText={(text) => {
-                                    setFormData(prev => ({ ...prev, phone: text }));
-                                    if (validationErrors.phone) {
-                                        setValidationErrors(prev => ({ ...prev, phone: '' }));
-                                    }
-                                }}
-                                placeholder="(555) 123-4567"
-                                placeholderTextColor="#6B7280"
-                                keyboardType="phone-pad"
-                            />
-                            {validationErrors.phone && (
-                                <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors.phone}</Text>
-                            )}
-                        </View>
-
-                        <View style={tw`mb-4`}>
-                            <Text style={tw`text-gray-300 text-sm mb-2`}>Address *</Text>
-                            <TextInput
-                                style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg ${validationErrors.address ? 'border-2 border-red-500' : ''}`}
-                                value={formData.address}
-                                onChangeText={(text) => {
-                                    setFormData(prev => ({ ...prev, address: text }));
-                                    if (validationErrors.address) {
-                                        setValidationErrors(prev => ({ ...prev, address: '' }));
-                                    }
-                                }}
-                                placeholder="123 Main St"
-                                placeholderTextColor="#6B7280"
-                            />
-                            {validationErrors.address && (
-                                <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors.address}</Text>
-                            )}
-                        </View>
-
-                        <View style={tw`flex-row gap-3 mb-4`}>
-                            <View style={tw`flex-1`}>
-                                <Text style={tw`text-gray-300 text-sm mb-2`}>City *</Text>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <View style={tw`pb-20`}>
+                            <View style={tw`mb-6`}>
+                                <View style={tw`flex-row items-center mb-2`}>
+                                    <Icon name="briefcase" size={16} color="#9333ea" />
+                                    <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Business Name</Text>
+                                </View>
                                 <TextInput
-                                    style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg ${validationErrors.city ? 'border-2 border-red-500' : ''}`}
-                                    value={formData.city}
-                                    onChangeText={(text) => {
-                                        setFormData(prev => ({ ...prev, city: text }));
-                                        if (validationErrors.city) {
-                                            setValidationErrors(prev => ({ ...prev, city: '' }));
-                                        }
-                                    }}
-                                    placeholder="City"
+                                    style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                                    value={formData.businessName}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, businessName: text }))}
+                                    placeholder="Enter your business name"
                                     placeholderTextColor="#6B7280"
                                 />
-                                {validationErrors.city && (
-                                    <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors.city}</Text>
-                                )}
                             </View>
-                            <View style={tw`flex-1`}>
-                                <Text style={tw`text-gray-300 text-sm mb-2`}>State *</Text>
+
+                            <View style={tw`mb-6`}>
+                                <View style={tw`flex-row items-center mb-2`}>
+                                    <Icon name="phone" size={16} color="#9333ea" />
+                                    <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Phone Number</Text>
+                                </View>
                                 <TextInput
-                                    style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg ${validationErrors.state ? 'border-2 border-red-500' : ''}`}
-                                    value={formData.state}
-                                    onChangeText={(text) => {
-                                        setFormData(prev => ({ ...prev, state: text }));
-                                        if (validationErrors.state) {
-                                            setValidationErrors(prev => ({ ...prev, state: '' }));
-                                        }
-                                    }}
-                                    placeholder="State"
+                                    style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                                    value={formData.phone}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, phone: text }))}
+                                    placeholder="(555) 123-4567"
+                                    placeholderTextColor="#6B7280"
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
+
+                            <View style={tw`mb-6`}>
+                                <View style={tw`flex-row items-center mb-2`}>
+                                    <Icon name="map-pin" size={16} color="#9333ea" />
+                                    <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Address</Text>
+                                </View>
+                                <TextInput
+                                    style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base mb-3`, {lineHeight: 20}]}
+                                    value={formData.address}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
+                                    placeholder="123 Main Street"
                                     placeholderTextColor="#6B7280"
                                 />
-                                {validationErrors.state && (
-                                    <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors.state}</Text>
-                                )}
+                                
+                                <View style={tw`flex-row gap-3`}>
+                                    <TextInput
+                                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base flex-1`, {lineHeight: 20}]}
+                                        value={formData.city}
+                                        onChangeText={(text) => setFormData(prev => ({ ...prev, city: text }))}
+                                        placeholder="City"
+                                        placeholderTextColor="#6B7280"
+                                    />
+                                    <TextInput
+                                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base w-20`, {lineHeight: 20}]}
+                                        value={formData.state}
+                                        onChangeText={(text) => setFormData(prev => ({ ...prev, state: text }))}
+                                        placeholder="State"
+                                        placeholderTextColor="#6B7280"
+                                        maxLength={2}
+                                        autoCapitalize="characters"
+                                    />
+                                    <TextInput
+                                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base w-24`, {lineHeight: 20}]}
+                                        value={formData.zipCode}
+                                        onChangeText={(text) => setFormData(prev => ({ ...prev, zipCode: text }))}
+                                        placeholder="ZIP"
+                                        placeholderTextColor="#6B7280"
+                                        keyboardType="number-pad"
+                                        maxLength={5}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={tw`mb-6`}>
+                                <View style={tw`flex-row items-center mb-2`}>
+                                    <Icon name="file-text" size={16} color="#9333ea" />
+                                    <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Bio</Text>
+                                </View>
+                                <TextInput
+                                    style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base h-28`, {lineHeight: 20, textAlignVertical: 'top'}]}
+                                    value={formData.bio}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, bio: text }))}
+                                    placeholder="Tell clients about your experience..."
+                                    placeholderTextColor="#6B7280"
+                                    multiline
+                                />
+                            </View>
+
+                            <View style={tw`mb-6`}>
+                                <View style={tw`flex-row items-center mb-2`}>
+                                    <Icon name="scissors" size={16} color="#9333ea" />
+                                    <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Specialties</Text>
+                                </View>
+                                <TextInput
+                                    style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                                    value={formData.specialties}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, specialties: text }))}
+                                    placeholder="Fades, Beard Trims, Kids Cuts..."
+                                    placeholderTextColor="#6B7280"
+                                />
+                                <Text style={tw`text-gray-500 text-xs mt-1.5 ml-1`}>
+                                    Separate with commas
+                                </Text>
                             </View>
                         </View>
-
-                        <View style={tw`mb-4`}>
-                            <Text style={tw`text-gray-300 text-sm mb-2`}>ZIP Code *</Text>
-                            <TextInput
-                                style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg ${validationErrors.zipCode ? 'border-2 border-red-500' : ''}`}
-                                value={formData.zipCode}
-                                onChangeText={(text) => {
-                                    setFormData(prev => ({ ...prev, zipCode: text }));
-                                    if (validationErrors.zipCode) {
-                                        setValidationErrors(prev => ({ ...prev, zipCode: '' }));
-                                    }
-                                }}
-                                placeholder="12345"
-                                placeholderTextColor="#6B7280"
-                                keyboardType="numeric"
-                            />
-                            {validationErrors.zipCode && (
-                                <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors.zipCode}</Text>
-                            )}
-                        </View>
-
-                        <View style={tw`mb-4`}>
-                            <Text style={tw`text-gray-300 text-sm mb-2`}>Bio *</Text>
-                            <TextInput
-                                style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg ${validationErrors.bio ? 'border-2 border-red-500' : ''}`}
-                                value={formData.bio}
-                                onChangeText={(text) => {
-                                    setFormData(prev => ({ ...prev, bio: text }));
-                                    if (validationErrors.bio) {
-                                        setValidationErrors(prev => ({ ...prev, bio: '' }));
-                                    }
-                                }}
-                                placeholder="Tell us about your business, experience, and what makes you unique..."
-                                placeholderTextColor="#6B7280"
-                                multiline
-                                numberOfLines={4}
-                                textAlignVertical="top"
-                            />
-                            {validationErrors.bio && (
-                                <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors.bio}</Text>
-                            )}
-                        </View>
-
-                        <View style={tw`mb-4`}>
-                            <Text style={tw`text-gray-300 text-sm mb-2`}>Specialties</Text>
-                            <TextInput
-                                style={tw`bg-gray-800 text-white px-4 py-3 rounded-lg`}
-                                value={formData.specialties}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, specialties: text }))}
-                                placeholder="Haircuts, Beard Trims, Fades, etc. (comma-separated)"
-                                placeholderTextColor="#6B7280"
-                            />
-                            <Text style={tw`text-gray-500 text-sm mt-1`}>
-                                List your specialties to help clients find you
-                            </Text>
-                        </View>
-                    </View>
+                    </ScrollView>
                 );
 
             case 1:
                 return (
-                    <View style={tw`px-5`}>
-                        {validationErrors.services && (
-                            <View style={tw`bg-red-900/20 border border-red-500 rounded-lg p-3 mb-4 flex-row items-center`}>
-                                <AlertCircle size={16} color="#ef4444" />
-                                <Text style={tw`text-red-400 text-sm ml-2`}>{validationErrors.services}</Text>
-                            </View>
-                        )}
-                        
-                        {formData.services.length === 0 && (
-                            <View style={tw`bg-blue-900/20 border border-blue-500 rounded-lg p-3 mb-4 flex-row items-center`}>
-                                <AlertCircle size={16} color="#3b82f6" />
-                                <Text style={tw`text-blue-400 text-sm ml-2`}>
-                                    Add at least one service to get started. You can always add more later.
-                                </Text>
-                            </View>
-                        )}
-                        
-                        {formData.services.map((service, index) => (
-                            <View key={index} style={tw`bg-gray-800 rounded-lg p-4 mb-3`}>
-                                <View style={tw`mb-3`}>
-                                    <Text style={tw`text-gray-300 text-sm mb-2`}>Service Name *</Text>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <View style={tw`pb-20`}>
+                            <TouchableOpacity
+                                onPress={() => setFormData(prev => ({ 
+                                    ...prev, 
+                                    services: [...prev.services, { name: '', price: 0, duration: 30 }]
+                                }))}
+                                style={tw`bg-purple-600 py-3 rounded-xl mb-4`}
+                            >
+                                <Text style={tw`text-white text-center font-medium`}>+ Add Service</Text>
+                            </TouchableOpacity>
+
+                            {formData.services.map((service, index) => (
+                                <View key={index} style={tw`bg-gray-800 rounded-xl p-4 mb-3`}>
                                     <TextInput
-                                        style={tw`bg-gray-700 text-white px-4 py-3 rounded-lg ${validationErrors[`service-${index}-name`] ? 'border-2 border-red-500' : ''}`}
+                                        style={[tw`text-white text-base font-medium mb-3 bg-gray-900 px-3 py-2 rounded-lg`, {lineHeight: 20}]}
                                         value={service.name}
-                                        onChangeText={(text) => handleServiceChange(index, 'name', text)}
-                                        placeholder="e.g., Haircut"
-                                        placeholderTextColor="#6B7280"
+                                        onChangeText={(text) => {
+                                            const newServices = [...formData.services];
+                                            newServices[index].name = text;
+                                            setFormData(prev => ({ ...prev, services: newServices }));
+                                        }}
+                                        placeholder="Service name"
+                                        placeholderTextColor="#9CA3AF"
                                     />
-                                    {validationErrors[`service-${index}-name`] && (
-                                        <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors[`service-${index}-name`]}</Text>
-                                    )}
-                                </View>
-
-                                <View style={tw`flex-row gap-3 mb-3`}>
-                                    <View style={tw`flex-1`}>
-                                        <Text style={tw`text-gray-300 text-sm mb-2`}>Price ($) *</Text>
-                                        <TextInput
-                                            style={tw`bg-gray-700 text-white px-4 py-3 rounded-lg ${validationErrors[`service-${index}-price`] ? 'border-2 border-red-500' : ''}`}
-                                            value={service.price.toString()}
-                                            onChangeText={(text) => {
-                                                const val = text.replace(/[^0-9.]/g, '');
-                                                handleServiceChange(index, 'price', val === '' ? 0 : parseFloat(val));
+                                    
+                                    <View style={tw`flex-row items-center justify-between`}>
+                                        <View style={tw`flex-row items-center flex-1`}>
+                                            <Icon name="dollar-sign" size={16} color="#9CA3AF" />
+                                            <TextInput
+                                                style={[tw`text-white text-base ml-1 w-16 bg-gray-900 px-2 py-1.5 rounded text-center`, {lineHeight: 20}]}
+                                                value={service.price.toString()}
+                                                onChangeText={(text) => {
+                                                    const newServices = [...formData.services];
+                                                    newServices[index].price = parseInt(text) || 0;
+                                                    setFormData(prev => ({ ...prev, services: newServices }));
+                                                }}
+                                                keyboardType="numeric"
+                                                placeholder="0"
+                                                placeholderTextColor="#9CA3AF"
+                                            />
+                                        </View>
+                                        
+                                        <View style={tw`flex-row items-center flex-1`}>
+                                            <Icon name="clock" size={16} color="#9CA3AF" />
+                                            <TextInput
+                                                style={[tw`text-white text-base ml-1 w-12 text-center bg-gray-900 px-2 py-1.5 rounded`, {lineHeight: 20}]}
+                                                value={service.duration.toString()}
+                                                onChangeText={(text) => {
+                                                    const newServices = [...formData.services];
+                                                    newServices[index].duration = parseInt(text) || 30;
+                                                    setFormData(prev => ({ ...prev, services: newServices }));
+                                                }}
+                                                keyboardType="numeric"
+                                                placeholder="30"
+                                                placeholderTextColor="#9CA3AF"
+                                            />
+                                            <Text style={tw`text-gray-400 ml-1`}>min</Text>
+                                        </View>
+                                        
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                const newServices = formData.services.filter((_, i) => i !== index);
+                                                setFormData(prev => ({ ...prev, services: newServices }));
                                             }}
-                                            placeholder="25.00"
-                                            placeholderTextColor="#6B7280"
-                                            keyboardType="decimal-pad"
-                                        />
-                                        {validationErrors[`service-${index}-price`] && (
-                                            <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors[`service-${index}-price`]}</Text>
-                                        )}
-                                    </View>
-                                    <View style={tw`flex-1`}>
-                                        <Text style={tw`text-gray-300 text-sm mb-2`}>Duration (min) *</Text>
-                                        <TextInput
-                                            style={tw`bg-gray-700 text-white px-4 py-3 rounded-lg ${validationErrors[`service-${index}-duration`] ? 'border-2 border-red-500' : ''}`}
-                                            value={service.duration.toString()}
-                                            onChangeText={(text) => {
-                                                const val = text.replace(/[^0-9]/g, '');
-                                                handleServiceChange(index, 'duration', val === '' ? 30 : parseInt(val));
-                                            }}
-                                            placeholder="30"
-                                            placeholderTextColor="#6B7280"
-                                            keyboardType="numeric"
-                                        />
-                                        {validationErrors[`service-${index}-duration`] && (
-                                            <Text style={tw`text-red-500 text-sm mt-1`}>{validationErrors[`service-${index}-duration`]}</Text>
-                                        )}
+                                            style={tw`ml-4`}
+                                        >
+                                            <Text style={tw`text-red-400 text-sm`}>Remove</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
-
-                                <TouchableOpacity
-                                    onPress={() => removeService(index)}
-                                    style={tw`bg-red-600 py-2 px-4 rounded-lg`}
-                                >
-                                    <Text style={tw`text-white text-center text-sm font-medium`}>Remove Service</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-
-                        <TouchableOpacity
-                            onPress={addService}
-                            style={tw`border border-gray-600 py-3 px-4 rounded-lg`}
-                        >
-                            <Text style={tw`text-white text-center font-medium`}>Add Service</Text>
-                        </TouchableOpacity>
-                    </View>
+                            ))}
+                        </View>
+                    </ScrollView>
                 );
 
             case 2:
                 return (
-                    <View style={tw`px-5`}>
-                        {stripeStatus === 'active' && formData.stripeConnected ? (
-                            <View style={tw`bg-green-900/20 border border-green-500 rounded-lg p-4 mb-6 flex-row items-center`}>
-                                <CheckCircle size={20} color="#10b981" />
-                                <Text style={tw`text-green-400 ml-3 flex-1`}>
-                                    Your Stripe account is connected and ready to accept payments!
-                                </Text>
-                            </View>
-                        ) : stripeStatus === 'pending' ? (
-                            <View style={tw`bg-yellow-900/20 border border-yellow-500 rounded-lg p-4 mb-6 flex-row items-center`}>
-                                <AlertCircle size={20} color="#f59e0b" />
-                                <Text style={tw`text-yellow-400 ml-3 flex-1`}>
-                                    Your Stripe account is being reviewed. This usually takes 1-2 business days.
-                                </Text>
+                    <View style={tw`flex-1 justify-center px-2`}>
+                        {formData.stripeConnected ? (
+                            <View style={tw`bg-green-900/20 border border-green-600 rounded-2xl p-6`}>
+                                <View style={tw`items-center`}>
+                                    <Icon name="check-circle" size={48} color="#10b981" />
+                                    <Text style={tw`text-green-400 text-lg font-semibold mt-4`}>
+                                        Stripe Connected!
+                                    </Text>
+                                    <Text style={tw`text-green-300 text-center mt-2`}>
+                                        You're all set to receive payments.
+                                    </Text>
+                                </View>
                             </View>
                         ) : (
-                            <>
-                                <Text style={tw`text-gray-300 mb-4`}>
-                                    To receive payments, you need to connect your Stripe account. This will allow you to:
-                                </Text>
-                                
-                                <View style={tw`mb-6`}>
-                                    <Text style={tw`text-gray-300 mb-2`}>• Accept credit card payments securely</Text>
-                                    <Text style={tw`text-gray-300 mb-2`}>• Receive payments directly to your bank account</Text>
-                                    <Text style={tw`text-gray-300 mb-2`}>• Manage your earnings and payouts</Text>
-                                    <Text style={tw`text-gray-300`}>• Get detailed payment reports</Text>
+                            <View>
+                                <View style={tw`bg-gray-800 rounded-2xl p-6 mb-4`}>
+                                    <Icon name="credit-card" size={40} color="#9333ea" style={tw`mb-4 self-center`} />
+                                    <Text style={tw`text-white text-lg font-semibold text-center mb-2`}>
+                                        Connect Stripe Account
+                                    </Text>
+                                    <Text style={tw`text-gray-400 text-center mb-6`}>
+                                        Accept payments securely with Stripe
+                                    </Text>
+                                    
+                                    <View style={tw`space-y-2 mb-6`}>
+                                        <View style={tw`flex-row items-center`}>
+                                            <Icon name="check" size={16} color="#10b981" />
+                                            <Text style={tw`text-gray-300 ml-2`}>Secure payment processing</Text>
+                                        </View>
+                                        <View style={tw`flex-row items-center mt-2`}>
+                                            <Icon name="check" size={16} color="#10b981" />
+                                            <Text style={tw`text-gray-300 ml-2`}>Direct bank deposits</Text>
+                                        </View>
+                                        <View style={tw`flex-row items-center mt-2`}>
+                                            <Icon name="check" size={16} color="#10b981" />
+                                            <Text style={tw`text-gray-300 ml-2`}>Transaction reporting</Text>
+                                        </View>
+                                    </View>
+                                    
+                                    <TouchableOpacity
+                                        onPress={handleStripeConnect}
+                                        style={tw`bg-purple-600 py-4 rounded-xl`}
+                                        disabled={loading}
+                                    >
+                                        {loading ? (
+                                            <ActivityIndicator color="white" />
+                                        ) : (
+                                            <Text style={tw`text-white text-center font-semibold`}>
+                                                Connect Stripe
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
                                 
-                                {validationErrors.stripeConnected && (
-                                    <View style={tw`bg-red-900/20 border border-red-500 rounded-lg p-3 mb-4 flex-row items-center`}>
-                                        <AlertCircle size={16} color="#ef4444" />
-                                        <Text style={tw`text-red-400 text-sm ml-2`}>{validationErrors.stripeConnected}</Text>
-                                    </View>
-                                )}
-                                
-                                <TouchableOpacity
-                                    onPress={handleStripeConnect}
-                                    disabled={loading}
-                                    style={tw`bg-purple-600 py-4 rounded-lg mb-4`}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="white" />
-                                    ) : (
-                                        <Text style={tw`text-white text-center font-semibold text-base`}>
-                                            Connect Stripe Account
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
-                                
                                 <Text style={tw`text-gray-500 text-xs text-center`}>
-                                    You'll be redirected to Stripe to complete the setup. This process is secure and takes about 5 minutes.
+                                    Setup takes about 5 minutes
                                 </Text>
-                            </>
+                            </View>
                         )}
                     </View>
                 );
-
-            default:
-                return null;
         }
     };
 
-    const getProgressPercentage = () => {
-        return ((currentStep + 1) / steps.length) * 100;
-    };
-
-    if (!isRouterReady || initialDataLoading) {
+    if (initialDataLoading) {
         return (
-            <SafeAreaView style={tw`flex-1 bg-gray-900`}>
-                <View style={tw`flex-1 items-center justify-center`}>
-                    <ActivityIndicator size="large" color="#9333ea" />
-                    <Text style={tw`text-gray-400 mt-4`}>Loading...</Text>
-                </View>
+            <SafeAreaView style={tw`flex-1 bg-gray-900 justify-center items-center`}>
+                <ActivityIndicator size="large" color="#9333ea" />
             </SafeAreaView>
         );
     }
@@ -779,132 +572,96 @@ export default function BarberOnboardingPage() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={tw`flex-1`}
             >
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    <View style={tw`px-5 py-6`}>
-                        {/* Header */}
-                        <View style={tw`mb-6`}>
-                            <Text style={tw`text-white text-3xl font-bold text-center`}>
-                                Complete Your Profile
-                            </Text>
-                            <Text style={tw`text-gray-400 text-center mt-2`}>
-                                {steps[currentStep].description}
-                            </Text>
-                        </View>
-
-                        {/* Progress Bar */}
-                        <View style={tw`mb-6`}>
-                            <View style={tw`flex-row justify-between mb-2`}>
-                                <Text style={tw`text-gray-400 text-sm`}>
-                                    Step {currentStep + 1} of {steps.length}
-                                </Text>
-                                <Text style={tw`text-gray-400 text-sm`}>
-                                    {Math.round(getProgressPercentage())}% Complete
-                                </Text>
-                            </View>
-                            <View style={tw`h-2 bg-gray-700 rounded-full overflow-hidden`}>
-                                <View 
-                                    style={[
-                                        tw`h-full bg-purple-600`,
-                                        { width: `${getProgressPercentage()}%` }
-                                    ]} 
-                                />
-                            </View>
-                        </View>
-
-                        {/* Step Indicators */}
-                        <View style={tw`flex-row justify-between mb-8`}>
-                            {steps.map((step, index) => {
-                                const Icon = step.icon;
-                                return (
-                                    <View
-                                        key={step.id}
-                                        style={tw`flex-1 items-center`}
-                                    >
-                                        <View
-                                            style={tw`w-12 h-12 rounded-full items-center justify-center mb-2 ${
-                                                index <= currentStep ? 'bg-purple-600' : 'bg-gray-700'
-                                            }`}
-                                        >
-                                            <Icon 
-                                                size={24} 
-                                                color={index <= currentStep ? '#ffffff' : '#9ca3af'} 
-                                            />
+                <View style={tw`flex-1`}>
+                                            <View style={tw`px-6 pt-6`}>
+                        <Text style={tw`text-white text-2xl font-bold text-center`}>
+                            Complete Your Profile
+                        </Text>
+                        
+                        <View style={tw`mt-8 mb-10`}>
+                            <View style={tw`flex-row justify-center items-center`}>
+                                {steps.map((step, index) => (
+                                    <View key={step.id} style={tw`items-center`}>
+                                        <View style={tw`flex-row items-center`}>
+                                            {index > 0 && (
+                                                <View style={tw`h-0.5 w-12 ${
+                                                    index <= currentStep ? 'bg-purple-600' : 'bg-gray-700'
+                                                }`} />
+                                            )}
+                                            <View style={tw`w-10 h-10 rounded-full items-center justify-center ${
+                                                index <= currentStep ? 'bg-purple-600' : 'bg-gray-800'
+                                            }`}>
+                                                {index < currentStep ? (
+                                                    <Icon name="check" size={20} color="white" />
+                                                ) : (
+                                                    <Text style={tw`text-white font-bold`}>{index + 1}</Text>
+                                                )}
+                                            </View>
+                                            {index < steps.length - 1 && (
+                                                <View style={tw`h-0.5 w-12 ${
+                                                    index < currentStep ? 'bg-purple-600' : 'bg-gray-700'
+                                                }`} />
+                                            )}
                                         </View>
-                                        <Text style={tw`text-xs ${
-                                            index <= currentStep ? 'text-purple-400' : 'text-gray-500'
-                                        } text-center`}>
-                                            {step.title.split(' ')[0]}
-                                        </Text>
                                     </View>
-                                );
-                            })}
-                        </View>
-
-                        {/* Step Content */}
-                        <View style={tw`bg-gray-800 rounded-2xl p-6 mb-6`}>
-                            <View style={tw`flex-row items-center mb-4`}>
-                                {(() => {
-                                    const Icon = steps[currentStep].icon;
-                                    return <Icon size={20} color="#9333ea" />;
-                                })()}
-                                <Text style={tw`text-white text-lg font-semibold ml-2`}>
-                                    {steps[currentStep].title}
+                                ))}
+                            </View>
+                            <View style={tw`flex-row justify-between px-2 mt-2`}>
+                                <Text style={tw`text-xs ${currentStep >= 0 ? 'text-purple-400' : 'text-gray-500'} w-20 text-center`}>
+                                    Business Info
+                                </Text>
+                                <Text style={tw`text-xs ${currentStep >= 1 ? 'text-purple-400' : 'text-gray-500'} w-20 text-center`}>
+                                    Services
+                                </Text>
+                                <Text style={tw`text-xs ${currentStep >= 2 ? 'text-purple-400' : 'text-gray-500'} w-20 text-center`}>
+                                    Payments
                                 </Text>
                             </View>
-                            {renderStep()}
                         </View>
+                        
+                        <Text style={tw`text-gray-400 text-center mb-6`}>
+                            {steps[currentStep].subtitle}
+                        </Text>
+                    </View>
 
-                        {/* Navigation Buttons */}
+                    <View style={tw`flex-1 px-6`}>
+                        {renderStep()}
+                    </View>
+
+                    <View style={tw`px-6 pb-6 pt-4 bg-gray-900 border-t border-gray-800`}>
                         <View style={tw`flex-row gap-3`}>
                             {currentStep > 0 && (
                                 <TouchableOpacity
-                                    style={tw`flex-1 border border-gray-600 py-3 rounded-lg`}
                                     onPress={() => setCurrentStep(currentStep - 1)}
+                                    style={tw`flex-1 py-4 rounded-xl border border-gray-700 flex-row justify-center items-center`}
                                     disabled={loading}
                                 >
-                                    <Text style={tw`text-white text-center font-medium`}>Previous</Text>
+                                    <Icon name="chevron-left" size={20} color="white" />
+                                    <Text style={tw`text-white font-medium ml-1`}>Back</Text>
                                 </TouchableOpacity>
                             )}
                             
                             <TouchableOpacity
-                                style={tw`flex-1 bg-purple-600 py-3 rounded-lg ${
-                                    loading || (currentStep === 2 && !formData.stripeConnected) ? 'opacity-50' : ''
+                                onPress={handleNext}
+                                style={tw`flex-1 bg-purple-600 py-4 rounded-xl flex-row justify-center items-center ${
+                                    loading ? 'opacity-50' : ''
                                 }`}
-                                onPress={handleSubmit}
-                                disabled={loading || (currentStep === 2 && !formData.stripeConnected)}
+                                disabled={loading}
                             >
                                 {loading ? (
                                     <ActivityIndicator color="white" />
                                 ) : (
-                                    <Text style={tw`text-white text-center font-semibold`}>
-                                        {currentStep < steps.length - 1 ? 'Next' : 'Complete Setup'}
-                                    </Text>
+                                    <>
+                                        <Text style={tw`text-white font-semibold mr-1`}>
+                                            {currentStep === steps.length - 1 ? 'Complete' : 'Next'}
+                                        </Text>
+                                        <Icon name="chevron-right" size={20} color="white" />
+                                    </>
                                 )}
                             </TouchableOpacity>
                         </View>
-
-                        {/* Completion Card */}
-                        {onboardingComplete && (
-                            <View style={tw`bg-green-900/20 border border-green-500 rounded-2xl p-6 mt-6`}>
-                                <View style={tw`items-center`}>
-                                    <CheckCircle size={48} color="#10b981" />
-                                    <Text style={tw`text-green-400 text-lg font-semibold mt-3`}>
-                                        Onboarding Complete!
-                                    </Text>
-                                    <Text style={tw`text-green-300 text-sm text-center mt-2`}>
-                                        Your profile is now complete. You can continue to settings to manage your account.
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={() => navigation.navigate('Settings' as any)}
-                                        style={tw`bg-green-600 px-6 py-3 rounded-lg mt-4`}
-                                    >
-                                        <Text style={tw`text-white font-semibold`}>Go to Settings</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
                     </View>
-                </ScrollView>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

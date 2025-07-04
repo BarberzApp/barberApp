@@ -9,6 +9,8 @@ import SignUpPage from '../pages/SignUpPage';
 import FindBarberPage from '../pages/FindBarberPage';
 import BookingCalendarPage from '../pages/BookingCalendarPage';
 import BarberOnboardingPage from '../pages/BarberOnboardingPage';
+import EmailConfirmationScreen from '../pages/EmailConfirmationScreen';
+import SettingsPage from '../pages/SettingsPage';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -22,6 +24,8 @@ export const AppNavigator = () => {
         <Stack.Screen name="FindBarber" component={FindBarberPage} options={{ headerShown: false }}/>
         <Stack.Screen name="BookingCalendar" component={BookingCalendarPage} options={{ headerShown: false }}/>
         <Stack.Screen name="BarberOnboarding" component={BarberOnboardingPage} options={{ headerShown: false }}/>
+        <Stack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Settings" component={SettingsPage} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

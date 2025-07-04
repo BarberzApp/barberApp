@@ -22,7 +22,11 @@ export type RootStackParamList = {
     barberName: string;
     service: Service;
     date: string;
-  };  
+  };
+  EmailConfirmation: {
+    email: string;
+    userType: 'client' | 'barber';
+  };
 };
 
 export type UserRole = 'client' | 'barber' | 'admin';
