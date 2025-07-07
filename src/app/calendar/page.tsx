@@ -10,8 +10,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/shared/lib/supabase';
-import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { useAuth } from '@/shared/hooks/use-auth-zustand';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
 
 interface CalendarEvent {
   id: string;
@@ -140,119 +140,130 @@ export default function BarberCalendar() {
 
   const customStyles = `
     .barber-calendar {
-      background: hsl(var(--background));
-      color: hsl(var(--foreground));
+      background: transparent;
+      color: white;
     }
     .barber-calendar .fc {
-      background: hsl(var(--card));
-      border-radius: 12px;
+      background: transparent;
+      border-radius: 0;
       overflow: hidden;
-      border: 1px solid hsl(var(--border));
+      border: none;
     }
     .barber-calendar .fc-header-toolbar {
-      background: hsl(var(--primary));
-      padding: 1.5rem;
-      border-bottom: 1px solid hsl(var(--border));
+      background: transparent;
+      padding: 0;
+      border-bottom: none;
     }
     .barber-calendar .fc-toolbar-title {
-      color: hsl(var(--primary-foreground));
+      color: white;
       font-size: 1.5rem;
       font-weight: 600;
     }
     .barber-calendar .fc-button {
-      background: hsl(var(--primary)) !important;
-      border: none !important;
-      color: hsl(var(--primary-foreground)) !important;
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      font-weight: 500;
-      transition: all 0.2s ease;
+      background: rgba(255, 193, 7, 0.2) !important;
+      border: 1px solid rgba(255, 193, 7, 0.3) !important;
+      color: #ffc107 !important;
+      border-radius: 12px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
     }
     .barber-calendar .fc-button:hover {
-      background: hsl(var(--primary) / 0.9) !important;
-      transform: translateY(-1px);
+      background: rgba(255, 193, 7, 0.3) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
     }
     .barber-calendar .fc-button-active {
-      background: hsl(var(--primary)) !important;
-      box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+      background: linear-gradient(135deg, #ffc107, #ff8c00) !important;
+      color: white !important;
+      box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
     }
     .barber-calendar .fc-col-header {
-      background: hsl(var(--muted));
-      border-bottom: 1px solid hsl(var(--border));
+      background: rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
     }
     .barber-calendar .fc-col-header-cell {
-      color: hsl(var(--foreground));
+      color: white;
       font-weight: 600;
-      padding: 1rem 0.5rem;
+      padding: 1.5rem 0.5rem;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .barber-calendar .fc-timegrid .fc-scrollgrid .fc-scrollgrid-section-header .fc-col-header-cell:first-child {
-      border-right: 1px solid hsl(var(--border)) !important;
-      border-bottom: 1px solid hsl(var(--border)) !important;
-      background: hsl(var(--muted)) !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+      background: rgba(255, 255, 255, 0.1) !important;
     }
     .barber-calendar .fc-timegrid .fc-scrollgrid .fc-scrollgrid-section-body .fc-timegrid-axis {
-      border-right: 1px solid hsl(var(--border)) !important;
-      background: hsl(var(--muted)) !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+      background: rgba(255, 255, 255, 0.1) !important;
     }
     .barber-calendar .fc-timegrid .fc-scrollgrid .fc-scrollgrid-section-body .fc-timegrid-axis-cushion {
-      border-right: 1px solid hsl(var(--border)) !important;
-      background: hsl(var(--muted)) !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+      background: rgba(255, 255, 255, 0.1) !important;
     }
     .barber-calendar .fc-timegrid .fc-scrollgrid .fc-scrollgrid-section-body tr > td:first-child {
-      border-right: 1px solid hsl(var(--border)) !important;
-      background: hsl(var(--muted)) !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+      background: rgba(255, 255, 255, 0.1) !important;
     }
     .barber-calendar .fc-timegrid-slot-label {
-      color: hsl(var(--muted-foreground)) !important;
+      color: rgba(255, 255, 255, 0.8) !important;
       font-size: 0.875rem;
       font-weight: 500;
     }
     .barber-calendar .fc-timegrid-slot {
-      border-bottom: 1px solid hsl(var(--border)) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
       height: 60px;
     }
     .barber-calendar .fc-timegrid-slot-lane {
-      border-right: 1px solid hsl(var(--border)) !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
     .barber-calendar .fc-daygrid-day {
-      border-right: 1px solid hsl(var(--border)) !important;
-      border-bottom: 1px solid hsl(var(--border)) !important;
-      background: hsl(var(--card));
+      border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+      background: rgba(255, 255, 255, 0.05);
     }
     .barber-calendar .fc-day-today {
-      background: hsl(var(--primary) / 0.1) !important;
+      background: rgba(255, 193, 7, 0.2) !important;
+      border: 2px solid rgba(255, 193, 7, 0.5) !important;
     }
     .barber-calendar .fc-timegrid-now-indicator-line {
-      border-color: hsl(var(--primary)) !important;
-      border-width: 2px !important;
+      border-color: #ffc107 !important;
+      border-width: 3px !important;
+      box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
     }
     .barber-calendar .fc-timegrid-now-indicator-arrow {
-      border-color: hsl(var(--primary)) !important;
+      border-color: #ffc107 !important;
+      box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
     }
     .barber-calendar .fc-event {
-      border-radius: 8px !important;
-      border: 2px solid hsl(var(--primary)) !important;
-      background: hsl(var(--primary)) !important;
-      color: hsl(var(--primary-foreground)) !important;
-      font-weight: 500;
+      border-radius: 12px !important;
+      border: 2px solid rgba(255, 193, 7, 0.5) !important;
+      background: linear-gradient(135deg, #ffc107, #ff8c00) !important;
+      color: white !important;
+      font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
-      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
     }
     .barber-calendar .fc-event *,
     .barber-calendar .fc-event-main {
-      color: hsl(var(--primary-foreground)) !important;
+      color: white !important;
     }
     .barber-calendar .fc-event:hover {
-      opacity: 0.9;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px hsl(var(--primary) / 0.3);
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 35px rgba(255, 193, 7, 0.4);
+      border-color: rgba(255, 193, 7, 0.8) !important;
     }
     .barber-calendar .fc-scrollgrid {
-      border: 1px solid hsl(var(--border)) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
     }
     .barber-calendar .fc-scrollgrid-section > * {
-      border-color: hsl(var(--border)) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
     }
     .barber-calendar .fc-timegrid-event .fc-event-title,
     .barber-calendar .fc-timegrid-event .fc-event-main {
@@ -261,6 +272,41 @@ export default function BarberCalendar() {
       text-overflow: ellipsis !important;
       max-width: 100% !important;
       display: block !important;
+    }
+    .barber-calendar .fc-daygrid-day-number {
+      color: white !important;
+      font-weight: 600;
+    }
+    .barber-calendar .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+      color: #ffc107 !important;
+      font-weight: bold;
+    }
+    .barber-calendar .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
+      color: rgba(255, 255, 255, 0.5) !important;
+    }
+    /* Enhanced more link */
+    .barber-calendar .fc-more-link {
+      background: linear-gradient(90deg, #ffc107, #ff8c00);
+      color: white !important;
+      font-weight: bold;
+      border-radius: 9999px;
+      padding: 0.25em 1em;
+      box-shadow: 0 2px 8px rgba(255,193,7,0.25);
+      border: none;
+      font-size: 0.95em;
+      letter-spacing: 0.5px;
+      transition: box-shadow 0.2s, background 0.2s;
+      display: inline-block;
+      margin-top: 0.25em;
+      margin-bottom: 0.25em;
+      cursor: pointer;
+    }
+    .barber-calendar .fc-more-link:hover {
+      background: linear-gradient(90deg, #ff8c00, #ffc107);
+      box-shadow: 0 4px 16px rgba(255,193,7,0.35);
+      color: white !important;
+      text-decoration: none;
+      outline: none;
     }
   `;
 
@@ -282,99 +328,149 @@ export default function BarberCalendar() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-darkpurple via-background to-darkpurple/80">
       {mounted && <style>{customStyles}</style>}
-      <div className="container mx-auto max-w-7xl space-y-6 p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              Calendar
-            </h1>
-            <p className="text-muted-foreground">Manage your appointments and schedule</p>
+      <div className="container mx-auto max-w-7xl space-y-8 p-6">
+        {/* Enhanced Header */}
+        <div className="relative bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-3xl p-8 backdrop-blur-xl shadow-2xl overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-saffron/5 rounded-full -translate-y-16 translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-500/5 rounded-full translate-y-12 -translate-x-12"></div>
+          
+          <div className="relative flex items-center justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-saffron to-orange-500 rounded-2xl shadow-lg">
+                  <CalendarIcon className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-5xl font-bebas tracking-wide text-white drop-shadow-lg">Calendar</h1>
+                  <p className="text-saffron/90 font-medium text-lg">Manage your appointments and schedule</p>
+                </div>
+              </div>
+              
+              {/* Quick stats */}
+              <div className="flex items-center gap-6 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-saffron rounded-full animate-pulse"></div>
+                  <span className="text-white/80 font-medium">{events.length} Appointments</span>
           </div>
           <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                  <span className="text-white/80 font-medium">Active Schedule</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Enhanced Navigation */}
+            <div className="flex items-center gap-3">
             <Button 
-              variant="outline" 
+                variant="ghost" 
               size="icon" 
               onClick={() => calendarRef.current?.getApi().prev()}
-              className="hover:bg-muted"
+                className="h-12 w-12 bg-white/10 hover:bg-saffron/20 border border-white/20 text-saffron hover:text-white shadow-lg transition-all duration-200 hover:scale-105"
             >
-              <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-5 w-5" />
             </Button>
             <Button 
-              variant="outline" 
+                variant="ghost" 
               onClick={() => calendarRef.current?.getApi().today()}
-              className="hover:bg-muted"
+                className="h-12 bg-gradient-to-r from-saffron to-orange-500 text-white border-0 shadow-lg font-bold px-8 hover:from-saffron/90 hover:to-orange-500/90 transition-all duration-200 hover:scale-105"
             >
               Today
             </Button>
             <Button 
-              variant="outline" 
+                variant="ghost" 
               size="icon" 
               onClick={() => calendarRef.current?.getApi().next()}
-              className="hover:bg-muted"
+                className="h-12 w-12 bg-white/10 hover:bg-saffron/20 border border-white/20 text-saffron hover:text-white shadow-lg transition-all duration-200 hover:scale-105"
             >
-              <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-5 w-5" />
             </Button>
+            </div>
           </div>
         </div>
 
-        {/* View Toggle Buttons */}
-        <div className="flex items-center justify-center gap-2">
+        {/* Enhanced View Toggle Buttons */}
+        <div className="flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-2 shadow-xl">
+            <div className="flex items-center gap-1">
           <Button
-            variant="outline"
+                variant="ghost"
             onClick={() => handleViewChange('dayGridMonth')}
             className={cn(
-              "rounded-full transition-all px-6 py-2",
+                  "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
               view === 'dayGridMonth' 
-                ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
-                : 'hover:bg-muted'
+                    ? 'bg-gradient-to-r from-saffron to-orange-500 text-white border-saffron shadow-lg scale-105' 
+                    : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
             )}
           >
             Month
           </Button>
           <Button
-            variant="outline"
+                variant="ghost"
             onClick={() => handleViewChange('timeGridWeek')}
             className={cn(
-              "rounded-full transition-all px-6 py-2",
+                  "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
               view === 'timeGridWeek' 
-                ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
-                : 'hover:bg-muted'
+                    ? 'bg-gradient-to-r from-saffron to-orange-500 text-white border-saffron shadow-lg scale-105' 
+                    : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
             )}
           >
             Week
           </Button>
           <Button
-            variant="outline"
+                variant="ghost"
             onClick={() => handleViewChange('timeGridDay')}
             className={cn(
-              "rounded-full transition-all px-6 py-2",
+                  "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
               view === 'timeGridDay' 
-                ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
-                : 'hover:bg-muted'
+                    ? 'bg-gradient-to-r from-saffron to-orange-500 text-white border-saffron shadow-lg scale-105' 
+                    : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
             )}
           >
             Day
           </Button>
-        </div>
-
-        {/* Legend */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-primary"></div>
-              <span className="text-sm text-muted-foreground">Appointments</span>
             </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            <span className="font-semibold text-primary">Appointments</span>: All scheduled services and bookings.
+        </div>
+
+        {/* Enhanced Legend */}
+        <div className="bg-gradient-to-r from-white/10 to-white/5 border border-white/20 rounded-2xl p-6 backdrop-blur-xl shadow-xl">
+          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded-full bg-gradient-to-r from-saffron to-orange-500 shadow-lg animate-pulse"></div>
+                <span className="text-white font-semibold">Appointments</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded-full bg-green-400 shadow-lg"></div>
+                <span className="text-white/80 font-medium">Confirmed</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded-full bg-yellow-400 shadow-lg"></div>
+                <span className="text-white/80 font-medium">Pending</span>
+              </div>
+            </div>
+            
+            {/* Current view info */}
+            <div className="text-right">
+              <div className="text-saffron font-semibold text-lg">
+                {view === 'dayGridMonth' ? 'Monthly View' : view === 'timeGridWeek' ? 'Weekly View' : 'Daily View'}
+              </div>
+              <div className="text-white/60 text-sm">
+                {events.length} appointments scheduled
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Calendar */}
-        <Card className="overflow-hidden">
+        {/* Enhanced Calendar Container */}
+        <div className="relative">
+          {/* Calendar background decoration */}
+          <div className="absolute inset-0 bg-gradient-to-br from-saffron/5 to-orange-500/5 rounded-3xl blur-3xl"></div>
+          
+          <Card className="relative overflow-hidden bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl ring-1 ring-white/30">
           <CardContent className="p-0">
             <div className="barber-calendar">
               <div className="w-full" style={{ height: 700 }}>
@@ -408,16 +504,25 @@ export default function BarberCalendar() {
                     meridiem: 'short',
                     omitZeroMinute: true
                   }}
-                  eventContent={(eventInfo) => (
-                    <div className="p-2">
-                      <div className="font-semibold truncate text-sm">
-                        {eventInfo.event.title}
+                  eventContent={(eventInfo) => {
+                    const { serviceName, clientName } = eventInfo.event.extendedProps || {};
+                    return (
+                      <div className="p-3 relative flex flex-col gap-1">
+                        <div className="font-bold text-base text-white truncate drop-shadow">
+                          {serviceName || eventInfo.event.title}
+                        </div>
+                        <div className="text-xs text-white/80 font-medium truncate flex items-center gap-1">
+                          <User className="inline-block h-3 w-3 mr-1 text-saffron" />
+                          {clientName}
                       </div>
-                      <div className="text-xs opacity-90">
+                        <div className="flex items-center gap-1 text-xs text-white/70 font-semibold mt-1">
+                          <Clock className="inline-block h-3 w-3 text-saffron" />
                         {eventInfo.timeText}
+                        </div>
+                        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-white/20 to-transparent rounded-full"></div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  }}
                   datesSet={(dateInfo) => {
                     setView(dateInfo.view.type);
                     if (calendarRef.current) {
@@ -430,74 +535,113 @@ export default function BarberCalendar() {
           </CardContent>
         </Card>
       </div>
+      </div>
 
-      {/* Event Details Dialog */}
+      {/* Enhanced Event Details Dialog */}
       <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-primary" />
+        <DialogContent className="sm:max-w-lg bg-gradient-to-br from-white/10 to-white/5 border border-white/20 shadow-2xl rounded-3xl backdrop-blur-2xl ring-1 ring-white/30 overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-20 h-20 bg-saffron/5 rounded-full -translate-y-10 translate-x-10"></div>
+          <div className="absolute bottom-0 left-0 w-16 h-16 bg-orange-500/5 rounded-full translate-y-8 -translate-x-8"></div>
+          
+          <DialogHeader className="relative">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-br from-saffron to-orange-500 rounded-xl shadow-lg">
+                <CalendarIcon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-bebas tracking-wide text-white drop-shadow">
               Appointment Details
             </DialogTitle>
+                <DialogDescription className="text-white/70">
+                  View detailed information about this appointment
+            </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
+          
           {selectedEvent && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg">{selectedEvent.extendedProps.serviceName}</h3>
-                <p className="text-muted-foreground">{selectedEvent.title}</p>
+            <div className="relative space-y-6">
+              {/* Service Header */}
+              <div className="bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-xl text-white">{selectedEvent.extendedProps.serviceName}</h3>
+                    <p className="text-saffron/90 font-medium">{selectedEvent.title}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-saffron">${selectedEvent.extendedProps.price}</div>
+                    <div className="text-white/60 text-sm">Service Price</div>
+                  </div>
+                </div>
               </div>
               
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    <span className="font-medium">Client:</span> {selectedEvent.extendedProps.clientName}
-                    {selectedEvent.extendedProps.isGuest && <span className="text-muted-foreground ml-1">(Guest)</span>}
-                  </span>
+              {/* Appointment Details */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-saffron/20 rounded-lg">
+                  <User className="h-4 w-4 text-saffron" />
+                      </div>
+                      <span className="text-white font-semibold">Client Information</span>
+                    </div>
+                    <div className="text-white/90 font-medium text-lg">
+                      {selectedEvent.extendedProps.clientName}
+                      {selectedEvent.extendedProps.isGuest && (
+                        <span className="ml-2 px-2 py-1 bg-saffron/20 text-saffron text-xs rounded-full">Guest</span>
+                      )}
+                    </div>
+                </div>
+                  
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-saffron/20 rounded-lg">
+                  <Clock className="h-4 w-4 text-saffron" />
+                      </div>
+                      <span className="text-white font-semibold">Time & Date</span>
+                    </div>
+                    <div className="text-white/90 font-medium">
+                      {formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}
+                    </div>
+                    <div className="text-white/70 text-sm">
+                      {formatDate(new Date(selectedEvent.start))}
+                </div>
+                </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    <span className="font-medium">Time:</span> {formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    <span className="font-medium">Date:</span> {formatDate(new Date(selectedEvent.start))}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    <span className="font-medium">Price:</span> ${selectedEvent.extendedProps.price}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    <span className="font-medium">Status:</span> 
+                {/* Status */}
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white font-semibold">Booking Status</span>
                     <span className={cn(
-                      "ml-1 px-2 py-1 rounded-full text-xs font-medium",
+                      "px-4 py-2 rounded-full text-sm font-bold shadow-lg",
                       selectedEvent.extendedProps.status === 'confirmed' 
-                        ? "bg-green-100 text-green-800"
-: "bg-yellow-100 text-yellow-800"
+                        ? "bg-gradient-to-r from-green-400 to-green-500 text-white" 
+                        : "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white"
                     )}>
-                      {selectedEvent.extendedProps.status}
+                      {selectedEvent.extendedProps.status.toUpperCase()}
                     </span>
-                  </span>
+                  </div>
                 </div>
               </div>
               
+              {/* Guest Information */}
               {selectedEvent.extendedProps.isGuest && (
-                <div className="pt-3 border-t border-border">
-                  <h4 className="font-medium text-sm mb-2">Guest Information</h4>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>Email: {selectedEvent.extendedProps.guestEmail}</p>
-                    <p>Phone: {selectedEvent.extendedProps.guestPhone}</p>
+                <div className="bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-3 h-3 bg-saffron rounded-full animate-pulse"></div>
+                    <h4 className="font-bold text-saffron">Guest Information</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <div className="text-white/60 text-xs uppercase tracking-wider">Email</div>
+                      <div className="text-white font-medium">{selectedEvent.extendedProps.guestEmail}</div>
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <div className="text-white/60 text-xs uppercase tracking-wider">Phone</div>
+                      <div className="text-white font-medium">{selectedEvent.extendedProps.guestPhone}</div>
+                    </div>
                   </div>
                 </div>
               )}

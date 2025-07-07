@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Booking } from '@/shared/types/booking'
 import { syncService } from '@/shared/lib/sync-service'
@@ -52,6 +52,9 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Booking Details</DialogTitle>
+          <DialogDescription>
+            View detailed information about your booking including date, time, service, and status.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -99,6 +102,9 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Cancel Booking</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel this booking? This action cannot be undone.
+              </DialogDescription>
             </DialogHeader>
             <p>Are you sure you want to cancel this booking?</p>
             <DialogFooter>

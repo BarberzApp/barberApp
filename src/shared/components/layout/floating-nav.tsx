@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/shared/components/ui/button'
 import { Calendar, Search, Camera, Settings as SettingsIcon, Plus, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 
 const navActions = [
   {
@@ -34,13 +34,19 @@ const navActions = [
 
 export function FloatingNav() {
   const [plusOpen, setPlusOpen] = useState(false)
+  const [pathname, setPathname] = useState('')
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
   const { user } = useAuth()
+
+  useEffect(() => {
+    setMounted(true);
+    setPathname(window.location.pathname);
+  }, []);
 
   // Don't show on certain pages
   const hideOnPages = ['/login', '/register', '/onboarding']
-  if (hideOnPages.some(page => pathname.startsWith(page))) {
+  if (!mounted || hideOnPages.some(page => pathname.startsWith(page))) {
     return null
   }
 

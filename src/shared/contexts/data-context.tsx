@@ -2,10 +2,22 @@
 
 import { User as LucideUser } from "lucide-react"
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { supabase } from '@/shared/lib/supabase'
 import type { CalendarEvent } from "@/shared/types/calendar"
 import type { Barber, Booking, Service } from '@/shared/types'
+
+// Database-specific types that match the actual database schema
+interface BarberFromDB {
+  id: string
+  user_id: string
+  bio?: string
+  specialties: string[]
+  price_range?: string
+  next_available?: string
+  created_at: string
+  updated_at: string
+}
 
 // Types
 export type JobPost = {
@@ -39,7 +51,7 @@ export type Application = {
 }
 
 interface DataContextType {
-  barbers: Barber[]
+  barbers: BarberFromDB[]
   services: Service[]
   bookings: Booking[]
   loading: boolean
@@ -48,8 +60,8 @@ interface DataContextType {
   setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>
 
   // Barber methods
-  getBarberById: (user_id: string) => Barber | undefined
-  updateBarber: (id: string, data: Partial<Barber>) => void
+  getBarberById: (user_id: string) => BarberFromDB | undefined
+  updateBarber: (id: string, data: Partial<BarberFromDB>) => void
 
   // Booking methods
   createBooking: (booking: Omit<Booking, "id">) => Promise<string>
@@ -72,7 +84,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined)
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [barbers, setBarbers] = useState<Barber[]>([])
+  const [barbers, setBarbers] = useState<BarberFromDB[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -136,10 +148,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Barber methods
   const getBarberById = (user_id: string) => barbers.find(barber => barber.user_id === user_id)
 
-  const updateBarber = async (user_id: string, data: Partial<Barber>) => {
+  const updateBarber = async (user_id: string, data: Partial<BarberFromDB>) => {
     try {
-      // Only include barber-specific fields that exist in the Barber type
-      const barberData: Partial<Barber> = {
+      // Only include barber-specific fields that exist in the BarberFromDB type
+      const barberData: Partial<BarberFromDB> = {
         bio: data.bio,
         specialties: data.specialties,
         updated_at: new Date().toISOString()
@@ -251,7 +263,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         date: booking.date,
         status: booking.status,
         payment_status: booking.payment_status,
+        payment_intent_id: booking.payment_intent_id,
         price: booking.price,
+        platform_fee: booking.platform_fee,
+        barber_payout: booking.barber_payout,
         created_at: booking.created_at,
         updated_at: booking.updated_at,
         notes: booking.notes,

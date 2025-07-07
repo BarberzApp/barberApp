@@ -9,30 +9,30 @@ import { Plus, Trash2 } from 'lucide-react'
 
 interface TimeOff {
   id: string
-  startDate: string
-  endDate: string
+  start_date: string
+  end_date: string
   reason: string
 }
 
 interface TimeOffManagerProps {
   timeOff: TimeOff[]
-  onAdd: (timeOff: TimeOff) => void
+  onAdd: (timeOff: Omit<TimeOff, 'id'>) => void
   onRemove: (id: string) => void
 }
 
 export function TimeOffManager({ timeOff, onAdd, onRemove }: TimeOffManagerProps) {
   const [newTimeOff, setNewTimeOff] = useState<Omit<TimeOff, 'id'>>({
-    startDate: '',
-    endDate: '',
+    start_date: '',
+    end_date: '',
     reason: ''
   })
 
   const handleAdd = () => {
-    if (!newTimeOff.startDate || !newTimeOff.endDate) return
-    onAdd({ ...newTimeOff, id: Date.now().toString() })
+    if (!newTimeOff.start_date || !newTimeOff.end_date) return
+    onAdd(newTimeOff)
     setNewTimeOff({
-      startDate: '',
-      endDate: '',
+      start_date: '',
+      end_date: '',
       reason: ''
     })
   }
@@ -46,21 +46,21 @@ export function TimeOffManager({ timeOff, onAdd, onRemove }: TimeOffManagerProps
         <div className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
+              <Label htmlFor="start_date">Start Date</Label>
               <Input
-                id="startDate"
+                id="start_date"
                 type="date"
-                value={newTimeOff.startDate}
-                onChange={(e) => setNewTimeOff({ ...newTimeOff, startDate: e.target.value })}
+                value={newTimeOff.start_date}
+                onChange={(e) => setNewTimeOff({ ...newTimeOff, start_date: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
+              <Label htmlFor="end_date">End Date</Label>
               <Input
-                id="endDate"
+                id="end_date"
                 type="date"
-                value={newTimeOff.endDate}
-                onChange={(e) => setNewTimeOff({ ...newTimeOff, endDate: e.target.value })}
+                value={newTimeOff.end_date}
+                onChange={(e) => setNewTimeOff({ ...newTimeOff, end_date: e.target.value })}
               />
             </div>
           </div>
@@ -87,7 +87,7 @@ export function TimeOffManager({ timeOff, onAdd, onRemove }: TimeOffManagerProps
               <div key={item.id} className="flex items-center justify-between p-2 border rounded-md">
                 <div>
                   <p className="font-medium">
-                    {new Date(item.startDate).toLocaleDateString()} - {new Date(item.endDate).toLocaleDateString()}
+                    {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
                   </p>
                   {item.reason && (
                     <p className="text-sm text-muted-foreground">{item.reason}</p>

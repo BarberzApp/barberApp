@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu"
 import { NotificationService, Notification } from "@/shared/lib/notification-service"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useEffect, useState } from "react"
 import { Badge } from '@/shared/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'

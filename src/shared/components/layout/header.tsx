@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Button } from '@/shared/components/ui/button'
 import {
   DropdownMenu,

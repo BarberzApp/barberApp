@@ -4,8 +4,8 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/router"
-import { useAuth } from "@/features/auth/hooks/use-auth"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar"
 import { Button } from "@/shared/components/ui/button"
 import { Calendar, Clock, MapPin, Scissors, X } from "lucide-react"
@@ -65,6 +65,9 @@ export function ClientProfileModal({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Client Profile</DialogTitle>
+          <DialogDescription>
+            View client information, contact details, and booking history.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="flex items-center gap-4">

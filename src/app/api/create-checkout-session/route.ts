@@ -60,10 +60,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get the barber's Stripe account ID
+    // Get the barber's Stripe account ID and is_developer flag
     const { data: barber, error: barberError } = await supabase
       .from('barbers')
-      .select('stripe_account_id, stripe_account_status')
+      .select('stripe_account_id, stripe_account_status, is_developer')
       .eq('id', barberId)
       .single()
 
@@ -97,9 +97,16 @@ export async function POST(request: Request) {
     }
 
     const servicePrice = Math.round(Number(service.price) * 100) // Convert to cents
-    const platformFee = 338 // $3.38 in cents
-    const bocmShare = Math.round(platformFee * 0.60) // 60% of fee to BOCM
-    const barberShare = platformFee - bocmShare // 40% of fee to barber
+    let platformFee = 338 // $3.38 in cents
+    let bocmShare = Math.round(platformFee * 0.60) // 60% of fee to BOCM
+    let barberShare = platformFee - bocmShare // 40% of fee to barber
+
+    // If barber is a developer, bypass all platform fees
+    if (barber.is_developer) {
+      platformFee = 0
+      bocmShare = 0
+      barberShare = 0
+    }
 
     // Determine payment amount based on payment type
     let totalAmount: number
@@ -109,7 +116,7 @@ export async function POST(request: Request) {
     if (paymentType === 'fee') {
       // Customer only pays the platform fee
       totalAmount = platformFee
-      transferAmount = barberShare // Barber gets 40% of fee
+      transferAmount = barberShare // Barber gets 40% of fee (or 0 if developer)
       
       lineItems = [
         {
@@ -127,7 +134,7 @@ export async function POST(request: Request) {
     } else {
       // Customer pays full amount (service + fee)
       totalAmount = servicePrice + platformFee
-      transferAmount = servicePrice + barberShare // Barber gets full service price + 40% of fee
+      transferAmount = barber.is_developer ? servicePrice : servicePrice + barberShare // Developer gets full price
       
       lineItems = [
         {
@@ -171,7 +178,7 @@ export async function POST(request: Request) {
         transfer_data: {
           destination: barber.stripe_account_id,
         },
-        application_fee_amount: bocmShare,
+        application_fee_amount: bocmShare, // Will be 0 for developer
       },
       metadata: {
         barberId,
@@ -188,7 +195,8 @@ export async function POST(request: Request) {
         paymentType,
         feeType: paymentType === 'fee' ? 'fee_only' : 'fee_and_cut',
         bocmShare: bocmShare.toString(),
-        barberShare: barberShare.toString()
+        barberShare: barberShare.toString(),
+        isDeveloper: barber.is_developer ? 'true' : 'false',
       },
     })
 

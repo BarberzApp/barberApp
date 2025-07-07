@@ -4,12 +4,12 @@ import { Card, CardContent, CardFooter } from "@/shared/components/ui/card"
 import { Button } from "@/shared/components/ui/button"
 import { Badge } from "@/shared/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
-import { MapPin, Star, Clock, MessageSquare, Briefcase, Info, Heart, Calendar, DollarSign } from "lucide-react"
+import { MapPin, Star, Clock, MessageSquare, Briefcase, Info, Heart, Calendar, DollarSign, Scissors, TrendingUp, Phone, Mail, Globe } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useRouter } from "next/navigation"
 import { Service, Barber } from "@/shared/types"
 import { SocialMediaLinks } from "@/shared/components/social-media-links"
@@ -40,12 +40,12 @@ export function BarberCard({ barber }: BarberCardProps) {
   const getPriceRangeColor = (priceRange?: string) => {
     switch (priceRange) {
       case 'Budget':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-green-500/20 text-green-400 border-green-500/30'
       case 'Premium':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
+        return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
       case 'Mid-range':
       default:
-        return 'bg-blue-100 text-blue-800 border-blue-200'
+        return 'bg-saffron/20 text-saffron border-saffron/30'
     }
   }
 
@@ -64,31 +64,40 @@ export function BarberCard({ barber }: BarberCardProps) {
   return (
     <TooltipProvider>
       <motion.div 
-        whileHover={{ y: -5 }} 
+        whileHover={{ y: -8 }} 
         transition={{ type: "spring", stiffness: 300 }}
         className="group"
       >
-        <Card className="overflow-hidden h-full border-2 hover:border-primary/50 transition-all duration-200 group-hover:shadow-lg">
+        <Card className="overflow-hidden h-full border border-white/10 bg-darkpurple/90 shadow-2xl backdrop-blur-xl hover:border-saffron/30 transition-all duration-300 group-hover:shadow-saffron/20">
           <CardContent className="p-0">
             <div className="relative">
-              <div className="aspect-[4/3] bg-gradient-to-br from-muted/20 to-muted/40 flex items-center justify-center">
-                <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+              {/* Hero Section with Avatar */}
+              <div className="relative h-48 bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 flex items-center justify-center overflow-hidden">
+                {/* Background Pattern */}
+                <div className="absolute inset-0 opacity-10">
+                  <div className="absolute top-4 left-4 w-20 h-20 border border-white/20 rounded-full"></div>
+                  <div className="absolute bottom-4 right-4 w-16 h-16 border border-white/20 rounded-full"></div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-white/20 rounded-full"></div>
+                </div>
+                
+                {/* Main Avatar */}
+                <Avatar className="h-24 w-24 border-4 border-white/20 shadow-2xl relative z-10">
                   <AvatarImage src={barber.image || "/placeholder.svg"} alt={barber.name} />
-                  <AvatarFallback className="text-2xl font-semibold bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-2xl font-semibold bg-saffron text-primary">
                     {barber.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
 
                 {/* Portfolio preview (if available) */}
                 {barber.portfolio && barber.portfolio.length > 0 && (
-                  <div className="absolute bottom-2 right-2 flex gap-1">
+                  <div className="absolute bottom-3 right-3 flex gap-1">
                     {barber.portfolio.slice(0, 3).map((image, index) => (
-                      <div key={index} className="h-10 w-10 rounded-md overflow-hidden border-2 border-white shadow-md">
+                      <div key={index} className="h-8 w-8 rounded-md overflow-hidden border-2 border-white/30 shadow-lg backdrop-blur-sm">
                         <Image
                           src={image || "/placeholder.svg"}
                           alt={`${barber.name}'s work`}
-                          width={40}
-                          height={40}
+                          width={32}
+                          height={32}
                           className="object-cover"
                         />
                       </div>
@@ -98,14 +107,15 @@ export function BarberCard({ barber }: BarberCardProps) {
               </div>
 
               {/* Status badges */}
-              <div className="absolute top-2 left-2 flex gap-1">
+              <div className="absolute top-3 left-3 flex gap-2">
                 {barber.trending && (
-                  <Badge className="bg-orange-500 text-white text-xs">
+                  <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-xs backdrop-blur-sm">
+                    <TrendingUp className="h-3 w-3 mr-1" />
                     Trending
                   </Badge>
                 )}
                 {barber.openToHire && (
-                  <Badge className="bg-green-500 text-white text-xs">
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs backdrop-blur-sm">
                     Open to Offers
                   </Badge>
                 )}
@@ -115,33 +125,38 @@ export function BarberCard({ barber }: BarberCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-2 bg-background/90 backdrop-blur-sm hover:bg-background shadow-sm"
+                className="absolute top-3 right-3 bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-white/20 rounded-full transition-all duration-200"
                 onClick={handleFavorite}
               >
-                <Heart className={`h-4 w-4 transition-colors ${isFavorite ? 'fill-red-500 text-red-500' : 'text-muted-foreground hover:text-red-500'}`} />
+                <Heart className={`h-4 w-4 transition-colors ${isFavorite ? 'fill-red-500 text-red-500' : 'text-white/60 hover:text-red-400'}`} />
               </Button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="p-6 space-y-4">
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-lg leading-tight truncate">{barber.name}</h3>
+                  <h3 className="font-bebas text-xl text-white leading-tight truncate tracking-wide">{barber.name}</h3>
                   {barber.businessName && (
-                    <p className="text-sm text-muted-foreground truncate">{barber.businessName}</p>
+                    <p className="text-white/60 truncate text-sm font-medium">{barber.businessName}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-1 ml-2">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm font-medium">{barber.rating || 4.5}</span>
+                <div className="flex items-center gap-1 ml-3">
+                  <Star className="h-4 w-4 fill-saffron text-saffron" />
+                  <span className="text-sm font-semibold text-white">{barber.rating || 4.5}</span>
                 </div>
               </div>
 
               {/* Location */}
               {barber.location && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 flex-shrink-0" />
+                <div className="flex items-center gap-2 text-sm text-white/60">
+                  <MapPin className="h-4 w-4 flex-shrink-0 text-saffron" />
                   <span className="truncate">{barber.location}</span>
+                  {barber.distance && (
+                    <Badge variant="outline" className="text-xs bg-saffron/20 text-saffron border-saffron/30 ml-auto">
+                      {barber.distance.toFixed(1)} mi
+                    </Badge>
+                  )}
                 </div>
               )}
 
@@ -160,7 +175,7 @@ export function BarberCard({ barber }: BarberCardProps) {
 
               {/* Bio */}
               {barber.bio && (
-                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                <p className="text-sm text-white/70 line-clamp-2 leading-relaxed">
                   {barber.bio}
                 </p>
               )}
@@ -168,15 +183,18 @@ export function BarberCard({ barber }: BarberCardProps) {
               {/* Specialties */}
               {barber.specialties && barber.specialties.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Specialties</p>
+                  <div className="flex items-center gap-2">
+                    <Scissors className="h-4 w-4 text-saffron" />
+                    <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Specialties</p>
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     {barber.specialties.slice(0, 3).map((specialty, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
+                      <Badge key={index} variant="secondary" className="text-xs bg-white/10 text-white/80 border-white/20">
                         {specialty}
                       </Badge>
                     ))}
                     {barber.specialties.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs border-white/20 text-white/60">
                         +{barber.specialties.length - 3} more
                       </Badge>
                     )}
@@ -187,7 +205,10 @@ export function BarberCard({ barber }: BarberCardProps) {
               {/* Social Media Links */}
               {(barber.instagram || barber.twitter || barber.tiktok || barber.facebook) && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Social Media</p>
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-saffron" />
+                    <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Social Media</p>
+                  </div>
                   <SocialMediaLinks
                     instagram={barber.instagram}
                     twitter={barber.twitter}
@@ -199,64 +220,35 @@ export function BarberCard({ barber }: BarberCardProps) {
                 </div>
               )}
 
-              {/* Services Preview */}
-              {barber.services && barber.services.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Services</p>
-                  <div className="flex flex-wrap gap-1">
-                    {barber.services.slice(0, 2).map((service, index) => (
-                      <span key={index} className="text-xs bg-muted px-2 py-1 rounded">
-                        {service.name} - ${service.price}
-                      </span>
-                    ))}
-                    {barber.services.length > 2 && (
-                      <span className="text-xs text-muted-foreground">
-                        +{barber.services.length - 2} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-
-          <CardFooter className="p-4 pt-0">
-            <div className="w-full space-y-3">
-              {/* Availability */}
-              {barber.nextAvailable && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>Next available: {barber.nextAvailable}</span>
-                </div>
-              )}
-
               {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button 
-                  asChild 
-                  className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+              <div className="flex gap-2 pt-2">
+                <Button
+                  asChild
+                  className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"
                 >
                   <Link href={`/book/${barber.id}`}>
-                    <Calendar className="mr-2 h-4 w-4" />
+                    <Calendar className="h-4 w-4 mr-2" />
                     Book Now
                   </Link>
                 </Button>
                 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" asChild>
-                      <Link href={`/barber/${barber.id}`}>
-                        <Info className="h-4 w-4" />
-                      </Link>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="border-white/20 text-white hover:bg-white/10 rounded-xl"
+                    >
+                      <MessageSquare className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>View Profile</p>
+                  <TooltipContent className="bg-darkpurple/90 border border-white/10 text-white">
+                    <p>Message barber</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
             </div>
-          </CardFooter>
+          </CardContent>
         </Card>
       </motion.div>
     </TooltipProvider>

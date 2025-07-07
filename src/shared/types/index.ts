@@ -46,6 +46,12 @@ export interface Barber {
   twitter?: string;
   tiktok?: string;
   facebook?: string;
+  // Location fields
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  state?: string;
+  distance?: number; // Distance from user's location in miles
   // Additional fields
   joinDate?: string;
   createdAt?: string;

@@ -93,14 +93,26 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
     setIsLoading(true)
     try {
       const response = await fetch(`/api/earnings/monthly?barberId=${barberId}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch earnings')
+      }
+      
       const data = await response.json()
       console.log('Earnings data loaded:', data)
+      
+      // Validate the data structure
+      if (!data || typeof data.current !== 'number') {
+        throw new Error('Invalid earnings data received')
+      }
+      
       setEarnings(data)
     } catch (error) {
       console.error("Error loading earnings:", error)
       toast({
         title: "Error",
-        description: "Failed to load earnings data. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to load earnings data. Please try again.",
         variant: "destructive",
       })
     } finally {

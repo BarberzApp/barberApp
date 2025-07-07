@@ -6,7 +6,6 @@ export const BARBER_SPECIALTIES = [
   'Hair Styling',
   'Hair Extensions',
   'Hair Treatments',
-  'Hair Straightening',
   'Hair Perming',
   'Hair Bleaching',
   'Hair Highlights',
@@ -105,8 +104,7 @@ export const BARBER_SPECIALTIES = [
   'Hair Protein Treatment',
   'Hair Deep Conditioning',
   'Hair Trim',
-  'Hair Dusting',
-  'Hair Shaping'
+  'Hair Dusting'
 ] as const
 
 // Type for TypeScript support

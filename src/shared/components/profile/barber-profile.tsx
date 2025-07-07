@@ -13,7 +13,7 @@ import { Textarea } from "@/shared/components/ui/textarea"
 import { Badge } from "@/shared/components/ui/badge"
 import { Calendar, Star, Scissors } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useData } from "../../hooks/use-data"
 import { supabase } from '@/shared/lib/supabase'
 import { BARBER_SPECIALTIES, getFilteredSpecialties } from '@/shared/constants/specialties'
@@ -156,43 +156,54 @@ export function BarberProfile() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <h1 className="text-4xl lg:text-6xl font-bebas font-bold text-white mb-4">
+          Your <span className="text-saffron">Barber Profile</span>
+        </h1>
+        <p className="text-xl text-white/80 max-w-2xl mx-auto">
+          Showcase your skills, manage your services, and grow your business.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <div className="space-y-4">
-              <Card>
+          <div className="space-y-6">
+              <Card className="bg-darkpurple/90 backdrop-blur-sm border border-white/10 shadow-2xl">
                 <CardHeader>
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-24 w-24">
-                      <AvatarFallback>{user.name?.charAt(0) || "B"}</AvatarFallback>
+                    <Avatar className="h-24 w-24 border-4 border-saffron/20">
+                      <AvatarFallback className="bg-saffron text-primary font-bold text-xl">{user.name?.charAt(0) || "B"}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle className="text-2xl">{user.name}</CardTitle>
-                      <p className="text-muted-foreground">{user.email}</p>
+                      <CardTitle className="text-2xl text-white">{user.name}</CardTitle>
+                      <p className="text-white/60">{user.email}</p>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                      <Label htmlFor="bio">Bio</Label>
+                      <Label htmlFor="bio" className="text-white font-semibold">Bio</Label>
                       <Textarea
                         id="bio"
                         name="bio"
                         placeholder="Tell us about yourself..."
                         defaultValue={user.bio || ''}
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="specialties">Specialties</Label>
+                      <Label htmlFor="specialties" className="text-white font-semibold">Specialties</Label>
                       <Popover open={specialtiesOpen} onOpenChange={setSpecialtiesOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             role="combobox"
                             aria-expanded={specialtiesOpen}
-                            className="w-full justify-between"
+                            className="w-full justify-between bg-white/10 border-white/20 text-white hover:bg-white/20"
                           >
                             {selectedSpecialties.length > 0 
                               ? `${selectedSpecialties.length} specialty(ies) selected`
@@ -201,9 +212,9 @@ export function BarberProfile() {
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-full p-0" align="start">
+                        <PopoverContent className="w-full p-0 bg-darkpurple border border-white/10" align="start">
                           <Command>
-                            <CommandInput placeholder="Search specialties..." />
+                            <CommandInput placeholder="Search specialties..." className="text-white" />
                             <CommandList>
                               <CommandEmpty>No specialty found.</CommandEmpty>
                               <CommandGroup>
@@ -218,6 +229,7 @@ export function BarberProfile() {
                                           : [...prev, specialty]
                                       )
                                     }}
+                                    className="text-white hover:bg-white/10"
                                   >
                                     <Check
                                       className={cn(
@@ -233,13 +245,13 @@ export function BarberProfile() {
                           </Command>
                         </PopoverContent>
                       </Popover>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-white/60">
                         Select the services you specialize in
                       </p>
                       {selectedSpecialties.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {selectedSpecialties.map((specialty) => (
-                            <Badge key={specialty} variant="secondary" className="text-xs">
+                            <Badge key={specialty} className="text-xs bg-saffron/20 text-saffron border-saffron/30">
                               {specialty}
                             </Badge>
                           ))}
@@ -248,27 +260,33 @@ export function BarberProfile() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
+                      <Label htmlFor="location" className="text-white font-semibold">Location</Label>
                       <Input
                         id="location"
                         name="location"
                         placeholder="Your location"
                         defaultValue={user.location || ''}
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
+                      <Label htmlFor="phone" className="text-white font-semibold">Phone</Label>
                       <Input
                         id="phone"
                         name="phone"
                         type="tel"
                         placeholder="Your phone number"
                         defaultValue={user.phone || ''}
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
                       />
                     </div>
 
-                    <Button type="submit" disabled={loading || dataLoading}>
+                    <Button 
+                      type="submit" 
+                      disabled={loading || dataLoading}
+                      className="w-full bg-saffron text-primary font-semibold hover:bg-saffron/90"
+                    >
                       {loading ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </form>
@@ -278,23 +296,46 @@ export function BarberProfile() {
         </div>
 
         <div>
-          <Card>
+          <Card className="bg-darkpurple/90 backdrop-blur-sm border border-white/10 shadow-2xl">
             <CardHeader>
-              <CardTitle>Quick Stats</CardTitle>
+              <CardTitle className="text-white">Quick Stats</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Total Appointments: 0</span>
+              <div className="space-y-6">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-saffron/20 rounded-lg flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-saffron" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-sm">Total Appointments</p>
+                      <p className="text-2xl font-bold text-white">{stats.totalAppointments}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Average Rating: 0.0</span>
+                
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-saffron/20 rounded-lg flex items-center justify-center">
+                      <Star className="h-5 w-5 text-saffron" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-sm">Average Rating</p>
+                      <p className="text-2xl font-bold text-white">{stats.averageRating}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Scissors className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Services Offered: 0</span>
+                
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-saffron/20 rounded-lg flex items-center justify-center">
+                      <Scissors className="h-5 w-5 text-saffron" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-sm">Services Offered</p>
+                      <p className="text-2xl font-bold text-white">{stats.servicesCount}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>

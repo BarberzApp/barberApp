@@ -79,8 +79,16 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
 
       if (specialHoursError) throw specialHoursError
 
+      const { data: timeOffData, error: timeOffError } = await supabase
+        .from('time_off')
+        .select('*')
+        .eq('barber_id', barberId)
+
+      if (timeOffError) throw timeOffError
+
       setAvailability(availabilityData || [])
       setSpecialHours(specialHoursData || [])
+      setTimeOff(timeOffData || [])
     } catch (error) {
       console.error('Error fetching availability:', error)
       toast.error('Failed to load availability settings')
@@ -89,29 +97,40 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
     }
   }
 
-  const handleSaveAvailability = async (newAvailability: Availability[]) => {
+  const handleAddTimeOff = async (timeOffData: Omit<TimeOff, 'id' | 'barber_id' | 'created_at' | 'updated_at'>) => {
     try {
       setLoading(true)
-      // Delete existing availability
-      await supabase.from('availability').delete().eq('barber_id', barberId)
-
-      // Insert new availability
-      const { error } = await supabase.from('availability').insert(
-        newAvailability.map((item) => ({
-          barber_id: barberId,
-          day_of_week: item.day_of_week,
-          start_time: item.start_time,
-          end_time: item.end_time
-        }))
-      )
+      const { data, error } = await supabase.from('time_off').insert({
+        barber_id: barberId,
+        start_date: timeOffData.start_date,
+        end_date: timeOffData.end_date,
+        reason: timeOffData.reason
+      }).select()
 
       if (error) throw error
 
-      setAvailability(newAvailability)
-      toast.success('Availability updated successfully')
+      setTimeOff([...timeOff, data[0]])
+      toast.success('Time off added successfully')
     } catch (error) {
-      console.error('Error saving availability:', error)
-      toast.error('Failed to save availability')
+      console.error('Error adding time off:', error)
+      toast.error('Failed to add time off')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRemoveTimeOff = async (id: string) => {
+    try {
+      setLoading(true)
+      const { error } = await supabase.from('time_off').delete().eq('id', id)
+
+      if (error) throw error
+
+      setTimeOff(timeOff.filter((item) => item.id !== id))
+      toast.success('Time off removed successfully')
+    } catch (error) {
+      console.error('Error removing time off:', error)
+      toast.error('Failed to remove time off')
     } finally {
       setLoading(false)
     }
@@ -158,45 +177,6 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
     }
   }
 
-  const handleAddTimeOff = async (timeOff: TimeOff) => {
-    try {
-      setLoading(true)
-      const { error } = await supabase.from('time_off').insert({
-        barber_id: barberId,
-        start_date: timeOff.start_date,
-        end_date: timeOff.end_date,
-        reason: timeOff.reason
-      })
-
-      if (error) throw error
-
-      setTimeOff((prev) => [...prev, timeOff])
-      toast.success('Time off added successfully')
-    } catch (error) {
-      console.error('Error adding time off:', error)
-      toast.error('Failed to add time off')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRemoveTimeOff = async (id: string) => {
-    try {
-      setLoading(true)
-      const { error } = await supabase.from('time_off').delete().eq('id', id)
-
-      if (error) throw error
-
-      setTimeOff(timeOff.filter((item) => item.id !== id))
-      toast.success('Time off removed successfully')
-    } catch (error) {
-      console.error('Error removing time off:', error)
-      toast.error('Failed to remove time off')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -207,9 +187,10 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="weekly">Weekly Schedule</TabsTrigger>
         <TabsTrigger value="special-hours">Special Hours</TabsTrigger>
+        <TabsTrigger value="time-off">Time Off</TabsTrigger>
         <TabsTrigger value="calendar">Calendar View</TabsTrigger>
       </TabsList>
 
@@ -226,6 +207,14 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
           onAdd={handleAddSpecialHours}
           onRemove={handleRemoveSpecialHours}
           barberId={barberId}
+        />
+      </TabsContent>
+
+      <TabsContent value="time-off">
+        <TimeOffManager
+          timeOff={timeOff}
+          onAdd={handleAddTimeOff}
+          onRemove={handleRemoveTimeOff}
         />
       </TabsContent>
 

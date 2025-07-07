@@ -1,3 +1,6 @@
+// DEPRECATED: This file is no longer used. Auth is now managed via Zustand in use-auth-zustand.ts.
+// You can safely delete this file.
+
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"

@@ -79,13 +79,12 @@ export function SpecialtyAutocomplete({
                 value.map((specialty) => (
                   <Badge
                     key={specialty}
-                    variant="secondary"
+                    variant="glassy-saffron"
                     className="text-xs"
                   >
                     {specialty}
-                    <button
-                      type="button"
-                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    <span
+                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           handleRemove(specialty)
@@ -96,9 +95,11 @@ export function SpecialtyAutocomplete({
                         e.stopPropagation()
                       }}
                       onClick={() => handleRemove(specialty)}
+                      role="button"
+                      tabIndex={0}
                     >
                       <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    </button>
+                    </span>
                   </Badge>
                 ))
               )}
@@ -107,12 +108,12 @@ export function SpecialtyAutocomplete({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
-          <Command>
+          <Command className="bg-darkpurple/80 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
             <CommandInput
               placeholder={placeholder}
               value={searchQuery}
               onValueChange={setSearchQuery}
-              className="h-9"
+              className="h-9 bg-white/10 text-white placeholder:text-white/40 rounded-xl border border-white/10 focus:border-saffron"
             />
             <CommandList>
               <CommandEmpty>No specialty found.</CommandEmpty>
@@ -122,12 +123,17 @@ export function SpecialtyAutocomplete({
                     key={specialty}
                     value={specialty}
                     onSelect={() => handleSelect(specialty)}
-                    className="cursor-pointer"
+                    className={cn(
+                      "cursor-pointer text-white rounded-xl transition-all",
+                      value.includes(specialty)
+                        ? "bg-saffron/20 text-saffron font-semibold"
+                        : "hover:bg-saffron/10 hover:text-saffron"
+                    )}
                   >
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        value.includes(specialty) ? "opacity-100" : "opacity-0"
+                        value.includes(specialty) ? "opacity-100 text-saffron" : "opacity-0"
                       )}
                     />
                     {specialty}

@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { Copy, Share2, Link, QrCode, ExternalLink, CheckCircle, AlertCircle, Loader2, Download } from 'lucide-react'
+import { Copy, Share2, Link, QrCode, ExternalLink, CheckCircle, AlertCircle, Loader2, Download, Sparkles, Globe } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
-import { Label as UILabel } from '@/shared/components/ui/label'
-import { Switch } from '@/shared/components/ui/switch'
+import { Label } from '@/shared/components/ui/label'
 import QRCode from 'react-qr-code'
+import { Badge } from '@/shared/components/ui/badge'
 
 interface ProfileData {
   name?: string
@@ -173,195 +173,193 @@ export function ShareSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Share2 className="h-5 w-5" />
-          <h3 className="text-lg font-medium">Share Your Booking Link</h3>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center min-h-[200px]">
-              <Loader2 className="h-8 w-8 animate-spin" />
+      <Card className="mb-6 bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="text-center space-y-4">
+              <div className="relative">
+                <Share2 className="h-8 w-8 animate-spin mx-auto text-saffron" />
+                <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+              </div>
+              <p className="text-white/60 font-medium">Loading booking link...</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Share2 className="h-5 w-5" />
-        <h3 className="text-lg font-medium">Share Your Booking Link</h3>
-      </div>
+    <Card className="mb-6 bg-gradient-to-br from-saffron/10 via-darkpurple/90 to-saffron/5 border border-saffron/20 shadow-2xl backdrop-blur-xl overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-saffron/5 to-transparent" />
+      
+      <CardHeader className="relative p-6 border-b border-saffron/20">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-saffron/20 rounded-full">
+            <Share2 className="h-6 w-6 text-saffron" />
+          </div>
+          <div>
+            <CardTitle className="text-xl font-bebas text-white tracking-wide">
+              Share Your Booking Link
+            </CardTitle>
+            <CardDescription className="text-white/80 mt-1">
+              Share your professional booking link with clients
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
 
-      {/* Profile Status */}
-      {!profileData.is_public && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Your profile is currently private. Make it public in your profile settings to allow clients to book appointments.
-          </AlertDescription>
-        </Alert>
-      )}
+      <CardContent className="relative p-6 space-y-6">
+        {/* Profile Status */}
+        {!profileData.is_public && (
+          <Alert className="border-yellow-500/20 bg-yellow-500/10">
+            <AlertCircle className="h-4 w-4 text-yellow-500" />
+            <AlertDescription className="text-yellow-800">
+              Your profile is currently private. 
+              <button 
+                onClick={() => window.location.href = '/settings'}
+                className="text-yellow-700 hover:text-yellow-600 underline ml-1 font-medium"
+              >
+                Make it public
+              </button>
+              to allow clients to book appointments.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {profileData.is_public && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
-            Your profile is public and ready to accept bookings!
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <Card className="border-2 border-primary bg-primary/10 shadow-lg mb-6">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
-            <Link className="h-6 w-6" />
-            Share Your Booking Link
-          </CardTitle>
-          <CardDescription className="text-base text-primary/80">
-            This is your personal booking link. Share it with clients to get more appointments!
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row items-center gap-3 p-3 bg-white rounded-lg border border-primary/20">
-            <input
-              type="text"
+        {/* Booking Link Display */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-white">Your Booking Link</Label>
+            <Badge variant="glassy-saffron" className="text-xs">
+              {isLinkValid ? 'Active' : 'Incomplete Profile'}
+            </Badge>
+          </div>
+          
+          <div className="relative">
+            <Input
               value={bookingLink}
               readOnly
-              className="flex-1 bg-transparent border-none outline-none text-lg font-mono text-primary"
+              className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron pr-20"
+              placeholder="Complete your profile to get your booking link"
             />
-            <Button
-              variant="default"
-              size="sm"
-              onClick={copyToClipboard}
-              className="h-10 px-4 font-semibold"
-            >
-              {copied ? (
-                <span className="flex items-center gap-1"><CheckCircle className="h-4 w-4 text-green-500" /> Copied!</span>
-              ) : (
-                <span className="flex items-center gap-1"><Copy className="h-4 w-4" /> Copy Link</span>
-              )}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={shareLink}
-              className="h-10 px-4 font-semibold"
-              disabled={!isLinkValid}
-            >
-              <Share2 className="h-4 w-4 mr-1" /> Share
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowQR(!showQR)}
-              className="h-10 px-4 font-semibold"
-              disabled={!isLinkValid}
-            >
-              <QrCode className="h-4 w-4 mr-1" /> {showQR ? 'Hide' : 'Show'} QR
-            </Button>
-          </div>
-          {showQR && (
-            <div className="flex flex-col items-center justify-center p-4 bg-white rounded-lg border border-primary/20">
-              <QRCode 
-                value={bookingLink} 
-                size={180}
-                level="M"
-                fgColor="#000000"
-                bgColor="#FFFFFF"
-              />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
               <Button
-                variant="outline"
                 size="sm"
+                variant="ghost"
+                onClick={copyToClipboard}
+                disabled={!isLinkValid}
+                className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              >
+                {copied ? <CheckCircle className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={openBookingLink}
+                disabled={!isLinkValid}
+                className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            onClick={shareLink}
+            disabled={!isLinkValid}
+            className="flex-1 bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg"
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            Share Link
+          </Button>
+          
+          <Button
+            onClick={() => setShowQR(!showQR)}
+            disabled={!isLinkValid}
+            variant="outline"
+            className="border-saffron/30 text-saffron hover:bg-saffron/10"
+          >
+            <QrCode className="h-4 w-4 mr-2" />
+            QR Code
+          </Button>
+        </div>
+
+        {/* QR Code Modal */}
+        {showQR && isLinkValid && (
+          <div className="mt-6 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl">
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <QrCode className="h-5 w-5 text-saffron" />
+                <h3 className="text-lg font-semibold text-white">QR Code</h3>
+              </div>
+              <div className="flex justify-center">
+                <div className="p-4 bg-white rounded-2xl shadow-lg">
+                  <QRCode
+                    value={bookingLink}
+                    size={200}
+                    level="H"
+                    fgColor="#262b2e"
+                    bgColor="#ffffff"
+                  />
+                </div>
+              </div>
+              <p className="text-sm text-white/60">
+                Clients can scan this QR code to access your booking page
+              </p>
+              <Button
                 onClick={() => {
-                  const svg = document.querySelector('svg')
-                  if (svg) {
-                    const svgData = new XMLSerializer().serializeToString(svg)
-                    const canvas = document.createElement('canvas')
-                    const ctx = canvas.getContext('2d')
+                  // Create a canvas element to download the QR code
+                  const canvas = document.createElement('canvas')
+                  const qrCode = document.querySelector('svg')
+                  if (qrCode) {
+                    const svgData = new XMLSerializer().serializeToString(qrCode)
                     const img = new Image()
                     img.onload = () => {
                       canvas.width = img.width
                       canvas.height = img.height
+                      const ctx = canvas.getContext('2d')
                       ctx?.drawImage(img, 0, 0)
-                      canvas.toBlob((blob) => {
-                        if (blob) {
-                          const url = URL.createObjectURL(blob)
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = 'booking-qr-code.png'
-                          document.body.appendChild(a)
-                          a.click()
-                          document.body.removeChild(a)
-                          URL.revokeObjectURL(url)
-                          toast({
-                            title: "QR Code Downloaded",
-                            description: "The QR code has been saved to your device.",
-                          })
-                        }
-                      })
+                      const link = document.createElement('a')
+                      link.download = 'booking-qr-code.png'
+                      link.href = canvas.toDataURL()
+                      link.click()
                     }
                     img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
                   }
                 }}
-                className="mt-2"
+                variant="outline"
+                size="sm"
+                className="border-saffron/30 text-saffron hover:bg-saffron/10"
               >
-                <Download className="mr-2 h-4 w-4" /> Download QR
+                <Download className="h-4 w-4 mr-2" />
+                Download QR Code
               </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
 
-      {user?.role === 'barber' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Visibility</CardTitle>
-            <CardDescription>
-              Control whether your profile appears in search results.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <UILabel>Public Profile</UILabel>
-                <p className="text-sm text-muted-foreground">
-                  Allow clients to find and book with you
-                </p>
-              </div>
-              <Switch
-                checked={profileData.is_public || false}
-                onCheckedChange={async (checked: boolean) => {
-                  try {
-                    const { error } = await supabase
-                      .from('profiles')
-                      .update({ is_public: checked })
-                      .eq('id', user.id)
-
-                    if (error) throw error
-
-                    setProfileData((prev: ProfileData) => ({ ...prev, is_public: checked }))
-                    toast({
-                      title: "Profile updated",
-                      description: `Your profile is now ${checked ? 'public' : 'private'}.`,
-                    })
-                  } catch (error) {
-                    console.error('Error updating profile visibility:', error)
-                    toast({
-                      title: "Error",
-                      description: "Failed to update profile visibility.",
-                      variant: "destructive",
-                    })
-                  }
-                }}
-              />
+        {/* Tips Section */}
+        <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-saffron/20 rounded-full">
+              <Sparkles className="h-4 w-4 text-saffron" />
             </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-white">Pro Tips</h4>
+              <ul className="text-xs text-white/70 space-y-1">
+                <li>• Add this link to your social media profiles</li>
+                <li>• Include it in your business cards and marketing materials</li>
+                <li>• Share it directly with clients via text or email</li>
+                <li>• Use the QR code for in-person sharing</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 } 

@@ -3,28 +3,56 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Scissors } from 'lucide-react'
+import { supabase } from '@/shared/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
   const router = useRouter()
   const { login, user } = useAuth()
   const { toast } = useToast()
 
-  // Redirect if already logged in
+  // On mount, check Supabase session directly for instant redirect
   useEffect(() => {
-    if (user) {
-      router.push(user.role === 'barber' ? '/settings' : '/browse')
+    const checkSession = async () => {
+      setCheckingSession(true)
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (session?.user) {
+        // Fetch profile to determine role/location and email
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, location, email')
+          .eq('id', session.user.id)
+          .single()
+        if (profileError) {
+          setCheckingSession(false)
+          return
+        }
+        // Super admin email check
+        if (profile.email === 'primbocm@gmail.com') {
+          router.replace('/super-admin')
+        } else if (profile.role === 'barber') {
+          router.replace('/settings')
+        } else if (profile.location) {
+          router.replace('/browse')
+        } else {
+          router.replace('/client/onboarding')
+        }
+      } else {
+        setCheckingSession(false)
+      }
     }
-  }, [user, router])
+    checkSession()
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,8 +67,12 @@ export default function LoginPage() {
           sessionStorage.removeItem('redirectAfterLogin')
           router.push(redirectUrl)
         }
+        // If user is super admin, redirect immediately
+        if (user && user.email === 'primbocm@gmail.com') {
+          router.replace('/super-admin')
+          return
+        }
         // Note: The useEffect above will handle the role-based redirect
-        // once the user state is updated
       }
     } catch (error) {
       toast({
@@ -51,6 +83,14 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-primary">
+        <div className="text-white text-xl font-semibold animate-pulse">Checking session...</div>
+      </div>
+    )
   }
 
   return (

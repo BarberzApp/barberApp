@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/router"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
@@ -66,72 +66,86 @@ export function ClientProfile({ user }: ClientProfileProps) {
   }
 
   return (
-    <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 mb-8">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="bookings">Bookings</TabsTrigger>
-        <TabsTrigger value="favorites">Favorites</TabsTrigger>
-        <TabsTrigger value="settings">Settings</TabsTrigger>
-      </TabsList>
+    <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <h1 className="text-4xl lg:text-6xl font-bebas font-bold text-white mb-4">
+          Welcome back, <span className="text-saffron">{user.name}</span>
+        </h1>
+        <p className="text-xl text-white/80 max-w-2xl mx-auto">
+          Manage your bookings, favorites, and profile settings all in one place.
+        </p>
+      </div>
+
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-8 bg-darkpurple/90 backdrop-blur-sm border border-white/10">
+          <TabsTrigger value="overview" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Overview</TabsTrigger>
+          <TabsTrigger value="bookings" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Bookings</TabsTrigger>
+          <TabsTrigger value="favorites" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Favorites</TabsTrigger>
+          <TabsTrigger value="settings" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Settings</TabsTrigger>
+        </TabsList>
 
       <TabsContent value="overview">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-1">
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Your personal information</CardDescription>
+          <Card className="md:col-span-1 bg-darkpurple/90 backdrop-blur-sm border border-white/10 shadow-2xl">
+            <CardHeader className="text-center">
+              <CardTitle className="text-white">Profile</CardTitle>
+              <CardDescription className="text-white/80">Your personal information</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center text-center">
               <div className="relative mb-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                <Avatar className="h-24 w-24 border-4 border-saffron/20">
+                  <AvatarFallback className="bg-saffron text-primary font-bold text-xl">{user.name?.charAt(0) || "U"}</AvatarFallback>
                 </Avatar>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute bottom-0 right-0 rounded-full bg-background border"
+                  className="absolute bottom-0 right-0 rounded-full bg-darkpurple border-saffron text-saffron hover:bg-saffron hover:text-primary"
                 >
                   <Upload className="h-4 w-4" />
                   <span className="sr-only">Upload avatar</span>
                 </Button>
               </div>
-              <h3 className="text-xl font-bold">{user.name}</h3>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-              <div className="flex items-center text-sm text-muted-foreground mt-1">
+              <h3 className="text-xl font-bold text-white">{user.name}</h3>
+              <p className="text-sm text-white/60">{user.email}</p>
+              <div className="flex items-center text-sm text-white/60 mt-1">
                 <MapPin className="h-4 w-4 mr-1" />
-                <span>{user.location}</span>
+                <span>{user.location || 'Location not set'}</span>
               </div>
-              <div className="flex items-center text-sm text-muted-foreground mt-1">
+              <div className="flex items-center text-sm text-white/60 mt-1">
                 <Calendar className="h-4 w-4 mr-1" />
-                <span>Member since {user.joinDate}</span>
+                <span>Member since {user.joinDate || 'Recently'}</span>
               </div>
-              <Button variant="outline" className="mt-4 w-full" onClick={() => setIsEditing(true)}>
+              <Button 
+                className="mt-4 w-full bg-saffron text-primary font-semibold hover:bg-saffron/90" 
+                onClick={() => setIsEditing(true)}
+              >
                 Edit Profile
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 bg-darkpurple/90 backdrop-blur-sm border border-white/10 shadow-2xl">
             <CardHeader>
-              <CardTitle>Recent Bookings</CardTitle>
-              <CardDescription>Your recent appointments</CardDescription>
+              <CardTitle className="text-white">Recent Bookings</CardTitle>
+              <CardDescription className="text-white/80">Your recent appointments</CardDescription>
             </CardHeader>
             <CardContent>
               {userBookings.length > 0 ? (
                 <div className="space-y-4">
                   {userBookings.map((booking: Booking) => (
-                    <div key={booking.id} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
-                      <Avatar>
+                    <div key={booking.id} className="flex items-center gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/20 transition-colors">
+                      <Avatar className="border-2 border-saffron/20">
                         <AvatarImage src={booking.barber.image || "/placeholder.svg"} alt={booking.barber.name} />
-                        <AvatarFallback>{booking.barber.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="bg-saffron text-primary font-semibold">{booking.barber.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex justify-between">
-                          <h4 className="font-medium">{booking.barber.name}</h4>
-                          <span className="text-sm font-medium">${booking.price}</span>
+                          <h4 className="font-medium text-white">{booking.barber.name}</h4>
+                          <span className="text-sm font-medium text-saffron">${booking.price}</span>
                         </div>
-                        <p className="text-sm">{booking.service}</p>
-                        <div className="flex items-center text-xs text-muted-foreground mt-1">
+                        <p className="text-sm text-white/80">{booking.service}</p>
+                        <div className="flex items-center text-xs text-white/60 mt-1">
                           <Calendar className="h-3 w-3 mr-1" />
                           <span>{new Date(booking.date).toLocaleDateString()}</span>
                         </div>
@@ -140,11 +154,13 @@ export function ClientProfile({ user }: ClientProfileProps) {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
-                  <p className="text-muted-foreground mb-4">You haven't made any bookings yet</p>
-                  <Button href="/browse">Book a Barber</Button>
+                <div className="text-center py-8">
+                  <Scissors className="h-16 w-16 mx-auto text-saffron/60 mb-4" />
+                  <h3 className="text-lg font-medium mb-2 text-white">No bookings yet</h3>
+                  <p className="text-white/60 mb-6">You haven't made any bookings yet</p>
+                  <Button className="bg-saffron text-primary font-semibold hover:bg-saffron/90" asChild>
+                    <Link href="/browse">Book a Barber</Link>
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -338,5 +354,6 @@ export function ClientProfile({ user }: ClientProfileProps) {
         </Card>
       </TabsContent>
     </Tabs>
+    </div>
   )
 }

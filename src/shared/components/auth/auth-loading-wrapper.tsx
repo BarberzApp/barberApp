@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactElement } from 'react'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { LoadingSpinner } from '@/shared/components/ui/loading-spinner'
 
 interface AuthLoadingWrapperProps {

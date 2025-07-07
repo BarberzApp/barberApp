@@ -7,7 +7,7 @@ import { Home, Search, Calendar, MessageSquare, User, Menu } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import { ScrollArea } from "@/shared/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/components/ui/sheet"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { MobileLink } from "./mobile-link"
 
 export function MobileNav() {

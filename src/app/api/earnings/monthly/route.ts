@@ -106,12 +106,26 @@ export async function GET(request: Request) {
       const platformFee = booking.platform_fee || 0
       const barberPayout = booking.barber_payout || 0
       
-      console.log('Processing booking:', { price, platformFee, barberPayout })
+      // If barber_payout is missing, calculate it based on price
+      let calculatedBarberPayout = barberPayout
+      if (!barberPayout && price > 0) {
+        // Default calculation: 40% of service price + 40% of platform fee
+        const servicePriceCents = Math.round(price * 100)
+        const defaultPlatformFee = Math.round(servicePriceCents * 0.2) // 20% platform fee
+        calculatedBarberPayout = servicePriceCents + Math.round(defaultPlatformFee * 0.4) // service price + 40% of platform fee
+      }
+      
+      console.log('Processing booking:', { 
+        price, 
+        platformFee, 
+        barberPayout, 
+        calculatedBarberPayout 
+      })
       
       return {
         serviceFees: acc.serviceFees + price,
         platformFees: acc.platformFees + platformFee,
-        totalEarnings: acc.totalEarnings + barberPayout
+        totalEarnings: acc.totalEarnings + (calculatedBarberPayout / 100) // Convert back to dollars
       }
     }, { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
 
@@ -121,10 +135,19 @@ export async function GET(request: Request) {
       const platformFee = booking.platform_fee || 0
       const barberPayout = booking.barber_payout || 0
       
+      // If barber_payout is missing, calculate it based on price
+      let calculatedBarberPayout = barberPayout
+      if (!barberPayout && price > 0) {
+        // Default calculation: 40% of service price + 40% of platform fee
+        const servicePriceCents = Math.round(price * 100)
+        const defaultPlatformFee = Math.round(servicePriceCents * 0.2) // 20% platform fee
+        calculatedBarberPayout = servicePriceCents + Math.round(defaultPlatformFee * 0.4) // service price + 40% of platform fee
+      }
+      
       return {
         serviceFees: acc.serviceFees + price,
         platformFees: acc.platformFees + platformFee,
-        totalEarnings: acc.totalEarnings + barberPayout
+        totalEarnings: acc.totalEarnings + (calculatedBarberPayout / 100) // Convert back to dollars
       }
     }, { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
 

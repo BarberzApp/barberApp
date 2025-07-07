@@ -8,14 +8,16 @@ import { Label } from '@/shared/components/ui/label'
 import { Button } from '@/shared/components/ui/button'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { Loader2, Upload, CheckCircle, AlertCircle } from 'lucide-react'
-import { Card, CardContent } from '@/shared/components/ui/card'
+import { Loader2, Upload, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Building2, Instagram, Twitter, Facebook, Globe, Save, Camera, Sparkles } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Switch } from '@/shared/components/ui/switch'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
+import { Badge } from '@/shared/components/ui/badge'
+import { Separator } from '@/shared/components/ui/separator'
 
 interface ProfileFormData {
   name: string
@@ -54,7 +56,8 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const { toast } = useToast()
   const { user, status } = useAuth()
   const router = useRouter()
-  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<ProfileFormData>()
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<ProfileFormData>()
+  const [isDeveloper, setIsDeveloper] = useState(false)
 
   const validateForm = (data: ProfileFormData): boolean => {
     const errors: {[key: string]: string} = {}
@@ -140,7 +143,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           bio: profile.bio || '',
           location: profile.location || '',
           description: profile.description || '',
-                      specialties: [],
+          specialties: [],
           businessName: '',
           isPublic: profile.is_public || false,
           socialMedia: {
@@ -160,6 +163,19 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       // Set avatar URL if exists
       if (profile.avatar_url) {
         setAvatarUrl(profile.avatar_url)
+      }
+
+      // Fetch is_developer from barbers table
+      if (user?.role === 'barber') {
+        const { data } = await supabase
+          .from('barbers')
+          .select('is_developer')
+          .eq('user_id', user.id)
+          .single()
+
+        if (data && typeof data.is_developer === 'boolean') {
+          setIsDeveloper(data.is_developer)
+        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -199,7 +215,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         })
         return
       }
-      
+
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({
           title: 'File too large',
@@ -208,21 +224,22 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         })
         return
       }
-      
+
+      setIsLoading(true)
+
+      // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop()
-      const filePath = `${user?.id}/avatar.${fileExt}`
-
-      const { error: uploadError } = await supabase.storage
+      const fileName = `${user?.id}-${Date.now()}.${fileExt}`
+      const { data, error } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true })
+        .upload(fileName, file)
 
-      if (uploadError) throw uploadError
+      if (error) throw error
 
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
-        .getPublicUrl(filePath)
-
-      setAvatarUrl(publicUrl)
+        .getPublicUrl(fileName)
 
       // Update profile with new avatar URL
       const { error: updateError } = await supabase
@@ -232,34 +249,24 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
 
       if (updateError) throw updateError
 
+      setAvatarUrl(publicUrl)
       toast({
         title: 'Success',
-        description: 'Profile picture updated successfully',
+        description: 'Avatar updated successfully!',
       })
-      
-      // Call onUpdate to refresh settings data
-      onUpdate?.()
     } catch (error) {
       console.error('Error uploading avatar:', error)
       toast({
         title: 'Error',
-        description: 'Failed to update profile picture. Please try again.',
+        description: 'Failed to upload avatar. Please try again.',
         variant: 'destructive',
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const onSubmit = async (data: ProfileFormData) => {
-    if (!user) {
-      toast({
-        title: 'Error',
-        description: 'You must be logged in to update your profile',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    // Validate form
     if (!validateForm(data)) {
       toast({
         title: 'Validation Error',
@@ -279,46 +286,41 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           name: data.name,
           email: data.email,
           phone: data.phone,
+          bio: data.bio,
           location: data.location,
           description: data.description,
           is_public: data.isPublic,
           email_notifications: data.notifications.email,
           sms_notifications: data.notifications.sms,
           marketing_emails: data.notifications.marketing,
-          updated_at: new Date().toISOString()
         })
-        .eq('id', user.id)
+        .eq('id', user?.id)
 
       if (profileError) throw profileError
 
-      // If user is a barber, also update barber record
+      // Update barber data if user is a barber
       if (isBarber && barberId) {
         const { error: barberError } = await supabase
           .from('barbers')
           .update({
-            bio: data.bio,
             business_name: data.businessName,
+            bio: data.bio,
             specialties: data.specialties,
             instagram: data.socialMedia.instagram,
             twitter: data.socialMedia.twitter,
             tiktok: data.socialMedia.tiktok,
             facebook: data.socialMedia.facebook,
-            updated_at: new Date().toISOString()
           })
-          .eq('user_id', user.id)
+          .eq('id', barberId)
 
         if (barberError) throw barberError
       }
 
-      // Fetch updated profile data after successful update
-      await fetchProfile()
-
       toast({
         title: 'Success',
-        description: 'Profile updated successfully',
+        description: 'Profile updated successfully!',
       })
-      
-      // Call onUpdate to refresh settings data
+
       onUpdate?.()
     } catch (error) {
       console.error('Error updating profile:', error)
@@ -332,275 +334,439 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
     }
   }
 
-  if (status === 'loading' || isInitialLoad) {
+  const handleDeveloperToggle = async (checked: boolean) => {
+    setIsDeveloper(checked)
+    if (user?.role === 'barber') {
+      await supabase
+        .from('barbers')
+        .update({ is_developer: checked })
+        .eq('user_id', user.id)
+    }
+  }
+
+  if (isInitialLoad) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="p-3 bg-saffron/20 rounded-full">
+              <User className="h-6 w-6 text-saffron" />
+            </div>
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
+                Profile Settings
+              </h3>
+              <p className="text-white/80 mt-1">Manage your personal information</p>
+            </div>
+          </div>
+        </div>
+        
+        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center min-h-[200px]">
+              <div className="text-center space-y-4">
+                <div className="relative">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-saffron" />
+                  <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+                </div>
+                <p className="text-white/60 font-medium">Loading profile...</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  if (!user) {
-    return null
-  }
-
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <Card>
-          <CardContent className="pt-6 space-y-6">
-            {/* Avatar Section */}
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={avatarUrl || undefined} />
-                  <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
-                </Avatar>
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 p-1 bg-background border rounded-full cursor-pointer hover:bg-muted transition-colors"
-                >
-                  <Upload className="h-4 w-4" />
-                  <input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAvatarUpload}
-                  />
-                </label>
-              </div>
-              <p className="text-sm text-muted-foreground text-center">
-                Click the upload icon to change your profile picture
-              </p>
-            </div>
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="p-3 bg-saffron/20 rounded-full">
+            <User className="h-6 w-6 text-saffron" />
+          </div>
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
+              Profile Settings
+            </h3>
+            <p className="text-white/80 mt-1">Manage your personal information</p>
+          </div>
+        </div>
+      </div>
 
-            {/* Basic Information */}
-            <div className="grid gap-6 md:grid-cols-2">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Avatar Section */}
+        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+          <CardHeader className="bg-white/5 border-b border-white/10">
+            <CardTitle className="text-white flex items-center gap-2">
+              <Camera className="h-5 w-5 text-saffron" />
+              Profile Photo
+            </CardTitle>
+            <CardDescription className="text-white/70">
+              Upload a professional photo for your profile
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <Avatar className="h-20 w-20 border-2 border-saffron/30">
+                  <AvatarImage src={avatarUrl || ''} alt="Profile" />
+                  <AvatarFallback className="bg-saffron/20 text-saffron text-lg font-semibold">
+                    {watch('name')?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                    <Loader2 className="h-6 w-6 animate-spin text-saffron" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="avatar-upload" className="cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-saffron/30 text-saffron hover:bg-saffron/10"
+                      disabled={isLoading}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {avatarUrl ? 'Change Photo' : 'Upload Photo'}
+                    </Button>
+                  </div>
+                </Label>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-white/60 mt-2">
+                  JPG, PNG or GIF. Max 5MB.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Basic Information */}
+        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+          <CardHeader className="bg-white/5 border-b border-white/10">
+            <CardTitle className="text-white flex items-center gap-2">
+              <User className="h-5 w-5 text-saffron" />
+              Basic Information
+            </CardTitle>
+            <CardDescription className="text-white/70">
+              Your personal details and contact information
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
+                <Label htmlFor="name" className="text-white font-medium flex items-center gap-2">
+                  <User className="h-4 w-4 text-saffron" />
+                  Full Name *
+                </Label>
                 <Input
                   id="name"
-                  className={`h-11 ${validationErrors.name ? 'border-red-500' : ''}`}
-                  {...register('name', { required: 'Full name is required' })}
+                  type="text"
+                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
+                    validationErrors.name ? 'border-red-400' : ''
+                  }`}
+                  {...register('name', { required: 'Name is required' })}
                   placeholder="Enter your full name"
                 />
                 {validationErrors.name && (
-                  <p className="text-sm text-red-500">{validationErrors.name}</p>
-                )}
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.name}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email *</Label>
+                <Label htmlFor="email" className="text-white font-medium flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-saffron" />
+                  Email Address *
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  className={`h-11 ${validationErrors.email ? 'border-red-500' : ''}`}
+                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
+                    validationErrors.email ? 'border-red-400' : ''
+                  }`}
                   {...register('email', { required: 'Email is required' })}
                   placeholder="Enter your email address"
                 />
                 {validationErrors.email && (
-                  <p className="text-sm text-red-500">{validationErrors.email}</p>
-                )}
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.email}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
+                <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-saffron" />
+                  Phone Number
+                </Label>
                 <Input
                   id="phone"
                   type="tel"
-                  className={`h-11 ${validationErrors.phone ? 'border-red-500' : ''}`}
+                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
+                    validationErrors.phone ? 'border-red-400' : ''
+                  }`}
                   {...register('phone')}
                   placeholder="(555) 123-4567"
                 />
                 {validationErrors.phone && (
-                  <p className="text-sm text-red-500">{validationErrors.phone}</p>
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.phone}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-sm font-medium">Location</Label>
+                <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-saffron" />
+                  Location
+                </Label>
                 <Input
                   id="location"
                   type="text"
-                  className="h-11"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
                   {...register('location')}
                   placeholder="City, State"
                 />
               </div>
-
-              {isBarber && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="businessName" className="text-sm font-medium">Business Name *</Label>
-                    <Input
-                      id="businessName"
-                      type="text"
-                      className={`h-11 ${validationErrors.businessName ? 'border-red-500' : ''}`}
-                      {...register('businessName')}
-                      placeholder="Enter your business name"
-                    />
-                    {validationErrors.businessName && (
-                      <p className="text-sm text-red-500">{validationErrors.businessName}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="specialties" className="text-sm font-medium">Specialties</Label>
-                    <SpecialtyAutocomplete
-                      value={watch('specialties')}
-                      onChange={(value) => reset({ ...watch(), specialties: value })}
-                      placeholder="Search and select your specialties..."
-                      maxSelections={15}
-                    />
-                    <p className="text-sm text-muted-foreground">Select the services you specialize in</p>
-                  </div>
-                </>
-              )}
             </div>
 
-            {/* Bio and Description */}
+            {isBarber && (
+              <div className="space-y-2">
+                <Label htmlFor="businessName" className="text-white font-medium flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-saffron" />
+                  Business Name *
+                </Label>
+                <Input
+                  id="businessName"
+                  type="text"
+                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
+                    validationErrors.businessName ? 'border-red-400' : ''
+                  }`}
+                  {...register('businessName')}
+                  placeholder="Enter your business name"
+                />
+                {validationErrors.businessName && (
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.businessName}
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Bio and Description */}
+        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+          <CardHeader className="bg-white/5 border-b border-white/10">
+            <CardTitle className="text-white">About</CardTitle>
+            <CardDescription className="text-white/70">
+              Tell clients about yourself and your services
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="bio" className="text-sm font-medium">
+              <Label htmlFor="bio" className="text-white font-medium">
                 Bio {isBarber && '*'}
               </Label>
               <Textarea
                 id="bio"
                 rows={4}
-                className={`resize-none ${validationErrors.bio ? 'border-red-500' : ''}`}
+                className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron resize-none ${
+                  validationErrors.bio ? 'border-red-400' : ''
+                }`}
                 {...register('bio')}
                 placeholder={isBarber ? "Tell clients about your experience and what makes you unique..." : "Tell us about yourself..."}
               />
               {validationErrors.bio && (
-                <p className="text-sm text-red-500">{validationErrors.bio}</p>
+                <p className="text-sm text-red-400 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {validationErrors.bio}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+              <Label htmlFor="description" className="text-white font-medium">Description</Label>
               <Textarea
                 id="description"
                 rows={4}
-                className="resize-none"
+                className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron resize-none"
                 {...register('description')}
                 placeholder="Additional information about yourself or your business..."
               />
             </div>
 
-            {/* Social Media */}
-            <div className="space-y-2">
-              <Label htmlFor="socialMedia.instagram" className="text-sm font-medium">Instagram</Label>
-              <Input
-                id="socialMedia.instagram"
-                type="text"
-                className="h-11"
-                {...register('socialMedia.instagram')}
-                placeholder="Enter your Instagram URL"
-              />
-            </div>
+            {isBarber && (
+              <div className="space-y-2">
+                <Label htmlFor="specialties" className="text-white font-medium">Specialties</Label>
+                <SpecialtyAutocomplete
+                  value={watch('specialties')}
+                  onChange={(value) => setValue('specialties', value)}
+                  placeholder="Search and select your specialties..."
+                  maxSelections={15}
+                />
+                <p className="text-sm text-white/60">Select the services you specialize in</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="socialMedia.twitter" className="text-sm font-medium">Twitter</Label>
-              <Input
-                id="socialMedia.twitter"
-                type="text"
-                className="h-11"
-                {...register('socialMedia.twitter')}
-                placeholder="Enter your Twitter URL"
-              />
-            </div>
+        {/* Social Media */}
+        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+          <CardHeader className="bg-white/5 border-b border-white/10">
+            <CardTitle className="text-white flex items-center gap-2">
+              <Globe className="h-5 w-5 text-saffron" />
+              Social Media
+            </CardTitle>
+            <CardDescription className="text-white/70">
+              Connect your social media profiles
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.instagram" className="text-white font-medium flex items-center gap-2">
+                  <Instagram className="h-4 w-4 text-saffron" />
+                  Instagram
+                </Label>
+                <Input
+                  id="socialMedia.instagram"
+                  type="text"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  {...register('socialMedia.instagram')}
+                  placeholder="Enter your Instagram URL"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="socialMedia.tiktok" className="text-sm font-medium">TikTok</Label>
-              <Input
-                id="socialMedia.tiktok"
-                type="text"
-                className="h-11"
-                {...register('socialMedia.tiktok')}
-                placeholder="Enter your TikTok URL"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.twitter" className="text-white font-medium flex items-center gap-2">
+                  <Twitter className="h-4 w-4 text-saffron" />
+                  Twitter
+                </Label>
+                <Input
+                  id="socialMedia.twitter"
+                  type="text"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  {...register('socialMedia.twitter')}
+                  placeholder="Enter your Twitter URL"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="socialMedia.facebook" className="text-sm font-medium">Facebook</Label>
-              <Input
-                id="socialMedia.facebook"
-                type="text"
-                className="h-11"
-                {...register('socialMedia.facebook')}
-                placeholder="Enter your Facebook URL"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.tiktok" className="text-white font-medium flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-saffron" />
+                  TikTok
+                </Label>
+                <Input
+                  id="socialMedia.tiktok"
+                  type="text"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  {...register('socialMedia.tiktok')}
+                  placeholder="Enter your TikTok URL"
+                />
+              </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="socialMedia.facebook" className="text-white font-medium flex items-center gap-2">
+                  <Facebook className="h-4 w-4 text-saffron" />
+                  Facebook
+                </Label>
+                <Input
+                  id="socialMedia.facebook"
+                  type="text"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  {...register('socialMedia.facebook')}
+                  placeholder="Enter your Facebook URL"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Privacy & Notifications */}
+        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+          <CardHeader className="bg-white/5 border-b border-white/10">
+            <CardTitle className="text-white">Privacy & Notifications</CardTitle>
+            <CardDescription className="text-white/70">
+              Control your profile visibility and notification preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
             {/* Privacy Settings */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Public Profile</Label>
-                  <p className="text-sm text-muted-foreground">
+            <div className="space-y-4">
+              <h4 className="text-white font-semibold">Privacy Settings</h4>
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="space-y-1">
+                  <Label className="text-white font-medium">Public Profile</Label>
+                  <p className="text-sm text-white/60">
                     Allow others to view your profile
                   </p>
                 </div>
                 <Switch
                   checked={watch('isPublic')}
-                  onCheckedChange={(checked) => reset({ ...watch(), isPublic: checked })}
+                  onCheckedChange={(checked) => setValue('isPublic', checked)}
                 />
               </div>
             </div>
 
+            <Separator className="bg-white/10" />
+
             {/* Notification Settings */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-lg font-medium">Notification Preferences</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">
+            <div className="space-y-4">
+              <h4 className="text-white font-semibold">Notification Preferences</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="space-y-1">
+                    <Label className="text-white font-medium">Email Notifications</Label>
+                    <p className="text-sm text-white/60">
                       Receive notifications via email
                     </p>
                   </div>
                   <Switch
                     checked={watch('notifications.email')}
-                    onCheckedChange={(checked) => reset({ 
-                      ...watch(), 
-                      notifications: { ...watch('notifications'), email: checked }
-                    })}
+                    onCheckedChange={(checked) => setValue('notifications.email', checked)}
                   />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>SMS Notifications</Label>
-                    <p className="text-sm text-muted-foreground">
+                
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="space-y-1">
+                    <Label className="text-white font-medium">SMS Notifications</Label>
+                    <p className="text-sm text-white/60">
                       Receive notifications via SMS
                     </p>
                   </div>
                   <Switch
                     checked={watch('notifications.sms')}
-                    onCheckedChange={(checked) => reset({ 
-                      ...watch(), 
-                      notifications: { ...watch('notifications'), sms: checked }
-                    })}
+                    onCheckedChange={(checked) => setValue('notifications.sms', checked)}
                   />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Marketing Emails</Label>
-                    <p className="text-sm text-muted-foreground">
+                
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="space-y-1">
+                    <Label className="text-white font-medium">Marketing Emails</Label>
+                    <p className="text-sm text-white/60">
                       Receive marketing and promotional emails
                     </p>
                   </div>
                   <Switch
                     checked={watch('notifications.marketing')}
-                    onCheckedChange={(checked) => reset({ 
-                      ...watch(), 
-                      notifications: { ...watch('notifications'), marketing: checked }
-                    })}
+                    onCheckedChange={(checked) => setValue('notifications.marketing', checked)}
                   />
                 </div>
               </div>
@@ -608,20 +774,46 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           </CardContent>
         </Card>
 
+        {/* Developer Mode */}
+        {user?.role === 'barber' && (
+          <Card className="bg-white/10 border border-saffron/40 shadow-2xl backdrop-blur-2xl rounded-2xl my-6">
+            <CardHeader className="bg-white/5 border-b border-saffron/30 rounded-t-2xl">
+              <CardTitle className="flex items-center gap-2 text-saffron text-lg font-bebas">
+                <Sparkles className="h-5 w-5 text-saffron" />
+                Developer Mode
+                {isDeveloper && <Badge className="ml-2 bg-saffron/80 text-primary font-bold">Enabled</Badge>}
+              </CardTitle>
+              <CardDescription className="text-white/80">
+                When enabled, this account will bypass all Stripe platform fees. <span className="text-saffron font-semibold">For development/testing only.</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 flex items-center justify-between">
+              <div className="space-y-1">
+                <Label className="text-white font-medium">Enable Developer Mode</Label>
+                <p className="text-sm text-white/60">Bypass all Stripe fees for this barber account.</p>
+              </div>
+              <Switch
+                checked={isDeveloper}
+                onCheckedChange={handleDeveloperToggle}
+                className="scale-125 border-saffron/60 shadow-lg"
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Save Button */}
         <div className="flex justify-end">
-          <Button 
-            type="submit" 
-            className="h-11 px-8"
+          <Button
+            type="submit"
             disabled={isLoading}
+            className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg px-8 py-3"
           >
             {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
-              'Save Changes'
+              <Save className="h-4 w-4 mr-2" />
             )}
+            Save Changes
           </Button>
         </div>
       </form>

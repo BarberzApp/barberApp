@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar"
 import { Badge } from "@/shared/components/ui/badge"
 import { Calendar, Clock, MapPin, Scissors, X } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useRouter } from "next/navigation"
 import {
   AlertDialog,

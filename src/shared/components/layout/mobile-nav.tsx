@@ -4,10 +4,10 @@ import * as React from "react"
 import { useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Home, Search, Calendar, User, Menu, Clock, Briefcase, Heart, Users, DollarSign } from "lucide-react"
+import { Home, Search, Calendar, User, Menu, Clock, Briefcase, Heart, Users, DollarSign, Video } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/components/ui/sheet"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 
 export function MobileNav() {
   const router = useRouter()
@@ -17,9 +17,7 @@ export function MobileNav() {
 
   // Get current pathname safely
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setPathname(window.location.pathname)
-    }
+    setPathname(window.location.pathname)
   }, [])
 
   const baseNavItems = [
@@ -39,6 +37,7 @@ export function MobileNav() {
       case "barber":
         return [
           { name: "Calendar", href: "/calendar", icon: Calendar },
+          { name: "Reels", href: "/reels", icon: Video },
           { name: "Clients", href: "/clients", icon: Users },
           { name: "Earnings", href: "/earnings", icon: DollarSign },
         ]

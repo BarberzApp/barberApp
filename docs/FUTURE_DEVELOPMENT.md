@@ -63,7 +63,19 @@
 
 ## 🆕 New Features to Implement
 
-### 9. Driving Barbers (Uber Eats Style) 🔄 **IN PROGRESS**
+### 9. Light/Dark Mode System 🔄 **PLANNED**
+- [ ] Implement system-wide theme toggle — Global theme context and provider
+- [ ] Add light mode with specific background color (241, 247, 251) — Custom light theme implementation
+- [ ] Create theme persistence — Save user preference in localStorage
+- [ ] Add automatic theme detection — Detect system preference (light/dark)
+- [ ] Implement smooth theme transitions — CSS transitions between themes
+- [ ] Create theme-aware components — All components support both themes
+- [ ] Add theme-specific color variables — CSS custom properties for both themes
+- [ ] Implement theme toggle in navigation — Easy access to theme switching
+- [ ] Add theme-specific icons and images — Optimized assets for both themes
+- [ ] Create theme migration system — Seamless transition for existing users
+
+### 10. Driving Barbers (Uber Eats Style) 🔄 **IN PROGRESS**
 - [ ] Implement on-demand barber requests — Database schema exists (ondemand_requests table)
 - [ ] Add location-based matching — GPS coordinates and radius-based matching
 - [ ] Create surge pricing system — Surge multiplier and pricing logic
@@ -71,7 +83,7 @@
 - [ ] Implement acceptance/decline flow — Request management system
 - [ ] Add mobile barber dashboard — Interface for traveling barbers
 
-### 10. Advanced Scheduling 🔄 **PARTIALLY COMPLETED**
+### 11. Advanced Scheduling 🔄 **PARTIALLY COMPLETED**
 - [x] Add spacing between appointments — Buffer minutes before/after implemented
 - [x] Implement slot restrictions — Scheduling slots with configurable duration
 - [ ] Add recurring availability patterns — Weekly schedule templates
@@ -79,7 +91,7 @@
 - [ ] Implement holiday/special hours — Special hours system exists, needs enhancement
 - [ ] Add capacity management — Multiple bookings per slot support
 
-### 11. Feedback System (No Charges) 🔄 **NEEDS IMPLEMENTATION**
+### 12. Feedback System (No Charges) 🔄 **NEEDS IMPLEMENTATION**
 - [ ] Create feedback collection system — Rating and review system
 - [ ] Add feedback analytics — Dashboard for feedback insights
 - [ ] Implement feedback notifications — Email/SMS feedback requests
@@ -87,7 +99,7 @@
 - [ ] Add feedback incentives — Completion rewards for feedback
 - [ ] Implement feedback export — Data export for barbers
 
-### 12. Dev Account for CalebCuts 🔄 **NEEDS IMPLEMENTATION**
+### 13. Dev Account for CalebCuts 🔄 **NEEDS IMPLEMENTATION**
 - [ ] Create development account system — Sandbox environment for testing
 - [ ] Implement feedback loop system — Iterative improvement tracking
 - [ ] Add feature flagging — A/B testing capabilities
@@ -95,7 +107,7 @@
 - [ ] Implement staged rollouts — Gradual feature releases
 - [ ] Add development tools — Debugging and testing utilities
 
-### 13. Social Media Content Creation 🔄 **NEEDS IMPLEMENTATION**
+### 14. Social Media Content Creation 🔄 **NEEDS IMPLEMENTATION**
 - [ ] Add portfolio video uploads — Video content management
 - [ ] Create Instagram Reel templates — Pre-built video templates
 - [ ] Implement video editing tools — Basic video editing capabilities
@@ -103,7 +115,7 @@
 - [ ] Create content analytics — Performance tracking for posts
 - [ ] Implement hashtag suggestions — SEO optimization for social media
 
-### 14. Instagram Reel Portfolio 🔄 **NEEDS IMPLEMENTATION**
+### 15. Instagram Reel Portfolio 🔄 **NEEDS IMPLEMENTATION**
 - [ ] Create video portfolio page — Dedicated video showcase
 - [ ] Add video categorization — Organize videos by style/technique
 - [ ] Implement video sharing — Social media integration
@@ -203,6 +215,67 @@ NEXT_PUBLIC_APP_URL=...
 .font-semibold { font-weight: 600; }
 .font-bold { font-weight: 700; }
 ```
+
+## 🌓 Light/Dark Mode Implementation Plan
+
+### Theme System Architecture
+```typescript
+// Planned implementation structure:
+interface Theme {
+  name: 'light' | 'dark' | 'system'
+  colors: {
+    background: string
+    surface: string
+    primary: string
+    secondary: string
+    text: {
+      primary: string
+      secondary: string
+      muted: string
+    }
+    border: string
+    accent: string
+  }
+}
+
+// Light theme with specified background color
+const lightTheme: Theme = {
+  name: 'light',
+  colors: {
+    background: 'rgb(241, 247, 251)', // Specific light background
+    surface: '#ffffff',
+    primary: '#1a1a2e', // Current primary color
+    secondary: '#f59e0b', // Saffron color
+    text: {
+      primary: '#1a1a2e',
+      secondary: '#4b5563',
+      muted: '#6b7280'
+    },
+    border: '#e5e7eb',
+    accent: '#f59e0b'
+  }
+}
+```
+
+### Implementation Steps
+1. **Create Theme Context** — Global theme state management
+2. **Add Theme Provider** — Wrap app with theme context
+3. **Create Theme Toggle** — User interface for switching themes
+4. **Update CSS Variables** — Dynamic theme switching
+5. **Add Theme Persistence** — Save user preference
+6. **Update All Components** — Ensure theme compatibility
+7. **Add System Detection** — Auto-detect OS theme preference
+8. **Implement Smooth Transitions** — CSS transitions between themes
+
+### Component Updates Required
+- [ ] Navigation bar theme toggle
+- [ ] All page backgrounds
+- [ ] Card components
+- [ ] Form inputs
+- [ ] Buttons and interactive elements
+- [ ] Text colors and typography
+- [ ] Icons and images
+- [ ] Loading states and skeletons
 
 ## 🚨 Critical Issues ✅ **RESOLVED**
 

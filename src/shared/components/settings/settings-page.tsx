@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ProfileSettings } from '@/features/settings/components/profile-settings'
 import { ServicesSettings } from './services-settings'
 import { EarningsDashboard } from '@/shared/components/payment/earnings-dashboard'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { DollarSign } from 'lucide-react'
 
 type Tab = 'profile' | 'services' | 'earnings'

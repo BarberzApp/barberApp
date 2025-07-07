@@ -13,7 +13,7 @@ import { Label } from '@/shared/components/ui/label'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Camera, MapPin, Phone, Mail, Instagram, Twitter, Facebook, Globe, Edit3, Save, X, Loader2 } from 'lucide-react'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 

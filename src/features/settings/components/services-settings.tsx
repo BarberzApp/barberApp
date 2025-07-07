@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
-import { Card, CardContent } from '@/shared/components/ui/card'
-import { Loader2, Plus, Edit, Trash2, Scissors, AlertCircle, CheckCircle } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Loader2, Plus, Edit, Trash2, Scissors, AlertCircle, CheckCircle, Sparkles, Clock, DollarSign } from 'lucide-react'
+import { Badge } from '@/shared/components/ui/badge'
 
 interface Service {
   id?: string
@@ -198,33 +199,24 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
   }
 
   // Delete service
-  const deleteService = async (id: string) => {
-    if (!barberId) {
-      toast({
-        title: 'Error',
-        description: 'Barber information not found. Please try again.',
-        variant: 'destructive',
-      })
-      return
-    }
+  const deleteService = async (serviceId: string) => {
+    if (!confirm('Are you sure you want to delete this service?')) return
 
     try {
       setIsLoading(true)
       const { error } = await supabase
         .from('services')
         .delete()
-        .eq('id', id)
-        .eq('barber_id', barberId)
+        .eq('id', serviceId)
 
       if (error) throw error
-      
-      await loadServices(barberId)
+
       toast({
         title: 'Success',
         description: 'Service deleted successfully',
       })
       
-      // Call onUpdate to refresh settings data
+      await loadServices(barberId!)
       onUpdate?.()
     } catch (error) {
       console.error('Error deleting service:', error)
@@ -238,217 +230,280 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
     }
   }
 
-  // Edit service
   const editService = (service: Service) => {
     setEditingService(service)
     setValue('name', service.name)
-    setValue('duration', service.duration)
     setValue('price', service.price)
+    setValue('duration', service.duration)
     setValue('description', service.description || '')
   }
 
-  // Cancel editing
   const cancelEdit = () => {
     setEditingService(null)
     reset()
     setValidationErrors({})
   }
 
-  if (!barberId) {
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`.trim()
+    }
+    return `${mins}m`
+  }
+
+  if (isLoading && services.length === 0) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="p-3 bg-saffron/20 rounded-full">
+              <Scissors className="h-6 w-6 text-saffron" />
+            </div>
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
+                Services
+              </h3>
+              <p className="text-white/80 mt-1">Manage your service offerings</p>
+            </div>
+          </div>
+        </div>
+        
+        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center min-h-[200px]">
+              <div className="text-center space-y-4">
+                <div className="relative">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-saffron" />
+                  <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+                </div>
+                <p className="text-white/60 font-medium">Loading services...</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium leading-6 text-foreground">Services</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your services and pricing.</p>
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="p-3 bg-saffron/20 rounded-full">
+            <Scissors className="h-6 w-6 text-saffron" />
+          </div>
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
+              Services
+            </h3>
+            <p className="text-white/80 mt-1">Manage your service offerings</p>
+          </div>
+        </div>
       </div>
 
-      {/* Services Status */}
-      {services.length === 0 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            You haven't added any services yet. Add your first service to start accepting bookings.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {services.length > 0 && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
-            You have {services.length} service{services.length !== 1 ? 's' : ''} configured.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Add/Edit Service Form */}
-      <Card>
-        <CardContent className="pt-6">
+      {/* Add Service Form */}
+      <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <CardHeader className="bg-white/5 border-b border-white/10">
+          <CardTitle className="text-white flex items-center gap-2">
+            {editingService ? (
+              <>
+                <Edit className="h-5 w-5 text-saffron" />
+                Edit Service
+              </>
+            ) : (
+              <>
+                <Plus className="h-5 w-5 text-saffron" />
+                Add New Service
+              </>
+            )}
+          </CardTitle>
+          <CardDescription className="text-white/70">
+            {editingService ? 'Update your service details' : 'Add a new service to your offerings'}
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div>
-                <Label htmlFor="name" className="block text-sm font-medium text-foreground">
-                  Service Name *
-                </Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-white font-medium">Service Name *</Label>
                 <Input
-                  type="text"
                   id="name"
-                  className={validationErrors.name ? 'border-red-500' : ''}
-                  {...register('name', { required: 'Service name is required' })}
-                  placeholder="e.g., Haircut"
+                  {...register('name')}
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  placeholder="e.g., Haircut, Beard Trim"
                 />
                 {validationErrors.name && (
-                  <p className="mt-1 text-sm text-red-500">{validationErrors.name}</p>
-                )}
-                {errors.name && (
-                  <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>
+                  <p className="text-sm text-red-400">{validationErrors.name}</p>
                 )}
               </div>
-
-              <div>
-                <Label htmlFor="duration" className="block text-sm font-medium text-foreground">
-                  Duration (minutes) *
-                </Label>
+              
+              <div className="space-y-2">
+                <Label htmlFor="price" className="text-white font-medium">Price ($) *</Label>
                 <Input
-                  type="number"
-                  id="duration"
-                  min="1"
-                  className={validationErrors.duration ? 'border-red-500' : ''}
-                  {...register('duration', { 
-                    required: 'Duration is required',
-                    min: { value: 1, message: 'Duration must be at least 1 minute' }
-                  })}
-                  placeholder="30"
-                />
-                {validationErrors.duration && (
-                  <p className="mt-1 text-sm text-red-500">{validationErrors.duration}</p>
-                )}
-                {errors.duration && (
-                  <p className="mt-1 text-sm text-destructive">{errors.duration.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="price" className="block text-sm font-medium text-foreground">
-                  Price ($) *
-                </Label>
-                <Input
-                  type="number"
                   id="price"
-                  min="0"
+                  type="number"
                   step="0.01"
-                  className={validationErrors.price ? 'border-red-500' : ''}
-                  {...register('price', { 
-                    required: 'Price is required',
-                    min: { value: 0, message: 'Price must be at least $0' }
-                  })}
+                  min="0"
+                  {...register('price', { valueAsNumber: true })}
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
                   placeholder="25.00"
                 />
                 {validationErrors.price && (
-                  <p className="mt-1 text-sm text-red-500">{validationErrors.price}</p>
-                )}
-                {errors.price && (
-                  <p className="mt-1 text-sm text-destructive">{errors.price.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="description" className="block text-sm font-medium text-foreground">
-                  Description
-                </Label>
-                <Input
-                  type="text"
-                  id="description"
-                  className={validationErrors.description ? 'border-red-500' : ''}
-                  {...register('description')}
-                  placeholder="Enter a description for the service"
-                />
-                {validationErrors.description && (
-                  <p className="mt-1 text-sm text-red-500">{validationErrors.description}</p>
+                  <p className="text-sm text-red-400">{validationErrors.price}</p>
                 )}
               </div>
             </div>
-
-            <div className="flex justify-end gap-2">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="duration" className="text-white font-medium">Duration (minutes) *</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  min="1"
+                  {...register('duration', { valueAsNumber: true })}
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  placeholder="30"
+                />
+                {validationErrors.duration && (
+                  <p className="text-sm text-red-400">{validationErrors.duration}</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-white font-medium">Description</Label>
+                <Input
+                  id="description"
+                  {...register('description')}
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  placeholder="Brief description of the service"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                {editingService ? 'Update Service' : 'Add Service'}
+              </Button>
+              
               {editingService && (
                 <Button
                   type="button"
-                  variant="outline"
                   onClick={cancelEdit}
-                  disabled={isLoading}
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10"
                 >
                   Cancel
                 </Button>
               )}
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {editingService ? 'Updating...' : 'Adding...'}
-                  </>
-                ) : (
-                  <>
-                    {editingService ? <Edit className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                    {editingService ? 'Update Service' : 'Add Service'}
-                  </>
-                )}
-              </Button>
             </div>
           </form>
         </CardContent>
       </Card>
 
       {/* Services List */}
-      {services.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <h4 className="text-sm font-medium text-foreground mb-4">Your Services</h4>
-            <div className="space-y-3">
-              {services.map((service) => (
-                <div key={service.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Scissors className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{service.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {service.duration} minutes • ${service.price.toFixed(2)}
-                      </p>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-white">Your Services</h4>
+          <Badge variant="glassy-saffron" className="text-xs">
+            {services.length} {services.length === 1 ? 'Service' : 'Services'}
+          </Badge>
+        </div>
+        
+        {services.length === 0 ? (
+          <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl">
+            <CardContent className="p-8 text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="p-3 bg-saffron/20 rounded-full">
+                  <Sparkles className="h-6 w-6 text-saffron" />
+                </div>
+                <div>
+                  <h5 className="text-lg font-semibold text-white">No Services Yet</h5>
+                  <p className="text-white/60 text-sm">Add your first service to start accepting bookings</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {services.map((service) => (
+              <Card key={service.id} className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl hover:shadow-2xl transition-all duration-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h5 className="font-semibold text-white">{service.name}</h5>
+                        <Badge variant="glassy-saffron" className="text-xs">
+                          ${service.price}
+                        </Badge>
+                        <div className="flex items-center gap-1 text-white/60 text-sm">
+                          <Clock className="h-3 w-3" />
+                          {formatDuration(service.duration)}
+                        </div>
+                      </div>
+                      {service.description && (
+                        <p className="text-sm text-white/70">{service.description}</p>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => editService(service)}
+                        className="text-white/70 hover:text-white hover:bg-white/10"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteService(service.id!)}
+                        disabled={isLoading}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => editService(service)}
-                      disabled={isLoading}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => service.id && deleteService(service.id)}
-                      disabled={isLoading}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tips Section */}
+      <Card className="bg-gradient-to-br from-saffron/10 to-transparent border border-saffron/20 shadow-xl backdrop-blur-xl">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-saffron/20 rounded-full">
+              <Sparkles className="h-4 w-4 text-saffron" />
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-white">Pro Tips</h4>
+              <ul className="text-xs text-white/70 space-y-1">
+                <li>• Set competitive prices based on your location and experience</li>
+                <li>• Be accurate with duration estimates to avoid scheduling conflicts</li>
+                <li>• Add detailed descriptions to help clients understand your services</li>
+                <li>• Consider offering package deals for multiple services</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 } 

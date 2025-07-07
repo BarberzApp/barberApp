@@ -13,7 +13,7 @@ import { Separator } from '@/shared/components/ui/separator'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { supabase } from '@/shared/lib/supabase'
-import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { 
   Clock, 
   Calendar, 

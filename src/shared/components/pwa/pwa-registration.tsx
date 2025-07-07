@@ -48,48 +48,57 @@ export function PWARegistration() {
       })
     }
 
-    // Register service worker with error handling
+    // Register service worker with improved error handling
     const registerServiceWorker = async () => {
       if ('serviceWorker' in navigator) {
         try {
-          const registration = await navigator.serviceWorker.register('/service-worker.js', {
-            scope: '/',
-          })
+          // Only register in production or if explicitly enabled
+          if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_SW === 'true') {
+            const registration = await navigator.serviceWorker.register('/service-worker.js', {
+              scope: '/',
+              updateViaCache: 'none' // Always check for updates
+            })
 
-          setSwRegistration(registration)
+            setSwRegistration(registration)
 
-          // Handle service worker updates
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New service worker available
-                  toast({
-                    title: 'Update Available',
-                    description: 'A new version of BOCM is available. Refresh to update.',
-                    action: (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.location.reload()}
-                      >
-                        Refresh
-                      </Button>
-                    ),
-                  })
-                }
-              })
-            }
-          })
+            // Handle service worker updates more gracefully
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Only show update notification if user is not actively using the app
+                    const isUserActive = !document.hidden && document.visibilityState === 'visible'
+                    if (!isUserActive) {
+                      toast({
+                        title: 'Update Available',
+                        description: 'A new version of BOCM is available. Refresh to update.',
+                        action: (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.location.reload()}
+                          >
+                            Refresh
+                          </Button>
+                        ),
+                      })
+                    }
+                  }
+                })
+              }
+            })
 
-          // Handle service worker errors
-          registration.addEventListener('error', (event) => {
-            console.warn('Service Worker registration error:', event)
-            // Don't show error to user unless it's critical
-          })
+            // Handle service worker errors without disrupting the app
+            registration.addEventListener('error', (event) => {
+              console.warn('Service Worker registration error:', event)
+              // Don't show error to user - PWA is not critical for app functionality
+            })
 
-          console.log('Service Worker registered successfully:', registration)
+            console.log('Service Worker registered successfully:', registration)
+          } else {
+            console.log('Service Worker disabled in development')
+          }
         } catch (error) {
           console.warn('Service Worker registration failed:', error)
           // Don't show error to user as PWA is not critical for app functionality
@@ -200,13 +209,10 @@ export function usePWAStatus() {
   const [isOnline, setIsOnline] = useState(true)
 
   useEffect(() => {
-    // Check if PWA is installed
     if (typeof window !== 'undefined') {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
       const isInApp = (navigator as NavigatorWithStandalone).standalone === true
       setIsInstalled(isStandalone || isInApp)
-
-      // Check online status
       setIsOnline(navigator.onLine)
 
       const handleOnline = () => setIsOnline(true)

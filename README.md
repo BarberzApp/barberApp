@@ -96,6 +96,44 @@ src/
 - End-to-end testing
 - Performance testing
 
+## Super Admin Panel
+
+The app includes a super admin panel for managing developer accounts. Only the specified super admin can access this panel.
+
+### Accessing the Super Admin Panel
+
+1. Navigate to `/super-admin` in your browser
+2. Login with the super admin credentials:
+   - **Email:** primbocm@gmail.com
+   - **Password:** Yasaddybocm123!
+
+### Features
+
+- **View All Barbers:** See a list of all registered barbers with their details
+- **Search Barbers:** Search by name, business name, or email
+- **Toggle Developer Status:** Enable/disable developer mode for any barber
+- **Statistics:** View total barbers, developers, and regular barbers count
+
+### Developer Mode
+
+When a barber has developer mode enabled:
+- They bypass all Stripe platform fees ($3.38)
+- They receive 100% of the service price
+- This is intended for development and testing purposes only
+
+### Setting Up Super Admin
+
+To create the super admin account, run:
+
+```bash
+node scripts/create-super-admin.js
+```
+
+This script will:
+- Create the super admin user account if it doesn't exist
+- Set the correct password
+- Create the necessary profile record
+
 ## Contributing
 1. Fork the repository
 2. Create your feature branch

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { useAuth } from "@/features/auth/hooks/use-auth"
-import { useData } from "@/shared/contexts/data-context"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
+import { supabase } from "@/shared/lib/supabase"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/shared/components/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
@@ -12,7 +12,6 @@ import { Badge } from "@/shared/components/ui/badge"
 import dynamic from 'next/dynamic'
 import { Loader2 } from "lucide-react"
 import { BarberCard } from "@/shared/components/profile/barber-card"
-import type { Barber } from "@/shared/types"
 
 const Calendar = dynamic(
   () => import("@/shared/components/ui/calendar").then((mod) => mod.Calendar),
@@ -189,11 +188,144 @@ const mockEvents = [
   },
 ]
 
+// Type for the raw data structure from the database
+type BarberFromDB = {
+  id: string
+  user_id: string
+  bio?: string
+  specialties: string[]
+  price_range?: string
+  next_available?: string
+  created_at: string
+  updated_at: string
+}
+
+type ProfileFromDB = {
+  id: string
+  name: string
+  location?: string
+  bio?: string
+  avatar_url?: string
+  is_public?: boolean
+}
+
+// Type for the transformed data used in the UI
+type Barber = {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  location?: string
+  bio?: string
+  businessName?: string
+  specialties: string[]
+  services: any[]
+  priceRange?: string
+  nextAvailable?: string
+  rating?: number
+  image?: string
+  portfolio?: string[]
+  trending?: boolean
+  openToHire?: boolean
+  isPublic?: boolean
+  instagram?: string
+  twitter?: string
+  tiktok?: string
+  facebook?: string
+  joinDate?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export default function CalendarPage() {
   const { user } = useAuth();
-  const { barbers, loading, error } = useData()
+  const [barbers, setBarbers] = useState<Barber[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedBarber, setSelectedBarber] = useState<string | undefined>()
+
+  // Fetch barbers with profile data
+  useEffect(() => {
+    const fetchBarbers = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Step 1: Fetch all barbers
+        const { data: barbersData, error: barbersError } = await supabase
+          .from('barbers')
+          .select('*')
+
+        if (barbersError) {
+          console.error('Supabase error:', barbersError)
+          throw barbersError
+        }
+
+        if (!barbersData || barbersData.length === 0) {
+          setBarbers([])
+          return
+        }
+
+        // Step 2: Fetch all profiles for these barbers
+        const userIds = barbersData.map((b: BarberFromDB) => b.user_id)
+        
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, name, location, bio, avatar_url, is_public')
+          .in('id', userIds)
+
+        if (profilesError) {
+          console.error('Supabase error (profiles):', profilesError)
+          throw profilesError
+        }
+
+        // Step 3: Merge barbers and profiles
+        const profileMap: Record<string, ProfileFromDB> = {}
+        for (const profile of profilesData || []) {
+          profileMap[profile.id] = profile
+        }
+
+        const formattedBarbers: Barber[] = (barbersData as BarberFromDB[]).map(barber => {
+          const profile = profileMap[barber.user_id]
+          return {
+            id: profile?.id || barber.user_id,
+            name: profile?.name || '',
+            email: '', // We don't have email in this context
+            location: profile?.location,
+            bio: profile?.bio,
+            businessName: '',
+            specialties: barber.specialties || [],
+            services: [], // We don't have services in this context
+            priceRange: barber.price_range,
+            nextAvailable: barber.next_available,
+            rating: 4.5, // Default rating
+            image: profile?.avatar_url,
+            portfolio: [],
+            trending: false,
+            openToHire: false,
+            isPublic: profile?.is_public,
+            instagram: '',
+            twitter: '',
+            tiktok: '',
+            facebook: '',
+            joinDate: barber.created_at,
+            createdAt: barber.created_at,
+            updatedAt: barber.updated_at
+          }
+        })
+
+        setBarbers(formattedBarbers)
+      } catch (error) {
+        console.error('Error fetching barbers:', error)
+        setError('Failed to load barbers. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBarbers()
+  }, [])
 
   if (loading) {
     return (

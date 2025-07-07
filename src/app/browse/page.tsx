@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
@@ -21,9 +21,17 @@ import {
   X,
   SortAsc,
   SortDesc,
-  Map,
+  Map as MapIcon,
   Clock,
-  DollarSign
+  DollarSign,
+  Sparkles,
+  TrendingUp,
+  Heart,
+  Calendar,
+  Phone,
+  Mail,
+  Globe,
+  Navigation
 } from 'lucide-react'
 import Link from 'next/link'
 import { BarberCard } from '@/shared/components/profile/barber-card'
@@ -32,12 +40,13 @@ import { Checkbox } from '@/shared/components/ui/checkbox'
 import { Label } from '@/shared/components/ui/label'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/shared/components/ui/sheet'
 import { Separator } from '@/shared/components/ui/separator'
-import { SearchSuggestions } from '@/shared/components/search/search-suggestions'
-import { QuickFilters } from '@/shared/components/search/quick-filters'
 import { SearchResultsSummary } from '@/shared/components/search/search-results-summary'
 import { SearchSkeleton } from '@/shared/components/search/search-skeleton'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
+import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 
 // Type for the raw data structure from the database
 type BarberFromDB = {
@@ -51,6 +60,10 @@ type BarberFromDB = {
   twitter?: string
   tiktok?: string
   facebook?: string
+  latitude?: number
+  longitude?: number
+  city?: string
+  state?: string
 }
 
 type ProfileFromDB = {
@@ -78,12 +91,25 @@ type Barber = {
   twitter?: string
   tiktok?: string
   facebook?: string
+  latitude?: number
+  longitude?: number
+  city?: string
+  state?: string
+  distance?: number // Distance from user's location
 }
 
-type SortOption = 'name' | 'rating' | 'location' | 'price'
+type SortOption = 'name' | 'rating' | 'location' | 'price' | 'distance'
 type SortOrder = 'asc' | 'desc'
 
+type LocationFilter = {
+  city: string
+  state: string
+  range: number
+  useCurrentLocation: boolean
+}
+
 export default function BrowsePage() {
+  const { user } = useAuth()
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -93,9 +119,50 @@ export default function BrowsePage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState<string>('all')
-  const [locationFilter, setLocationFilter] = useState('')
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>({
+    city: '',
+    state: '',
+    range: 50,
+    useCurrentLocation: false
+  })
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [showLocationFilter, setShowLocationFilter] = useState(false)
   const { toast } = useToast()
+
+  // Get user's current location
+  const getCurrentLocation = useCallback(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          })
+        },
+        (error) => {
+          console.error('Error getting location:', error)
+          toast({
+            title: 'Location Error',
+            description: 'Could not get your current location.',
+            variant: 'destructive',
+          })
+        }
+      )
+    }
+  }, [toast])
+
+  // Calculate distance between two points
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 3959 // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLon = (lon2 - lon1) * Math.PI / 180
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+    return R * c
+  }
 
   // Get all available specialties for filtering
   const allSpecialties = useMemo(() => {
@@ -111,6 +178,8 @@ export default function BrowsePage() {
     const locations = new Set<string>()
     barbers.forEach(barber => {
       if (barber.location) locations.add(barber.location)
+      if (barber.city) locations.add(barber.city)
+      if (barber.state) locations.add(barber.state)
     })
     return Array.from(locations).sort()
   }, [barbers])
@@ -130,6 +199,8 @@ export default function BrowsePage() {
         barber.name.toLowerCase().includes(query) ||
         barber.businessName?.toLowerCase().includes(query) ||
         barber.location?.toLowerCase().includes(query) ||
+        barber.city?.toLowerCase().includes(query) ||
+        barber.state?.toLowerCase().includes(query) ||
         barber.specialties.some(specialty => 
           specialty.toLowerCase().includes(query)
         ) ||
@@ -143,8 +214,25 @@ export default function BrowsePage() {
         )
 
       // Location filter
-      const matchesLocation = !locationFilter || 
-        barber.location?.toLowerCase().includes(locationFilter.toLowerCase())
+      let matchesLocation = true
+      if (locationFilter.city) {
+        matchesLocation = matchesLocation && (barber.city?.toLowerCase().includes(locationFilter.city.toLowerCase()) ?? false)
+      }
+      if (locationFilter.state) {
+        matchesLocation = matchesLocation && (barber.state?.toLowerCase().includes(locationFilter.state.toLowerCase()) ?? false)
+      }
+
+      // Distance filter if using current location
+      if (locationFilter.useCurrentLocation && userLocation && barber.latitude && barber.longitude) {
+        const distance = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          barber.latitude as number,
+          barber.longitude as number
+        )
+        matchesLocation = matchesLocation && distance <= locationFilter.range
+        barber.distance = distance // Add distance to barber object for sorting
+      }
 
       // Price range filter
       const matchesPrice = priceRange === 'all' || 
@@ -173,6 +261,10 @@ export default function BrowsePage() {
           aValue = a.location?.toLowerCase() || ''
           bValue = b.location?.toLowerCase() || ''
           break
+        case 'distance':
+          aValue = a.distance || Infinity
+          bValue = b.distance || Infinity
+          break
         case 'price':
           const priceOrder = { 'Budget': 1, 'Mid-range': 2, 'Premium': 3 }
           aValue = priceOrder[a.priceRange as keyof typeof priceOrder] || 0
@@ -188,83 +280,79 @@ export default function BrowsePage() {
     })
 
     setFilteredBarbers(filtered)
-  }, [barbers, searchQuery, sortBy, sortOrder, selectedSpecialties, priceRange, locationFilter])
+  }, [barbers, searchQuery, sortBy, sortOrder, selectedSpecialties, priceRange, locationFilter, userLocation])
 
   const fetchBarbers = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      console.log('Browse: Starting to fetch barbers...')
-
-      // Step 1: Fetch all barbers
-      const { data: barbersData, error: barbersError } = await supabase
+      // Fetch barbers with their profiles
+      const { data: barberData, error: barberError } = await supabase
         .from('barbers')
-        .select('id, user_id, business_name, specialties, price_range, stripe_account_status, instagram, twitter, tiktok, facebook')
+        .select(`
+          id,
+          user_id,
+          business_name,
+          specialties,
+          price_range,
+          stripe_account_status,
+          instagram,
+          twitter,
+          tiktok,
+          facebook,
+          latitude,
+          longitude,
+          city,
+          state
+        `)
 
-      if (barbersError) {
-        console.error('Supabase error:', barbersError)
-        throw barbersError
-      }
+      if (barberError) throw barberError
 
-      console.log('Browse: Barbers data:', barbersData)
-
-      if (!barbersData || barbersData.length === 0) {
-        console.log('Browse: No barbers found')
-        setBarbers([])
-        return
-      }
-
-      // Step 2: Fetch all profiles for these barbers
-      const userIds = barbersData.map((b: BarberFromDB) => b.user_id)
-      console.log('Browse: User IDs to fetch profiles for:', userIds)
-      
-      const { data: profilesData, error: profilesError } = await supabase
+      // Fetch profiles for all barbers
+      const userIds = barberData.map(barber => barber.user_id)
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, name, location, bio, avatar_url, is_public')
         .in('id', userIds)
 
-      if (profilesError) {
-        console.error('Supabase error (profiles):', profilesError)
-        throw profilesError
-      }
+      if (profileError) throw profileError
 
-      console.log('Browse: Profiles data:', profilesData)
+      // Create a map of profiles by user_id
+      const profileMap = new Map(profileData.map(profile => [profile.id, profile]))
 
-      // Step 3: Merge barbers and profiles, only show public profiles
-      const profileMap: Record<string, ProfileFromDB> = {}
-      for (const profile of profilesData || []) {
-        profileMap[profile.id] = profile
-      }
-
-      const formattedBarbers: Barber[] = (barbersData as BarberFromDB[]).map(barber => {
-        const profile = profileMap[barber.user_id]
+      // Combine barber and profile data
+      const combinedBarbers: Barber[] = barberData.map(barber => {
+        const profile = profileMap.get(barber.user_id)
         return {
-          id: profile?.id || barber.user_id,
-          name: profile?.name || '',
+          id: barber.id,
+          name: profile?.name || 'Unknown',
           businessName: barber.business_name,
           location: profile?.location,
           specialties: barber.specialties || [],
           bio: profile?.bio,
           priceRange: barber.price_range,
           avatarUrl: profile?.avatar_url,
-          isPublic: profile?.is_public,
+          isPublic: profile?.is_public ?? true,
           isStripeReady: barber.stripe_account_status === 'active',
           instagram: barber.instagram,
           twitter: barber.twitter,
           tiktok: barber.tiktok,
-          facebook: barber.facebook
+          facebook: barber.facebook,
+          latitude: barber.latitude,
+          longitude: barber.longitude,
+          city: barber.city,
+          state: barber.state
         }
-      }).filter(barber => barber.isPublic)
+      })
 
-      console.log('Browse: Formatted barbers (after filtering for public):', formattedBarbers)
-      setBarbers(formattedBarbers)
-    } catch (error) {
-      console.error('Error fetching barbers:', error)
+      setBarbers(combinedBarbers)
+    } catch (err) {
+      console.error('Error fetching barbers:', err)
       setError('Failed to load barbers. Please try again.')
       toast({
         title: 'Error',
-        description: 'Failed to load barbers. Please refresh the page.',
+        description: 'Failed to load barbers.',
         variant: 'destructive',
       })
     } finally {
@@ -272,28 +360,27 @@ export default function BrowsePage() {
     }
   }
 
+  // Handle location filter changes
+  const handleLocationFilter = () => {
+    if (locationFilter.useCurrentLocation && !userLocation) {
+      getCurrentLocation()
+    }
+    setShowLocationFilter(false)
+  }
+
+  // Clear location filters
+  const clearLocationFilter = () => {
+    setLocationFilter({
+      city: '',
+      state: '',
+      range: 50,
+      useCurrentLocation: false
+    })
+    setUserLocation(null)
+  }
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
-  }
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setSearchQuery(suggestion)
-  }
-
-  const handleQuickFilter = (filters: {
-    specialties?: string[]
-    priceRange?: string
-    location?: string
-  }) => {
-    if (filters.specialties) {
-      setSelectedSpecialties(filters.specialties)
-    }
-    if (filters.priceRange) {
-      setPriceRange(filters.priceRange)
-    }
-    if (filters.location) {
-      setLocationFilter(filters.location)
-    }
   }
 
   const clearSearch = () => {
@@ -304,7 +391,7 @@ export default function BrowsePage() {
     setSearchQuery('')
     setSelectedSpecialties([])
     setPriceRange('all')
-    setLocationFilter('')
+    clearLocationFilter()
     setSortBy('name')
     setSortOrder('asc')
   }
@@ -318,8 +405,8 @@ export default function BrowsePage() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      clearSearch()
+    if (e.key === 'Enter') {
+      e.preventDefault()
     }
   }
 
@@ -327,26 +414,31 @@ export default function BrowsePage() {
     searchQuery,
     selectedSpecialties.length,
     priceRange !== 'all',
-    locationFilter
+    locationFilter.city || locationFilter.state
   ].filter(Boolean).length
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background py-10">
+      <div className="min-h-screen bg-gradient-to-br from-darkpurple via-purple-900 to-darkpurple py-10">
         <div className="container mx-auto max-w-7xl px-4">
           <div className="space-y-8">
             {/* Header Section */}
             <div className="text-center space-y-4">
-              <h1 className="text-4xl font-bold tracking-tight">Find a Barber</h1>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Discover skilled barbers in your area. Book appointments with professionals who match your style and preferences.
-              </p>
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <div className="p-3 bg-saffron/20 rounded-full">
+                  <Scissors className="h-8 w-8 text-saffron" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bebas text-white tracking-wide">Find a Barber</h1>
+                  <p className="text-white/80 mt-1">Discover skilled professionals</p>
+                </div>
+              </div>
             </div>
 
             {/* Search Bar Skeleton */}
             <div className="max-w-2xl mx-auto">
               <div className="relative">
-                <Skeleton className="h-12 w-full rounded-lg" />
+                <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
               </div>
             </div>
 
@@ -359,198 +451,302 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-10">
+    <div className="min-h-screen bg-gradient-to-br from-darkpurple via-purple-900 to-darkpurple py-10">
       <div className="container mx-auto max-w-7xl px-4">
         <div className="space-y-8">
           {/* Header Section */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold tracking-tight">Find a Barber</h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <div className="text-center space-y-6">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="p-3 bg-saffron/20 rounded-full">
+                <Scissors className="h-8 w-8 text-saffron" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bebas text-white tracking-wide">Find a Barber</h1>
+                <p className="text-white/80 mt-1">Discover skilled professionals</p>
+              </div>
+            </div>
+            
+            <p className="text-white/60 text-lg max-w-2xl mx-auto">
               Discover skilled barbers in your area. Book appointments with professionals who match your style and preferences.
             </p>
+
+            {/* Reels Button */}
+            <div className="flex justify-center">
+              <Link href="/reels">
+                <Button className="bg-gradient-to-r from-saffron to-orange-500 hover:from-orange-500 hover:to-saffron text-primary font-bold rounded-2xl px-8 py-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Watch Barber Reels
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Search and Filters Section */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Search Bar */}
             <div className="max-w-2xl mx-auto">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="relative">
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-                      <Input
-                        placeholder="Search by name, business, location, or specialty..."
-                        value={searchQuery}
-                        onChange={handleSearch}
-                        onKeyDown={handleKeyDown}
-                        className="pl-12 py-3 text-base"
-                      />
-                      {searchQuery && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={clearSearch}
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Search by name, business, location, or specialty. Press Esc to clear.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="relative">
+                          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60">
+                            <Search className="h-5 w-5" />
+                          </div>
+                          <Input
+                            placeholder="Search by name, business, location, or specialty..."
+                            value={searchQuery}
+                            onChange={handleSearch}
+                            onKeyDown={handleKeyDown}
+                            className="pl-12 py-4 text-base bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-2xl backdrop-blur-xl"
+                          />
+                          {searchQuery && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={clearSearch}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 text-white/60 hover:text-white hover:bg-white/10 rounded-full"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-darkpurple/90 border border-white/10 text-white">
+                        <p>Search by name, business, location, or specialty. Press Enter to search.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                {/* Location Filter Button */}
+                <Button
+                  variant="outline"
+                  onClick={() => setShowLocationFilter(true)}
+                  className="bg-saffron/20 border-saffron/30 text-saffron hover:bg-saffron/30 rounded-xl px-4 py-4"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Location
+                </Button>
+              </div>
             </div>
 
-            {/* Search Suggestions */}
-            {!searchQuery && !loading && (
+            {/* Location Filter Indicator */}
+            {(locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation) && (
               <div className="max-w-2xl mx-auto">
-                <SearchSuggestions
-                  onSuggestionClick={handleSuggestionClick}
-                  searchQuery={searchQuery}
-                />
-              </div>
-            )}
-
-            {/* Quick Filters */}
-            {!searchQuery && !loading && (
-              <div className="max-w-4xl mx-auto">
-                <QuickFilters
-                  onFilterApply={handleQuickFilter}
-                />
+                <div className="bg-saffron/20 rounded-2xl p-4 border border-saffron/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white">
+                      <MapIcon className="h-4 w-4 text-saffron" />
+                      <span className="text-sm">
+                        {locationFilter.useCurrentLocation 
+                          ? `Within ${locationFilter.range} miles`
+                          : `${locationFilter.city}${locationFilter.state ? `, ${locationFilter.state}` : ''}`
+                        }
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearLocationFilter}
+                      className="text-white hover:bg-white/10 text-xs"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Filters and Sort Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sheet open={showFilters} onOpenChange={setShowFilters}>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      Filters
-                      {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-1">
-                          {activeFiltersCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-                    <SheetHeader>
-                      <SheetTitle>Filters</SheetTitle>
-                    </SheetHeader>
-                    <div className="space-y-6 mt-6">
-                      {/* Specialties Filter */}
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium">Specialties</Label>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {allSpecialties.map((specialty) => (
-                            <div key={specialty} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={specialty}
-                                checked={selectedSpecialties.includes(specialty)}
-                                onCheckedChange={() => toggleSpecialty(specialty)}
-                              />
-                              <Label htmlFor={specialty} className="text-sm">
-                                {specialty}
-                              </Label>
+            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Sheet open={showFilters} onOpenChange={setShowFilters}>
+                      <SheetTrigger asChild>
+                        <Button variant="outline" size="sm" className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl">
+                          <Filter className="h-4 w-4" />
+                          Filters
+                          {activeFiltersCount > 0 && (
+                            <Badge variant="secondary" className="ml-1 bg-saffron/20 text-saffron border-saffron/30">
+                              {activeFiltersCount}
+                            </Badge>
+                          )}
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="left" className="w-[300px] sm:w-[400px] bg-darkpurple/95 border-r border-white/10">
+                        <SheetHeader className="border-b border-white/10 pb-4">
+                          <SheetTitle className="text-white">Filters</SheetTitle>
+                        </SheetHeader>
+                        <div className="space-y-6 mt-6">
+                          {/* Specialties Filter */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-white">Specialties</Label>
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {allSpecialties.map((specialty) => (
+                                <div key={specialty} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={specialty}
+                                    checked={selectedSpecialties.includes(specialty)}
+                                    onCheckedChange={() => toggleSpecialty(specialty)}
+                                    className="border-white/20 data-[state=checked]:bg-saffron data-[state=checked]:border-saffron"
+                                  />
+                                  <Label htmlFor={specialty} className="text-sm text-white/80">
+                                    {specialty}
+                                  </Label>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
+
+                          <Separator className="bg-white/10" />
+
+                          {/* Price Range Filter */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-white">Price Range</Label>
+                            <Select value={priceRange} onValueChange={setPriceRange}>
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                                <SelectItem value="all" className="text-white hover:bg-white/10">All Prices</SelectItem>
+                                <SelectItem value="Budget" className="text-white hover:bg-white/10">Budget</SelectItem>
+                                <SelectItem value="Mid-range" className="text-white hover:bg-white/10">Mid-range</SelectItem>
+                                <SelectItem value="Premium" className="text-white hover:bg-white/10">Premium</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Separator className="bg-white/10" />
+
+                          {/* Location Filter */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-white">Location</Label>
+                            <Select value={locationFilter.city || 'all'} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, city: value === 'all' ? '' : value }))} disabled={locationFilter.useCurrentLocation}>
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
+                                <SelectValue placeholder="City" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                                <SelectItem value="all" className="text-white hover:bg-white/10">All cities</SelectItem>
+                                {allLocations.map((location) => (
+                                  <SelectItem key={location} value={location} className="text-white hover:bg-white/10">
+                                    {location}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Separator className="bg-white/10" />
+
+                          {/* State Filter */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-white">State</Label>
+                            <Select value={locationFilter.state || 'all'} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, state: value === 'all' ? '' : value }))} disabled={locationFilter.useCurrentLocation}>
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
+                                <SelectValue placeholder="State" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                                <SelectItem value="all" className="text-white hover:bg-white/10">All states</SelectItem>
+                                {['CA', 'NY', 'TX', 'FL', 'IL', 'PA', 'OH', 'GA', 'NC', 'MI'].map((state) => (
+                                  <SelectItem key={state} value={state} className="text-white hover:bg-white/10">
+                                    {state}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Separator className="bg-white/10" />
+
+                          {/* Use Current Location */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-white">Use Current Location</Label>
+                            <Select value={locationFilter.useCurrentLocation ? 'Yes' : 'No'} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, useCurrentLocation: value === 'Yes' }))} disabled={!userLocation}>
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
+                                <SelectValue placeholder="Use current location" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                                <SelectItem value="No" className="text-white hover:bg-white/10">No</SelectItem>
+                                <SelectItem value="Yes" className="text-white hover:bg-white/10">Yes</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Separator className="bg-white/10" />
+
+                          {/* Range Filter */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-white">Range</Label>
+                            <Select value={locationFilter.range.toString()} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, range: Number(value) }))} disabled={!locationFilter.useCurrentLocation}>
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
+                                <SelectValue placeholder="Range in miles" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                                <SelectItem value="50" className="text-white hover:bg-white/10">50 miles</SelectItem>
+                                <SelectItem value="100" className="text-white hover:bg-white/10">100 miles</SelectItem>
+                                <SelectItem value="150" className="text-white hover:bg-white/10">150 miles</SelectItem>
+                                <SelectItem value="200" className="text-white hover:bg-white/10">200 miles</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Separator className="bg-white/10" />
+
+                          {/* Clear Filters */}
+                          <Button 
+                            variant="outline" 
+                            onClick={clearAllFilters}
+                            className="w-full border-white/20 text-white hover:bg-white/10 rounded-xl"
+                          >
+                            Clear All Filters
+                          </Button>
                         </div>
-                      </div>
+                      </SheetContent>
+                    </Sheet>
 
-                      <Separator />
-
-                      {/* Price Range Filter */}
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium">Price Range</Label>
-                        <Select value={priceRange} onValueChange={setPriceRange}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Prices</SelectItem>
-                            <SelectItem value="Budget">Budget</SelectItem>
-                            <SelectItem value="Mid-range">Mid-range</SelectItem>
-                            <SelectItem value="Premium">Premium</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <Separator />
-
-                      {/* Location Filter */}
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium">Location</Label>
-                        <Select value={locationFilter} onValueChange={setLocationFilter}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All locations" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">All locations</SelectItem>
-                            {allLocations.map((location) => (
-                              <SelectItem key={location} value={location}>
-                                {location}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <Separator />
-
-                      {/* Clear Filters */}
-                      <Button 
-                        variant="outline" 
-                        onClick={clearAllFilters}
-                        className="w-full"
-                      >
-                        Clear All Filters
+                    {activeFiltersCount > 0 && (
+                      <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-white/60 hover:text-white">
+                        Clear all
                       </Button>
-                    </div>
-                  </SheetContent>
-                </Sheet>
+                    )}
+                  </div>
 
-                {activeFiltersCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                    Clear all
-                  </Button>
-                )}
-              </div>
-
-              {/* Sort Controls */}
-              <div className="flex items-center gap-2">
-                <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">Name</SelectItem>
-                    <SelectItem value="rating">Rating</SelectItem>
-                    <SelectItem value="location">Location</SelectItem>
-                    <SelectItem value="price">Price</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                >
-                  {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
+                  {/* Sort Controls */}
+                  <div className="flex items-center gap-2">
+                    <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                      <SelectTrigger className="w-[140px] bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                        <SelectItem value="name" className="text-white hover:bg-white/10">Name</SelectItem>
+                        <SelectItem value="rating" className="text-white hover:bg-white/10">Rating</SelectItem>
+                        <SelectItem value="location" className="text-white hover:bg-white/10">Location</SelectItem>
+                        <SelectItem value="price" className="text-white hover:bg-white/10">Price</SelectItem>
+                        <SelectItem value="distance" className="text-white hover:bg-white/10">Distance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl"
+                    >
+                      {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Error Alert */}
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="bg-red-900/30 border-red-400/30">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription className="text-white">{error}</AlertDescription>
             </Alert>
           )}
 
@@ -563,7 +759,7 @@ export default function BrowsePage() {
               activeFilters={{
                 specialties: selectedSpecialties,
                 priceRange,
-                location: locationFilter
+                location: locationFilter.city || locationFilter.state
               }}
               onClearFilters={clearAllFilters}
               onClearSearch={clearSearch}
@@ -605,39 +801,146 @@ export default function BrowsePage() {
 
           {/* No Results */}
           {!error && filteredBarbers.length === 0 && !loading && (
-            <div className="text-center py-12 space-y-4">
-              <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">No barbers found</h3>
-                <p className="text-muted-foreground">
-                  {activeFiltersCount > 0
-                    ? "Try adjusting your filters or search terms to find more barbers."
-                    : "No barbers are currently available. Please check back later."
-                  }
-                </p>
-                {activeFiltersCount > 0 && (
-                  <Button variant="outline" onClick={clearAllFilters}>
-                    Clear all filters
-                  </Button>
-                )}
-              </div>
-            </div>
+            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+              <CardContent className="p-12 text-center">
+                <div className="space-y-4">
+                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
+                    <AlertCircle className="h-8 w-8 text-white/60" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-white">No barbers found</h3>
+                    <p className="text-white/60">
+                      {activeFiltersCount > 0
+                        ? "Try adjusting your filters or search terms to find more barbers."
+                        : "No barbers are currently available. Please check back later."
+                      }
+                    </p>
+                  </div>
+                  {activeFiltersCount > 0 && (
+                    <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl">
+                      Clear all filters
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Empty State */}
           {!error && barbers.length === 0 && !loading && (
-            <div className="text-center py-12 space-y-4">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground" />
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">No barbers available</h3>
-                <p className="text-muted-foreground">
-                  No barbers have set up their profiles yet. Check back soon!
-                </p>
-              </div>
-            </div>
+            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+              <CardContent className="p-12 text-center">
+                <div className="space-y-4">
+                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
+                    <Users className="h-8 w-8 text-white/60" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-white">No barbers available</h3>
+                    <p className="text-white/60">
+                      No barbers have set up their profiles yet. Check back soon!
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
+
+      {/* Location Filter Dialog */}
+      <Dialog open={showLocationFilter} onOpenChange={setShowLocationFilter}>
+        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bebas text-white">Filter by Location</DialogTitle>
+            <DialogDescription className="text-white/80">
+              Find barbers in specific areas or near your current location
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="city" className="text-white font-medium mb-2 block">
+                  City
+                </Label>
+                <Input
+                  id="city"
+                  placeholder="Enter city name"
+                  value={locationFilter.city}
+                  onChange={(e) => setLocationFilter(prev => ({ ...prev, city: e.target.value }))}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="state" className="text-white font-medium mb-2 block">
+                  State/Province
+                </Label>
+                <Input
+                  id="state"
+                  placeholder="Enter state or province"
+                  value={locationFilter.state}
+                  onChange={(e) => setLocationFilter(prev => ({ ...prev, state: e.target.value }))}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                />
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="useCurrentLocation"
+                    checked={locationFilter.useCurrentLocation}
+                    onChange={(e) => setLocationFilter(prev => ({ ...prev, useCurrentLocation: e.target.checked }))}
+                    className="rounded border-white/20 bg-white/10 text-saffron focus:ring-saffron"
+                  />
+                  <Label htmlFor="useCurrentLocation" className="text-white font-medium">
+                    Use my current location
+                  </Label>
+                </div>
+                
+                {locationFilter.useCurrentLocation && (
+                  <div>
+                    <Label htmlFor="range" className="text-white font-medium mb-2 block">
+                      Range (miles)
+                    </Label>
+                    <Select 
+                      value={locationFilter.range.toString()} 
+                      onValueChange={(value) => setLocationFilter(prev => ({ ...prev, range: parseInt(value) }))}
+                    >
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-darkpurple border-white/20">
+                        <SelectItem value="10" className="text-white">10 miles</SelectItem>
+                        <SelectItem value="25" className="text-white">25 miles</SelectItem>
+                        <SelectItem value="50" className="text-white">50 miles</SelectItem>
+                        <SelectItem value="100" className="text-white">100 miles</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={handleLocationFilter}
+                className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 flex-1"
+              >
+                Apply Filter
+              </Button>
+              <Button
+                onClick={clearLocationFilter}
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

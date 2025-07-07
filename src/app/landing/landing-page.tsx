@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { 
   Scissors, 
@@ -162,7 +162,7 @@ export default function LandingPage() {
               <a href="#features" className="text-white hover:text-saffron transition-colors">Features</a>
               <a href="#testimonials" className="text-white hover:text-saffron transition-colors">Success Stories</a>
               <a href="#calculator" className="text-white hover:text-saffron transition-colors">Calculator</a>
-              <a href="#pricing" className="text-white hover:text-saffron transition-colors">Pricing</a>
+              <Link href="/browse" className="text-white hover:text-saffron transition-colors">Browse</Link>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -519,6 +519,9 @@ export default function LandingPage() {
       {/* Book Appointment Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-md w-full rounded-3xl bg-gradient-to-br from-purple-100/90 to-indigo-100/90 border-none shadow-2xl p-0">
+          <DialogDescription className="sr-only">
+            Book a demo appointment form
+          </DialogDescription>
           <div className="relative flex flex-col items-center justify-center px-6 py-8 sm:px-10 sm:py-12">
             <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-[#7C3AED]/30 rounded-full blur-2xl z-0" />
             <h2 className="relative z-10 text-2xl font-extrabold mb-2 text-[#7C3AED] drop-shadow-lg">Book a Demo</h2>

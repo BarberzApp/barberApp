@@ -1,10 +1,8 @@
 "use client"
 
 import { ThemeProvider } from "@/shared/components/theme/theme-provider"
-import { AuthProvider } from "@/features/auth/hooks/use-auth"
 import { DataProvider } from "@/shared/contexts/data-context"
 import { Toaster } from "@/shared/components/ui/toaster"
-import { PWARegister } from "@/shared/pwa/pwa-register"
 import { useEffect, useState } from "react"
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -23,14 +21,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthProvider>
-      <DataProvider>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem={false} disableTransitionOnChange>
-          {children}
-          <PWARegister />
-          <Toaster />
-        </ThemeProvider>
-      </DataProvider>
-    </AuthProvider>
+    <DataProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem={false} disableTransitionOnChange>
+        {children}
+        <Toaster />
+      </ThemeProvider>
+    </DataProvider>
   )
 } 
