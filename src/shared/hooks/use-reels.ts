@@ -20,6 +20,7 @@ export interface VideoReel {
   is_public: boolean
   created_at: string
   updated_at: string
+  comments_count?: number // Added for per-reel stats
 }
 
 export interface ReelAnalytics {

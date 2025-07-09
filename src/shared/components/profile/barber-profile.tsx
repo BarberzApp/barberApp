@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -11,7 +11,7 @@ import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Textarea } from "@/shared/components/ui/textarea"
 import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, Star, Scissors } from "lucide-react"
+import { Calendar, Star, Scissors, Camera } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useData } from "../../hooks/use-data"
@@ -49,6 +49,9 @@ export function BarberProfile() {
   })
   const [specialtiesOpen, setSpecialtiesOpen] = useState(false)
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(user?.specialties || [])
+  const [avatarUrl, setAvatarUrl] = useState((user as any)?.avatar_url || "")
+  const [avatarLoading, setAvatarLoading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (user) {
@@ -155,6 +158,37 @@ export function BarberProfile() {
     }
   }
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || !e.target.files[0]) return
+      const file = e.target.files[0]
+      if (!file.type.startsWith('image/')) {
+        toast({ title: 'Invalid file type', description: 'Please select an image file.', variant: 'destructive' })
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: 'File too large', description: 'Please select an image smaller than 5MB.', variant: 'destructive' })
+        return
+      }
+      setAvatarLoading(true)
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user?.id}-${Date.now()}.${fileExt}`
+      const { data, error } = await supabase.storage.from('avatars').upload(fileName, file)
+      if (error) throw error
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName)
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id)
+      // Optionally update the user object in zustand if needed
+      if (updateError) throw updateError
+      setAvatarUrl(publicUrl)
+      toast({ title: 'Success', description: 'Avatar updated successfully!' })
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      toast({ title: 'Error', description: 'Failed to upload avatar. Please try again.', variant: 'destructive' })
+    } finally {
+      setAvatarLoading(false)
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Hero Section */}
@@ -173,9 +207,34 @@ export function BarberProfile() {
               <Card className="bg-darkpurple/90 backdrop-blur-sm border border-white/10 shadow-2xl">
                 <CardHeader>
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-24 w-24 border-4 border-saffron/20">
-                      <AvatarFallback className="bg-saffron text-primary font-bold text-xl">{user.name?.charAt(0) || "B"}</AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-24 w-24 border-4 border-saffron/20">
+                        {avatarUrl && <AvatarImage src={avatarUrl} alt={user.name || 'Avatar'} />}
+                        <AvatarFallback className="bg-saffron text-primary font-bold text-xl">{user.name?.charAt(0) || "B"}</AvatarFallback>
+                      </Avatar>
+                      <button
+                        type="button"
+                        className="absolute right-[-18px] bottom-[-8px] bg-yellow-400 border-4 border-red-500 rounded-full p-3 shadow-xl focus:outline-none focus:ring-2 focus:ring-saffron z-50 transition-transform hover:scale-110"
+                        onClick={() => fileInputRef.current?.click()}
+                        aria-label="Upload profile picture"
+                        disabled={avatarLoading}
+                        style={{ width: 48, height: 48 }}
+                      >
+                        {avatarLoading ? (
+                          <span className="w-6 h-6 animate-spin border-2 border-white border-t-transparent rounded-full block" />
+                        ) : (
+                          <Camera className="w-6 h-6 text-white" />
+                        )}
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                        disabled={avatarLoading}
+                      />
+                    </div>
                     <div>
                       <CardTitle className="text-2xl text-white">{user.name}</CardTitle>
                       <p className="text-white/60">{user.email}</p>

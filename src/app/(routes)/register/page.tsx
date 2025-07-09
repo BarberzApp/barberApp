@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { Button } from "@/shared/components/ui/button"
 import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
@@ -38,6 +38,7 @@ export default function RegisterPage() {
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    console.log('Form submitted')
     e.preventDefault()
     setError(null)
 
@@ -62,15 +63,15 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
+      console.log('Calling register with:', formData, role)
       const success = await register(formData.name, formData.email, formData.password, role)
+      console.log('Register result:', success)
       if (success) {
         toast({
           title: "Registration successful",
-          description: role === "barber" 
-            ? "Welcome to BarberHub! Please complete your business profile setup."
-            : "Welcome to BarberHub!",
+          description: "Please check your email to verify your account.",
         })
-        router.push(role === "barber" ? "/barber/onboarding" : "/")
+        router.push(`/confirm?email=${encodeURIComponent(formData.email)}`)
       }
     } catch (err) {
       setError('Failed to create account')
@@ -179,11 +180,17 @@ export default function RegisterPage() {
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         I agree to the{" "}
-                        <Link href="/terms" className="text-primary hover:underline">
+                        <Link 
+                          href="/terms" 
+                          className="text-saffron underline font-semibold hover:bg-saffron/20 focus:bg-saffron/30 transition-colors rounded px-2 outline-none"
+                          tabIndex={0}
+                        >
                           terms and conditions
                         </Link>
                       </label>
                     </div>
+                    
+                    
                     <Button 
                       type="submit" 
                       className="w-full h-11 bg-primary hover:bg-primary/90" 
@@ -257,11 +264,12 @@ export default function RegisterPage() {
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         I agree to the{" "}
-                        <Link href="/terms" className="text-primary hover:underline">
+                        <Link href="/terms" className="text-saffron underline font-semibold hover:bg-saffron/20 focus:bg-saffron/30 transition-colors rounded px-2 outline-none">
                           terms and conditions
                         </Link>
                       </label>
                     </div>
+                    
                     <Button 
                       type="submit" 
                       className="w-full h-11 bg-primary hover:bg-primary/90" 

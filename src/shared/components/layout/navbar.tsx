@@ -27,7 +27,7 @@ import {
   UserCircle,
   Video,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 export function Navbar() {
   const router = useRouter();
@@ -98,38 +98,43 @@ export function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/70 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/10 backdrop-blur-2xl shadow-2xl supports-[backdrop-filter]:bg-white/5">
       <div className="container flex h-16 items-center">
         <div className="mr-4 flex">
           <div className="mr-8 flex items-center space-x-3 relative">
             <div className="relative flex items-center justify-center" style={{ width: 44, height: 44 }}>
-              <div className="absolute inset-0 rounded-full bocm-glow z-0" style={{ filter: 'blur(12px)', background: 'radial-gradient(circle at 60% 40%, #c98f42 0%, #fff9f0 40%, #262b2e 100%)', opacity: 0.7 }} />
+              <div className="absolute inset-0 rounded-full bocm-glow z-0" style={{ filter: 'blur(16px)', background: 'radial-gradient(circle at 60% 40%, #c98f42 0%, #fff9f0 40%, #262b2e 100%)', opacity: 0.8 }} />
               <img src="/BocmLogo.png" alt="BOCM Logo" className="h-11 w-11 relative z-10 drop-shadow-xl" style={{ borderRadius: '20%' }} />
             </div>
-            <span className="hidden font-bebas text-2xl font-bold sm:inline-block text-saffron tracking-wide select-none">BOCM</span>
+            <span className="hidden font-bebas text-2xl font-bold sm:inline-block text-saffron tracking-wide select-none drop-shadow-md">BOCM</span>
           </div>
           <nav className="flex items-center space-x-8 text-base font-semibold">
             <Link
               href="/browse"
               className={cn(
-                "transition-colors hover:text-saffron/80 hover:underline underline-offset-8 decoration-2",
-                pathname === "/browse" ? "text-saffron underline" : "text-foreground/60"
+                "transition-colors hover:text-saffron/90 hover:underline underline-offset-8 decoration-2 px-2 py-1 rounded-lg hover:bg-saffron/10",
+                pathname === "/browse" ? "text-saffron underline bg-saffron/10 shadow-md" : "text-foreground/70"
               )}
             >
-              <Search className="h-5 w-5 mr-1 inline" /> Browse
+              <Search className={cn("h-5 w-5 mr-1 inline", pathname === "/browse" ? "text-saffron" : "text-foreground/60")} /> Browse
             </Link>
-            {roleSpecificNavItems().map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "transition-colors hover:text-saffron/80 hover:underline underline-offset-8 decoration-2",
-                  pathname === item.href ? "text-saffron underline" : "text-foreground/60"
-                )}
-              >
-                <item.icon className="h-5 w-5 mr-1 inline" /> {item.label}
-              </Link>
-            ))}
+            {roleSpecificNavItems().map((item) => {
+              const isActive = item.href === "/browse"
+                ? pathname === "/browse"
+                : pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "transition-colors hover:text-saffron/90 hover:underline underline-offset-8 decoration-2 px-2 py-1 rounded-lg hover:bg-saffron/10",
+                    isActive ? "text-saffron underline bg-saffron/10 shadow-md" : "text-foreground/70"
+                  )}
+                >
+                  <item.icon className={cn("h-5 w-5 mr-1 inline", isActive ? "text-saffron" : "text-foreground/60")} /> {item.label}
+                </Link>
+              )
+            })}
           </nav>
         </div>
         <div className="flex items-center gap-3 ml-auto">
@@ -138,7 +143,6 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full p-0 border-2 border-saffron/60 shadow-lg hover:scale-110 focus:scale-105 transition-transform duration-200 bg-saffron/20 backdrop-blur-md">
                   <Avatar className="h-12 w-12 shadow-lg border-4 border-saffron/40 bg-primary">
-                    {/* Support both avatar_url and avatarUrl for compatibility */}
                     {((user as any)?.avatar_url || (user as any)?.avatarUrl) && (
                       <AvatarImage src={(user as any)?.avatar_url || (user as any)?.avatarUrl} alt={user.name || 'Avatar'} />
                     )}
@@ -154,15 +158,21 @@ export function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-saffron/30" />
-                <DropdownMenuItem asChild className="group rounded-xl px-3 py-2 text-base text-white hover:bg-saffron/20 hover:text-saffron transition-colors cursor-pointer gap-3">
+                <DropdownMenuItem asChild className={cn(
+                  "group rounded-xl px-3 py-2 text-base flex items-center w-full cursor-pointer gap-3 transition-colors",
+                  pathname.startsWith("/settings/barber-profile") ? "bg-saffron/20 text-saffron" : "text-white hover:bg-saffron/20 hover:text-saffron"
+                )}>
                   <Link href="/settings/barber-profile" className="flex items-center w-full">
-                    <UserCircle className="mr-2 h-5 w-5 group-hover:text-saffron transition-colors" />
+                    <UserCircle className={cn("mr-2 h-5 w-5 transition-colors", pathname.startsWith("/settings/barber-profile") ? "text-saffron" : "group-hover:text-saffron")}/>
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="group rounded-xl px-3 py-2 text-base text-white hover:bg-saffron/20 hover:text-saffron transition-colors cursor-pointer gap-3">
+                <DropdownMenuItem asChild className={cn(
+                  "group rounded-xl px-3 py-2 text-base flex items-center w-full cursor-pointer gap-3 transition-colors",
+                  pathname === "/settings" ? "bg-saffron/20 text-saffron" : "text-white hover:bg-saffron/20 hover:text-saffron"
+                )}>
                   <Link href="/settings" className="flex items-center w-full">
-                    <Settings className="mr-2 h-5 w-5 group-hover:text-saffron transition-colors" />
+                    <Settings className={cn("mr-2 h-5 w-5 transition-colors", pathname === "/settings" ? "text-saffron" : "group-hover:text-saffron")}/>
                     Settings
                   </Link>
                 </DropdownMenuItem>
@@ -179,11 +189,6 @@ export function Navbar() {
             </Button>
           )}
         </div>
-        <style jsx global>{`
-          .bocm-glow {
-            /* No animation, just a static glow */
-          }
-        `}</style>
       </div>
     </nav>
   )

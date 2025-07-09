@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
-import { Loader2, Calendar, DollarSign, User, Clock, TrendingUp, TrendingDown } from 'lucide-react'
+import { Loader2, Calendar, DollarSign, User, Clock, TrendingUp, TrendingDown, Sparkles } from 'lucide-react'
 import { useToast } from '@/shared/components/ui/use-toast'
+import { LoadingSpinner } from '@/shared/components/ui/loading-spinner'
+import { GlassyCard } from '@/shared/components/ui/glassy-card'
 import { format } from 'date-fns'
 
 interface PaymentHistoryProps {
@@ -72,9 +74,17 @@ interface PaymentHistoryResponse {
   }
 }
 
+interface EarningsData {
+  current: number
+  previous: number
+  trend: 'up' | 'down'
+  percentage: number
+}
+
 export function PaymentHistory({ barberId }: PaymentHistoryProps) {
   const [payments, setPayments] = useState<PaymentRecord[]>([])
   const [totals, setTotals] = useState<PaymentHistoryResponse['totals'] | null>(null)
+  const [earningsData, setEarningsData] = useState<EarningsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
@@ -120,8 +130,26 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
     }
   }
 
+  const loadEarningsData = async () => {
+    try {
+      const response = await fetch(`/api/earnings/monthly?barberId=${barberId}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch earnings')
+      }
+      
+      const data = await response.json()
+      setEarningsData(data)
+    } catch (error) {
+      console.error('Error loading earnings data:', error)
+      // Don't show error toast for earnings data as it's secondary
+    }
+  }
+
   useEffect(() => {
     loadPayments()
+    loadEarningsData()
   }, [barberId])
 
   const loadMore = () => {
@@ -148,11 +176,11 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>
+        return <Badge variant="glassy-saffron" className="bg-green-500/20 text-green-400 border-green-500/30">Confirmed</Badge>
       case 'completed':
-        return <Badge className="bg-blue-100 text-blue-800">Completed</Badge>
+        return <Badge variant="glassy-saffron" className="bg-blue-500/20 text-blue-400 border-blue-500/30">Completed</Badge>
       case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>
+        return <Badge variant="glassy-saffron" className="bg-red-500/20 text-red-400 border-red-500/30">Cancelled</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -160,79 +188,91 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
 
   if (loading && payments.length === 0) {
     return (
-      <Card>
-        <CardContent className="pt-6 flex justify-center items-center min-h-[200px]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
+        <CardContent className="pt-6 flex justify-center items-center min-h-[300px]">
+          <LoadingSpinner size="md" text="Loading payment history..." />
         </CardContent>
-      </Card>
+      </GlassyCard>
     )
   }
 
   if (error && payments.length === 0) {
     return (
-      <Card>
+      <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
         <CardContent className="pt-6">
-          <div className="text-center text-red-500">
+          <div className="text-center text-red-400">
             <p>Error loading payment history: {error}</p>
-            <Button onClick={() => loadPayments()} className="mt-4">
+            <Button 
+              onClick={() => loadPayments()} 
+              className="mt-4 bg-saffron hover:bg-saffron/90 text-primary font-semibold"
+            >
               Try Again
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </GlassyCard>
     )
   }
 
   return (
-    <Card>
+    <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
-          Payment History
-        </CardTitle>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-saffron/20 rounded-full">
+            <DollarSign className="h-5 w-5 text-saffron" />
+          </div>
+          <CardTitle className="text-2xl font-bebas text-white tracking-wide">Payment History</CardTitle>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Summary Cards */}
         {totals && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-500" />
-                <span className="text-sm text-muted-foreground">Total Revenue</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <GlassyCard variant="hover" className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                {earningsData?.trend === "up" ? (
+                  <TrendingUp className="h-4 w-4 text-green-400" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-400" />
+                )}
+                <span className="text-sm text-white/60">Revenue Growth</span>
               </div>
-              <div className="text-2xl font-bold">{formatCurrency(totals.totalRevenue)}</div>
-            </div>
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-muted-foreground">Your Earnings</span>
+              <div className={`text-2xl font-bold ${earningsData?.trend === "up" ? "text-green-400" : "text-red-400"}`}>
+                {earningsData?.trend === "up" ? "+" : "-"}{earningsData?.percentage || 0}%
               </div>
-              <div className="text-2xl font-bold">{formatCurrency(totals.totalBarberPayout)}</div>
-            </div>
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-purple-500" />
-                <span className="text-sm text-muted-foreground">Total Bookings</span>
+              <div className="text-xs text-white/40">vs last month</div>
+            </GlassyCard>
+            <GlassyCard variant="saffron" className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-4 w-4 text-saffron" />
+                <span className="text-sm text-saffron font-medium">Total Payout</span>
               </div>
-              <div className="text-2xl font-bold">{totals.totalBookings}</div>
-            </div>
+              <div className="text-2xl font-bold text-saffron">{formatCurrency(totals.totalBarberPayout)}</div>
+            </GlassyCard>
+            <GlassyCard variant="hover" className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-4 w-4 text-purple-400" />
+                <span className="text-sm text-white/60">Total Bookings</span>
+              </div>
+              <div className="text-2xl font-bold text-white">{totals.totalBookings}</div>
+            </GlassyCard>
           </div>
         )}
 
         {/* Payment List */}
         <div className="space-y-4">
           {payments.map((payment) => (
-            <div key={payment.id} className="border rounded-lg p-4 space-y-3">
+            <GlassyCard key={payment.id} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 space-y-3 hover:bg-white/10 transition-colors">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold">
+                    <h3 className="font-semibold text-white">
                       {payment.services?.name || 'Unknown Service'}
                     </h3>
                     {getStatusBadge(payment.status)}
                   </div>
                   
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-4 text-sm text-white/60">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
                       {formatDate(payment.date)}
@@ -249,19 +289,19 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
                 </div>
                 
                 <div className="text-right">
-                  <div className="text-lg font-bold">{formatCurrency(payment.price * 100)}</div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-lg font-bold text-white">{formatCurrency(payment.price * 100)}</div>
+                  <div className="text-sm text-saffron font-medium">
                     You earned: {formatCurrency(payment.barber_payout)}
                   </div>
                 </div>
               </div>
               
               {payment.notes && (
-                <div className="text-sm text-muted-foreground">
-                  <strong>Notes:</strong> {payment.notes}
+                <div className="text-sm text-white/60 bg-white/5 rounded-lg p-3">
+                  <strong className="text-white/80">Notes:</strong> {payment.notes}
                 </div>
               )}
-            </div>
+            </GlassyCard>
           ))}
         </div>
 
@@ -272,6 +312,7 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
               onClick={loadMore} 
               disabled={loading}
               variant="outline"
+              className="border-white/20 text-white hover:bg-white/10 font-semibold"
             >
               {loading ? (
                 <>
@@ -286,19 +327,23 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
         )}
 
         {!hasMore && payments.length > 0 && (
-          <div className="mt-6 text-center text-muted-foreground">
+          <div className="mt-6 text-center text-white/60">
             No more payments to load
           </div>
         )}
 
         {payments.length === 0 && !loading && (
-          <div className="text-center py-8 text-muted-foreground">
-            <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No payment history found</p>
+          <div className="text-center py-12 text-white/60">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="p-3 bg-saffron/20 rounded-full">
+                <DollarSign className="h-12 w-12 text-saffron/50" />
+              </div>
+            </div>
+            <p className="text-lg font-semibold text-white mb-2">No payment history found</p>
             <p className="text-sm">Your completed bookings will appear here</p>
           </div>
         )}
       </CardContent>
-    </Card>
+    </GlassyCard>
   )
 } 

@@ -4,16 +4,14 @@ import * as React from "react"
 import { useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Home, Search, Calendar, User, Menu, Clock, Briefcase, Heart, Users, DollarSign, Video } from "lucide-react"
-import { Button } from "@/shared/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/shared/components/ui/sheet"
+import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, Heart, DollarSign, Users } from "lucide-react"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
+import { cn } from "@/shared/lib/utils"
 
 export function MobileNav() {
   const router = useRouter()
   const [pathname, setPathname] = React.useState("")
   const { user } = useAuth()
-  const [isOpen, setIsOpen] = React.useState(false)
 
   // Get current pathname safely
   React.useEffect(() => {
@@ -21,69 +19,80 @@ export function MobileNav() {
   }, [])
 
   const baseNavItems = [
-    { name: "Home", href: "/", icon: Home },
     { name: "Browse", href: "/browse", icon: Search },
     { name: "Profile", href: "/settings/barber-profile", icon: User },
   ]
 
-  const navigation = useMemo(() => {
-    switch (user?.role) {
+  const roleSpecificNavItems = useMemo(() => {
+    if (!user) return []
+    
+    switch (user.role) {
       case "client":
         return [
-          { name: "Browse", href: "/browse", icon: Search },
-          { name: "Bookings", href: "/bookings", icon: Calendar },
+          { name: "Bookings", href: "/calendar", icon: Calendar },
           { name: "Favorites", href: "/favorites", icon: Heart },
         ]
       case "barber":
         return [
           { name: "Calendar", href: "/calendar", icon: Calendar },
           { name: "Reels", href: "/reels", icon: Video },
-          { name: "Clients", href: "/clients", icon: Users },
-          { name: "Earnings", href: "/earnings", icon: DollarSign },
         ]
       default:
         return []
     }
   }, [user?.role])
 
-  const navItems = [...baseNavItems, ...navigation]
+  const allNavItems = [...baseNavItems, ...roleSpecificNavItems, { name: "Settings", href: "/settings", icon: SettingsIcon }]
 
   return (
-    <>
-      {/* Removed Bottom Navigation Bar */}
-
-      {/* Mobile Menu Sheet (Sidebar) */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-          {/* Branding at the top */}
-          <div className="flex items-center gap-2 mb-6">
-            <img src="/icons/icon-192x192.svg" alt="BOCM Logo" className="h-8 w-8" />
-            <span className="font-bold text-lg text-[#7C3AED]">BOCM</span>
-          </div>
-          <nav className="flex flex-col gap-4">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-2 py-3 rounded-md ${
-                  pathname === item.href ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.name}</span>
-              </Link>
-            ))}
-          </nav>
-        </SheetContent>
-      </Sheet>
-    </>
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+      {/* Glassy background with blur */}
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border-t border-white/10 shadow-2xl" />
+      
+      {/* Tab bar content */}
+      <div className="relative flex items-center justify-around px-4 py-2">
+        {allNavItems.map((item) => {
+          const isActive = pathname === item.href || 
+            (item.href === "/settings/barber-profile" && pathname.startsWith("/settings")) ||
+            (item.href === "/settings" && pathname.startsWith("/settings")) ||
+            (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
+            (item.href === "/reels" && pathname.startsWith("/reels")) ||
+            (item.href === "/favorites" && pathname.startsWith("/favorites")) ||
+            (item.href === "/browse" && pathname.startsWith("/browse"))
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-200 min-w-[60px]",
+                isActive 
+                  ? "text-saffron bg-saffron/20 shadow-lg" 
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              )}
+            >
+              <item.icon 
+                className={cn(
+                  "h-5 w-5 mb-1 transition-colors",
+                  isActive ? "text-saffron" : "text-white/70"
+                )} 
+              />
+              <span className={cn(
+                "text-xs font-medium transition-colors",
+                isActive ? "text-saffron" : "text-white/70"
+              )}>
+                {item.name}
+              </span>
+              
+              {/* Active indicator */}
+              {isActive && (
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
+              )}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

@@ -69,22 +69,22 @@ export function SpecialtyAutocomplete({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-auto min-h-[40px] p-2"
+            className="w-full justify-between h-auto min-h-[40px] p-2 bg-white/10 border border-white/20 text-white backdrop-blur-xl rounded-xl focus:border-saffron focus:ring-2 focus:ring-saffron/40"
             disabled={disabled}
           >
             <div className="flex flex-wrap gap-1 flex-1">
               {value.length === 0 ? (
-                <span className="text-muted-foreground">{placeholder}</span>
+                <span className="text-white/60">{placeholder}</span>
               ) : (
                 value.map((specialty) => (
                   <Badge
                     key={specialty}
                     variant="glassy-saffron"
-                    className="text-xs"
+                    className="text-xs bg-saffron/20 text-saffron border-saffron/40 backdrop-blur-xl rounded-lg"
                   >
                     {specialty}
                     <span
-                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-2 cursor-pointer"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           handleRemove(specialty)
@@ -98,25 +98,25 @@ export function SpecialtyAutocomplete({
                       role="button"
                       tabIndex={0}
                     >
-                      <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                      <X className="h-3 w-3 text-saffron/80 hover:text-saffron" />
                     </span>
                   </Badge>
                 ))
               )}
             </div>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-white" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
-          <Command className="bg-darkpurple/80 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
+        <PopoverContent className="w-full p-0 bg-darkpurple/80 border border-white/20 shadow-2xl backdrop-blur-xl rounded-2xl" align="start">
+          <Command className="bg-transparent border-0 shadow-none">
             <CommandInput
               placeholder={placeholder}
               value={searchQuery}
               onValueChange={setSearchQuery}
-              className="h-9 bg-white/10 text-white placeholder:text-white/40 rounded-xl border border-white/10 focus:border-saffron"
+              className="h-9 bg-white/10 text-white placeholder:text-white/40 rounded-xl border border-white/10 focus:border-saffron focus:ring-2 focus:ring-saffron/40"
             />
             <CommandList>
-              <CommandEmpty>No specialty found.</CommandEmpty>
+              <CommandEmpty className="text-white/60">No specialty found.</CommandEmpty>
               <CommandGroup>
                 {filteredSpecialties.map((specialty) => (
                   <CommandItem
@@ -124,10 +124,10 @@ export function SpecialtyAutocomplete({
                     value={specialty}
                     onSelect={() => handleSelect(specialty)}
                     className={cn(
-                      "cursor-pointer text-white rounded-xl transition-all",
+                      "cursor-pointer text-white rounded-xl transition-all px-3 py-2 my-1",
                       value.includes(specialty)
-                        ? "bg-saffron/20 text-saffron font-semibold"
-                        : "hover:bg-saffron/10 hover:text-saffron"
+                        ? "bg-saffron/30 text-saffron font-semibold border border-saffron/40"
+                        : "hover:bg-saffron/10 hover:text-saffron border border-transparent"
                     )}
                   >
                     <Check
@@ -144,10 +144,9 @@ export function SpecialtyAutocomplete({
           </Command>
         </PopoverContent>
       </Popover>
-      
       {value.length > 0 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-white/60">
             {value.length} of {maxSelections} selected
           </p>
           <Button
@@ -155,7 +154,7 @@ export function SpecialtyAutocomplete({
             variant="ghost"
             size="sm"
             onClick={handleClearAll}
-            className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+            className="h-auto p-1 text-xs text-white/60 hover:text-saffron"
           >
             Clear all
           </Button>

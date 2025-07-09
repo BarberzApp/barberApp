@@ -2,21 +2,28 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  TouchableOpacity,
   Alert,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import Button from '../components/Button';
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, CardFooter, LoadingSpinner } from '../components';
 import { RootStackParamList } from '../types/types';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { theme } from '../lib/theme';
+import { Scissors } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
+
+const BocmLogo = () => (
+  <Text style={[tw`text-2xl font-bold`, { color: theme.colors.saffron, fontFamily: 'BebasNeue' }]}>BOCM</Text>
+);
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -26,6 +33,17 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    // Simulate session check for parity with web
+    const checkSession = async () => {
+      setCheckingSession(true);
+      // Simulate async session check (replace with real logic if needed)
+      setTimeout(() => setCheckingSession(false), 500);
+    };
+    checkSession();
+  }, []);
 
   useEffect(() => {
     if (user && userProfile) {
@@ -34,29 +52,25 @@ export default function LoginPage() {
   }, [user, userProfile, navigation]);
 
   const checkOnboardingStatus = async () => {
-    if (userProfile?.role === 'barber') {
+    if (userProfile?.role === 'barber' && user) {
       try {
         const { data: barber } = await supabase
           .from('barbers')
-          .select('business_name, bio')
+          .select('id, business_name, bio')
           .eq('user_id', user.id)
           .single();
-
         const { data: services } = await supabase
           .from('services')
           .select('id')
           .eq('barber_id', barber?.id || '')
           .limit(1);
-
         const isOnboardingComplete = barber?.business_name && barber?.bio && services && services.length > 0;
-
         if (!isOnboardingComplete) {
           navigation.navigate('BarberOnboarding');
         } else {
           navigation.navigate('Settings' as any);
         }
       } catch (error) {
-        console.error('Error checking onboarding:', error);
         navigation.navigate('BarberOnboarding');
       }
     } else {
@@ -69,15 +83,12 @@ export default function LoginPage() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-
     setIsLoading(true);
-
     try {
       const success = await login(email, password);
       if (!success) {
@@ -98,86 +109,90 @@ export default function LoginPage() {
     Alert.alert('Info', 'Forgot password functionality coming soon!');
   };
 
+  if (checkingSession) {
+    return (
+      <View style={[tw`flex-1 items-center justify-center`, { backgroundColor: theme.colors.primary }]}> 
+        <Text style={[tw`text-xl font-semibold`, { color: theme.colors.saffron }]}>Checking session...</Text>
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={tw`flex-1 bg-gray-900`}>
+    <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.primary }]}> 
+      {Platform.OS === 'ios' && <StatusBar barStyle="light-content" />}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={tw`flex-1`}
       >
-        <View style={tw`flex-1 justify-center items-center px-6`}>
-          <View style={tw`w-full max-w-md bg-gray-800 rounded-2xl p-8`}>
-            <View style={tw`mb-2`}>
-              <Text style={tw`text-white text-3xl font-bold text-center`}>
-                Welcome Back
-              </Text>
-              <Text style={tw`text-gray-400 text-center mt-2`}>
-                Sign in to your account
-              </Text>
-            </View>
-
-            <View style={tw`mt-2`}>
-              <View style={tw`mb-6`}>
-                <Text style={tw`text-gray-300 text-sm mb-2`}>Email</Text>
-                <TextInput
-                  style={tw`bg-gray-900 text-white px-4 py-3 rounded-lg`}
-                  placeholder="name@example.com"
-                  placeholderTextColor="#6B7280"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                />
-              </View>
-
-              <View style={tw`mb-2`}>
-                <View style={tw`flex-row justify-between items-center mb-2`}>
-                  <Text style={tw`text-gray-300 text-sm`}>Password</Text>
-                  <TouchableOpacity onPress={handleForgotPassword} disabled={isLoading}>
-                    <Text style={tw`text-purple-400 text-sm`}>
-                      Forgot password?
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <TextInput
-                  style={tw`bg-gray-900 text-white px-4 py-3 rounded-lg`}
-                  placeholder="Enter your password"
-                  placeholderTextColor="#6B7280"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                />
-              </View>
-
-              <View style={tw`mt-8`}>
-                {isLoading ? (
-                  <View style={tw`bg-purple-600 py-4 rounded-lg`}>
-                    <ActivityIndicator color="white" />
+        {/* Header */}
+        <View style={tw`w-full pt-10 pb-6 px-6`}> {/* More top padding for mobile */}
+          <View style={tw`max-w-3xl mx-auto flex-row items-center`}> {/* Left align logo */}
+            <BocmLogo />
+          </View>
+        </View>
+        {/* Main Content */}
+        <View style={tw`flex-1 justify-center items-center px-4`}> 
+          <View style={{ width: '100%', maxWidth: 600, alignSelf: 'center' }}> {/* Wider card for less skinny fields */}
+            <Card style={[
+              { backgroundColor: '#2d2342', borderColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderRadius: 24, paddingHorizontal: 32, paddingVertical: 40, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, elevation: 5, width: '100%', alignSelf: 'center' },
+            ]}>
+              <CardHeader style={{ alignItems: 'center', paddingTop: 0, paddingBottom: 0 }}>
+                <Scissors size={40} color="#FFD180" style={tw`mb-2`} />
+                <Text style={{ fontFamily: 'BebasNeue', fontWeight: '900', fontSize: 30, color: '#fff', textTransform: 'uppercase', textAlign: 'center', letterSpacing: 1, marginBottom: 2 }}>WELCOME BACK</Text>
+                <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginTop: 2, marginBottom: 16 }}>Sign in to your account</Text>
+              </CardHeader>
+              <CardContent>
+                <View style={{ gap: 20 }}>
+                  <Input
+                    label="Email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isLoading}
+                    inputStyle={[{ height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.20)', color: '#fff', fontSize: 16, paddingHorizontal: 16, borderWidth: 1, width: '100%' }]}
+                    placeholderTextColor="rgba(255,255,255,0.40)"
+                  />
+                  <View style={{ alignItems: 'flex-end', marginBottom: -4 }}>
+                    <TouchableOpacity onPress={handleForgotPassword} disabled={isLoading}>
+                      <Text style={{ fontSize: 14, color: '#FFD180', textAlign: 'right' }}>Forgot password?</Text>
+                    </TouchableOpacity>
                   </View>
-                ) : (
+                  <Input
+                    label="Password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                    inputStyle={[{ height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.20)', color: '#fff', fontSize: 16, paddingHorizontal: 16, borderWidth: 1, width: '100%' }]}
+                    placeholderTextColor="rgba(255,255,255,0.40)"
+                  />
                   <Button 
                     onPress={handleSignIn} 
                     size="lg"
-                    style={tw`w-full`}
+                    variant="default"
+                    style={[
+                      { height: 44, borderRadius: 9999, backgroundColor: '#FFD180', width: '100%', marginTop: 12 },
+                    ]}
+                    textStyle={{ fontFamily: 'BebasNeue', fontWeight: 'bold', fontSize: 18, color: '#262b2e', textAlign: 'center', textTransform: 'none' }}
                     disabled={isLoading}
                   >
-                    Sign in
+                    {isLoading ? <LoadingSpinner color="#fff" /> : 'Sign in'}
                   </Button>
-                )}
-              </View>
-
-              <View style={tw`mt-6 flex-row justify-center gap-2`}>
-                <Text style={tw`text-gray-400`}>
-                  Don't have an account?
-                </Text>
-                <TouchableOpacity onPress={handleSignUp} disabled={isLoading}>
-                  <Text style={tw`text-purple-400`}>Sign up</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                </View>
+              </CardContent>
+              <CardFooter style={{ borderTopWidth: 0, marginTop: 0, paddingTop: 16, paddingBottom: 8 }}>
+                <View style={tw`w-full items-center mt-0`}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>Don't have an account?{' '}
+                    <Text onPress={handleSignUp} style={{ color: '#FFD180', textDecorationLine: 'underline', fontWeight: 'bold' }}>Sign up</Text>
+                  </Text>
+                </View>
+              </CardFooter>
+            </Card>
           </View>
         </View>
       </KeyboardAvoidingView>

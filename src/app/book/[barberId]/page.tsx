@@ -4,13 +4,30 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/shared/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Button } from '@/shared/components/ui/button'
 import { BookingForm } from '@/shared/components/booking/booking-form'
 import { Service } from '@/shared/types/service'
 import { useToast } from '@/shared/components/ui/use-toast'
+import { Badge } from '@/shared/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import Link from 'next/link'
 import Head from 'next/head'
+import { 
+  Play, 
+  Heart, 
+  MessageCircle, 
+  Share2, 
+  Star, 
+  MapPin, 
+  Phone, 
+  Clock, 
+  Calendar,
+  ArrowLeft,
+  Sparkles,
+  Video,
+  Eye
+} from 'lucide-react'
 import './portrait-fixes.css'
 
 type Barber = {
@@ -20,8 +37,23 @@ type Barber = {
   location?: string
   phone?: string
   bio?: string
+  avatar_url?: string
   specialties: string[]
   services: Service[]
+}
+
+type FeaturedReel = {
+  id: string
+  title: string
+  description?: string
+  url: string
+  thumbnail?: string
+  views: number
+  likes: number
+  comments_count: number
+  created_at: string
+  tags: string[]
+  is_featured: boolean
 }
 
 type BarberFromDB = {
@@ -108,6 +140,10 @@ function BookPageContent() {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [showMobileFallback, setShowMobileFallback] = useState(false)
+  const [featuredReels, setFeaturedReels] = useState<FeaturedReel[]>([])
+  const [showVideoDialog, setShowVideoDialog] = useState(false)
+  const [selectedVideo, setSelectedVideo] = useState<FeaturedReel | null>(null)
+  const [loadingReels, setLoadingReels] = useState(false)
 
   // Safely extract barberId from params
   const barberId = Array.isArray(params.barberId) ? params.barberId[0] : params.barberId
@@ -264,6 +300,7 @@ function BookPageContent() {
         location: profileData?.location || null,
         phone: profileData?.phone || null,
         bio: barberData.bio || null,
+        avatar_url: profileData?.avatar_url || null,
         specialties: barberData.specialties || [],
         services: servicesResult?.map(service => ({
           id: service.id,
@@ -276,12 +313,48 @@ function BookPageContent() {
       }
 
       setBarber(transformedBarber)
+      
+      // Fetch featured reels for this barber
+      await fetchFeaturedReels(barberData.id)
+      
       setLoading(false)
     } catch (err: any) {
       console.error('Error fetching barber details:', err)
       setError(err.message || 'Failed to load barber details')
       setLoading(false)
     }
+  }
+
+  const fetchFeaturedReels = async (barberId: string) => {
+    try {
+      setLoadingReels(true)
+      
+      const { data, error } = await supabase
+        .from('reels')
+        .select('*')
+        .eq('barber_id', barberId)
+        .eq('is_public', true)
+        .eq('is_featured', true)
+        .order('created_at', { ascending: false })
+        .limit(6)
+
+      if (error) {
+        console.error('Error fetching featured reels:', error)
+        return
+      }
+
+      setFeaturedReels(data || [])
+    } catch (error) {
+      console.error('Error fetching featured reels:', error)
+    } finally {
+      setLoadingReels(false)
+    }
+  }
+
+  const formatViews = (views: number) => {
+    if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`
+    if (views >= 1000) return `${(views / 1000).toFixed(1)}K`
+    return views.toString()
   }
 
   // Show error state
@@ -434,135 +507,221 @@ function BookPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#181A20] py-2 sm:py-4 md:py-10 overflow-x-hidden">
-      {/* Mobile fallback notice */}
-      {isMobile && (
-        <div className="container mx-auto max-w-5xl mb-3 sm:mb-4 px-3 sm:px-4">
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 sm:p-4">
-            <div className="flex items-center gap-3">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="min-w-0">
-                <p className="text-blue-400 text-xs sm:text-sm font-medium">Mobile User?</p>
-                <p className="text-blue-300 text-xs">If you're having trouble, try opening this link in your browser instead of the app.</p>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-black overflow-x-hidden">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="text-white hover:bg-white/10"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-bold text-white">Book Appointment</h1>
+          <div className="w-10" /> {/* Spacer for centering */}
         </div>
-      )}
+      </div>
 
-      <div className="container mx-auto max-w-5xl px-3 sm:px-4 w-full">
-        <div className="flex flex-col space-y-4 sm:space-y-6 lg:space-y-10">
+      <div className="container mx-auto max-w-4xl px-4 py-6">
+        <div className="flex flex-col space-y-6">
+          {/* Barber Profile Card */}
           <div className="w-full">
-            <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
-              <CardHeader className="pb-3 sm:pb-4">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <Avatar className="h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0">
-                    <AvatarFallback className="text-lg sm:text-2xl bg-primary text-white">
-                      {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <CardTitle className="text-xl sm:text-2xl text-white truncate">{barber.name || 'Unknown Barber'}</CardTitle>
-                    {barber.location && (
-                      <p className="text-gray-400 text-sm sm:text-base truncate">{barber.location}</p>
-                    )}
+            <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+              <div className="relative">
+                {/* Background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-saffron/20 via-transparent to-primary/20" />
+                
+                <CardHeader className="relative pb-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-20 w-20 flex-shrink-0 border-4 border-saffron/30 shadow-lg">
+                      <AvatarImage src={barber.avatar_url} alt={barber.name} />
+                      <AvatarFallback className="text-2xl bg-saffron text-primary font-bold">
+                        {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-2xl text-white font-bold mb-1">{barber.name || 'Unknown Barber'}</CardTitle>
+                      {barber.location && (
+                        <div className="flex items-center gap-2 text-white/80">
+                          <MapPin className="h-4 w-4" />
+                          <p className="text-sm">{barber.location}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 sm:space-y-6">
+                </CardHeader>
+              <CardContent className="relative space-y-6">
                 {barber.bio && (
                   <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-white mb-2">About</h3>
-                    <p className="text-gray-300 text-sm sm:text-base">{barber.bio}</p>
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-saffron" />
+                      About
+                    </h3>
+                    <p className="text-white/80 text-base leading-relaxed">{barber.bio}</p>
                   </div>
                 )}
                 
                 {barber.specialties && barber.specialties.length > 0 && (
                   <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-white mb-2">Specialties</h3>
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <Star className="h-5 w-5 text-saffron" />
+                      Specialties
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                       {barber.specialties.map((specialty, index) => (
-                        <span
+                        <Badge
                           key={index}
-                          className="px-2 py-1 sm:px-3 sm:py-1 bg-primary/20 text-primary rounded-full text-xs sm:text-sm"
+                          variant="secondary"
+                          className="bg-saffron/20 text-saffron border-saffron/30 px-3 py-1"
                         >
                           {specialty}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Services</h3>
-                  <div className="space-y-2 sm:space-y-3">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-saffron" />
+                    Services & Pricing
+                  </h3>
+                  <div className="space-y-3">
                     {barber.services && barber.services.length > 0 ? (
                       barber.services.map((service) => (
                         <div
                           key={service.id}
-                          className="flex justify-between items-start p-3 sm:p-4 bg-[#2a2d3a] rounded-lg"
+                          className="flex justify-between items-start p-4 bg-white/5 rounded-2xl border border-white/10"
                         >
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-medium text-white text-sm sm:text-base">{service.name}</h4>
+                            <h4 className="font-semibold text-white text-base mb-1">{service.name}</h4>
                             {service.description && (
-                              <p className="text-gray-400 text-xs sm:text-sm mt-1">{service.description}</p>
+                              <p className="text-white/60 text-sm mb-2">{service.description}</p>
                             )}
-                            <p className="text-gray-400 text-xs sm:text-sm mt-1">{service.duration} minutes</p>
+                            <div className="flex items-center gap-2 text-white/60 text-sm">
+                              <Clock className="h-4 w-4" />
+                              <span>{service.duration} minutes</span>
+                            </div>
                           </div>
-                          <div className="text-right ml-3 flex-shrink-0">
-                            <p className="font-semibold text-white text-sm sm:text-base">${service.price}</p>
+                          <div className="text-right ml-4 flex-shrink-0">
+                            <p className="font-bold text-saffron text-xl">${service.price}</p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-gray-400 text-center py-4 text-sm sm:text-base">No services available</p>
+                      <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
+                        <Calendar className="h-12 w-12 text-white/40 mx-auto mb-3" />
+                        <p className="text-white/60">No services available</p>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 <Button
                   onClick={() => setShowBookingForm(true)}
-                  className="w-full rounded-full bg-primary text-white py-3 text-base sm:text-lg font-semibold min-h-[44px]"
+                  className="w-full rounded-2xl bg-saffron text-primary font-bold py-4 text-lg shadow-lg hover:bg-saffron/90 transition-colors"
                 >
                   Book Appointment
                 </Button>
               </CardContent>
-            </Card>
+            </div>
+          </Card>
           </div>
 
+          {/* Featured Reels Section */}
+          {featuredReels.length > 0 && (
+            <div className="w-full">
+              <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-white text-xl font-bold flex items-center gap-2">
+                    <Video className="h-6 w-6 text-saffron" />
+                    Featured Work
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {featuredReels.map((reel) => (
+                      <div
+                        key={reel.id}
+                        className="group relative aspect-video rounded-2xl overflow-hidden bg-white/5 border border-white/10 cursor-pointer hover:border-saffron/50 transition-all duration-300"
+                        onClick={() => {
+                          setSelectedVideo(reel)
+                          setShowVideoDialog(true)
+                        }}
+                      >
+                        <video
+                          src={reel.url}
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                          onMouseLeave={(e) => (e.target as HTMLVideoElement).pause()}
+                        />
+                        
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute bottom-3 left-3 right-3">
+                            <h4 className="text-white font-semibold text-sm mb-1 truncate">{reel.title}</h4>
+                            <div className="flex items-center gap-3 text-white/80 text-xs">
+                              <div className="flex items-center gap-1">
+                                <Eye className="h-3 w-3" />
+                                <span>{formatViews(reel.views)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Heart className="h-3 w-3" />
+                                <span>{formatViews(reel.likes)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MessageCircle className="h-3 w-3" />
+                                <span>{formatViews(reel.comments_count || 0)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Play button */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                            <Play className="h-6 w-6 text-white ml-1" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Contact Info Card */}
           <div className="w-full">
-            <Card className="rounded-2xl bg-[#23243a] border-none shadow-lg">
-              <CardHeader className="pb-3 sm:pb-4">
-                <CardTitle className="text-white text-base sm:text-lg">Contact Info</CardTitle>
+            <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white text-xl font-bold">Contact Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 sm:space-y-4">
+              <CardContent className="space-y-4">
                 {barber.phone && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
+                  <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="w-12 h-12 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Phone className="h-6 w-6 text-saffron" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-gray-400 text-xs sm:text-sm">Phone</p>
-                      <p className="text-white text-sm sm:text-base truncate">{barber.phone}</p>
+                      <p className="text-white/60 text-sm">Phone</p>
+                      <p className="text-white font-medium">{barber.phone}</p>
                     </div>
                   </div>
                 )}
                 
                 {barber.location && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
+                  <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="w-12 h-12 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <MapPin className="h-6 w-6 text-saffron" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-gray-400 text-xs sm:text-sm">Location</p>
-                      <p className="text-white text-sm sm:text-base truncate">{barber.location}</p>
+                      <p className="text-white/60 text-sm">Location</p>
+                      <p className="text-white font-medium">{barber.location}</p>
                     </div>
                   </div>
                 )}
@@ -572,7 +731,48 @@ function BookPageContent() {
         </div>
       </div>
 
-      {showBookingForm && (
+      {/* Video Dialog */}
+      <Dialog open={showVideoDialog} onOpenChange={setShowVideoDialog}>
+        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+          {selectedVideo && (
+            <>
+              <div className="aspect-video">
+                <video
+                  src={selectedVideo.url}
+                  className="w-full h-full object-cover"
+                  controls
+                  autoPlay
+                />
+              </div>
+              <div className="p-6">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold text-white">{selectedVideo.title}</DialogTitle>
+                  <DialogDescription className="text-white/80">
+                    {selectedVideo.description}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="flex items-center gap-4 mt-4 text-white/60 text-sm">
+                  <div className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    <span>{formatViews(selectedVideo.views)} views</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Heart className="h-4 w-4" />
+                    <span>{formatViews(selectedVideo.likes)} likes</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MessageCircle className="h-4 w-4" />
+                    <span>{formatViews(selectedVideo.comments_count || 0)} comments</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {showBookingForm && barber && (
         <ErrorBoundary>
           <BookingForm
             isOpen={showBookingForm}

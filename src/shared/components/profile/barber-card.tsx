@@ -82,9 +82,11 @@ export function BarberCard({ barber }: BarberCardProps) {
                 
                 {/* Main Avatar */}
                 <Avatar className="h-24 w-24 border-4 border-white/20 shadow-2xl relative z-10">
-                  <AvatarImage src={barber.image || "/placeholder.svg"} alt={barber.name} />
-                  <AvatarFallback className="text-2xl font-semibold bg-saffron text-primary">
-                    {barber.name.charAt(0)}
+                  {barber.image && barber.image !== "/placeholder.svg" ? (
+                    <AvatarImage src={barber.image} alt={barber.name} />
+                  ) : null}
+                  <AvatarFallback className="bg-saffron text-primary font-bold text-xl">
+                    {barber.name?.charAt(0) || "B"}
                   </AvatarFallback>
                 </Avatar>
 

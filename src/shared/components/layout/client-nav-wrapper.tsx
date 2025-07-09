@@ -12,16 +12,27 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
   React.useEffect(() => {
     setMounted(true);
     setPathname(window.location.pathname);
+    if (typeof window !== 'undefined') {
+      console.log('Current pathname:', window.location.pathname);
+    }
   }, []);
 
-  const showNavbar = mounted && pathname !== "/" && pathname !== "/landing";
-  const hideFloatingNav = mounted && (pathname === "/" || pathname === "/login" || pathname === "/register" || pathname === "/landing");
+  const showNavbar = mounted && !["/", "/landing", "/login", "/register", "/barber/onboarding"].includes(pathname);
+  const hideFloatingNav = mounted && (["/", "/login", "/register", "/landing", "/profile"].includes(pathname) || pathname.startsWith('/settings/barber-profile') || pathname.startsWith('/profile'));
+  const showMobileNav = mounted && !["/", "/landing", "/login", "/register", "/barber/onboarding"].includes(pathname);
 
   return (
     <>
       {showNavbar && <Navbar />}
-      {children}
-      {!hideFloatingNav && <FloatingNav />}
+      <div className={showMobileNav ? "pb-20 md:pb-0" : ""}>
+        {children}
+      </div>
+      {/* Only show floating nav on desktop (md and up) */}
+      {!hideFloatingNav && (
+        <div className="hidden md:block">
+          <FloatingNav />
+        </div>
+      )}
     </>
   );
 } 

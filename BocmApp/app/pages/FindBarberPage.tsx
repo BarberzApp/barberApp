@@ -17,6 +17,7 @@ import tw from 'twrnc';
 import { RootStackParamList } from '../types/types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import Icon from 'react-native-vector-icons/Feather';
 
 type FindBarberNavigationProp = NativeStackNavigationProp<RootStackParamList, 'FindBarber'>;
 
@@ -268,95 +269,97 @@ export default function FindBarberPage() {
                         </View>
                     ) : (
                         filteredBarbers.map((barber) => (
-                            <TouchableOpacity
+                            <View
                                 key={barber.id}
-                                onPress={() => handleBookAppointment(barber.id, barber.name)}
-                                activeOpacity={0.7}
-                                disabled={!barber.isStripeReady}
+                                style={tw`bg-gray-800 rounded-2xl p-4 mb-3 ${!barber.isStripeReady ? 'opacity-60' : ''}`}
                             >
-                                <View style={tw`bg-gray-800 rounded-2xl p-4 mb-3 ${!barber.isStripeReady ? 'opacity-60' : ''}`}>
-                                    <View style={tw`flex-row items-start`}>
-                                        {/* Barber Avatar */}
-                                        <View style={tw`relative`}>
-                                            <View style={tw`w-16 h-16 bg-purple-600 rounded-full items-center justify-center`}>
-                                                <Text style={tw`text-xl text-white font-semibold`}>
-                                                    {getInitials(barber.name)}
-                                                </Text>
-                                            </View>
-                                            {barber.isStripeReady && (
-                                                <View style={tw`absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1`}>
-                                                    <Text style={tw`text-white text-xs`}>✓</Text>
-                                                </View>
-                                            )}
-                                        </View>
-
-                                        {/* Barber Info */}
-                                        <View style={tw`flex-1 ml-4`}>
-                                            <Text style={tw`text-white text-lg font-semibold`}>
-                                                {barber.businessName || barber.name}
+                                <View style={tw`flex-row items-start`}>
+                                    {/* Barber Avatar */}
+                                    <View style={tw`relative`}>
+                                        <View style={tw`w-16 h-16 bg-purple-600 rounded-full items-center justify-center`}>
+                                            <Text style={tw`text-xl text-white font-semibold`}>
+                                                {getInitials(barber.name)}
                                             </Text>
-                                            {barber.businessName && barber.name !== barber.businessName && (
-                                                <Text style={tw`text-gray-400 text-sm`}>
-                                                    {barber.name}
-                                                </Text>
-                                            )}
-                                            {barber.location && (
-                                                <Text style={tw`text-gray-500 text-sm mt-1`}>
-                                                    📍 {barber.location}
-                                                </Text>
-                                            )}
-
-                                            {/* Specialties */}
-                                            {barber.specialties.length > 0 && (
-                                                <View style={tw`flex-row flex-wrap mt-2`}>
-                                                    {barber.specialties.slice(0, 3).map((specialty, index) => (
-                                                        <View
-                                                            key={index}
-                                                            style={tw`bg-purple-600/20 px-2 py-1 rounded-full mr-2 mb-2`}
-                                                        >
-                                                            <Text style={tw`text-purple-400 text-xs`}>
-                                                                {specialty}
-                                                            </Text>
-                                                        </View>
-                                                    ))}
-                                                    {barber.specialties.length > 3 && (
-                                                        <Text style={tw`text-gray-500 text-xs mt-1`}>
-                                                            +{barber.specialties.length - 3} more
+                                        </View>
+                                        {barber.isStripeReady && (
+                                            <View style={tw`absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1`}>
+                                                <Text style={tw`text-white text-xs`}>✓</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                    {/* Barber Info */}
+                                    <View style={tw`flex-1 ml-4`}>
+                                        <Text style={tw`text-white text-lg font-semibold`}>
+                                            {barber.businessName || barber.name}
+                                        </Text>
+                                        {barber.businessName && barber.name !== barber.businessName && (
+                                            <Text style={tw`text-gray-400 text-sm`}>
+                                                {barber.name}
+                                            </Text>
+                                        )}
+                                        {barber.location && (
+                                            <Text style={tw`text-gray-500 text-sm mt-1`}>
+                                                📍 {barber.location}
+                                            </Text>
+                                        )}
+                                        {/* Specialties */}
+                                        {barber.specialties.length > 0 && (
+                                            <View style={tw`flex-row flex-wrap mt-2`}>
+                                                {barber.specialties.slice(0, 3).map((specialty, index) => (
+                                                    <View
+                                                        key={index}
+                                                        style={tw`bg-purple-600/20 px-2 py-1 rounded-full mr-2 mb-2`}
+                                                    >
+                                                        <Text style={tw`text-purple-400 text-xs`}>
+                                                            {specialty}
                                                         </Text>
-                                                    )}
-                                                </View>
-                                            )}
-
-                                            {/* Bio */}
-                                            {barber.bio && (
-                                                <Text style={tw`text-gray-400 text-sm mt-2`} numberOfLines={2}>
-                                                    {barber.bio}
-                                                </Text>
-                                            )}
-
-                                            {/* Price Range */}
-                                            {barber.priceRange && (
-                                                <Text style={tw`text-purple-400 font-medium mt-2`}>
-                                                    {barber.priceRange}
-                                                </Text>
-                                            )}
-
-                                            {/* Status */}
-                                            <View style={tw`mt-3`}>
-                                                {barber.isStripeReady ? (
-                                                    <Text style={tw`text-green-400 text-sm font-medium`}>
-                                                        Available for booking
-                                                    </Text>
-                                                ) : (
-                                                    <Text style={tw`text-gray-500 text-sm`}>
-                                                        Coming soon
+                                                    </View>
+                                                ))}
+                                                {barber.specialties.length > 3 && (
+                                                    <Text style={tw`text-gray-500 text-xs mt-1`}>
+                                                        +{barber.specialties.length - 3} more
                                                     </Text>
                                                 )}
                                             </View>
+                                        )}
+                                        {/* Bio */}
+                                        {barber.bio && (
+                                            <Text style={tw`text-gray-400 text-sm mt-2`} numberOfLines={2}>
+                                                {barber.bio}
+                                            </Text>
+                                        )}
+                                        {/* Price Range */}
+                                        {barber.priceRange && (
+                                            <Text style={tw`text-purple-400 font-medium mt-2`}>
+                                                {barber.priceRange}
+                                            </Text>
+                                        )}
+                                        {/* Status */}
+                                        <View style={tw`mt-3`}>
+                                            {barber.isStripeReady ? (
+                                                <Text style={tw`text-green-400 text-sm font-medium`}>
+                                                    Available for booking
+                                                </Text>
+                                            ) : (
+                                                <Text style={tw`text-gray-500 text-sm`}>
+                                                    Coming soon
+                                                </Text>
+                                            )}
                                         </View>
+                                        {/* Book Now Button */}
+                                        {barber.isStripeReady && (
+                                            <TouchableOpacity
+                                                onPress={() => handleBookAppointment(barber.id, barber.name)}
+                                                style={tw`mt-4 bg-yellow-300 rounded-full flex-row items-center justify-center py-3`}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Icon name="calendar" size={18} color="#fff" style={tw`mr-2`} />
+                                                <Text style={tw`text-white text-base font-semibold`}>Book Now</Text>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
                                 </View>
-                            </TouchableOpacity>
+                            </View>
                         ))
                     )}
                 </ScrollView>

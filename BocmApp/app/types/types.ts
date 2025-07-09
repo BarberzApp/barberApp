@@ -27,6 +27,7 @@ export type RootStackParamList = {
     email: string;
     userType: 'client' | 'barber';
   };
+  Terms: undefined;
 };
 
 export type UserRole = 'client' | 'barber' | 'admin';

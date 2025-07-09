@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { useToast } from "@/shared/components/ui/use-toast"
-import { Loader2, DollarSign, TrendingUp, TrendingDown, CreditCard } from "lucide-react"
+import { Loader2, DollarSign, TrendingUp, TrendingDown, CreditCard, Sparkles } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
+import { Badge } from "@/shared/components/ui/badge"
+import { LoadingSpinner } from "@/shared/components/ui/loading-spinner"
+import { GlassyCard } from "@/shared/components/ui/glassy-card"
 import { supabase } from "@/shared/lib/supabase"
 
 interface MonthlyEarnings {
@@ -272,11 +275,11 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   if (isLoading) {
     console.log('Loading state active')
     return (
-      <Card>
-        <CardContent className="pt-6 flex justify-center items-center min-h-[200px]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
+        <CardContent className="pt-6 flex justify-center items-center min-h-[300px]">
+          <LoadingSpinner size="md" text="Loading earnings..." />
         </CardContent>
-      </Card>
+      </GlassyCard>
     )
   }
 
@@ -287,94 +290,105 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   })
 
   return (
-    <Card className="min-h-[400px]">
-      <CardHeader>
-        <CardTitle>Monthly Earnings</CardTitle>
-        <CardDescription>Your earnings breakdown for this month</CardDescription>
+    <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl min-h-[400px]">
+      <CardHeader className="text-center">
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="p-2 bg-saffron/20 rounded-full">
+            <DollarSign className="h-5 w-5 text-saffron" />
+          </div>
+          <CardTitle className="text-2xl font-bebas text-white tracking-wide">Monthly Earnings</CardTitle>
+        </div>
+        <CardDescription className="text-white/80">Your earnings breakdown for this month</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col space-y-8">
           {/* Main Earnings Display */}
-          <div className="text-center space-y-4 bg-muted/50 p-6 rounded-lg">
-            <div className="text-4xl font-bold">
-              ${earnings?.current ? (earnings.current / 100).toFixed(2) : "0.00"}
-            </div>
-            <div className="flex items-center justify-center space-x-2">
-              {earnings?.trend === "up" ? (
-                <TrendingUp className="h-5 w-5 text-green-500" />
-              ) : (
-                <TrendingDown className="h-5 w-5 text-red-500" />
-              )}
-              <span className={`text-sm ${earnings?.trend === "up" ? "text-green-500" : "text-red-500"}`}>
-                {earnings?.trend === "up" ? "+" : "-"}{earnings?.percentage}% from last month
-              </span>
+          <div className="text-center space-y-4">
+            <div className="relative">
+              {/* Glowy background effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-saffron/20 via-saffron/10 to-transparent rounded-2xl blur-xl" />
+              <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
+                <div className="text-5xl font-bebas font-bold text-saffron mb-2">
+                  ${earnings?.current ? (earnings.current / 100).toFixed(2) : "0.00"}
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  {earnings?.trend === "up" ? (
+                    <TrendingUp className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <TrendingDown className="h-5 w-5 text-red-400" />
+                  )}
+                  <Badge variant="glassy-saffron" className="text-xs">
+                    {earnings?.trend === "up" ? "+" : "-"}{earnings?.percentage}% from last month
+                  </Badge>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Earnings Breakdown */}
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Earnings Breakdown</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-card border rounded-lg p-4 space-y-2">
-                <div className="text-sm text-muted-foreground">Service Fees</div>
-                <div className="text-2xl font-semibold">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-saffron" />
+              <h3 className="text-lg font-semibold text-white">Earnings Breakdown</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <GlassyCard variant="hover" className="p-4 space-y-2">
+                <div className="text-sm text-white/60">Service Fees</div>
+                <div className="text-2xl font-bold text-white">
                   ${earnings?.breakdown?.serviceFees ? (earnings.breakdown.serviceFees / 100).toFixed(2) : "0.00"}
                 </div>
-                <div className="text-xs text-muted-foreground">From haircut services</div>
-              </div>
-              <div className="bg-card border rounded-lg p-4 space-y-2">
-                <div className="text-sm text-muted-foreground">Platform Fees</div>
-                <div className="text-2xl font-semibold">
+                <div className="text-xs text-white/40">From haircut services</div>
+              </GlassyCard>
+              <GlassyCard variant="hover" className="p-4 space-y-2">
+                <div className="text-sm text-white/60">Platform Fees</div>
+                <div className="text-2xl font-bold text-white">
                   ${earnings?.breakdown?.platformFees ? (earnings.breakdown.platformFees / 100).toFixed(2) : "0.00"}
                 </div>
-                <div className="text-xs text-muted-foreground">Processing fees</div>
-              </div>
-              <div className="bg-card border rounded-lg p-4 space-y-2">
-                <div className="text-sm text-muted-foreground">Total Earnings</div>
-                <div className="text-2xl font-semibold">
-                  ${earnings?.breakdown?.totalEarnings ? (earnings.breakdown.totalEarnings / 100).toFixed(2) : "0.00"}
-                </div>
-                <div className="text-xs text-muted-foreground">Your payout amount</div>
-              </div>
+                <div className="text-xs text-white/40">Processing fees</div>
+              </GlassyCard>
             </div>
           </div>
 
           {/* Payment Setup Section */}
           {!hasStripeAccount && (
-            <div className="text-center space-y-4 border-t pt-8">
-              <p className="text-muted-foreground">
-                Set up your payment account to start receiving payments
-              </p>
-              <Button
-                onClick={handleSetupPayments}
-                disabled={isSettingUp}
-                className="flex items-center gap-2"
-              >
-                {isSettingUp ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CreditCard className="h-4 w-4" />
-                )}
-                {isSettingUp ? "Setting up..." : "Set up payments"}
-              </Button>
+            <div className="text-center space-y-4 border-t border-white/10 pt-8">
+              <GlassyCard className="p-6">
+                <p className="text-white/80 mb-4">
+                  Set up your payment account to start receiving payments
+                </p>
+                <Button
+                  onClick={handleSetupPayments}
+                  disabled={isSettingUp}
+                  className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg"
+                >
+                  {isSettingUp ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="h-4 w-4 mr-2" />
+                  )}
+                  {isSettingUp ? "Setting up..." : "Set up payments"}
+                </Button>
+              </GlassyCard>
             </div>
           )}
 
           {/* Stripe Dashboard Access */}
           {hasStripeAccount && (
-            <div className="text-center space-y-4 border-t pt-8">
-              <Button
-                onClick={handleAccessDashboard}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <CreditCard className="h-4 w-4" />
-                Access Stripe Dashboard
-              </Button>
+            <div className="text-center space-y-4 border-t border-white/10 pt-8">
+              <GlassyCard className="p-6">
+                <Button
+                  onClick={handleAccessDashboard}
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 font-semibold"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Access Stripe Dashboard
+                </Button>
+              </GlassyCard>
             </div>
           )}
         </div>
       </CardContent>
-    </Card>
+    </GlassyCard>
   )
 }

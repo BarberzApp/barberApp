@@ -9,11 +9,14 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Badge } from '@/shared/components/ui/badge';
-import { Play, Instagram, Twitter, Facebook, Edit3, Upload, Video, Plus, X, Loader2, Sparkles, MapPin, Filter } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Switch } from '@/shared/components/ui/switch';
+import { Play, Instagram, Twitter, Facebook, Edit3, Upload, Video, Plus, X, Loader2, Sparkles, MapPin, Filter, Camera, MoreVertical, Star, Trash2, Edit, Eye, EyeOff, GripVertical, Heart, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/shared/hooks/use-auth-zustand';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/shared/components/ui/use-toast';
 import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-settings';
+import { useReels } from '@/shared/hooks/use-reels';
 
 interface UserProfile {
   id: string;
@@ -43,24 +46,22 @@ export default function ProfilePortfolio() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
-  const [openDialog, setOpenDialog] = useState<null | 'profile' | 'portfolio' | 'video' | 'upload'>(null);
+  const [openDialog, setOpenDialog] = useState<null | 'profile' | 'portfolio' | 'video' | 'upload' | 'edit-reel'>(null);
+  const [selectedReel, setSelectedReel] = useState<any>(null);
+  const [editingReel, setEditingReel] = useState<any>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [uploadForm, setUploadForm] = useState({
     title: '',
     description: '',
-    category: 'hair-styling',
-    tags: '',
-    location_name: '',
-    city: '',
-    state: '',
-    latitude: null as number | null,
-    longitude: null as number | null
+    tags: ''
   });
   const editProfileButtonRef = useRef<HTMLButtonElement>(null);
   const editPortfolioButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const [reels, setReels] = useState<any[]>([]);
   const [showLocationFilter, setShowLocationFilter] = useState(false);
   const [locationFilter, setLocationFilter] = useState({
@@ -70,6 +71,11 @@ export default function ProfilePortfolio() {
     useCurrentLocation: false
   });
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const { reels: reelStats, analytics } = useReels();
+  const [statsDialogOpen, setStatsDialogOpen] = useState(false);
+  const [statsDialogReel, setStatsDialogReel] = useState<any>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
 
   // Get user's current location
   const getCurrentLocation = useCallback(() => {
@@ -257,7 +263,73 @@ export default function ProfilePortfolio() {
     setOpenDialog('profile');
   };
 
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || !e.target.files[0]) return;
+      const file = e.target.files[0];
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please select an image file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: 'Please select an image smaller than 5MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      setAvatarLoading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+        
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+        
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user?.id);
+        
+      if (updateError) throw updateError;
+      
+      // Update local profile state
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      
+      toast({
+        title: 'Success',
+        description: 'Profile picture updated successfully!',
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload profile picture. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
@@ -283,16 +355,23 @@ export default function ProfilePortfolio() {
       return
     }
 
-    setUploading(true)
+    setSelectedVideoFile(file);
+    setVideoPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handlePostReel = async () => {
+    if (!selectedVideoFile || !barberProfile) return;
+
+    setUploading(true);
 
     try {
       // Upload to Supabase Storage
-      const fileExt = file.name.split('.').pop()
+      const fileExt = selectedVideoFile.name.split('.').pop()
       const fileName = `${user?.id}/reels/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('portfolio')
-        .upload(fileName, file)
+        .upload(fileName, selectedVideoFile)
 
       if (uploadError) throw uploadError
 
@@ -302,58 +381,199 @@ export default function ProfilePortfolio() {
         .getPublicUrl(fileName)
 
       // Insert into reels table
-      if (barberProfile) {
-        const { error: insertError } = await supabase
-          .from('reels')
-          .insert({
-            barber_id: barberProfile.id,
-            title: uploadForm.title || file.name.replace(/\.[^/.]+$/, ''),
-            description: uploadForm.description,
-            url: publicUrl,
-            category: uploadForm.category,
-            tags: uploadForm.tags.split(',').map(t => t.trim()).filter(Boolean),
-            location_name: uploadForm.location_name,
-            city: uploadForm.city,
-            state: uploadForm.state,
-            latitude: uploadForm.latitude,
-            longitude: uploadForm.longitude,
-            is_featured: false,
-            is_public: true
-          })
-
-        if (insertError) throw insertError
-        toast({
-          title: 'Success',
-          description: 'Video uploaded successfully!',
+      const { error: insertError } = await supabase
+        .from('reels')
+        .insert({
+          barber_id: barberProfile.id,
+          title: uploadForm.title || selectedVideoFile.name.replace(/\.[^/.]+$/, ''),
+          description: uploadForm.description,
+          url: publicUrl,
+          category: 'hair-styling',
+          tags: uploadForm.tags.split(',').map(t => t.trim()).filter(Boolean),
+          location_name: profile?.location || '',
+          city: profile?.location?.split(',')[1]?.trim() || '',
+          state: profile?.location?.split(',')[2]?.trim() || '',
+          latitude: null,
+          longitude: null,
+          is_featured: false,
+          is_public: true
         })
-        // Refresh reels
-        await fetchUserReels(barberProfile.id)
-      }
+
+      if (insertError) throw insertError
       
+      toast({
+        title: 'Success',
+        description: 'Reel posted successfully!',
+      })
+      
+      // Refresh reels
+      await fetchUserReels(barberProfile.id)
+      
+      // Reset form and close dialog
       setOpenDialog(null)
       setUploadForm({
         title: '',
         description: '',
-        category: 'hair-styling',
-        tags: '',
-        location_name: '',
-        city: '',
-        state: '',
-        latitude: null,
-        longitude: null
+        tags: ''
       })
+      setSelectedVideoFile(null);
+      setVideoPreviewUrl(null);
 
     } catch (error) {
-      console.error('Error uploading video:', error)
+      console.error('Error posting reel:', error)
       toast({
         title: 'Error',
-        description: 'Failed to upload video. Please try again.',
+        description: 'Failed to post reel. Please try again.',
         variant: 'destructive',
       })
     } finally {
       setUploading(false)
     }
   }
+
+  const handleEditReel = (reel: any) => {
+    setEditingReel(reel);
+    setUploadForm({
+      title: reel.title || '',
+      description: reel.description || '',
+      tags: reel.tags?.join(', ') || ''
+    });
+    setOpenDialog('edit-reel');
+  };
+
+  const handleUpdateReel = async () => {
+    if (!editingReel || !barberProfile) return;
+
+    try {
+      setUploading(true);
+      
+      const { error: updateError } = await supabase
+        .from('reels')
+        .update({
+          title: uploadForm.title,
+          description: uploadForm.description,
+          category: 'hair-styling',
+          tags: uploadForm.tags.split(',').map(t => t.trim()).filter(Boolean),
+          location_name: profile?.location || '',
+          city: profile?.location?.split(',')[1]?.trim() || '',
+          state: profile?.location?.split(',')[2]?.trim() || '',
+          latitude: null,
+          longitude: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingReel.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Success',
+        description: 'Reel updated successfully!',
+      });
+
+      // Refresh reels
+      await fetchUserReels(barberProfile.id);
+      setOpenDialog(null);
+      setEditingReel(null);
+      setUploadForm({
+        title: '',
+        description: '',
+        tags: ''
+      });
+    } catch (error) {
+      console.error('Error updating reel:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update reel. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteReel = async (reelId: string) => {
+    if (!barberProfile) return;
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('reels')
+        .delete()
+        .eq('id', reelId);
+
+      if (deleteError) throw deleteError;
+
+      toast({
+        title: 'Success',
+        description: 'Reel deleted successfully!',
+      });
+
+      // Refresh reels
+      await fetchUserReels(barberProfile.id);
+    } catch (error) {
+      console.error('Error deleting reel:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete reel. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleToggleReelVisibility = async (reelId: string, isPublic: boolean) => {
+    if (!barberProfile) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('reels')
+        .update({ is_public: !isPublic })
+        .eq('id', reelId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Success',
+        description: `Reel ${!isPublic ? 'published' : 'made private'} successfully!`,
+      });
+
+      // Refresh reels
+      await fetchUserReels(barberProfile.id);
+    } catch (error) {
+      console.error('Error updating reel visibility:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update reel visibility. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleToggleFeatured = async (reelId: string, isFeatured: boolean) => {
+    if (!barberProfile) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('reels')
+        .update({ is_featured: !isFeatured })
+        .eq('id', reelId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Success',
+        description: `Reel ${!isFeatured ? 'featured' : 'unfeatured'} successfully!`,
+      });
+
+      // Refresh reels
+      await fetchUserReels(barberProfile.id);
+    } catch (error) {
+      console.error('Error updating reel featured status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update reel featured status. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleProfileUpdate = async (updatedData: any) => {
     try {
@@ -418,6 +638,26 @@ export default function ProfilePortfolio() {
     }
   };
 
+  const openStatsDialog = async (reel: any) => {
+    setStatsDialogReel(reel);
+    setStatsDialogOpen(true);
+    setCommentsLoading(true);
+    // Fetch comments for this reel
+    const { data, error } = await supabase
+      .from('reel_comments')
+      .select('*')
+      .eq('reel_id', reel.id)
+      .order('created_at', { ascending: false });
+    setComments(data || []);
+    setCommentsLoading(false);
+  };
+
+  const closeStatsDialog = () => {
+    setStatsDialogOpen(false);
+    setStatsDialogReel(null);
+    setComments([]);
+  };
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-32 relative">
@@ -432,25 +672,70 @@ export default function ProfilePortfolio() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-32 relative">
+    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-32 md:pb-8 relative">
+      {/* Profile Stats Row */}
+      {analytics && (
+        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mt-6 sm:mt-8 w-full mb-4">
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg sm:text-xl text-white">{reelStats.length}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Reels</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg sm:text-xl text-white flex items-center gap-1"><Eye className="h-4 w-4 mr-1" />{analytics.total_views}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Views</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg sm:text-xl text-white flex items-center gap-1"><Heart className="h-4 w-4 mr-1" />{analytics.total_likes}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Likes</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg sm:text-xl text-white flex items-center gap-1"><MessageCircle className="h-4 w-4 mr-1" />{reelStats.reduce((sum, r) => sum + (r.comments_count || 0), 0)}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Comments</span>
+          </div>
+        </div>
+      )}
       {/* Profile Card */}
-      <div className="bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-8 sm:p-10 mb-8 mt-8 flex flex-col items-center">
+      <div className="bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-6 sm:p-8 md:p-10 mb-6 sm:mb-8 mt-6 sm:mt-8 flex flex-col items-center">
         {/* Avatar */}
-        <Avatar className="h-28 w-28 mb-3 shadow-lg border-4 border-saffron/30 bg-primary">
-          <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
-          <AvatarFallback className="text-2xl bg-saffron text-primary font-bold">
-            {profile?.name?.charAt(0) || user?.name?.charAt(0) || "U"}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="h-24 w-24 sm:h-28 sm:w-28 mb-3 shadow-lg border-4 border-saffron/30 bg-primary">
+            <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
+            <AvatarFallback className="text-2xl bg-saffron text-primary font-bold">
+              {profile?.name?.charAt(0) || user?.name?.charAt(0) || "U"}
+            </AvatarFallback>
+          </Avatar>
+          <button
+            type="button"
+            className="absolute right-0 bottom-2 bg-gray-600 border-2 border-gray-800 rounded-full flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-500 z-50 transition-transform hover:scale-110 active:scale-95"
+            onClick={() => avatarFileInputRef.current?.click()}
+            disabled={avatarLoading}
+            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
+            aria-label="Change profile picture"
+          >
+            {avatarLoading ? (
+              <Loader2 className="w-4 h-4 text-white animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4 text-white" />
+            )}
+          </button>
+          <input
+            ref={avatarFileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarUpload}
+            disabled={avatarLoading}
+          />
+        </div>
         {/* Name & Username */}
-        <h2 className="text-3xl sm:text-4xl font-bebas font-bold text-white mb-1">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bebas font-bold text-white mb-1">
           {profile?.name || user?.name || 'Your Name'}
         </h2>
-        <span className="text-saffron text-base font-semibold mb-2">
+        <span className="text-saffron text-sm sm:text-base font-semibold mb-2">
           @{profile?.name?.toLowerCase().replace(/\s+/g, '') || 'username'}
         </span>
         {/* Bio */}
-        <p className="text-center text-base text-white/80 mb-3 max-w-md line-clamp-3">
+        <p className="text-center text-sm sm:text-base text-white/80 mb-3 max-w-md line-clamp-3">
           {barberProfile?.bio || profile?.bio || 'No bio yet. Click "Edit Profile" to add one.'}
         </p>
         {/* Location */}
@@ -478,7 +763,7 @@ export default function ProfilePortfolio() {
         )}
         {/* Edit Profile Button */}
         <Button 
-          className="rounded-full px-8 font-semibold bg-saffron text-primary hover:bg-saffron/90 shadow-lg text-lg mt-2"
+          className="rounded-full px-6 sm:px-8 font-semibold bg-saffron text-primary hover:bg-saffron/90 shadow-lg text-base sm:text-lg mt-2"
           onClick={handleEditProfile}
           ref={editProfileButtonRef}
         >
@@ -486,10 +771,10 @@ export default function ProfilePortfolio() {
           Edit Profile
         </Button>
         {/* Stats Row */}
-        <div className="flex justify-center gap-8 mt-8 w-full">
+        <div className="flex justify-center gap-6 sm:gap-8 mt-6 sm:mt-8 w-full">
           {stats.map((stat) => (
             <div key={stat.label} className="flex flex-col items-center">
-              <span className="font-bold text-xl text-white">{stat.value}</span>
+              <span className="font-bold text-lg sm:text-xl text-white">{stat.value}</span>
               <span className="text-xs text-white/60 uppercase tracking-wide">{stat.label}</span>
             </div>
           ))}
@@ -497,15 +782,15 @@ export default function ProfilePortfolio() {
       </div>
 
       {/* Video Upload Section */}
-      <div className="bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-6 sm:p-8 mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-saffron/20 flex items-center justify-center">
-              <Video className="h-6 w-6 text-saffron" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-saffron/20 flex items-center justify-center">
+              <Video className="h-5 w-5 sm:h-6 sm:w-6 text-saffron" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white">Video Reels</h3>
-              <p className="text-white/60 text-sm">Share your work with engaging video content</p>
+              <h3 className="text-lg sm:text-xl font-bold text-white">Video Reels</h3>
+              <p className="text-white/60 text-xs sm:text-sm">Share your work with engaging video content</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -519,7 +804,7 @@ export default function ProfilePortfolio() {
             </Button>
             <Button
               onClick={() => setOpenDialog('upload')}
-              className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 hover:bg-saffron/90"
+              className="bg-saffron text-primary font-bold rounded-lg sm:rounded-xl px-4 sm:px-6 py-2 sm:py-3 hover:bg-saffron/90 text-sm sm:text-base"
             >
               <Plus className="h-4 w-4 mr-2" />
               Upload Reel
@@ -580,34 +865,121 @@ export default function ProfilePortfolio() {
           </div>
         </div>
 
-        {/* Recent Videos Preview */}
+        {/* Enhanced Reels Display */}
         {reels.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {reels.slice(0, 3).map((item, idx) => (
-              <div
-                key={item.id}
-                className="aspect-video rounded-2xl overflow-hidden bg-primary/80 border-2 border-white/10 cursor-pointer flex items-center justify-center relative group shadow-lg"
-                onClick={() => {
-                  setVideoUrl(item.url);
-                  setOpenDialog('video');
-                }}
-              >
-                <video src={item.url} className="object-cover w-full h-full" controls={false} />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Play className="h-8 w-8 text-white drop-shadow-lg" />
+          <div className="space-y-4">
+            {/* Featured Reels Section */}
+            {reels.filter(reel => reel.is_featured).length > 0 && (
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Star className="h-5 w-5 text-saffron" />
+                  Featured Reels
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {reels.filter(reel => reel.is_featured).map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 shadow-lg"
+                    >
+                      <div className="relative aspect-video">
+                        <video src={item.url} className="object-cover w-full h-full" controls={false} />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity group cursor-pointer"
+                             onClick={() => {
+                               setVideoUrl(item.url);
+                               setOpenDialog('video');
+                             }}>
+                          <Play className="h-8 w-8 text-white drop-shadow-lg" />
+                        </div>
+                        <div className="absolute top-2 right-2 flex items-center gap-1">
+                          <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30 text-xs">
+                            Featured
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 bg-black/70 text-white hover:bg-black/90">
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-darkpurple border-white/10">
+                              <DropdownMenuItem onClick={() => handleEditReel(item)} className="text-white">
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleFeatured(item.id, item.is_featured)} className="text-white">
+                                <Star className="h-4 w-4 mr-2" />
+                                {item.is_featured ? 'Unfeature' : 'Feature'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleReelVisibility(item.id, item.is_public)} className="text-white">
+                                {item.is_public ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                                {item.is_public ? 'Make Private' : 'Make Public'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteReel(item.id)} className="text-red-400">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        {/* Location Badge */}
+                        {(item.location_name || item.city) && (
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{item.city || item.location_name}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <h5 className="font-semibold text-white text-sm mb-1 line-clamp-1">{item.title}</h5>
+                        <p className="text-white/60 text-xs line-clamp-2 mb-2">{item.description}</p>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="secondary" className="bg-white/10 text-white border-white/20 text-xs">
+                            {item.category.replace('-', ' ')}
+                          </Badge>
+                          <span className="text-white/40 text-xs">
+                            {new Date(item.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  Video {idx + 1}
-                </div>
-                {/* Location Badge */}
-                {(item.location_name || item.city) && (
-                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>{item.city || item.location_name}</span>
-                  </div>
-                )}
               </div>
-            ))}
+            )}
+
+            {/* All Reels Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-white mb-3">All Reels ({reels.length})</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {reels.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 shadow-lg group relative"
+                  >
+                    <div className="relative aspect-video">
+                      <video src={item.url} className="object-cover w-full h-full" controls={false} />
+                      {/* Per-reel stats badges */}
+                      <div className="absolute top-2 left-2 flex gap-2">
+                        <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><Eye className="h-3 w-3" />{item.views}</span>
+                        <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><Heart className="h-3 w-3" />{item.likes}</span>
+                        <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><MessageCircle className="h-3 w-3" />{item.comments_count || 0}</span>
+                      </div>
+                    </div>
+                    <div className="p-3 flex items-center justify-between">
+                      <div>
+                        <h5 className="font-semibold text-white text-sm mb-1 line-clamp-1">{item.title}</h5>
+                        <p className="text-white/60 text-xs line-clamp-2 mb-2">{item.description}</p>
+                      </div>
+                      <button
+                        className="ml-2 px-3 py-1 bg-saffron text-primary rounded-full text-xs font-semibold shadow hover:bg-saffron/90 transition-colors"
+                        onClick={() => openStatsDialog(item)}
+                      >
+                        Stats
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="text-center py-8">
@@ -674,7 +1046,7 @@ export default function ProfilePortfolio() {
       </div>
       {/* Floating Edit Portfolio Button */}
       <Button
-        className="fixed bottom-8 right-8 z-50 rounded-full bg-saffron text-primary shadow-lg hover:bg-saffron/90 px-8 py-4 text-lg font-semibold border-4 border-white/20"
+        className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-50 rounded-full bg-saffron text-primary shadow-lg hover:bg-saffron/90 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold border-4 border-white/20"
         onClick={() => setOpenDialog('portfolio')}
         ref={editPortfolioButtonRef}
         style={{ boxShadow: '0 8px 32px rgba(124,58,237,0.18)' }}
@@ -685,17 +1057,13 @@ export default function ProfilePortfolio() {
       <Dialog open={openDialog === 'upload'} onOpenChange={open => {
         setOpenDialog(open ? 'upload' : null);
         if (!open) {
-                setUploadForm({
-        title: '',
-        description: '',
-        category: 'hair-styling',
-        tags: '',
-        location_name: '',
-        city: '',
-        state: '',
-        latitude: null,
-        longitude: null
-      });
+          setUploadForm({
+            title: '',
+            description: '',
+            tags: ''
+          });
+          setSelectedVideoFile(null);
+          setVideoPreviewUrl(null);
         }
       }}>
         <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
@@ -707,45 +1075,57 @@ export default function ProfilePortfolio() {
           </DialogHeader>
           
           <div className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="video-upload" className="text-white font-medium mb-2 block">
-                  Select Video File
-                </Label>
-                <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center hover:border-saffron/50 transition-colors">
-                  <input
-                    ref={fileInputRef}
-                    id="video-upload"
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoUpload}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="bg-saffron text-primary font-bold rounded-xl px-8 py-3 mb-4"
-                  >
-                    {uploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose Video
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-white/60 text-sm">
-                    MP4, MOV, or AVI up to 50MB
-                  </p>
+            {/* Video Selection */}
+            <div>
+              <Label htmlFor="video-upload" className="text-white font-medium mb-2 block">
+                Select Video File
+              </Label>
+              <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center hover:border-saffron/50 transition-colors">
+                <input
+                  ref={fileInputRef}
+                  id="video-upload"
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoSelect}
+                  className="hidden"
+                  disabled={uploading}
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="bg-saffron text-primary font-bold rounded-xl px-8 py-3 mb-4"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choose Video
+                    </>
+                  )}
+                </Button>
+                <p className="text-white/60 text-sm">
+                  MP4, MOV, or AVI up to 50MB
+                </p>
+              </div>
+            </div>
+
+            {/* Video Preview */}
+            {videoPreviewUrl && (
+              <div className="bg-white/5 rounded-2xl p-4">
+                <h4 className="text-white font-medium mb-3">Video Preview</h4>
+                <div className="aspect-video rounded-xl overflow-hidden">
+                  <video src={videoPreviewUrl} className="w-full h-full object-cover" controls />
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            )}
+
+            {/* Form Fields */}
+            {selectedVideoFile && (
+              <div className="space-y-4">
                 <div>
                   <Label htmlFor="title" className="text-white font-medium mb-2 block">
                     Title
@@ -758,95 +1138,166 @@ export default function ProfilePortfolio() {
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
                   />
                 </div>
+
                 <div>
-                  <Label htmlFor="category" className="text-white font-medium mb-2 block">
-                    Category
+                  <Label htmlFor="description" className="text-white font-medium mb-2 block">
+                    Description
                   </Label>
-                  <Select value={uploadForm.category} onValueChange={(value) => setUploadForm(prev => ({ ...prev, category: value }))}>
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-darkpurple border-white/20">
-                      <SelectItem value="fade-cuts" className="text-white">Fade Cuts</SelectItem>
-                      <SelectItem value="beard-trims" className="text-white">Beard Trims</SelectItem>
-                      <SelectItem value="hair-styling" className="text-white">Hair Styling</SelectItem>
-                      <SelectItem value="color-work" className="text-white">Color Work</SelectItem>
-                      <SelectItem value="specialty-cuts" className="text-white">Specialty Cuts</SelectItem>
-                      <SelectItem value="behind-scenes" className="text-white">Behind Scenes</SelectItem>
-                      <SelectItem value="tutorials" className="text-white">Tutorials</SelectItem>
-                      <SelectItem value="before-after" className="text-white">Before & After</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="description" className="text-white font-medium mb-2 block">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe your video content..."
-                  value={uploadForm.description}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 min-h-[100px]"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="tags" className="text-white font-medium mb-2 block">
-                  Tags
-                </Label>
-                <Input
-                  id="tags"
-                  placeholder="Add tags separated by commas"
-                  value={uploadForm.tags}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, tags: e.target.value }))}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                />
-                <p className="text-white/40 text-xs mt-1">Example: fade, tutorial, classic</p>
-              </div>
-
-              {/* Location Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="location_name" className="text-white font-medium mb-2 block">
-                    Location Name
-                  </Label>
-                  <Input
-                    id="location_name"
-                    placeholder="e.g., Downtown Barber Shop"
-                    value={uploadForm.location_name}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, location_name: e.target.value }))}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  <Textarea
+                    id="description"
+                    placeholder="Describe your video content..."
+                    value={uploadForm.description}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/40 min-h-[100px]"
                   />
                 </div>
+
                 <div>
-                  <Label htmlFor="city" className="text-white font-medium mb-2 block">
-                    City
+                  <Label htmlFor="tags" className="text-white font-medium mb-2 block">
+                    Tags
                   </Label>
                   <Input
-                    id="city"
-                    placeholder="e.g., New York"
-                    value={uploadForm.city}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, city: e.target.value }))}
+                    id="tags"
+                    placeholder="Add tags separated by commas"
+                    value={uploadForm.tags}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, tags: e.target.value }))}
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
                   />
+                  <p className="text-white/40 text-xs mt-1">Example: fade, tutorial, classic</p>
+                </div>
+
+                {/* Post Button */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={handlePostReel}
+                    disabled={uploading}
+                    className="flex-1 bg-saffron text-primary font-bold rounded-xl px-6 py-3 hover:bg-saffron/90"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Posting...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Post Reel
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpenDialog(null)}
+                    className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-              <div>
-                <Label htmlFor="state" className="text-white font-medium mb-2 block">
-                  State/Province
-                </Label>
-                <Input
-                  id="state"
-                  placeholder="e.g., NY"
-                  value={uploadForm.state}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, state: e.target.value }))}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                />
+      {/* Edit Reel Dialog */}
+      <Dialog open={openDialog === 'edit-reel'} onOpenChange={open => {
+        setOpenDialog(open ? 'edit-reel' : null);
+        if (!open) {
+          setEditingReel(null);
+          setUploadForm({
+            title: '',
+            description: '',
+            tags: ''
+          });
+        }
+      }}>
+        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bebas text-white">Edit Reel</DialogTitle>
+            <DialogDescription className="text-white/80">
+              Update your reel information and settings
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Video Preview */}
+            {editingReel && (
+              <div className="bg-white/5 rounded-2xl p-4">
+                <h4 className="text-white font-medium mb-3">Video Preview</h4>
+                <div className="aspect-video rounded-xl overflow-hidden">
+                  <video src={editingReel.url} className="w-full h-full object-cover" controls />
+                </div>
               </div>
+            )}
+            
+            <div>
+              <Label htmlFor="edit-title" className="text-white font-medium mb-2 block">
+                Title
+              </Label>
+              <Input
+                id="edit-title"
+                placeholder="Enter video title"
+                value={uploadForm.title}
+                onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-description" className="text-white font-medium mb-2 block">
+                Description
+              </Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Describe your video content..."
+                value={uploadForm.description}
+                onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 min-h-[100px]"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-tags" className="text-white font-medium mb-2 block">
+                Tags
+              </Label>
+              <Input
+                id="edit-tags"
+                placeholder="Add tags separated by commas"
+                value={uploadForm.tags}
+                onChange={(e) => setUploadForm(prev => ({ ...prev, tags: e.target.value }))}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+              />
+              <p className="text-white/40 text-xs mt-1">Example: fade, tutorial, classic</p>
+            </div>
+
+
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handleUpdateReel}
+                disabled={uploading}
+                className="flex-1 bg-saffron text-primary font-bold rounded-xl px-6 py-3 hover:bg-saffron/90"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Update Reel
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setOpenDialog(null)}
+                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
+              >
+                Cancel
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -934,7 +1385,7 @@ export default function ProfilePortfolio() {
       />
       {/* Location Filter Dialog */}
       <Dialog open={showLocationFilter} onOpenChange={setShowLocationFilter}>
-        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bebas text-white">Filter My Videos</DialogTitle>
             <DialogDescription className="text-white/80">
@@ -942,7 +1393,7 @@ export default function ProfilePortfolio() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto max-h-[calc(90vh-200px)] pr-2">
             <div className="space-y-4">
               <div>
                 <Label htmlFor="city" className="text-white font-medium mb-2 block">
@@ -1008,7 +1459,7 @@ export default function ProfilePortfolio() {
               </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4 border-t border-white/10">
               <Button
                 onClick={handleLocationFilter}
                 className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 flex-1"
@@ -1024,6 +1475,44 @@ export default function ProfilePortfolio() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Stats Dialog */}
+      <Dialog open={statsDialogOpen} onOpenChange={closeStatsDialog}>
+        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+          {statsDialogReel && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-white">Reel Stats</DialogTitle>
+                <DialogDescription className="text-white/80">
+                  {statsDialogReel.title}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-6">
+                <div className="flex items-center gap-6 mb-4">
+                  <span className="flex items-center gap-1 text-white text-sm"><Eye className="h-4 w-4" />{statsDialogReel.views} Views</span>
+                  <span className="flex items-center gap-1 text-white text-sm"><Heart className="h-4 w-4" />{statsDialogReel.likes} Likes</span>
+                  <span className="flex items-center gap-1 text-white text-sm"><MessageCircle className="h-4 w-4" />{statsDialogReel.comments_count || 0} Comments</span>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 max-h-60 overflow-y-auto">
+                  <h4 className="text-white font-semibold mb-2 text-sm">Comments</h4>
+                  {commentsLoading ? (
+                    <div className="text-white/60 text-sm">Loading comments...</div>
+                  ) : comments.length === 0 ? (
+                    <div className="text-white/60 text-sm">No comments yet.</div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {comments.map((c) => (
+                        <li key={c.id} className="text-white/90 text-sm border-b border-white/10 pb-2">
+                          <span className="font-semibold text-saffron">{c.user_name || 'User'}:</span> {c.comment}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

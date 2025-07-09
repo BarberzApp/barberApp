@@ -419,31 +419,33 @@ export default function BrowsePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-darkpurple via-purple-900 to-darkpurple py-10">
+      <div className="min-h-screen bg-gradient-to-br from-darkpurple via-purple-900 to-darkpurple py-6 md:py-10">
         <div className="container mx-auto max-w-7xl px-4">
-          <div className="space-y-8">
+          <div className="space-y-6 md:space-y-8">
             {/* Header Section */}
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="p-3 bg-saffron/20 rounded-full">
-                  <Scissors className="h-8 w-8 text-saffron" />
+            <div className="text-center space-y-4 md:space-y-6">
+              <div className="flex items-center justify-center gap-3 mb-4 md:mb-6">
+                <div className="p-2 md:p-3 bg-saffron/20 rounded-full">
+                  <Scissors className="h-6 w-6 md:h-8 md:w-8 text-saffron" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bebas text-white tracking-wide">Find a Barber</h1>
-                  <p className="text-white/80 mt-1">Discover skilled professionals</p>
+                  <h1 className="text-3xl md:text-4xl font-bebas text-white tracking-wide">Find a Barber</h1>
+                  <p className="text-white/80 mt-1 text-sm md:text-base">Discover skilled professionals</p>
                 </div>
               </div>
             </div>
 
             {/* Search Bar Skeleton */}
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-2xl mx-auto px-2">
               <div className="relative">
                 <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
               </div>
             </div>
 
             {/* Search Results Skeleton */}
-            <SearchSkeleton count={6} />
+            <div className="px-2">
+              <SearchSkeleton count={6} />
+            </div>
           </div>
         </div>
       </div>
@@ -451,30 +453,30 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-darkpurple via-purple-900 to-darkpurple py-10">
+    <div className="min-h-screen bg-gradient-to-br from-darkpurple via-purple-900 to-darkpurple py-6 md:py-10">
       <div className="container mx-auto max-w-7xl px-4">
-        <div className="space-y-8">
+        <div className="space-y-6 md:space-y-8">
           {/* Header Section */}
-          <div className="text-center space-y-6">
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="p-3 bg-saffron/20 rounded-full">
-                <Scissors className="h-8 w-8 text-saffron" />
+          <div className="text-center space-y-4 md:space-y-6">
+            <div className="flex items-center justify-center gap-3 mb-4 md:mb-6">
+              <div className="p-2 md:p-3 bg-saffron/20 rounded-full">
+                <Scissors className="h-6 w-6 md:h-8 md:w-8 text-saffron" />
               </div>
               <div>
-                <h1 className="text-4xl font-bebas text-white tracking-wide">Find a Barber</h1>
-                <p className="text-white/80 mt-1">Discover skilled professionals</p>
+                <h1 className="text-3xl md:text-4xl font-bebas text-white tracking-wide">Find a Barber</h1>
+                <p className="text-white/80 mt-1 text-sm md:text-base">Discover skilled professionals</p>
               </div>
             </div>
             
-            <p className="text-white/60 text-lg max-w-2xl mx-auto">
+            <p className="text-white/60 text-base md:text-lg max-w-2xl mx-auto px-2">
               Discover skilled barbers in your area. Book appointments with professionals who match your style and preferences.
             </p>
 
             {/* Reels Button */}
             <div className="flex justify-center">
               <Link href="/reels">
-                <Button className="bg-gradient-to-r from-saffron to-orange-500 hover:from-orange-500 hover:to-saffron text-primary font-bold rounded-2xl px-8 py-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-                  <Sparkles className="h-5 w-5 mr-2" />
+                <Button className="bg-gradient-to-r from-saffron to-orange-500 hover:from-orange-500 hover:to-saffron text-primary font-bold rounded-2xl px-6 md:px-8 py-3 md:py-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 text-sm md:text-base">
+                  <Sparkles className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                   Watch Barber Reels
                 </Button>
               </Link>
@@ -482,11 +484,11 @@ export default function BrowsePage() {
           </div>
 
           {/* Search and Filters Section */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Search Bar */}
-            <div className="max-w-2xl mx-auto">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
+            <div className="max-w-2xl mx-auto px-2">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="flex-1 w-full">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -495,11 +497,12 @@ export default function BrowsePage() {
                             <Search className="h-5 w-5" />
                           </div>
                           <Input
-                            placeholder="Search by name, business, location, or specialty..."
+                            placeholder={typeof window !== 'undefined' && window.innerWidth < 40 ? 'Search barbers...' : 'Search by name, business, etc...'}
                             value={searchQuery}
                             onChange={handleSearch}
                             onKeyDown={handleKeyDown}
-                            className="pl-12 py-4 text-base bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-2xl backdrop-blur-xl"
+                            className="w-full pl-12 py-4 text-base bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-2xl backdrop-blur-xl placeholder:truncate"
+                            style={{ textOverflow: 'clip', overflow: 'visible', whiteSpace: 'normal' }}
                           />
                           {searchQuery && (
                             <Button
@@ -524,17 +527,17 @@ export default function BrowsePage() {
                 <Button
                   variant="outline"
                   onClick={() => setShowLocationFilter(true)}
-                  className="bg-saffron/20 border-saffron/30 text-saffron hover:bg-saffron/30 rounded-xl px-4 py-4"
+                  className="bg-saffron/20 border-saffron/30 text-saffron hover:bg-saffron/30 rounded-xl px-4 py-4 w-full sm:w-auto"
                 >
                   <MapPin className="h-4 w-4 mr-2" />
-                  Location
+                  <span className="hidden sm:inline">Location</span>
                 </Button>
               </div>
             </div>
 
             {/* Location Filter Indicator */}
             {(locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation) && (
-              <div className="max-w-2xl mx-auto">
+              <div className="max-w-2xl mx-auto px-2">
                 <div className="bg-saffron/20 rounded-2xl p-4 border border-saffron/30">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-white">
@@ -561,12 +564,12 @@ export default function BrowsePage() {
 
             {/* Filters and Sort Controls */}
             <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                  <div className="flex items-center gap-3">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
                     <Sheet open={showFilters} onOpenChange={setShowFilters}>
                       <SheetTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl">
+                        <Button variant="outline" size="sm" className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl flex-1 sm:flex-none">
                           <Filter className="h-4 w-4" />
                           Filters
                           {activeFiltersCount > 0 && (
@@ -580,7 +583,7 @@ export default function BrowsePage() {
                         <SheetHeader className="border-b border-white/10 pb-4">
                           <SheetTitle className="text-white">Filters</SheetTitle>
                         </SheetHeader>
-                        <div className="space-y-6 mt-6">
+                        <div className="space-y-6 mt-6 overflow-y-auto max-h-[calc(100vh-200px)]">
                           {/* Specialties Filter */}
                           <div className="space-y-3">
                             <Label className="text-sm font-medium text-white">Specialties</Label>
@@ -621,80 +624,6 @@ export default function BrowsePage() {
 
                           <Separator className="bg-white/10" />
 
-                          {/* Location Filter */}
-                          <div className="space-y-3">
-                            <Label className="text-sm font-medium text-white">Location</Label>
-                            <Select value={locationFilter.city || 'all'} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, city: value === 'all' ? '' : value }))} disabled={locationFilter.useCurrentLocation}>
-                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
-                                <SelectValue placeholder="City" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
-                                <SelectItem value="all" className="text-white hover:bg-white/10">All cities</SelectItem>
-                                {allLocations.map((location) => (
-                                  <SelectItem key={location} value={location} className="text-white hover:bg-white/10">
-                                    {location}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Separator className="bg-white/10" />
-
-                          {/* State Filter */}
-                          <div className="space-y-3">
-                            <Label className="text-sm font-medium text-white">State</Label>
-                            <Select value={locationFilter.state || 'all'} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, state: value === 'all' ? '' : value }))} disabled={locationFilter.useCurrentLocation}>
-                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
-                                <SelectValue placeholder="State" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
-                                <SelectItem value="all" className="text-white hover:bg-white/10">All states</SelectItem>
-                                {['CA', 'NY', 'TX', 'FL', 'IL', 'PA', 'OH', 'GA', 'NC', 'MI'].map((state) => (
-                                  <SelectItem key={state} value={state} className="text-white hover:bg-white/10">
-                                    {state}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Separator className="bg-white/10" />
-
-                          {/* Use Current Location */}
-                          <div className="space-y-3">
-                            <Label className="text-sm font-medium text-white">Use Current Location</Label>
-                            <Select value={locationFilter.useCurrentLocation ? 'Yes' : 'No'} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, useCurrentLocation: value === 'Yes' }))} disabled={!userLocation}>
-                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
-                                <SelectValue placeholder="Use current location" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
-                                <SelectItem value="No" className="text-white hover:bg-white/10">No</SelectItem>
-                                <SelectItem value="Yes" className="text-white hover:bg-white/10">Yes</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Separator className="bg-white/10" />
-
-                          {/* Range Filter */}
-                          <div className="space-y-3">
-                            <Label className="text-sm font-medium text-white">Range</Label>
-                            <Select value={locationFilter.range.toString()} onValueChange={(value) => setLocationFilter(prev => ({ ...prev, range: Number(value) }))} disabled={!locationFilter.useCurrentLocation}>
-                              <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
-                                <SelectValue placeholder="Range in miles" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
-                                <SelectItem value="50" className="text-white hover:bg-white/10">50 miles</SelectItem>
-                                <SelectItem value="100" className="text-white hover:bg-white/10">100 miles</SelectItem>
-                                <SelectItem value="150" className="text-white hover:bg-white/10">150 miles</SelectItem>
-                                <SelectItem value="200" className="text-white hover:bg-white/10">200 miles</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Separator className="bg-white/10" />
-
                           {/* Clear Filters */}
                           <Button 
                             variant="outline" 
@@ -708,16 +637,16 @@ export default function BrowsePage() {
                     </Sheet>
 
                     {activeFiltersCount > 0 && (
-                      <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-white/60 hover:text-white">
+                      <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-white/60 hover:text-white text-sm">
                         Clear all
                       </Button>
                     )}
                   </div>
 
                   {/* Sort Controls */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                      <SelectTrigger className="w-[140px] bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
+                      <SelectTrigger className="w-full sm:w-[140px] bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
@@ -725,14 +654,16 @@ export default function BrowsePage() {
                         <SelectItem value="rating" className="text-white hover:bg-white/10">Rating</SelectItem>
                         <SelectItem value="location" className="text-white hover:bg-white/10">Location</SelectItem>
                         <SelectItem value="price" className="text-white hover:bg-white/10">Price</SelectItem>
-                        <SelectItem value="distance" className="text-white hover:bg-white/10">Distance</SelectItem>
+                        {userLocation && (
+                          <SelectItem value="distance" className="text-white hover:bg-white/10">Distance</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl"
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl flex-shrink-0"
                     >
                       {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
                     </Button>
@@ -744,31 +675,35 @@ export default function BrowsePage() {
 
           {/* Error Alert */}
           {error && (
-            <Alert variant="destructive" className="bg-red-900/30 border-red-400/30">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-white">{error}</AlertDescription>
-            </Alert>
+            <div className="px-2">
+              <Alert variant="destructive" className="bg-red-900/30 border-red-400/30">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-white">{error}</AlertDescription>
+              </Alert>
+            </div>
           )}
 
           {/* Results Summary */}
           {!error && (
-            <SearchResultsSummary
-              totalResults={barbers.length}
-              filteredResults={filteredBarbers.length}
-              searchQuery={searchQuery}
-              activeFilters={{
-                specialties: selectedSpecialties,
-                priceRange,
-                location: locationFilter.city || locationFilter.state
-              }}
-              onClearFilters={clearAllFilters}
-              onClearSearch={clearSearch}
-            />
+            <div className="px-2">
+              <SearchResultsSummary
+                totalResults={barbers.length}
+                filteredResults={filteredBarbers.length}
+                searchQuery={searchQuery}
+                activeFilters={{
+                  specialties: selectedSpecialties,
+                  priceRange,
+                  location: locationFilter.city || locationFilter.state
+                }}
+                onClearFilters={clearAllFilters}
+                onClearSearch={clearSearch}
+              />
+            </div>
           )}
 
           {/* Barbers Grid */}
           {!error && filteredBarbers.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 px-2">
               {filteredBarbers.map((barber) => (
                 <BarberCard
                   key={barber.id}
@@ -801,66 +736,70 @@ export default function BrowsePage() {
 
           {/* No Results */}
           {!error && filteredBarbers.length === 0 && !loading && (
-            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-              <CardContent className="p-12 text-center">
-                <div className="space-y-4">
-                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
-                    <AlertCircle className="h-8 w-8 text-white/60" />
+            <div className="px-2">
+              <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+                <CardContent className="p-8 md:p-12 text-center">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
+                      <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-white/60" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg md:text-xl font-semibold text-white">No barbers found</h3>
+                      <p className="text-white/60 text-sm md:text-base">
+                        {activeFiltersCount > 0
+                          ? "Try adjusting your filters or search terms to find more barbers."
+                          : "No barbers are currently available. Please check back later."
+                        }
+                      </p>
+                    </div>
+                    {activeFiltersCount > 0 && (
+                      <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl mt-4">
+                        Clear all filters
+                      </Button>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-semibold text-white">No barbers found</h3>
-                    <p className="text-white/60">
-                      {activeFiltersCount > 0
-                        ? "Try adjusting your filters or search terms to find more barbers."
-                        : "No barbers are currently available. Please check back later."
-                      }
-                    </p>
-                  </div>
-                  {activeFiltersCount > 0 && (
-                    <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl">
-                      Clear all filters
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* Empty State */}
           {!error && barbers.length === 0 && !loading && (
-            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-              <CardContent className="p-12 text-center">
-                <div className="space-y-4">
-                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
-                    <Users className="h-8 w-8 text-white/60" />
+            <div className="px-2">
+              <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+                <CardContent className="p-8 md:p-12 text-center">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
+                      <Users className="h-6 w-6 md:h-8 md:w-8 text-white/60" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg md:text-xl font-semibold text-white">No barbers available</h3>
+                      <p className="text-white/60 text-sm md:text-base">
+                        No barbers have set up their profiles yet. Check back soon!
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-semibold text-white">No barbers available</h3>
-                    <p className="text-white/60">
-                      No barbers have set up their profiles yet. Check back soon!
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       </div>
 
       {/* Location Filter Dialog */}
       <Dialog open={showLocationFilter} onOpenChange={setShowLocationFilter}>
-        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-6 md:p-8 max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Filter by Location</DialogTitle>
-            <DialogDescription className="text-white/80">
+            <DialogTitle className="text-xl md:text-2xl font-bebas text-white">Filter by Location</DialogTitle>
+            <DialogDescription className="text-white/80 text-sm md:text-base">
               Find barbers in specific areas or near your current location
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6 overflow-y-auto max-h-[calc(90vh-200px)] pr-2">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="city" className="text-white font-medium mb-2 block">
+                <Label htmlFor="city" className="text-white font-medium mb-2 block text-sm md:text-base">
                   City
                 </Label>
                 <Input
@@ -868,12 +807,12 @@ export default function BrowsePage() {
                   placeholder="Enter city name"
                   value={locationFilter.city}
                   onChange={(e) => setLocationFilter(prev => ({ ...prev, city: e.target.value }))}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 rounded-xl"
                 />
               </div>
-              
+               
               <div>
-                <Label htmlFor="state" className="text-white font-medium mb-2 block">
+                <Label htmlFor="state" className="text-white font-medium mb-2 block text-sm md:text-base">
                   State/Province
                 </Label>
                 <Input
@@ -881,10 +820,10 @@ export default function BrowsePage() {
                   placeholder="Enter state or province"
                   value={locationFilter.state}
                   onChange={(e) => setLocationFilter(prev => ({ ...prev, state: e.target.value }))}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 rounded-xl"
                 />
               </div>
-              
+               
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <input
@@ -894,21 +833,21 @@ export default function BrowsePage() {
                     onChange={(e) => setLocationFilter(prev => ({ ...prev, useCurrentLocation: e.target.checked }))}
                     className="rounded border-white/20 bg-white/10 text-saffron focus:ring-saffron"
                   />
-                  <Label htmlFor="useCurrentLocation" className="text-white font-medium">
+                  <Label htmlFor="useCurrentLocation" className="text-white font-medium text-sm md:text-base">
                     Use my current location
                   </Label>
                 </div>
                 
                 {locationFilter.useCurrentLocation && (
                   <div>
-                    <Label htmlFor="range" className="text-white font-medium mb-2 block">
+                    <Label htmlFor="range" className="text-white font-medium mb-2 block text-sm md:text-base">
                       Range (miles)
                     </Label>
                     <Select 
                       value={locationFilter.range.toString()} 
                       onValueChange={(value) => setLocationFilter(prev => ({ ...prev, range: parseInt(value) }))}
                     >
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-darkpurple border-white/20">
@@ -923,17 +862,17 @@ export default function BrowsePage() {
               </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4 border-t border-white/10">
               <Button
                 onClick={handleLocationFilter}
-                className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 flex-1"
+                className="bg-saffron text-primary font-bold rounded-xl px-4 md:px-6 py-3 flex-1 text-sm md:text-base"
               >
                 Apply Filter
               </Button>
               <Button
                 onClick={clearLocationFilter}
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
+                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-4 md:px-6 py-3 text-sm md:text-base"
               >
                 Clear
               </Button>

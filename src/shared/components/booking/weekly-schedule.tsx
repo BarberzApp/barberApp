@@ -1,12 +1,10 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
-import { Switch } from '@/shared/components/ui/switch'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Save, Clock } from 'lucide-react'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { supabase } from '@/shared/lib/supabase'
 
@@ -129,13 +127,13 @@ export function WeeklySchedule({ barberId, initialSchedule }: WeeklyScheduleProp
 
       toast({
         title: "Success",
-        description: "Availability updated successfully",
+        description: "Weekly schedule updated successfully",
       });
     } catch (error) {
       console.error('Error saving availability:', error);
       toast({
         title: "Error",
-        description: "Failed to save availability",
+        description: "Failed to save schedule",
         variant: "destructive",
       });
     } finally {
@@ -144,14 +142,30 @@ export function WeeklySchedule({ barberId, initialSchedule }: WeeklyScheduleProp
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Weekly Schedule</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-saffron/20 rounded-xl flex items-center justify-center">
+          <Clock className="h-5 w-5 text-saffron" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bebas text-white">Weekly Schedule</h3>
+          <p className="text-white/70 text-sm">Set your regular working hours for each day</p>
+        </div>
+      </div>
+
+      {/* Schedule Grid */}
+      <div className="space-y-4">
         {schedule.map((slot) => (
-          <div key={slot.day_of_week} className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="flex items-center space-x-4">
+          <div 
+            key={slot.day_of_week} 
+            className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-2xl border transition-all duration-200 ${
+              slot.isAvailable 
+                ? 'bg-white/5 border-saffron/30 shadow-lg shadow-saffron/10' 
+                : 'bg-white/5 border-white/10 hover:border-white/20'
+            }`}
+          >
+            <div className="flex items-center space-x-4 mb-4 sm:mb-0">
               {/* Custom toggle switch */}
               <label className="relative inline-flex items-center cursor-pointer group focus:outline-none">
                 <input
@@ -162,66 +176,60 @@ export function WeeklySchedule({ barberId, initialSchedule }: WeeklyScheduleProp
                   aria-label={`Toggle ${DAYS[slot.day_of_week]}`}
                 />
                 <span
-                  className="w-11 h-6 flex items-center bg-input rounded-full border-2 border-saffron transition-colors duration-200 peer-checked:bg-saffron peer-focus:ring-2 peer-focus:ring-saffron peer-focus:ring-offset-2 peer-focus:ring-offset-background"
+                  className="w-12 h-6 flex items-center transition-colors duration-200 rounded-full border-2 border-white/10 peer-checked:bg-saffron peer-checked:border-saffron bg-white/5 peer-focus:ring-2 peer-focus:ring-saffron peer-focus:ring-offset-2 peer-focus:ring-offset-darkpurple"
                 >
-                  <span
-                    className="h-5 w-5 bg-background rounded-full shadow-lg transform transition-transform duration-200 translate-x-1 peer-checked:translate-x-5 flex items-center justify-center"
-                  >
-                    {/* Animated checkmark */}
-                    <svg
-                      className="w-3 h-3 text-saffron opacity-0 peer-checked:opacity-100 transition-opacity duration-200"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="5 10 9 14 15 7" />
-                    </svg>
-                  </span>
+                  {/* Removed the knob/ball span for a flat toggle */}
                 </span>
               </label>
-              <span className="font-medium">{DAYS[slot.day_of_week]}</span>
+              <span className={`font-medium text-lg ${slot.isAvailable ? 'text-white' : 'text-white/60'}`}>
+                {DAYS[slot.day_of_week]}
+              </span>
             </div>
+            
             {slot.isAvailable && (
-              <div className="flex items-center space-x-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`start-${slot.day_of_week}`}>Start Time</Label>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                <div className="space-y-2 w-full sm:w-auto">
+                  <Label htmlFor={`start-${slot.day_of_week}`} className="text-white/80 text-sm">Start Time</Label>
                   <Input
                     id={`start-${slot.day_of_week}`}
                     type="time"
                     value={slot.start_time}
                     onChange={(e) => handleTimeChange(slot.day_of_week, 'start_time', e.target.value)}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron focus:ring-saffron"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`end-${slot.day_of_week}`}>End Time</Label>
+                <div className="space-y-2 w-full sm:w-auto">
+                  <Label htmlFor={`end-${slot.day_of_week}`} className="text-white/80 text-sm">End Time</Label>
                   <Input
                     id={`end-${slot.day_of_week}`}
                     type="time"
                     value={slot.end_time}
                     onChange={(e) => handleTimeChange(slot.day_of_week, 'end_time', e.target.value)}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron focus:ring-saffron"
                   />
                 </div>
               </div>
             )}
           </div>
         ))}
-        <Button
-          onClick={handleSave}
-          className="w-full mt-4 bg-saffron text-primary font-bold rounded-xl shadow-lg py-3 text-lg tracking-wide transition-all duration-200 hover:scale-105 hover:bg-saffron/90 active:scale-100 focus:ring-2 focus:ring-saffron focus:ring-offset-2 focus:outline-none flex items-center justify-center gap-2"
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <svg className="animate-spin h-5 w-5 mr-2 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-            </svg>
-          ) : null}
-          {isSaving ? 'Saving...' : 'Save Schedule'}
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Save Button */}
+      <Button
+        onClick={handleSave}
+        className="w-full bg-saffron hover:bg-saffron/90 text-primary font-bold rounded-xl shadow-lg py-4 text-lg tracking-wide transition-all duration-200 hover:scale-105 hover:shadow-xl active:scale-100 focus:ring-2 focus:ring-saffron focus:ring-offset-2 focus:ring-offset-darkpurple focus:outline-none flex items-center justify-center gap-3"
+        disabled={isSaving}
+      >
+        {isSaving ? (
+          <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
+        ) : (
+          <Save className="h-5 w-5" />
+        )}
+        {isSaving ? 'Saving Schedule...' : 'Save Weekly Schedule'}
+      </Button>
+    </div>
   )
 }

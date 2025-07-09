@@ -44,6 +44,7 @@ interface VideoReel {
   views: number
   likes: number
   shares: number
+  comments_count: number
   created_at: string
   tags: string[]
   is_featured: boolean
@@ -54,6 +55,17 @@ interface VideoReel {
   state?: string
   latitude?: number
   longitude?: number
+  is_liked?: boolean
+}
+
+interface ReelComment {
+  id: string
+  reel_id: string
+  user_id: string
+  comment: string
+  created_at: string
+  user_name?: string
+  user_avatar?: string
 }
 
 interface VideoAnalytics {
@@ -77,6 +89,11 @@ export default function ReelsPage() {
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [selectedReel, setSelectedReel] = useState<VideoReel | null>(null)
   const [showLocationFilter, setShowLocationFilter] = useState(false)
+  const [showCommentsDialog, setShowCommentsDialog] = useState(false)
+  const [comments, setComments] = useState<ReelComment[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [commentingReelId, setCommentingReelId] = useState<string | null>(null)
+  const [isIntersecting, setIsIntersecting] = useState<boolean[]>([])
   const [locationFilter, setLocationFilter] = useState({
     city: '',
     state: '',
@@ -152,7 +169,16 @@ export default function ReelsPage() {
       
       let query = supabase
         .from('reels')
-        .select('*')
+        .select(`
+          *,
+          barbers:barber_id(
+            user_id,
+            profiles:user_id(
+              name,
+              avatar_url
+            )
+          )
+        `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
 
@@ -167,7 +193,11 @@ export default function ReelsPage() {
       const { data, error } = await query
       if (error) throw error
 
-      let filteredReels = data as VideoReel[]
+      let filteredReels = data?.map((reel: any) => ({
+        ...reel,
+        barber_name: reel.barbers?.profiles?.name || 'Unknown Barber',
+        barber_avatar: reel.barbers?.profiles?.avatar_url
+      })) as VideoReel[]
 
       // Apply distance filter if using current location
       if (locationFilter.useCurrentLocation && userLocation) {
@@ -223,6 +253,54 @@ export default function ReelsPage() {
   useEffect(() => {
     fetchReels()
   }, [fetchReels])
+
+  useEffect(() => {
+    if (reels.length > 0) {
+      checkUserLikes()
+    }
+  }, [reels.length])
+
+  // Intersection Observer for auto-play
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const index = parseInt(entry.target.getAttribute('data-index') || '0')
+          const video = videoRefs.current[index]
+          
+          if (entry.isIntersecting && video) {
+            // Auto-play video when it comes into view
+            video.play().catch(() => {
+              // Auto-play might be blocked by browser
+              console.log('Auto-play blocked')
+            })
+            
+            // Track view
+            if (reels[index]) {
+              trackView(reels[index].id)
+            }
+            
+            // Update current reel index
+            setCurrentReelIndex(index)
+          } else if (video) {
+            // Pause video when it goes out of view
+            video.pause()
+          }
+        })
+      },
+      {
+        threshold: 0.5,
+        rootMargin: '0px 0px -50% 0px'
+      }
+    )
+
+    const videoElements = containerRef.current.querySelectorAll('[data-index]')
+    videoElements.forEach((el) => observer.observe(el))
+
+    return () => observer.disconnect()
+  }, [reels])
 
   // Handle location filter changes
   const handleLocationFilter = () => {
@@ -330,6 +408,168 @@ export default function ReelsPage() {
     if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`
     if (views >= 1000) return `${(views / 1000).toFixed(1)}K`
     return views.toString()
+  }
+
+  // Track view when video is played
+  const trackView = async (reelId: string) => {
+    if (!user) return
+    
+    try {
+      await supabase
+        .from('reel_analytics')
+        .upsert({
+          reel_id: reelId,
+          user_id: user.id,
+          action_type: 'view',
+          ip_address: null,
+          user_agent: navigator.userAgent
+        }, {
+          onConflict: 'reel_id,user_id,action_type'
+        })
+    } catch (error) {
+      console.error('Error tracking view:', error)
+    }
+  }
+
+  // Handle like/unlike
+  const handleLike = async (reelId: string, isLiked: boolean) => {
+    if (!user) return
+    
+    try {
+      if (isLiked) {
+        // Unlike - remove from analytics
+        await supabase
+          .from('reel_analytics')
+          .delete()
+          .eq('reel_id', reelId)
+          .eq('user_id', user.id)
+          .eq('action_type', 'like')
+      } else {
+        // Like - add to analytics
+        await supabase
+          .from('reel_analytics')
+          .upsert({
+            reel_id: reelId,
+            user_id: user.id,
+            action_type: 'like',
+            ip_address: null,
+            user_agent: navigator.userAgent
+          }, {
+            onConflict: 'reel_id,user_id,action_type'
+          })
+      }
+      
+      // Update local state
+      setReels(prev => prev.map(reel => 
+        reel.id === reelId 
+          ? { ...reel, is_liked: !isLiked, likes: isLiked ? reel.likes - 1 : reel.likes + 1 }
+          : reel
+      ))
+    } catch (error) {
+      console.error('Error handling like:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update like. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  // Handle comments
+  const fetchComments = async (reelId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('reel_comments')
+        .select(`
+          *,
+          profiles:user_id(
+            name,
+            avatar_url
+          )
+        `)
+        .eq('reel_id', reelId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      
+      const formattedComments = data?.map((comment: any) => ({
+        ...comment,
+        user_name: comment.profiles?.name || 'Unknown User',
+        user_avatar: comment.profiles?.avatar_url
+      })) as ReelComment[]
+      
+      setComments(formattedComments)
+    } catch (error) {
+      console.error('Error fetching comments:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load comments.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleAddComment = async () => {
+    if (!user || !commentingReelId || !newComment.trim()) return
+    
+    try {
+      const { error } = await supabase
+        .from('reel_comments')
+        .insert({
+          reel_id: commentingReelId,
+          user_id: user.id,
+          comment: newComment.trim()
+        })
+      
+      if (error) throw error
+      
+      // Update local state
+      setReels(prev => prev.map(reel => 
+        reel.id === commentingReelId 
+          ? { ...reel, comments_count: reel.comments_count + 1 }
+          : reel
+      ))
+      
+      // Refresh comments
+      await fetchComments(commentingReelId)
+      setNewComment('')
+      
+      toast({
+        title: 'Success',
+        description: 'Comment added successfully!',
+      })
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to add comment. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  // Check if user has liked each reel
+  const checkUserLikes = async () => {
+    if (!user) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('reel_analytics')
+        .select('reel_id')
+        .eq('user_id', user.id)
+        .eq('action_type', 'like')
+      
+      if (error) throw error
+      
+      const likedReelIds = new Set(data?.map(item => item.reel_id))
+      
+      setReels(prev => prev.map(reel => ({
+        ...reel,
+        is_liked: likedReelIds.has(reel.id)
+      })))
+    } catch (error) {
+      console.error('Error checking user likes:', error)
+    }
   }
 
   if (!user) {
@@ -460,6 +700,7 @@ export default function ReelsPage() {
         {reels.map((reel, index) => (
           <div
             key={reel.id}
+            data-index={index}
             className="relative h-screen snap-start flex items-center justify-center bg-black"
           >
             {/* Video Player */}
@@ -555,19 +796,28 @@ export default function ReelsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-white hover:bg-white/10 rounded-full p-2 flex flex-col items-center gap-1"
+                  onClick={() => handleLike(reel.id, reel.is_liked || false)}
+                  className={cn(
+                    "text-white hover:bg-white/10 rounded-full p-2 flex flex-col items-center gap-1",
+                    reel.is_liked && "text-red-500"
+                  )}
                 >
-                  <Heart className="h-6 w-6" />
+                  <Heart className={cn("h-6 w-6", reel.is_liked && "fill-current")} />
                   <span className="text-xs">{formatViews(reel.likes)}</span>
                 </Button>
                 
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={async () => {
+                    setCommentingReelId(reel.id)
+                    await fetchComments(reel.id)
+                    setShowCommentsDialog(true)
+                  }}
                   className="text-white hover:bg-white/10 rounded-full p-2 flex flex-col items-center gap-1"
                 >
                   <MessageCircle className="h-6 w-6" />
-                  <span className="text-xs">Comment</span>
+                  <span className="text-xs">{formatViews(reel.comments_count ?? 0)}</span>
                 </Button>
                 
                 <Button
@@ -606,7 +856,7 @@ export default function ReelsPage() {
 
       {/* Location Filter Dialog */}
       <Dialog open={showLocationFilter} onOpenChange={setShowLocationFilter}>
-        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bebas text-white">Location Filter</DialogTitle>
             <DialogDescription className="text-white/80">
@@ -614,7 +864,7 @@ export default function ReelsPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto max-h-[calc(90vh-200px)] pr-2">
             <div className="space-y-4">
               <div>
                 <Label htmlFor="city" className="text-white font-medium mb-2 block">
@@ -680,7 +930,7 @@ export default function ReelsPage() {
               </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4 border-t border-white/10">
               <Button
                 onClick={handleLocationFilter}
                 className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 flex-1"
@@ -735,6 +985,71 @@ export default function ReelsPage() {
               >
                 Copy Link
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comments Dialog */}
+      <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
+        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bebas text-white">Comments</DialogTitle>
+            <DialogDescription className="text-white/80">
+              What do you think about this reel?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col h-full">
+            {/* Comments List */}
+            <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
+              {comments.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageCircle className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <p className="text-white/60">No comments yet. Be the first to comment!</p>
+                </div>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="flex gap-3 p-3 bg-white/5 rounded-xl">
+                    <div className="w-8 h-8 rounded-full bg-saffron/20 flex items-center justify-center flex-shrink-0">
+                      {comment.user_avatar ? (
+                        <img src={comment.user_avatar} alt={comment.user_name} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <User className="h-4 w-4 text-saffron" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-white font-medium text-sm">{comment.user_name}</span>
+                        <span className="text-white/40 text-xs">
+                          {new Date(comment.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-white/80 text-sm">{comment.comment}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* Add Comment */}
+            <div className="border-t border-white/10 pt-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                  className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                />
+                <Button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim()}
+                  className="bg-saffron text-primary font-bold rounded-xl px-4 py-2"
+                >
+                  Post
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

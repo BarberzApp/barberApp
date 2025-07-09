@@ -186,8 +186,9 @@ export default function BarberOnboardingPage() {
         }
 
         if (stepIndex === 2 && !formData.stripeConnected) {
-            Alert.alert('Payment Setup Required', 'Please connect your Stripe account to receive payments');
-            return false;
+            // Stripe connection is now optional - can be skipped
+            // Alert.alert('Payment Setup Required', 'Please connect your Stripe account to receive payments');
+            // return false;
         }
 
         return true;
@@ -546,6 +547,35 @@ export default function BarberOnboardingPage() {
                                             </Text>
                                         )}
                                     </TouchableOpacity>
+                                    
+                                    <View style={tw`mt-4`}>
+                                        <View style={tw`flex-row items-center mb-3`}>
+                                            <View style={tw`flex-1 h-0.5 bg-gray-700`} />
+                                            <Text style={tw`text-gray-500 text-xs mx-3`}>OR</Text>
+                                            <View style={tw`flex-1 h-0.5 bg-gray-700`} />
+                                        </View>
+                                        
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                setFormData(prev => ({ ...prev, stripeConnected: true }));
+                                                if (currentStep < steps.length - 1) {
+                                                    setCurrentStep(currentStep + 1);
+                                                } else {
+                                                    handleSubmit();
+                                                }
+                                            }}
+                                            style={tw`border border-gray-600 py-4 rounded-xl`}
+                                            disabled={loading}
+                                        >
+                                            <Text style={tw`text-gray-300 text-center font-medium`}>
+                                                Skip for Now
+                                            </Text>
+                                        </TouchableOpacity>
+                                        
+                                        <Text style={tw`text-gray-500 text-xs text-center mt-2`}>
+                                            You can set up payments later
+                                        </Text>
+                                    </View>
                                 </View>
                                 
                                 <Text style={tw`text-gray-500 text-xs text-center`}>

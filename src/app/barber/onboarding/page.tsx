@@ -13,6 +13,9 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Progress } from '@/shared/components/ui/progress'
 import { CheckCircle, AlertCircle, Loader2, CreditCard, Building, Scissors, X } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
+import Link from 'next/link'
+import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
+import { parsePhoneNumberFromString } from 'libphonenumber-js'
 
 const steps = [
   {
@@ -46,7 +49,7 @@ interface FormData {
   state: string
   zipCode: string
   bio: string
-  specialties: string
+  specialties: string[]
   services: Array<{ name: string; price: number; duration: number }>
   stripeConnected: boolean
   socialMedia: {
@@ -59,6 +62,19 @@ interface FormData {
 
 interface ValidationErrors {
   [key: string]: string
+}
+
+// Add async address validation function
+async function validateAddress(address: string, city: string, state: string, zip: string): Promise<boolean> {
+  const query = encodeURIComponent(`${address}, ${city}, ${state} ${zip}`)
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}`
+  try {
+    const res = await fetch(url)
+    const data = await res.json()
+    return Array.isArray(data) && data.length > 0
+  } catch (e) {
+    return false
+  }
 }
 
 export default function BarberOnboardingPage() {
@@ -95,7 +111,7 @@ export default function BarberOnboardingPage() {
             ...prev,
             businessName: barberData.business_name || '',
             bio: barberData.bio || '',
-            specialties: barberData.specialties?.join(', ') || '',
+            specialties: barberData.specialties || [],
             socialMedia: {
               instagram: barberData.instagram || '',
               twitter: barberData.twitter || '',
@@ -304,7 +320,7 @@ export default function BarberOnboardingPage() {
     state: '',
     zipCode: '',
     bio: '',
-    specialties: '',
+    specialties: [],
     services: [],
     stripeConnected: false,
     socialMedia: {
@@ -315,7 +331,7 @@ export default function BarberOnboardingPage() {
     }
   })
 
-  const validateStep = (stepIndex: number): boolean => {
+  const validateStep = async (stepIndex: number): Promise<boolean> => {
     const errors: ValidationErrors = {};
     const step = steps[stepIndex];
 
@@ -328,17 +344,27 @@ export default function BarberOnboardingPage() {
       if (!formData.state.trim()) errors.state = 'State is required';
       if (!formData.zipCode.trim()) errors.zipCode = 'ZIP code is required';
       if (!formData.bio.trim()) errors.bio = 'Bio is required';
-      
-      // Phone validation
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-      if (formData.phone && !phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
-        errors.phone = 'Please enter a valid phone number';
+
+      // Phone validation (US default)
+      if (formData.phone) {
+        const phoneNumber = parsePhoneNumberFromString(formData.phone, 'US')
+        if (!phoneNumber || !phoneNumber.isValid()) {
+          errors.phone = 'Please enter a valid phone number';
+        }
       }
 
       // ZIP code validation
       const zipRegex = /^\d{5}(-\d{4})?$/;
       if (formData.zipCode && !zipRegex.test(formData.zipCode)) {
         errors.zipCode = 'Please enter a valid ZIP code';
+      }
+
+      // Address validation (async)
+      if (!errors.address && !errors.city && !errors.state && !errors.zipCode) {
+        const isValidAddress = await validateAddress(formData.address, formData.city, formData.state, formData.zipCode)
+        if (!isValidAddress) {
+          errors.address = 'Please enter a real address';
+        }
       }
     }
 
@@ -362,10 +388,9 @@ export default function BarberOnboardingPage() {
     }
 
     if (stepIndex === 2) {
-      // Stripe validation
-      if (!formData.stripeConnected) {
-        errors.stripeConnected = 'Stripe account must be connected';
-      }
+      // Stripe validation - now optional (can be skipped)
+      // Only validate if user tries to proceed without connecting
+      // Skip validation is handled separately
     }
 
     setValidationErrors(errors);
@@ -399,6 +424,10 @@ export default function BarberOnboardingPage() {
         [name]: ''
       }))
     }
+  }
+
+  const handleSpecialtiesChange = (specialties: string[]) => {
+    setFormData((prev) => ({ ...prev, specialties }))
   }
 
   const handleServiceChange = (index: number, field: string, value: string | number) => {
@@ -437,7 +466,7 @@ export default function BarberOnboardingPage() {
     }
 
     // Validate current step
-    if (!validateStep(currentStep)) {
+    if (!(await validateStep(currentStep))) {
       toast({
         title: 'Validation Error',
         description: 'Please fix the errors before continuing.',
@@ -476,7 +505,7 @@ export default function BarberOnboardingPage() {
             user_id: user.id,
             business_name: formData.businessName,
             bio: formData.bio,
-            specialties: formData.specialties.split(',').map(s => s.trim()).filter(s => s),
+            specialties: formData.specialties,
             instagram: formData.socialMedia.instagram,
             twitter: formData.socialMedia.twitter,
             tiktok: formData.socialMedia.tiktok,
@@ -496,7 +525,7 @@ export default function BarberOnboardingPage() {
         .update({
           business_name: formData.businessName,
           bio: formData.bio,
-          specialties: formData.specialties.split(',').map(s => s.trim()).filter(s => s),
+          specialties: formData.specialties,
           instagram: formData.socialMedia.instagram,
           twitter: formData.socialMedia.twitter,
           tiktok: formData.socialMedia.tiktok,
@@ -630,12 +659,8 @@ export default function BarberOnboardingPage() {
         const refreshData = await refreshResponse.json();
         
         if (refreshData.success && refreshData.data.hasStripeAccount) {
-          // Update the local state to reflect the refreshed status
+          setFormData(prev => ({ ...prev, stripeConnected: true }));
           setStripeStatus(refreshData.data.currentStatus);
-          setFormData(prev => ({
-            ...prev,
-            stripeConnected: refreshData.data.currentStatus === 'active'
-          }));
           
           if (refreshData.data.currentStatus === 'active') {
             toast({
@@ -653,7 +678,17 @@ export default function BarberOnboardingPage() {
         }
       }
 
-      // If no active account found, create a new one
+      // Get barber's email and name
+      if (!user?.email || !user?.name) {
+        toast({
+          title: 'Error',
+          description: 'Could not fetch your profile information. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Create Stripe Connect account
       const response = await fetch('/api/connect/create-account', {
         method: 'POST',
         headers: {
@@ -661,7 +696,8 @@ export default function BarberOnboardingPage() {
         },
         body: JSON.stringify({
           barberId: barber.id,
-          email: user?.email,
+          email: user.email,
+          name: user.name,
         }),
       });
 
@@ -671,33 +707,47 @@ export default function BarberOnboardingPage() {
       }
 
       const data = await response.json();
-
-      if (data.url) {
-        // Show different message based on whether it's an existing account
-        if (data.existing) {
-          toast({
-            title: 'Existing Account Found',
-            description: 'We found your existing Stripe account. Redirecting you to complete setup...',
-          });
-        } else {
-          toast({
-            title: 'Account Created',
-            description: 'Your Stripe account has been created. Redirecting you to complete setup...',
-          });
-        }
-        
-        // Small delay to show the toast before redirecting
-        setTimeout(() => {
-          window.location.href = data.url;
-        }, 1500);
-      } else {
-        throw new Error('No URL returned from Stripe');
+      const redirectUrl = data.url || data.accountLink;
+      
+      if (!redirectUrl) {
+        throw new Error('No redirect URL received from Stripe');
       }
+
+      // Redirect to Stripe
+      window.location.href = redirectUrl;
     } catch (error) {
-      console.error('Error creating Stripe account:', error);
+      console.error('Error connecting Stripe:', error);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create Stripe account. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to connect Stripe account. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    setLoading(true);
+    try {
+      toast({
+        title: 'Payment Setup Skipped',
+        description: 'You can set up payments later in your settings.',
+      });
+      
+      // Move to next step or complete
+      if (currentStep < steps.length - 1) {
+        console.log(`Moving to step ${currentStep + 1}`);
+        setCurrentStep(currentStep + 1);
+      } else {
+        console.log('Onboarding completed, redirecting to settings...');
+        router.push('/settings');
+      }
+    } catch (error) {
+      console.error('Error skipping step:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to skip step. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -711,117 +761,116 @@ export default function BarberOnboardingPage() {
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="businessName">Business Name *</Label>
+              <Label htmlFor="businessName" className="text-sm font-medium text-white">Business Name *</Label>
               <Input
                 id="businessName"
                 name="businessName"
                 value={formData.businessName}
                 onChange={handleChange}
-                className={validationErrors.businessName ? 'border-red-500' : ''}
+                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.businessName ? 'border-red-500' : ''}`}
                 placeholder="Enter your business name"
               />
               {validationErrors.businessName && (
-                <p className="text-sm text-red-500">{validationErrors.businessName}</p>
+                <p className="text-sm text-red-400">{validationErrors.businessName}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number *</Label>
+              <Label htmlFor="phone" className="text-sm font-medium text-white">Phone Number *</Label>
               <Input
                 id="phone"
                 name="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange}
-                className={validationErrors.phone ? 'border-red-500' : ''}
+                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.phone ? 'border-red-500' : ''}`}
                 placeholder="(555) 123-4567"
               />
               {validationErrors.phone && (
-                <p className="text-sm text-red-500">{validationErrors.phone}</p>
+                <p className="text-sm text-red-400">{validationErrors.phone}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="address">Address *</Label>
+              <Label htmlFor="address" className="text-sm font-medium text-white">Address *</Label>
               <Input
                 id="address"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                className={validationErrors.address ? 'border-red-500' : ''}
+                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.address ? 'border-red-500' : ''}`}
                 placeholder="123 Main St"
               />
               {validationErrors.address && (
-                <p className="text-sm text-red-500">{validationErrors.address}</p>
+                <p className="text-sm text-red-400">{validationErrors.address}</p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="city">City *</Label>
+                <Label htmlFor="city" className="text-sm font-medium text-white">City *</Label>
                 <Input
                   id="city"
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className={validationErrors.city ? 'border-red-500' : ''}
+                  className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.city ? 'border-red-500' : ''}`}
                   placeholder="City"
                 />
                 {validationErrors.city && (
-                  <p className="text-sm text-red-500">{validationErrors.city}</p>
+                  <p className="text-sm text-red-400">{validationErrors.city}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="state">State *</Label>
+                <Label htmlFor="state" className="text-sm font-medium text-white">State *</Label>
                 <Input
                   id="state"
                   name="state"
                   value={formData.state}
                   onChange={handleChange}
-                  className={validationErrors.state ? 'border-red-500' : ''}
+                  className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.state ? 'border-red-500' : ''}`}
                   placeholder="State"
                 />
                 {validationErrors.state && (
-                  <p className="text-sm text-red-500">{validationErrors.state}</p>
+                  <p className="text-sm text-red-400">{validationErrors.state}</p>
                 )}
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="zipCode">ZIP Code *</Label>
+              <Label htmlFor="zipCode" className="text-sm font-medium text-white">ZIP Code *</Label>
               <Input
                 id="zipCode"
                 name="zipCode"
                 value={formData.zipCode}
                 onChange={handleChange}
-                className={validationErrors.zipCode ? 'border-red-500' : ''}
+                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.zipCode ? 'border-red-500' : ''}`}
                 placeholder="12345"
               />
               {validationErrors.zipCode && (
-                <p className="text-sm text-red-500">{validationErrors.zipCode}</p>
+                <p className="text-sm text-red-400">{validationErrors.zipCode}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bio">Bio *</Label>
+              <Label htmlFor="bio" className="text-sm font-medium text-white">Bio *</Label>
               <Textarea
                 id="bio"
                 name="bio"
                 value={formData.bio}
                 onChange={handleChange}
-                className={validationErrors.bio ? 'border-red-500' : ''}
+                className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.bio ? 'border-red-500' : ''}`}
                 placeholder="Tell us about your business, experience, and what makes you unique..."
                 rows={4}
               />
               {validationErrors.bio && (
-                <p className="text-sm text-red-500">{validationErrors.bio}</p>
+                <p className="text-sm text-red-400">{validationErrors.bio}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="specialties">Specialties</Label>
-              <Input
-                id="specialties"
-                name="specialties"
+              <Label htmlFor="specialties" className="text-sm font-medium text-white">Specialties</Label>
+              <SpecialtyAutocomplete
                 value={formData.specialties}
-                onChange={handleChange}
-                placeholder="Haircuts, Beard Trims, Fades, etc. (comma-separated)"
+                onChange={handleSpecialtiesChange}
+                placeholder="Select your specialties..."
+                maxSelections={15}
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/60">
                 List your specialties to help clients find you
               </p>
             </div>
@@ -829,52 +878,56 @@ export default function BarberOnboardingPage() {
             {/* Social Media Section */}
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-medium">Social Media (Optional)</Label>
-                <p className="text-sm text-muted-foreground">
+                <Label className="text-base font-medium text-white">Social Media (Optional)</Label>
+                <p className="text-sm text-white/60">
                   Add your social media links to help clients connect with you
                 </p>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="socialMedia.instagram">Instagram</Label>
+                <Label htmlFor="socialMedia.instagram" className="text-sm font-medium text-white">Instagram</Label>
                 <Input
                   id="socialMedia.instagram"
                   name="socialMedia.instagram"
                   value={formData.socialMedia.instagram}
                   onChange={handleChange}
+                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
                   placeholder="https://instagram.com/yourusername"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="socialMedia.twitter">Twitter/X</Label>
+                <Label htmlFor="socialMedia.twitter" className="text-sm font-medium text-white">Twitter/X</Label>
                 <Input
                   id="socialMedia.twitter"
                   name="socialMedia.twitter"
                   value={formData.socialMedia.twitter}
                   onChange={handleChange}
+                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
                   placeholder="https://twitter.com/yourusername"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="socialMedia.tiktok">TikTok</Label>
+                <Label htmlFor="socialMedia.tiktok" className="text-sm font-medium text-white">TikTok</Label>
                 <Input
                   id="socialMedia.tiktok"
                   name="socialMedia.tiktok"
                   value={formData.socialMedia.tiktok}
                   onChange={handleChange}
+                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
                   placeholder="https://tiktok.com/@yourusername"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="socialMedia.facebook">Facebook</Label>
+                <Label htmlFor="socialMedia.facebook" className="text-sm font-medium text-white">Facebook</Label>
                 <Input
                   id="socialMedia.facebook"
                   name="socialMedia.facebook"
                   value={formData.socialMedia.facebook}
                   onChange={handleChange}
+                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
                   placeholder="https://facebook.com/yourusername"
                 />
               </div>
@@ -885,14 +938,14 @@ export default function BarberOnboardingPage() {
         return (
           <div className="space-y-4">
             {validationErrors.services && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-400">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{validationErrors.services}</AlertDescription>
               </Alert>
             )}
             
             {formData.services.length === 0 && (
-              <Alert>
+              <Alert className="bg-saffron/10 border-saffron/20 text-saffron">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   Add at least one service to get started. You can always add more later.
@@ -901,23 +954,23 @@ export default function BarberOnboardingPage() {
             )}
             
             {formData.services.map((service, index) => (
-              <div key={index} className="space-y-4 p-4 border rounded-lg">
+              <div key={index} className="space-y-4 p-4 border border-white/10 rounded-lg bg-white/5">
                 <div className="space-y-2">
-                  <Label htmlFor={`service-${index}-name`}>Service Name *</Label>
+                  <Label htmlFor={`service-${index}-name`} className="text-sm font-medium text-white">Service Name *</Label>
                   <Input
                     id={`service-${index}-name`}
                     value={service.name}
                     onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
-                    className={validationErrors[`service-${index}-name`] ? 'border-red-500' : ''}
+                    className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors[`service-${index}-name`] ? 'border-red-500' : ''}`}
                     placeholder="e.g., Haircut"
                   />
                   {validationErrors[`service-${index}-name`] && (
-                    <p className="text-sm text-red-500">{validationErrors[`service-${index}-name`]}</p>
+                    <p className="text-sm text-red-400">{validationErrors[`service-${index}-name`]}</p>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor={`service-${index}-price`}>Price ($) *</Label>
+                    <Label htmlFor={`service-${index}-price`} className="text-sm font-medium text-white">Price ($) *</Label>
                     <Input
                       id={`service-${index}-price`}
                       type="number"
@@ -927,17 +980,17 @@ export default function BarberOnboardingPage() {
                         const numVal = val === '' ? 0 : parseFloat(val);
                         handleServiceChange(index, 'price', numVal);
                       }}
-                      className={validationErrors[`service-${index}-price`] ? 'border-red-500' : ''}
+                      className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors[`service-${index}-price`] ? 'border-red-500' : ''}`}
                       min="0"
                       step="0.01"
                       placeholder="25.00"
                     />
                     {validationErrors[`service-${index}-price`] && (
-                      <p className="text-sm text-red-500">{validationErrors[`service-${index}-price`]}</p>
+                      <p className="text-sm text-red-400">{validationErrors[`service-${index}-price`]}</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor={`service-${index}-duration`}>Duration (minutes) *</Label>
+                    <Label htmlFor={`service-${index}-duration`} className="text-sm font-medium text-white">Duration (minutes) *</Label>
                     <Input
                       id={`service-${index}-duration`}
                       type="number"
@@ -947,13 +1000,13 @@ export default function BarberOnboardingPage() {
                         const numVal = val === '' ? 0 : parseInt(val);
                         handleServiceChange(index, 'duration', numVal);
                       }}
-                      className={validationErrors[`service-${index}-duration`] ? 'border-red-500' : ''}
+                      className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors[`service-${index}-duration`] ? 'border-red-500' : ''}`}
                       min="15"
                       step="15"
                       placeholder="30"
                     />
                     {validationErrors[`service-${index}-duration`] && (
-                      <p className="text-sm text-red-500">{validationErrors[`service-${index}-duration`]}</p>
+                      <p className="text-sm text-red-400">{validationErrors[`service-${index}-duration`]}</p>
                     )}
                   </div>
                 </div>
@@ -962,12 +1015,13 @@ export default function BarberOnboardingPage() {
                   variant="destructive"
                   size="sm"
                   onClick={() => removeService(index)}
+                  className="bg-red-500 hover:bg-red-600 text-white"
                 >
                   Remove Service
                 </Button>
               </div>
             ))}
-            <Button type="button" onClick={addService} variant="outline">
+            <Button type="button" onClick={addService} variant="outline" className="border-white/20 text-white hover:bg-white/10">
               Add Service
             </Button>
           </div>
@@ -976,14 +1030,14 @@ export default function BarberOnboardingPage() {
         return (
           <div className="space-y-4">
             {stripeStatus === 'active' && formData.stripeConnected ? (
-              <Alert>
+              <Alert className="bg-green-500/10 border-green-500/20 text-green-400">
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
                   Your Stripe account is connected and ready to accept payments!
                 </AlertDescription>
               </Alert>
             ) : stripeStatus === 'pending' ? (
-              <Alert>
+              <Alert className="bg-saffron/10 border-saffron/20 text-saffron">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   Your Stripe account is being reviewed. This usually takes 1-2 business days.
@@ -991,10 +1045,10 @@ export default function BarberOnboardingPage() {
               </Alert>
             ) : stripeStatus === null ? (
               <>
-                <p className="text-muted-foreground">
+                <p className="text-white/80">
                   To receive payments, you need to connect your Stripe account. This will allow you to:
                 </p>
-                <ul className="list-disc list-inside space-y-2 text-muted-foreground">
+                <ul className="list-disc list-inside space-y-2 text-white/80">
                   <li>Accept credit card payments securely</li>
                   <li>Receive payments directly to your bank account</li>
                   <li>Manage your earnings and payouts</li>
@@ -1002,7 +1056,7 @@ export default function BarberOnboardingPage() {
                 </ul>
                 
                 {validationErrors.stripeConnected && (
-                  <Alert variant="destructive">
+                  <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-400">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{validationErrors.stripeConnected}</AlertDescription>
                   </Alert>
@@ -1011,7 +1065,7 @@ export default function BarberOnboardingPage() {
                 <Button
                   onClick={handleStripeConnect}
                   disabled={loading}
-                  className="w-full"
+                  className="w-full bg-saffron hover:bg-saffron/90 text-primary"
                 >
                   {loading ? (
                     <>
@@ -1023,12 +1077,36 @@ export default function BarberOnboardingPage() {
                   )}
                 </Button>
                 
-                <p className="text-xs text-muted-foreground text-center">
-                  You'll be redirected to Stripe to complete the setup. This process is secure and takes about 5 minutes.
-                </p>
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs text-white/60 text-center">
+                    You'll be redirected to Stripe to complete the setup. This process is secure and takes about 5 minutes.
+                  </p>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-white/20" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-darkpurple px-2 text-white/60">Or</span>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={handleSkip}
+                    disabled={loading}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    Skip for Now
+                  </Button>
+                  
+                  <p className="text-xs text-white/40 text-center">
+                    You can set up payments later in your settings
+                  </p>
+                </div>
               </>
             ) : (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-400">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   There was an issue with your Stripe account. Please contact support.
@@ -1058,143 +1136,156 @@ export default function BarberOnboardingPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-8">
-      {/* Onboarding Complete Banner */}
-      {onboardingComplete && showCompleteBanner && (
-        <div className="relative mb-8">
-          <Card className="border-none bg-green-50 shadow-lg w-full max-w-2xl mx-auto">
-            <button
-              className="absolute top-3 right-3 text-green-700 hover:text-green-900 rounded-full p-1 focus:outline-none"
-              aria-label="Dismiss"
-              onClick={() => setShowCompleteBanner(false)}
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <CardContent className="pt-6 pb-6">
-              <div className="flex flex-col items-center text-center gap-2">
-                <div className="flex items-center justify-center mb-2">
-                  <span className="inline-flex items-center justify-center rounded-full bg-green-100 p-3">
-                    <CheckCircle className="h-8 w-8 text-green-600" />
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold text-green-800">Onboarding Complete!</h3>
-                <p className="text-sm text-green-700 max-w-md">
-                  Your profile is now complete. You can now manage your account and bookings.
-                </p>
-                <Button
-                  onClick={() => router.push('/settings/barber-profile')}
-                  className="mt-3 bg-[#7C3AED] hover:bg-[#6a2fc9] text-white font-semibold px-6 py-2 rounded-full shadow"
+    <div className="min-h-screen bg-primary flex flex-col">
+      {/* Header */}
+      <header className="w-full py-6 px-6 bg-transparent">
+        <div className="max-w-7xl mx-auto flex items-center">
+          <Link href="/" className="text-2xl font-bebas font-bold text-saffron">BOCM</Link>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div className="w-full max-w-4xl space-y-8">
+          {/* Onboarding Complete Banner */}
+          {onboardingComplete && showCompleteBanner && (
+            <div className="relative">
+              <Card className="bg-green-50/90 border border-green-200/20 shadow-2xl rounded-3xl">
+                <button
+                  className="absolute top-4 right-4 text-green-700 hover:text-green-900 rounded-full p-1 focus:outline-none"
+                  aria-label="Dismiss"
+                  onClick={() => setShowCompleteBanner(false)}
                 >
-                  Go to Profile
-                </Button>
+                  <X className="h-5 w-5" />
+                </button>
+                <CardContent className="pt-6 pb-6">
+                  <div className="flex flex-col items-center text-center gap-2">
+                    <div className="flex items-center justify-center mb-2">
+                      <span className="inline-flex items-center justify-center rounded-full bg-green-100 p-3">
+                        <CheckCircle className="h-8 w-8 text-green-600" />
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bebas text-green-800">Onboarding Complete!</h3>
+                    <p className="text-sm text-green-700 max-w-md">
+                      Your profile is now complete. You can now manage your account and bookings.
+                    </p>
+                    <Button
+                      onClick={() => router.push('/settings/barber-profile')}
+                      className="mt-3 bg-saffron hover:bg-saffron/90 text-primary font-semibold px-6 py-2 rounded-full shadow"
+                    >
+                      Go to Profile
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <div className="space-y-2 text-center">
+            <h1 className="text-3xl font-bebas text-white">Complete Your Profile</h1>
+            <p className="text-white/80">
+              {steps[currentStep].description}
+            </p>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-white/80">
+              <span>Step {currentStep + 1} of {steps.length}</span>
+              <span>{Math.round(getProgressPercentage())}% Complete</span>
+            </div>
+            <Progress value={getProgressPercentage()} className="h-2 bg-white/10" />
+          </div>
+
+          {/* Step Indicators */}
+          <div className="flex justify-between mb-8">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = index <= currentStep;
+              return (
+                <div
+                  key={step.id}
+                  className={`flex-1 text-center ${
+                    isActive ? 'text-saffron' : 'text-white/60'
+                  }`}
+                >
+                  <div
+                    className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-2 ${
+                      isActive ? 'bg-saffron' : 'bg-white/10'
+                    }`}
+                  >
+                    <Icon className={`h-6 w-6 ${isActive ? 'text-white' : 'text-saffron'}`} />
+                  </div>
+                  <div className="text-sm font-medium">{step.title}</div>
+                  <div className="text-xs text-white/60 mt-1">
+                    {index === 0 && 'Business Info'}
+                    {index === 1 && 'Services'}
+                    {index === 2 && 'Payments'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl rounded-3xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-white">
+                {(() => {
+                  const Icon = steps[currentStep].icon;
+                  return <Icon className="h-5 w-5 text-saffron" />;
+                })()}
+                {steps[currentStep].title}
+              </CardTitle>
+              <CardDescription className="text-white/80">{steps[currentStep].description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderStep()}
+              <div className="mt-6 flex justify-between">
+                {currentStep > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(currentStep - 1)}
+                    disabled={loading}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    Previous
+                  </Button>
+                )}
+                {currentStep < steps.length - 1 ? (
+                  <Button
+                    className="ml-auto bg-saffron hover:bg-saffron/90 text-primary"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Next'
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    className="ml-auto bg-saffron hover:bg-saffron/90 text-primary"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Completing...
+                      </>
+                    ) : (
+                      'Complete Setup'
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
-      )}
-      <div className="space-y-8">
-        <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-bold">Complete Your Profile</h1>
-          <p className="text-muted-foreground">
-            {steps[currentStep].description}
-          </p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Step {currentStep + 1} of {steps.length}</span>
-            <span>{Math.round(getProgressPercentage())}% Complete</span>
-          </div>
-          <Progress value={getProgressPercentage()} className="h-2" />
-        </div>
-
-        {/* Step Indicators */}
-        <div className="flex justify-between mb-8">
-          {steps.map((step, index) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={step.id}
-                className={`flex-1 text-center ${
-                  index <= currentStep ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                <div
-                  className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-2 ${
-                    index <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                  }`}
-                >
-                  <Icon className="h-6 w-6" />
-                </div>
-                <div className="text-sm font-medium">{step.title}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {index === 0 && 'Business Info'}
-                  {index === 1 && 'Services'}
-                  {index === 2 && 'Payments'}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {(() => {
-                const Icon = steps[currentStep].icon;
-                return <Icon className="h-5 w-5" />;
-              })()}
-              {steps[currentStep].title}
-            </CardTitle>
-            <CardDescription>{steps[currentStep].description}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {renderStep()}
-            <div className="mt-6 flex justify-between">
-              {currentStep > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(currentStep - 1)}
-                  disabled={loading}
-                >
-                  Previous
-                </Button>
-              )}
-              {currentStep < steps.length - 1 ? (
-                <Button
-                  className="ml-auto"
-                  onClick={handleSubmit}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Next'
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  className="ml-auto"
-                  onClick={handleSubmit}
-                  disabled={loading || !formData.stripeConnected}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Completing...
-                    </>
-                  ) : (
-                    'Complete Setup'
-                  )}
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
