@@ -11,11 +11,27 @@ import { cn } from "@/shared/lib/utils"
 export function MobileNav() {
   const router = useRouter()
   const [pathname, setPathname] = React.useState("")
+  const [mounted, setMounted] = React.useState(false)
   const { user } = useAuth()
 
-  // Get current pathname safely
+  // Get current pathname safely and set mounted immediately
   React.useEffect(() => {
-    setPathname(window.location.pathname)
+    setMounted(true)
+    if (typeof window !== 'undefined') {
+      setPathname(window.location.pathname)
+    }
+  }, [])
+
+  // Listen for route changes
+  React.useEffect(() => {
+    const handleRouteChange = () => {
+      if (typeof window !== 'undefined') {
+        setPathname(window.location.pathname)
+      }
+    }
+
+    window.addEventListener('popstate', handleRouteChange)
+    return () => window.removeEventListener('popstate', handleRouteChange)
   }, [])
 
   const baseNavItems = [

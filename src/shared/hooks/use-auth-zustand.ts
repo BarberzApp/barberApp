@@ -1,6 +1,37 @@
 import { useAuthStore, useUser, useIsAuthenticated, useIsLoading, useAuthStatus, useIsInitialized } from '@/shared/stores/auth-store'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { useEffect } from 'react'
+import { supabase } from '@/shared/lib/supabase'
+
+// Utility function to determine redirect path based on user profile
+export const getRedirectPath = async (userId: string) => {
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role, location, email')
+      .eq('id', userId)
+      .single()
+    
+    if (error || !profile) {
+      console.error('Profile fetch error:', error)
+      return '/'
+    }
+
+    // Super admin email check
+    if (profile.email === 'primbocm@gmail.com') {
+      return '/super-admin'
+    } else if (profile.role === 'barber') {
+      return '/settings'
+    } else if (profile.location) {
+      return '/browse'
+    } else {
+      return '/client/onboarding'
+    }
+  } catch (error) {
+    console.error('Error determining redirect path:', error)
+    return '/'
+  }
+}
 
 export const useAuth = () => {
   const { toast } = useToast()
@@ -31,7 +62,7 @@ export const useAuth = () => {
       if (success) {
         toast({
           title: "Login successful",
-          description: `Welcome back, ${user?.name}!`,
+          description: `Welcome back!`,
         })
       } else {
         toast({
@@ -47,6 +78,34 @@ export const useAuth = () => {
         description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       })
+      return false
+    }
+  }
+
+  const loginWithRedirect = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const success = await loginAction(email, password)
+      if (success) {
+        // Get the current user from Supabase session
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          // Check for stored redirect URL first
+          const redirectUrl = sessionStorage.getItem('redirectAfterLogin')
+          if (redirectUrl) {
+            sessionStorage.removeItem('redirectAfterLogin')
+            window.location.href = redirectUrl
+            return true
+          }
+
+          // Determine redirect path based on user profile
+          const redirectPath = await getRedirectPath(session.user.id)
+          window.location.href = redirectPath
+          return true
+        }
+      }
+      return success
+    } catch (error) {
+      console.error('Login with redirect error:', error)
       return false
     }
   }
@@ -149,11 +208,13 @@ export const useAuth = () => {
     status,
     isInitialized,
     login,
+    loginWithRedirect,
     register,
     logout,
     updateProfile,
     addToFavorites,
     removeFromFavorites,
+    getRedirectPath
   }
 }
 

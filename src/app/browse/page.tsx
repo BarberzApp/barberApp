@@ -497,11 +497,11 @@ export default function BrowsePage() {
 
             {/* Search Bar Skeleton */}
             <div className="max-w-2xl mx-auto">
-              <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
+                <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
             </div>
 
             {/* Search Results Skeleton */}
-            <SearchSkeleton count={6} />
+              <SearchSkeleton count={6} />
           </div>
         </div>
       </div>
@@ -587,25 +587,25 @@ export default function BrowsePage() {
               <div className="max-w-2xl mx-auto">
                 <Card className="bg-saffron/20 border border-saffron/30 rounded-2xl">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-white">
-                        <MapIcon className="h-4 w-4 text-saffron" />
-                        <span className="text-sm">
-                          {locationFilter.useCurrentLocation 
-                            ? `Within ${locationFilter.range} miles`
-                            : `${locationFilter.city}${locationFilter.state ? `, ${locationFilter.state}` : ''}`
-                          }
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearLocationFilter}
-                        className="text-white hover:bg-white/10 text-xs"
-                      >
-                        Clear
-                      </Button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white">
+                      <MapIcon className="h-4 w-4 text-saffron" />
+                      <span className="text-sm">
+                        {locationFilter.useCurrentLocation 
+                          ? `Within ${locationFilter.range} miles`
+                          : `${locationFilter.city}${locationFilter.state ? `, ${locationFilter.state}` : ''}`
+                        }
+                      </span>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearLocationFilter}
+                      className="text-white hover:bg-white/10 text-xs"
+                    >
+                      Clear
+                    </Button>
+                  </div>
                   </CardContent>
                 </Card>
               </div>
@@ -724,26 +724,26 @@ export default function BrowsePage() {
 
           {/* Error Alert */}
           {error && (
-            <Alert variant="destructive" className="bg-red-900/30 border-red-400/30">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-white">{error}</AlertDescription>
-            </Alert>
+              <Alert variant="destructive" className="bg-red-900/30 border-red-400/30">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-white">{error}</AlertDescription>
+              </Alert>
           )}
 
           {/* Results Summary */}
           {!error && (
-            <SearchResultsSummary
-              totalResults={barbers.length}
-              filteredResults={filteredBarbers.length}
-              searchQuery={searchQuery}
-              activeFilters={{
-                specialties: selectedSpecialties,
-                priceRange,
-                location: locationFilter.city || locationFilter.state
-              }}
-              onClearFilters={clearAllFilters}
-              onClearSearch={clearSearch}
-            />
+              <SearchResultsSummary
+                totalResults={barbers.length}
+                filteredResults={filteredBarbers.length}
+                searchQuery={searchQuery}
+                activeFilters={{
+                  specialties: selectedSpecialties,
+                  priceRange,
+                  location: locationFilter.city || locationFilter.state
+                }}
+                onClearFilters={clearAllFilters}
+                onClearSearch={clearSearch}
+              />
           )}
 
           {/* Barbers Grid */}
@@ -784,46 +784,46 @@ export default function BrowsePage() {
           {!error && filteredBarbers.length === 0 && !loading && (
             <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
               <CardContent className="p-12 text-center">
-                <div className="space-y-4">
+                  <div className="space-y-4">
                   <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
                     <AlertCircle className="h-8 w-8 text-white/60" />
-                  </div>
-                  <div className="space-y-2">
+                    </div>
+                    <div className="space-y-2">
                     <h3 className="text-xl font-semibold text-white">No barbers found</h3>
                     <p className="text-white/60 text-base">
-                      {activeFiltersCount > 0
-                        ? "Try adjusting your filters or search terms to find more barbers."
-                        : "No barbers are currently available. Please check back later."
-                      }
-                    </p>
+                        {activeFiltersCount > 0
+                          ? "Try adjusting your filters or search terms to find more barbers."
+                          : "No barbers are currently available. Please check back later."
+                        }
+                      </p>
+                    </div>
+                    {activeFiltersCount > 0 && (
+                      <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl mt-4">
+                        Clear all filters
+                      </Button>
+                    )}
                   </div>
-                  {activeFiltersCount > 0 && (
-                    <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl mt-4">
-                      Clear all filters
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
           )}
 
           {/* Empty State */}
           {!error && barbers.length === 0 && !loading && (
             <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
               <CardContent className="p-12 text-center">
-                <div className="space-y-4">
+                  <div className="space-y-4">
                   <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
                     <Users className="h-8 w-8 text-white/60" />
-                  </div>
-                  <div className="space-y-2">
+                    </div>
+                    <div className="space-y-2">
                     <h3 className="text-xl font-semibold text-white">No barbers available</h3>
                     <p className="text-white/60 text-base">
-                      No barbers have set up their profiles yet. Check back soon!
-                    </p>
+                        No barbers have set up their profiles yet. Check back soon!
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
           )}
         </div>
       </div>
@@ -845,11 +845,11 @@ export default function BrowsePage() {
                   City
                 </Label>
                 <div className="relative">
-                  <Input
-                    id="city"
+                <Input
+                  id="city"
                     ref={cityInputRef}
-                    placeholder="Enter city name"
-                    value={locationFilter.city}
+                  placeholder="Enter city name"
+                  value={locationFilter.city}
                     onChange={(e) => {
                       setLocationFilter(prev => ({ ...prev, city: e.target.value }));
                       setShowLocationSuggestions(true);
@@ -861,8 +861,8 @@ export default function BrowsePage() {
                         setShowLocationSuggestions(false);
                       }, 200);
                     }}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/40 rounded-xl"
-                  />
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 rounded-xl"
+                />
                   {/* Location suggestions dropdown */}
                   {showLocationSuggestions && (locationSuggestions.length > 0 || locationSuggestionsLoading) && (
                     <div className="absolute z-50 left-0 right-0 mt-1 bg-darkpurple border border-white/20 rounded-xl shadow-xl max-h-48 overflow-y-auto">

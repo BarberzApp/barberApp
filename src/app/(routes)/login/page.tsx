@@ -9,46 +9,80 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Scissors } from 'lucide-react'
+import { Scissors, Loader2 } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip'
+import { getAndClearRedirectUrl } from '@/shared/lib/redirect-utils'
+import { getRedirectPath } from '@/shared/hooks/use-auth-zustand'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
+  const [redirecting, setRedirecting] = useState(false)
+  const [redirectCountdown, setRedirectCountdown] = useState(0)
   const router = useRouter()
   const { login, user } = useAuth()
   const { toast } = useToast()
+
+  // Function to handle redirect with fallback
+  const handleRedirect = async (userId: string) => {
+    setRedirecting(true)
+    
+    try {
+      // Check for stored redirect URL first
+      const redirectUrl = getAndClearRedirectUrl()
+      if (redirectUrl) {
+        router.push(redirectUrl)
+        return
+      }
+
+      // Determine redirect path based on user profile
+      const redirectPath = await getRedirectPath(userId)
+      
+      // Attempt to redirect
+      router.push(redirectPath)
+      
+      // Set up auto-reload fallback after 3 seconds
+      let countdown = 3
+      setRedirectCountdown(countdown)
+      
+      const countdownInterval = setInterval(() => {
+        countdown--
+        setRedirectCountdown(countdown)
+        
+        if (countdown <= 0) {
+          clearInterval(countdownInterval)
+          // Force reload if still on login page
+          if (window.location.pathname === '/login') {
+            window.location.reload()
+          }
+        }
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Redirect error:', error)
+      // Fallback to reload after 3 seconds
+      setTimeout(() => {
+        window.location.reload()
+      }, 3000)
+    }
+  }
 
   // On mount, check Supabase session directly for instant redirect
   useEffect(() => {
     const checkSession = async () => {
       setCheckingSession(true)
-      const { data: { session }, error } = await supabase.auth.getSession()
-      if (session?.user) {
-        // Fetch profile to determine role/location and email
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role, location, email')
-          .eq('id', session.user.id)
-          .single()
-        if (profileError) {
-          setCheckingSession(false)
-          return
-        }
-        // Super admin email check
-        if (profile.email === 'primbocm@gmail.com') {
-          router.replace('/super-admin')
-        } else if (profile.role === 'barber') {
-          router.replace('/settings')
-        } else if (profile.location) {
-          router.replace('/browse')
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (session?.user) {
+          await handleRedirect(session.user.id)
         } else {
-          router.replace('/client/onboarding')
+          setCheckingSession(false)
         }
-      } else {
+      } catch (error) {
+        console.error('Session check error:', error)
         setCheckingSession(false)
       }
     }
@@ -62,18 +96,38 @@ export default function LoginPage() {
     try {
       const success = await login(email, password)
       if (success) {
-        // Check for redirect URL
-        const redirectUrl = sessionStorage.getItem('redirectAfterLogin')
-        if (redirectUrl) {
-          sessionStorage.removeItem('redirectAfterLogin')
-          router.push(redirectUrl)
+        // Get the current user from Supabase session
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          await handleRedirect(session.user.id)
+        } else {
+          // Fallback: wait a bit and try again
+          setTimeout(async () => {
+            const { data: { session: retrySession } } = await supabase.auth.getSession()
+            if (retrySession?.user) {
+              await handleRedirect(retrySession.user.id)
+            } else {
+              // Final fallback: reload after 3 seconds
+              setRedirectCountdown(3)
+              const countdownInterval = setInterval(() => {
+                setRedirectCountdown(prev => {
+                  if (prev <= 1) {
+                    clearInterval(countdownInterval)
+                    window.location.reload()
+                    return 0
+                  }
+                  return prev - 1
+                })
+              }, 1000)
+            }
+          }, 1000)
         }
-        // If user is super admin, redirect immediately
-        if (user && user.email === 'primbocm@gmail.com') {
-          router.replace('/super-admin')
-          return
-        }
-        // Note: The useEffect above will handle the role-based redirect
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Invalid email or password',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
       toast({
@@ -120,7 +174,26 @@ export default function LoginPage() {
   if (checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-primary">
-        <div className="text-white text-xl font-semibold animate-pulse">Checking session...</div>
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-saffron" />
+          <div className="text-white text-xl font-semibold">Checking session...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-primary">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-saffron" />
+          <div className="text-white text-xl font-semibold mb-2">Redirecting...</div>
+          {redirectCountdown > 0 && (
+            <div className="text-saffron text-sm">
+              Auto-reloading in {redirectCountdown} seconds...
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -179,7 +252,14 @@ export default function LoginPage() {
                 className="w-full h-11 bg-saffron text-primary font-semibold rounded-full hover:bg-saffron/90 transition-colors" 
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Signing in...
+                  </div>
+                ) : (
+                  'Sign in'
+                )}
               </Button>
             </form>
             {/* Divider */}

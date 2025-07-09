@@ -77,13 +77,13 @@ export default function RootLayout({
       <body className={cn(inter.className, "bg-background min-h-screen")}> 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem={false}>
           <TooltipProvider>
-            <ErrorBoundary>
-              <React.Suspense fallback={null}>
-                <ClientNavWrapper>{children}</ClientNavWrapper>
-              </React.Suspense>
-              <Toaster />
-              <PWARegistration />
-            </ErrorBoundary>
+          <ErrorBoundary>
+            <React.Suspense fallback={null}>
+              <ClientNavWrapper>{children}</ClientNavWrapper>
+            </React.Suspense>
+            <Toaster />
+            <PWARegistration />
+          </ErrorBoundary>
           </TooltipProvider>
         </ThemeProvider>
       </body>

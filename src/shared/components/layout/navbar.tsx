@@ -37,20 +37,28 @@ export function Navbar() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Set mounted immediately for better UX
     setMounted(true);
-    setPathname(window.location.pathname);
+    
+    // Get pathname immediately if possible
+    if (typeof window !== 'undefined') {
+      setPathname(window.location.pathname);
+    }
   }, []);
 
   useEffect(() => {
     const handleRouteChange = () => {
-      setPathname(window.location.pathname);
+      if (typeof window !== 'undefined') {
+        setPathname(window.location.pathname);
+      }
     };
 
     window.addEventListener('popstate', handleRouteChange);
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
-  if (!mounted || pathname === '/') return null;
+  // Don't show on home page, but show on all other pages including settings
+  if (pathname === '/') return null;
 
   const roleSpecificNavItems = () => {
     if (!user) return []

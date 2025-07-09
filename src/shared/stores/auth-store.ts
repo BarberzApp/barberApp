@@ -246,12 +246,32 @@ export const useAuthStore = create<AuthStore>()(
           return false;
         }
 
-        // Fetch profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single();
+        // Fetch profile with retry mechanism
+        let profile = null;
+        let profileError = null;
+        let retries = 3;
+        
+        while (retries > 0) {
+          console.log(`Fetching profile - Attempt ${4 - retries}/3...`);
+          const result = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+            
+          if (result.data) {
+            profile = result.data;
+            console.log('Profile fetched successfully:', profile);
+            break;
+          }
+          
+          profileError = result.error;
+          console.log('Profile fetch attempt failed:', profileError);
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
 
         if (profileError || !profile) {
           console.error('Profile fetch error:', profileError);
@@ -277,7 +297,8 @@ export const useAuthStore = create<AuthStore>()(
         set({ 
           user, 
           isLoading: false, 
-          status: "authenticated" 
+          status: "authenticated",
+          isInitialized: true
         });
 
         console.log('Login successful for user:', profile.email);
