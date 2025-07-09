@@ -89,6 +89,7 @@ mv app/offline future-features/
 !/src/shared/pwa/
 !/src/shared/services/
 !/src/shared/utils/
+!/src/shared/stores/
 
 # Prevent lib code outside of lib directory
 /src/lib/*
