@@ -1,7 +1,7 @@
 "use client";
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/shared/lib/supabase";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -19,7 +19,6 @@ export default function ConfirmPageWrapper() {
 
 function ConfirmPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [checking, setChecking] = useState(false);
   const [email, setEmail] = useState("");
@@ -27,10 +26,11 @@ function ConfirmPage() {
   const [resent, setResent] = useState(false);
 
   useEffect(() => {
-    // Try to get email from query param
-    const emailParam = searchParams.get("email");
+    // Try to get email from query param using URLSearchParams
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailParam = urlParams.get("email");
     if (emailParam) setEmail(emailParam);
-  }, [searchParams]);
+  }, []);
 
   // Auto-poll for confirmation
   useEffect(() => {

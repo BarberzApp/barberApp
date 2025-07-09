@@ -497,7 +497,7 @@ export default function BrowsePage() {
                             <Search className="h-5 w-5" />
                           </div>
                           <Input
-                            placeholder={typeof window !== 'undefined' && window.innerWidth < 40 ? 'Search barbers...' : 'Search by name, business, etc...'}
+                            placeholder={typeof window !== 'undefined' && window.innerWidth < 400 ? 'Search barbers...' : 'Search by name, business, etc...'}
                             value={searchQuery}
                             onChange={handleSearch}
                             onKeyDown={handleKeyDown}
