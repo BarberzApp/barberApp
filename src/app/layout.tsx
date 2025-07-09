@@ -3,9 +3,9 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/shared/components/ui/toaster'
 import { ThemeProvider } from "@/shared/components/theme/theme-provider"
+import { TooltipProvider } from "@/shared/components/ui/tooltip"
 
 import { Navbar } from "@/shared/components/layout/navbar"
-import { FloatingNav } from "@/shared/components/layout/floating-nav"
 import { ErrorBoundary } from "@/shared/components/error-boundary"
 import { PWARegistration } from "@/shared/components/pwa/pwa-registration"
 import { LoadingSpinner } from "@/shared/components/ui/loading-spinner"
@@ -76,13 +76,15 @@ export default function RootLayout({
       </head>
       <body className={cn(inter.className, "bg-background min-h-screen")}> 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem={false}>
-          <ErrorBoundary>
-            <React.Suspense fallback={null}>
-              <ClientNavWrapper>{children}</ClientNavWrapper>
-            </React.Suspense>
-            <Toaster />
-            <PWARegistration />
-          </ErrorBoundary>
+          <TooltipProvider>
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <ClientNavWrapper>{children}</ClientNavWrapper>
+              </React.Suspense>
+              <Toaster />
+              <PWARegistration />
+            </ErrorBoundary>
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

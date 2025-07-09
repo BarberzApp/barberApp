@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -32,6 +32,7 @@ import {
 import { BrowseIntegrationGuide } from './browse-integration-guide'
 import { BARBER_SPECIALTIES } from '@/shared/constants/specialties'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
+import { geocodeAddress, getAddressSuggestionsNominatim } from '@/shared/lib/geocode'
 
 const barberProfileSchema = z.object({
   // Basic Info
@@ -75,6 +76,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
   const { user } = useAuth()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [locationInput, setLocationInput] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   const form = useForm<BarberProfileFormData>({
     resolver: zodResolver(barberProfileSchema),
@@ -99,6 +105,89 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       loadBarberProfile()
     }
   }, [user])
+
+  // Debounced fetch suggestions
+  const debouncedFetchSuggestions = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setLocationSuggestions([]);
+      return;
+    }
+    
+    setSuggestionsLoading(true);
+    try {
+      const suggestions = await getAddressSuggestionsNominatim(query);
+      setLocationSuggestions(suggestions);
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setLocationSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, []);
+
+  // Fetch suggestions as user types
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set new timer
+    if (showSuggestions && locationInput.length >= 3) {
+      const timer = setTimeout(() => {
+        debouncedFetchSuggestions(locationInput);
+      }, 300); // 300ms debounce
+      
+      debounceTimerRef.current = timer;
+    } else if (locationInput.length < 3) {
+      setLocationSuggestions([]);
+    }
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [locationInput, showSuggestions, debouncedFetchSuggestions]);
+
+  // Handle location input change
+  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocationInput(e.target.value ?? '');
+    setShowSuggestions(true);
+    form.setValue('location', e.target.value ?? '');
+  };
+
+  // Handle suggestion select
+  const handleSuggestionSelect = (suggestion: any) => {
+    // Build a display string from Nominatim data
+    const display = suggestion.display_name || suggestion.name || '';
+    setLocationInput(display);
+    setShowSuggestions(false);
+    setLocationSuggestions([]); // Clear suggestions immediately
+    form.setValue('location', display);
+    // Optionally, autofill city/state fields if you add them to your form schema
+  };
+
+  // Validate location on blur
+  const handleLocationBlur = async () => {
+    // Add a small delay to allow clicking on suggestions
+    setTimeout(async () => {
+      if (!locationInput) return;
+      // Use Nominatim proxy for geocoding
+      const geoSuggestions = await getAddressSuggestionsNominatim(locationInput);
+      const geo = geoSuggestions && geoSuggestions.length > 0 ? { lat: parseFloat(geoSuggestions[0].lat), lon: parseFloat(geoSuggestions[0].lon) } : null;
+      if (!geo) {
+        toast({
+          title: 'Invalid location',
+          description: 'Please enter a valid place from the suggestions.',
+          variant: 'destructive',
+        });
+        setLocationInput('');
+        form.setValue('location', '');
+      }
+    }, 200);
+  };
 
   const loadBarberProfile = async () => {
     if (!user) return
@@ -155,6 +244,20 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
   const onSubmit = async (data: BarberProfileFormData) => {
     if (!user) return
 
+    // Validate location before submit
+    // Use Nominatim proxy for geocoding
+    const geoSuggestions = await getAddressSuggestionsNominatim(data.location);
+    const geo = geoSuggestions && geoSuggestions.length > 0 ? { lat: parseFloat(geoSuggestions[0].lat), lon: parseFloat(geoSuggestions[0].lon) } : null;
+    if (!geo) {
+      toast({
+        title: 'Invalid location',
+        description: 'Please enter a valid place from the suggestions.',
+        variant: 'destructive',
+      })
+      return;
+    }
+    let lat = geo.lat, lon = geo.lon
+
     try {
       setLoading(true)
 
@@ -185,6 +288,8 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
           twitter: data.twitter || null,
           tiktok: data.tiktok || null,
           facebook: data.facebook || null,
+          latitude: lat,
+          longitude: lon,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id)
@@ -295,12 +400,43 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                     control={form.control}
                     name="location"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="relative">
                         <FormLabel className="text-white font-semibold">Location *</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-saffron" />
-                            <Input placeholder="City, State" className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" {...field} />
+                            <Input
+                              placeholder="City, State or Zip Code"
+                              className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                              value={locationInput ?? ''}
+                              onChange={handleLocationChange}
+                              onFocus={() => setShowSuggestions(true)}
+                              onBlur={handleLocationBlur}
+                              autoComplete="off"
+                            />
+                            {/* Suggestions dropdown */}
+                            {showSuggestions && (locationSuggestions.length > 0 || suggestionsLoading) && (
+                              <div className="absolute z-50 left-0 right-0 mt-1 bg-darkpurple border border-white/20 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                                {suggestionsLoading && (
+                                  <div className="px-4 py-2 text-white/60 text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-saffron"></div>
+                                      Searching...
+                                    </div>
+                                  </div>
+                                )}
+                                {locationSuggestions.map((s, i) => (
+                                  <button
+                                    key={`${s.place_id || i}-${s.display_name}`}
+                                    type="button"
+                                    className="w-full text-left px-4 py-2 text-white hover:bg-saffron/20"
+                                    onMouseDown={() => handleSuggestionSelect(s)}
+                                  >
+                                    {s.display_name || s.name || 'Unknown location'}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </FormControl>
                         <FormMessage />

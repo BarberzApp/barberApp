@@ -16,9 +16,10 @@ import { SocialMediaLinks } from "@/shared/components/social-media-links"
 
 interface BarberCardProps {
   barber: Barber
+  className?: string
 }
 
-export function BarberCard({ barber }: BarberCardProps) {
+export function BarberCard({ barber, className }: BarberCardProps) {
   const { user } = useAuth()
   const router = useRouter()
   const { addToFavorites, removeFromFavorites } = useAuth()
@@ -68,7 +69,7 @@ export function BarberCard({ barber }: BarberCardProps) {
         transition={{ type: "spring", stiffness: 300 }}
         className="group"
       >
-        <Card className="overflow-hidden h-full border border-white/10 bg-darkpurple/90 shadow-2xl backdrop-blur-xl hover:border-saffron/30 transition-all duration-300 group-hover:shadow-saffron/20">
+        <Card className={`overflow-hidden h-full border border-white/10 bg-darkpurple/90 shadow-2xl backdrop-blur-xl hover:border-saffron/30 transition-all duration-300 group-hover:shadow-saffron/20 ${className || ''}`}>
           <CardContent className="p-0">
             <div className="relative">
               {/* Hero Section with Avatar */}

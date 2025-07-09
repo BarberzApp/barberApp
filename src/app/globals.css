@@ -191,4 +191,93 @@
   }
 }
 
+/* Mobile-specific optimizations */
+@media screen and (max-width: 768px) {
+  /* Ensure proper touch targets for mobile */
+  button, a, [role="button"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Better spacing for small screens */
+  .space-y-4 > * + * {
+    margin-top: 1.25rem !important;
+  }
+  
+  .space-y-6 > * + * {
+    margin-top: 1.5rem !important;
+  }
+  
+  /* Improve text readability on mobile */
+  .text-sm {
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+  }
+  
+  /* Ensure proper padding for mobile */
+  .px-4 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Better grid layouts for mobile */
+  .grid {
+    gap: 1rem !important;
+  }
+}
+
+/* Ensure proper viewport handling for all devices */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh !important;
+  }
+}
+
+/* Universal mobile optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch device optimizations */
+  button, a, [role="button"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Prevent text selection on buttons */
+  button {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+  }
+  
+  /* Improve touch scrolling */
+  .overflow-auto, .overflow-scroll {
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+/* Landing page specific mobile optimizations */
+.landing-root {
+  /* Ensure proper mobile viewport */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Mobile menu optimizations */
+@media screen and (max-width: 768px) {
+  /* Ensure mobile menu is properly sized */
+  [data-radix-sheet-content] {
+    width: 100vw !important;
+    max-width: 300px !important;
+  }
+  
+  /* Better mobile navigation spacing */
+  .mobile-nav-item {
+    padding: 1rem !important;
+    font-size: 1.125rem !important;
+    line-height: 1.75rem !important;
+  }
+}
+
 /* Landing root override removed - base colors are now applied globally */ 

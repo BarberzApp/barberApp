@@ -333,30 +333,30 @@ export function SettingsPage() {
             
             {/* Progress Section - Only show if there are incomplete sections */}
             {getCompletionPercentage() < 100 && (
-              <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+              <div className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
                     <Sparkles className="h-4 w-4 text-saffron" />
-                    <span className="text-sm font-medium text-white">Profile Completion</span>
+                    <span className="text-xs sm:text-sm font-medium text-white">Profile Completion</span>
                   </div>
-                  <Badge variant="glassy-saffron" className="text-xs">
+                  <Badge variant="glassy-saffron" className="text-xs self-center sm:self-auto">
                     {getCompletionPercentage()}% Complete
                   </Badge>
                 </div>
                 <div className="relative">
                   <Progress 
                     value={getCompletionPercentage()} 
-                    className="h-3 bg-white/10 border border-white/20" 
+                    className="h-2 sm:h-3 bg-white/10 border border-white/20" 
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-saffron/20 to-saffron/40 rounded-full" style={{ width: `${getCompletionPercentage()}%` }} />
                 </div>
-                <p className="text-xs text-white/60 px-2">
+                <p className="text-xs text-white/60 px-2 text-center">
                   Complete all sections to optimize your profile for clients
                 </p>
                 {user?.role === 'barber' && (
                   <Button 
                     onClick={() => router.push('/barber/onboarding')}
-                    className="mt-2 bg-saffron hover:bg-saffron/90 text-primary font-semibold"
+                    className="mt-2 w-full sm:w-auto bg-saffron hover:bg-saffron/90 text-primary font-semibold"
                     size="sm"
                   >
                     Complete Onboarding
@@ -371,10 +371,10 @@ export function SettingsPage() {
             <div className="relative flex justify-center p-4 sm:p-6">
               <div className="w-full max-w-4xl">
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl p-2">
-                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 bg-transparent">
+                  <TabsList className="flex w-full overflow-x-auto gap-2 bg-transparent snap-x snap-mandatory sm:grid sm:grid-cols-3 lg:grid-cols-5">
                     <TabsTrigger 
                       value="profile" 
-                      className={`relative flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
+                      className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                         activeTab === 'profile' 
                           ? 'bg-saffron text-primary shadow-lg' 
                           : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -391,7 +391,7 @@ export function SettingsPage() {
                       <>
                         <TabsTrigger 
                           value="services" 
-                          className={`relative flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
+                          className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                             activeTab === 'services' 
                               ? 'bg-saffron text-primary shadow-lg' 
                               : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -406,7 +406,7 @@ export function SettingsPage() {
                         
                         <TabsTrigger 
                           value="availability" 
-                          className={`relative flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
+                          className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                             activeTab === 'availability' 
                               ? 'bg-saffron text-primary shadow-lg' 
                               : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -421,7 +421,7 @@ export function SettingsPage() {
                         
                         <TabsTrigger 
                           value="earnings" 
-                          className={`relative flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
+                          className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                             activeTab === 'earnings' 
                               ? 'bg-saffron text-primary shadow-lg' 
                               : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -438,7 +438,7 @@ export function SettingsPage() {
                     
                     <TabsTrigger 
                       value="notifications" 
-                      className={`relative flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
+                      className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                         activeTab === 'notifications' 
                           ? 'bg-saffron text-primary shadow-lg' 
                           : 'text-white/70 hover:text-white hover:bg-white/10'
