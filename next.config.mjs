@@ -91,8 +91,6 @@ const pwaConfig = process.env.NODE_ENV === 'production' ? {
   customWorkerDir: 'public',
   // Disable aggressive caching in development
   dynamicStartUrl: false,
-  // Add better error handling for precaching
-  precacheManifest: false,
 } : {
   disable: true,
 };
