@@ -257,7 +257,7 @@ export const useAuthStore = create<AuthStore>()(
             .from('profiles')
             .select('*')
             .eq('id', authData.user.id)
-            .single();
+            .maybeSingle();
             
           if (result.data) {
             profile = result.data;

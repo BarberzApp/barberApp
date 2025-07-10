@@ -10,7 +10,7 @@ export const getRedirectPath = async (userId: string) => {
       .from('profiles')
       .select('role, location, email')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
     
     if (error || !profile) {
       console.error('Profile fetch error:', error)
