@@ -9,7 +9,7 @@ export type User = {
   id: string
   name: string
   email: string
-  role: "client" | "barber"
+  role?: "client" | "barber" // Make role optional to handle OAuth users without roles
   phone?: string
   location?: string
   description?: string
@@ -172,7 +172,7 @@ export const useAuthStore = create<AuthStore>()(
           id: profile.id,
           name: profile.name,
           email: profile.email,
-          role: profile.role,
+          role: profile.role || undefined, // Handle null/empty role
           phone: profile.phone,
           location: profile.location,
           description: profile.bio,
@@ -196,7 +196,7 @@ export const useAuthStore = create<AuthStore>()(
             .from('barbers')
             .select('id')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
           if (!barber) {
             const { data: sessionData } = await supabase.auth.getSession();
             console.log('Current session user id:', sessionData?.session?.user?.id);
@@ -283,7 +283,7 @@ export const useAuthStore = create<AuthStore>()(
           id: authData.user.id,
           name: profile.name,
           email: profile.email,
-          role: profile.role,
+          role: profile.role || undefined, // Handle null/empty role
           phone: profile.phone,
           location: profile.location,
           description: profile.bio,

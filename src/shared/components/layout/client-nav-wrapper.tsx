@@ -2,7 +2,6 @@
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/shared/components/layout/navbar";
 import { MobileNav } from "@/shared/components/layout/mobile-nav";
-import { FloatingNav } from "@/shared/components/layout/floating-nav";
 import React from "react";
 
 export default function ClientNavWrapper({ children }: { children: React.ReactNode }) {
@@ -73,7 +72,7 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
         {children}
       </div>
       {showMobileNav && <MobileNav />}
-      {!hideFloatingNav && mounted && <FloatingNav />}
+      {/* FloatingNav removed */}
     </>
   );
 } 

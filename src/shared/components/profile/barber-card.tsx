@@ -230,25 +230,9 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                   className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"
                 >
                   <Link href={`/book/${barber.id}`}>
-                    <Calendar className="h-4 w-4 mr-2" />
                     Book Now
                   </Link>
                 </Button>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="border-white/20 text-white hover:bg-white/10 rounded-xl"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-darkpurple/90 border border-white/10 text-white">
-                    <p>Message barber</p>
-                  </TooltipContent>
-                </Tooltip>
               </div>
             </div>
           </CardContent>

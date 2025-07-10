@@ -8,7 +8,7 @@ export const barberService = {
       .from('barbers')
       .select('*')
       .eq('user_id', user_id)
-      .single()
+      .maybeSingle()
     if (error) throw error
     return data
   },

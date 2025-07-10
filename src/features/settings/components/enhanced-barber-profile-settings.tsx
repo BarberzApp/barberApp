@@ -29,7 +29,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react'
-import { BrowseIntegrationGuide } from './browse-integration-guide'
+// import { BrowseIntegrationGuide } from './browse-integration-guide' // Removed
 import { BARBER_SPECIALTIES } from '@/shared/constants/specialties'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 import { geocodeAddress, getAddressSuggestionsNominatim } from '@/shared/lib/geocode'
@@ -652,66 +652,10 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       </Card>
 
       {/* Profile Preview */}
-      {showPreview && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Preview</CardTitle>
-            <CardDescription>
-              This is how your profile appears in search results
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold">{form.watch('name') || 'Your Name'}</h3>
-                  <p className="text-sm text-muted-foreground">{form.watch('businessName') || 'Business Name'}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-medium">4.5</span>
-                  <span className="text-yellow-400">★</span>
-                </div>
-              </div>
-              
-              {form.watch('location') && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>{form.watch('location')}</span>
-                </div>
-              )}
-              
-              {form.watch('bio') && (
-                <p className="text-sm text-muted-foreground line-clamp-2">{form.watch('bio')}</p>
-              )}
-              
-              {form.watch('specialties').length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {form.watch('specialties').slice(0, 3).map((specialty) => (
-                    <Badge key={specialty} variant="secondary" className="text-xs">
-                      {specialty}
-                    </Badge>
-                  ))}
-                  {form.watch('specialties').length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{form.watch('specialties').length - 3} more
-                    </Badge>
-                  )}
-                </div>
-              )}
-              
-              {form.watch('priceRange') && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <DollarSign className="h-4 w-4" />
-                  <span>{form.watch('priceRange')} pricing</span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Removed profile preview as requested */}
 
       {/* Integration Guide */}
-      {showIntegrationGuide && <BrowseIntegrationGuide />}
+              {/* BrowseIntegrationGuide removed */}
     </div>
   )
 } 

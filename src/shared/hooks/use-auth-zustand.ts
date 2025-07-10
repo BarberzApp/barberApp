@@ -17,6 +17,11 @@ export const getRedirectPath = async (userId: string) => {
       return '/'
     }
 
+    // If user has no role, redirect to select-role page
+    if (!profile.role) {
+      return '/select-role'
+    }
+
     // Super admin email check
     if (profile.email === 'primbocm@gmail.com') {
       return '/super-admin'
