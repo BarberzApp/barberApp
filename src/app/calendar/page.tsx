@@ -207,22 +207,30 @@ export default function BarberCalendar() {
       min-width: 2.5rem;
       padding: 0.2rem 0;
     }
-    /* Custom weekday initial and day number stacked */
-    .barber-calendar .fc-col-header-cell .fc-col-header-cell-cushion > span {
-      display: block;
-      width: 100%;
-      text-align: center;
+    /* Only apply stacked header styles for week view, not month view */
+    .barber-calendar .fc-timeGridWeek-view .fc-col-header-cell .fc-col-header-cell-cushion {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.1rem;
+      text-decoration: none !important;
+      color: white !important;
+      font-weight: 600;
+      font-size: 1.1rem;
       line-height: 1.1;
+      height: 2.2rem;
+      min-width: 2.5rem;
+      padding: 0.2rem 0;
     }
-    .barber-calendar .fc-col-header-cell .fc-col-header-cell-cushion .weekday-initial {
-      font-size: 1rem;
+    .barber-calendar .fc-timeGridWeek-view .fc-col-header-cell .fc-col-header-cell-cushion .weekday-initial {
+      font-size: 1.2rem;
       font-weight: 700;
       text-transform: uppercase;
       color: #ffc107;
-      margin-bottom: 0.1rem;
       display: block;
     }
-    .barber-calendar .fc-col-header-cell .fc-col-header-cell-cushion .day-number {
+    .barber-calendar .fc-timeGridWeek-view .fc-col-header-cell .fc-col-header-cell-cushion .day-number {
       font-size: 1.4rem;
       font-weight: bold;
       color: white;
@@ -635,15 +643,13 @@ export default function BarberCalendar() {
                       omitZeroMinute: true
                     }}
                     dayHeaderContent={(args) => {
-                      const date = args.date;
-                      const weekdayInitial = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
-                      const dayNumber = date.getDate();
-                      return (
-                        <span>
-                          <span className="weekday-initial">{weekdayInitial}</span>
-                          <span className="day-number">{dayNumber}</span>
-                        </span>
-                      );
+                      // Show three-letter weekday abbreviation for week view
+                      if (view === 'timeGridWeek') {
+                        const date = args.date;
+                        return date.toLocaleDateString('en-US', { weekday: 'short' });
+                      }
+                      // Default: show FullCalendar's normal header for month view
+                      return args.text;
                     }}
                     eventContent={(eventInfo) => {
                       const { serviceName, clientName } = eventInfo.event.extendedProps || {};
