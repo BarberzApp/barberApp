@@ -14,6 +14,7 @@ import Button from '../components/Button';
 import { RootStackParamList } from '../types/types';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { theme } from '../lib/theme';
 
 type EmailConfirmationScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -106,38 +107,38 @@ export default function EmailConfirmationScreen() {
   };
 
   return (
-    <SafeAreaView style={tw`flex-1 bg-gray-900`}>
+    <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.background }]}>
       <View style={tw`flex-1 justify-center items-center px-6`}>
-        <View style={tw`w-full max-w-md bg-gray-800 rounded-2xl p-8`}>
+        <View style={[tw`w-full max-w-md rounded-2xl p-8`, { backgroundColor: 'rgba(45,35,66,0.9)' }]}>
           <View style={tw`items-center mb-8`}>
-            <View style={tw`w-20 h-20 bg-purple-600 rounded-full items-center justify-center mb-4`}>
-              <Text style={tw`text-white text-3xl`}>✉️</Text>
+            <View style={[tw`w-20 h-20 rounded-full items-center justify-center mb-4`, { backgroundColor: theme.colors.secondary }]}>
+              <Text style={[tw`text-3xl`, { color: theme.colors.foreground }]}>✉️</Text>
             </View>
-            <Text style={tw`text-white text-2xl font-bold text-center mb-2`}>
+            <Text style={[tw`text-2xl font-bold text-center mb-2`, { color: theme.colors.foreground }]}>
               Check Your Email
             </Text>
-            <Text style={tw`text-gray-400 text-center`}>
+            <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
               We've sent a confirmation link to
             </Text>
-            <Text style={tw`text-purple-400 text-center font-semibold`}>
+            <Text style={[tw`text-center font-semibold`, { color: theme.colors.secondary }]}>
               {email}
             </Text>
           </View>
 
-          <Text style={tw`text-gray-300 text-center mb-8`}>
+          <Text style={[tw`text-center mb-8`, { color: theme.colors.mutedForeground }]}>
             Please click the link in the email to verify your account. This screen will automatically redirect once confirmed.
           </Text>
 
           <View style={tw`gap-4`}>
             {checking ? (
-              <View style={tw`bg-purple-600 py-4 rounded-lg`}>
-                <ActivityIndicator color="white" />
+              <View style={[tw`py-4 rounded-lg`, { backgroundColor: theme.colors.secondary }]}>
+                <ActivityIndicator color={theme.colors.foreground} />
               </View>
             ) : (
               <Button
                 onPress={checkEmailConfirmation}
                 size="lg"
-                style={tw`w-full`}
+                style={[tw`w-full`, { backgroundColor: theme.colors.secondary }]}
               >
                 I've Confirmed My Email
               </Button>
@@ -147,7 +148,7 @@ export default function EmailConfirmationScreen() {
               onPress={resendConfirmationEmail}
               style={tw`py-3`}
             >
-              <Text style={tw`text-purple-400 text-center`}>
+              <Text style={[tw`text-center`, { color: theme.colors.secondary }]}>
                 Didn't receive an email? Resend
               </Text>
             </TouchableOpacity>
@@ -156,7 +157,7 @@ export default function EmailConfirmationScreen() {
               onPress={goToLogin}
               style={tw`py-3`}
             >
-              <Text style={tw`text-gray-400 text-center`}>
+              <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
                 Already confirmed? Go to login
               </Text>
             </TouchableOpacity>

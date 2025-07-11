@@ -10,14 +10,20 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
+    Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import { RootStackParamList, Service } from '../types/types';
+import { RootStackParamList } from '../types/types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import Icon from 'react-native-vector-icons/Feather';
+import InAppBrowser from 'react-native-inappbrowser-reborn';
+import { WebView } from 'react-native-webview';
+import { theme } from '../lib/theme';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "";
 
 type BarberOnboardingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BarberOnboarding'>;
 
@@ -59,6 +65,8 @@ export default function BarberOnboardingPage() {
     const [loading, setLoading] = useState(false);
     const [stripeStatus, setStripeStatus] = useState<string | null>(null);
     const [initialDataLoading, setInitialDataLoading] = useState(true);
+    const [showStripeWebView, setShowStripeWebView] = useState(false);
+    const [stripeUrl, setStripeUrl] = useState('');
 
     const [formData, setFormData] = useState<FormData>({
         businessName: '',
@@ -76,22 +84,91 @@ export default function BarberOnboardingPage() {
         stripeConnected: false
     });
 
+    // Check Stripe account status
+    const checkStripeStatus = async () => {
+        console.log('[checkStripeStatus] Starting status check for user:', user?.id);
+        try {
+            const url = `${API_BASE_URL}/api/connect/refresh-account-status`;
+            console.log('[checkStripeStatus] Making request to:', url);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId: user?.id }),
+            });
+
+            console.log('[checkStripeStatus] Response status:', response.status);
+            const responseText = await response.text();
+            console.log('[checkStripeStatus] Raw response:', responseText);
+
+            if (response.ok) {
+                const data = JSON.parse(responseText);
+                console.log('[checkStripeStatus] Parsed data:', data);
+                
+                if (data.success && data.data.hasStripeAccount) {
+                    const isActive = data.data.currentStatus === 'active';
+                    console.log('[checkStripeStatus] Account status:', data.data.currentStatus);
+                    console.log('[checkStripeStatus] Is active:', isActive);
+                    
+                    setFormData(prev => ({ ...prev, stripeConnected: isActive }));
+                    setStripeStatus(data.data.currentStatus);
+                    
+                    if (isActive) {
+                        console.log('[checkStripeStatus] Account is active!');
+                        return true;
+                    } else if (data.data.currentStatus === 'pending') {
+                        console.log('[checkStripeStatus] Account is pending');
+                        // Don't show alert here - let the UI handle it
+                        return false;
+                    }
+                } else {
+                    console.log('[checkStripeStatus] No Stripe account found');
+                }
+            } else {
+                console.error('[checkStripeStatus] Request failed with status:', response.status);
+            }
+            return false;
+        } catch (error) {
+            console.error('[checkStripeStatus] Error:', error);
+            return false;
+        }
+    };
+
     useEffect(() => {
         const fetchProfileData = async () => {
-            if (!user) return;
+            if (!user) {
+                console.log('[fetchProfileData] No user found');
+                return;
+            }
+            
+            console.log('[fetchProfileData] Fetching profile for user:', user.id);
             
             try {
-                const { data: barber } = await supabase
+                const { data: barber, error: barberError } = await supabase
                     .from('barbers')
                     .select('id, business_name, bio, specialties, stripe_account_status, stripe_account_id')
                     .eq('user_id', user.id)
                     .single();
 
-                const { data: profile } = await supabase
+                if (barberError) {
+                    console.log('[fetchProfileData] Barber fetch error:', barberError);
+                } else {
+                    console.log('[fetchProfileData] Barber data:', barber);
+                }
+
+                const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('phone, location')
                     .eq('id', user.id)
                     .single();
+
+                if (profileError) {
+                    console.log('[fetchProfileData] Profile fetch error:', profileError);
+                } else {
+                    console.log('[fetchProfileData] Profile data:', profile);
+                }
 
                 let address = '', city = '', state = '', zipCode = '';
                 if (profile?.location) {
@@ -135,9 +212,22 @@ export default function BarberOnboardingPage() {
                     stripeConnected: barber?.stripe_account_status === 'active'
                 }));
 
-                setStripeStatus(barber?.stripe_account_status || null);
+                // Set initial stripe status from database
+                if (barber?.stripe_account_id) {
+                    console.log('[fetchProfileData] Found existing Stripe account:', barber.stripe_account_id);
+                    console.log('[fetchProfileData] Current status:', barber.stripe_account_status);
+                    setStripeStatus(barber.stripe_account_status || null);
+                    
+                    // Check current status with Stripe
+                    console.log('[fetchProfileData] Checking current Stripe status...');
+                    const isActive = await checkStripeStatus();
+                    console.log('[fetchProfileData] Stripe check result - isActive:', isActive);
+                } else {
+                    console.log('[fetchProfileData] No Stripe account ID found');
+                    setStripeStatus(null);
+                }
             } catch (error) {
-                console.error('Error fetching profile data:', error);
+                console.error('[fetchProfileData] Error:', error);
             } finally {
                 setInitialDataLoading(false);
             }
@@ -147,6 +237,19 @@ export default function BarberOnboardingPage() {
             fetchProfileData();
         }
     }, [user]);
+
+    // Listen for app focus to check Stripe status
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            console.log('[Focus] App focused - currentStep:', currentStep, 'stripeStatus:', stripeStatus);
+            if (currentStep === 2 && user?.id && stripeStatus !== 'active') {
+                console.log('[Focus] Checking Stripe status on focus...');
+                checkStripeStatus();
+            }
+        });
+
+        return unsubscribe;
+    }, [navigation, currentStep, user, stripeStatus]);
 
     const validateStep = (stepIndex: number): boolean => {
         if (stepIndex === 0) {
@@ -185,12 +288,7 @@ export default function BarberOnboardingPage() {
             }
         }
 
-        if (stepIndex === 2 && !formData.stripeConnected) {
-            // Stripe connection is now optional - can be skipped
-            // Alert.alert('Payment Setup Required', 'Please connect your Stripe account to receive payments');
-            // return false;
-        }
-
+        // Stripe step validation is optional
         return true;
     };
 
@@ -205,6 +303,7 @@ export default function BarberOnboardingPage() {
     };
 
     const handleSubmit = async () => {
+        console.log('[handleSubmit] Starting profile submission...');
         setLoading(true);
         try {
             const { error: barberError } = await supabase
@@ -255,6 +354,7 @@ export default function BarberOnboardingPage() {
                 }
             }
 
+            console.log('[handleSubmit] Profile update successful');
             Alert.alert(
                 'Success!',
                 'Your barber profile is now complete.',
@@ -264,7 +364,7 @@ export default function BarberOnboardingPage() {
                 }]
             );
         } catch (error) {
-            console.error('Error updating profile:', error);
+            console.error('[handleSubmit] Error:', error);
             Alert.alert('Error', 'Failed to update profile. Please try again.');
         } finally {
             setLoading(false);
@@ -272,35 +372,180 @@ export default function BarberOnboardingPage() {
     };
 
     const handleStripeConnect = async () => {
+        console.log('[handleStripeConnect] Starting Stripe connection...');
+        console.log('[handleStripeConnect] User:', user);
+        console.log('[handleStripeConnect] Current stripe status:', stripeStatus);
+        
         setLoading(true);
         try {
-            Alert.alert(
-                'Connect Stripe',
-                'This will redirect you to Stripe to complete your account setup.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Continue',
-                        onPress: async () => {
-                            setFormData(prev => ({ ...prev, stripeConnected: true }));
-                            setStripeStatus('active');
-                            
-                            await supabase
-                                .from('barbers')
-                                .update({
-                                    stripe_account_status: 'active',
-                                    stripe_account_id: 'simulated_stripe_id',
-                                })
-                                .eq('user_id', user?.id);
-                        }
+            // Get barber ID first
+            console.log('[handleStripeConnect] Fetching barber ID for user:', user?.id);
+            const { data: barber, error: barberError } = await supabase
+                .from('barbers')
+                .select('id')
+                .eq('user_id', user?.id)
+                .single();
+                
+            if (barberError || !barber?.id) {
+                console.error('[handleStripeConnect] Barber fetch error:', barberError);
+                Alert.alert(
+                    'Error',
+                    'Could not find your barber profile. Please complete your business info first.'
+                );
+                return;
+            }
+            
+            console.log('[handleStripeConnect] Found barber ID:', barber.id);
+
+            // First, check if there's already a Stripe account and refresh its status
+            console.log('[handleStripeConnect] Checking existing Stripe account status...');
+            const refreshUrl = `${API_BASE_URL}/api/connect/refresh-account-status`;
+            console.log('[handleStripeConnect] Refresh URL:', refreshUrl);
+            
+            const refreshResponse = await fetch(refreshUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId: user?.id }),
+            });
+
+            console.log('[handleStripeConnect] Refresh response status:', refreshResponse.status);
+            
+            if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json();
+                console.log('[handleStripeConnect] Refresh data:', refreshData);
+                
+                if (refreshData.success && refreshData.data.hasStripeAccount) {
+                    setFormData(prev => ({ ...prev, stripeConnected: true }));
+                    setStripeStatus(refreshData.data.currentStatus);
+                    
+                    if (refreshData.data.currentStatus === 'active') {
+                        console.log('[handleStripeConnect] Account already active');
+                        Alert.alert(
+                            'Stripe Account Active',
+                            'Your Stripe account is already active and ready to accept payments!'
+                        );
+                        return;
+                    } else if (refreshData.data.currentStatus === 'pending') {
+                        console.log('[handleStripeConnect] Account pending review');
+                        Alert.alert(
+                            'Account Pending',
+                            'Your Stripe account is being reviewed. This usually takes 1-2 business days.'
+                        );
+                        return;
                     }
-                ]
-            );
+                }
+            }
+
+            // Get barber's email and name
+            if (!user?.email) {
+                console.error('[handleStripeConnect] No user email found');
+                Alert.alert(
+                    'Error',
+                    'Could not fetch your profile information. Please try again.'
+                );
+                return;
+            }
+
+            // Create Stripe Connect account
+            const createUrl = `${API_BASE_URL}/api/connect/create-account`;
+            console.log('[handleStripeConnect] Create account URL:', createUrl);
+            
+            const requestBody = {
+                barberId: barber.id,
+                email: user.email,
+                name: user.name || formData.businessName,
+            };
+            console.log('[handleStripeConnect] Request body:', requestBody);
+
+            const response = await fetch(createUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            console.log('[handleStripeConnect] Create response status:', response.status);
+            const responseText = await response.text();
+            console.log('[handleStripeConnect] Create response text:', responseText);
+
+            if (!response.ok) {
+                const errorData = JSON.parse(responseText);
+                console.error('[handleStripeConnect] Error response:', errorData);
+                throw new Error(errorData.error || 'Failed to create Stripe account');
+            }
+
+            const data = JSON.parse(responseText);
+            console.log('[handleStripeConnect] Success response:', data);
+            
+            const url = data.url || data.accountLink;
+            console.log('[handleStripeConnect] Stripe URL:', url);
+            
+            if (!url) {
+                throw new Error('No Stripe URL received');
+            }
+
+            // Try to use in-app browser first
+            console.log('[handleStripeConnect] Checking InAppBrowser availability...');
+            const browserAvailable = await InAppBrowser.isAvailable();
+            console.log('[handleStripeConnect] InAppBrowser available:', browserAvailable);
+
+            if (browserAvailable) {
+                console.log('[handleStripeConnect] Opening InAppBrowser with URL:', url);
+                const result = await InAppBrowser.openAuth(url, 'bocm://stripe-return', {
+                    // iOS Properties
+                    ephemeralWebSession: false,
+                    // Android Properties
+                    showTitle: true,
+                    enableUrlBarHiding: true,
+                    enableDefaultShare: false,
+                    forceCloseOnRedirection: true,
+                });
+                
+                console.log('[handleStripeConnect] InAppBrowser result:', result);
+                
+                if (result.type === 'success') {
+                    console.log('[handleStripeConnect] Success! Checking status in 2 seconds...');
+                    // Wait a moment for Stripe to process
+                    setTimeout(() => {
+                        checkStripeStatus();
+                    }, 2000);
+                }
+            } else {
+                console.log('[handleStripeConnect] InAppBrowser not available, using WebView');
+                // Fallback to WebView
+                setStripeUrl(url);
+                setShowStripeWebView(true);
+            }
         } catch (error) {
-            Alert.alert('Error', 'Failed to connect Stripe account.');
+            console.error('[handleStripeConnect] Error:', error);
+            Alert.alert(
+                'Error',
+                error instanceof Error ? error.message : 'Failed to connect Stripe account. Please try again.'
+            );
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSkipStripe = () => {
+        console.log('[handleSkipStripe] User choosing to skip Stripe setup');
+        Alert.alert(
+            'Skip Payment Setup?',
+            'You can set up payments later in your settings.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Skip',
+                    onPress: async () => {
+                        console.log('[handleSkipStripe] Confirmed skip, submitting profile...');
+                        await handleSubmit();
+                    }
+                }
+            ]
+        );
     };
 
     const renderStep = () => {
@@ -311,7 +556,7 @@ export default function BarberOnboardingPage() {
                         <View style={tw`pb-20`}>
                             <View style={tw`mb-6`}>
                                 <View style={tw`flex-row items-center mb-2`}>
-                                    <Icon name="briefcase" size={16} color="#9333ea" />
+                                    <Icon name="briefcase" size={16} color={theme.colors.secondary} />
                                     <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Business Name</Text>
                                 </View>
                                 <TextInput
@@ -325,7 +570,7 @@ export default function BarberOnboardingPage() {
 
                             <View style={tw`mb-6`}>
                                 <View style={tw`flex-row items-center mb-2`}>
-                                    <Icon name="phone" size={16} color="#9333ea" />
+                                    <Icon name="phone" size={16} color={theme.colors.secondary} />
                                     <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Phone Number</Text>
                                 </View>
                                 <TextInput
@@ -340,7 +585,7 @@ export default function BarberOnboardingPage() {
 
                             <View style={tw`mb-6`}>
                                 <View style={tw`flex-row items-center mb-2`}>
-                                    <Icon name="map-pin" size={16} color="#9333ea" />
+                                    <Icon name="map-pin" size={16} color={theme.colors.secondary} />
                                     <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Address</Text>
                                 </View>
                                 <TextInput
@@ -382,7 +627,7 @@ export default function BarberOnboardingPage() {
 
                             <View style={tw`mb-6`}>
                                 <View style={tw`flex-row items-center mb-2`}>
-                                    <Icon name="file-text" size={16} color="#9333ea" />
+                                    <Icon name="file-text" size={16} color={theme.colors.secondary} />
                                     <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Bio</Text>
                                 </View>
                                 <TextInput
@@ -397,7 +642,7 @@ export default function BarberOnboardingPage() {
 
                             <View style={tw`mb-6`}>
                                 <View style={tw`flex-row items-center mb-2`}>
-                                    <Icon name="scissors" size={16} color="#9333ea" />
+                                    <Icon name="scissors" size={16} color={theme.colors.secondary} />
                                     <Text style={tw`text-gray-300 text-sm ml-2 font-medium`}>Specialties</Text>
                                 </View>
                                 <TextInput
@@ -424,7 +669,7 @@ export default function BarberOnboardingPage() {
                                     ...prev, 
                                     services: [...prev.services, { name: '', price: 0, duration: 30 }]
                                 }))}
-                                style={tw`bg-purple-600 py-3 rounded-xl mb-4`}
+                                style={[tw`py-3 rounded-xl mb-4`, { backgroundColor: theme.colors.secondary }]}
                             >
                                 <Text style={tw`text-white text-center font-medium`}>+ Add Service</Text>
                             </TouchableOpacity>
@@ -494,9 +739,10 @@ export default function BarberOnboardingPage() {
                 );
 
             case 2:
+                console.log('[renderStep] Rendering Stripe step - status:', stripeStatus, 'connected:', formData.stripeConnected);
                 return (
                     <View style={tw`flex-1 justify-center px-2`}>
-                        {formData.stripeConnected ? (
+                        {formData.stripeConnected && stripeStatus === 'active' ? (
                             <View style={tw`bg-green-900/20 border border-green-600 rounded-2xl p-6`}>
                                 <View style={tw`items-center`}>
                                     <Icon name="check-circle" size={48} color="#10b981" />
@@ -508,10 +754,28 @@ export default function BarberOnboardingPage() {
                                     </Text>
                                 </View>
                             </View>
+                        ) : stripeStatus === 'pending' ? (
+                            <View style={tw`bg-yellow-900/20 border border-yellow-600 rounded-2xl p-6`}>
+                                <View style={tw`items-center`}>
+                                    <Icon name="clock" size={48} color="#f59e0b" />
+                                    <Text style={tw`text-yellow-400 text-lg font-semibold mt-4`}>
+                                        Account Under Review
+                                    </Text>
+                                    <Text style={tw`text-yellow-300 text-center mt-2`}>
+                                        Your Stripe account is being reviewed. This usually takes 1-2 business days.
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={checkStripeStatus}
+                                        style={tw`mt-4 bg-yellow-600/20 px-4 py-2 rounded-lg`}
+                                    >
+                                        <Text style={tw`text-yellow-400`}>Check Status</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         ) : (
                             <View>
                                 <View style={tw`bg-gray-800 rounded-2xl p-6 mb-4`}>
-                                    <Icon name="credit-card" size={40} color="#9333ea" style={tw`mb-4 self-center`} />
+                                    <Icon name="credit-card" size={40} color={theme.colors.secondary} style={tw`mb-4 self-center`} />
                                     <Text style={tw`text-white text-lg font-semibold text-center mb-2`}>
                                         Connect Stripe Account
                                     </Text>
@@ -536,7 +800,7 @@ export default function BarberOnboardingPage() {
                                     
                                     <TouchableOpacity
                                         onPress={handleStripeConnect}
-                                        style={tw`bg-purple-600 py-4 rounded-xl`}
+                                        style={[tw`py-4 rounded-xl`, { backgroundColor: theme.colors.secondary }]}
                                         disabled={loading}
                                     >
                                         {loading ? (
@@ -556,14 +820,7 @@ export default function BarberOnboardingPage() {
                                         </View>
                                         
                                         <TouchableOpacity
-                                            onPress={() => {
-                                                setFormData(prev => ({ ...prev, stripeConnected: true }));
-                                                if (currentStep < steps.length - 1) {
-                                                    setCurrentStep(currentStep + 1);
-                                                } else {
-                                                    handleSubmit();
-                                                }
-                                            }}
+                                            onPress={handleSkipStripe}
                                             style={tw`border border-gray-600 py-4 rounded-xl`}
                                             disabled={loading}
                                         >
@@ -591,7 +848,7 @@ export default function BarberOnboardingPage() {
     if (initialDataLoading) {
         return (
             <SafeAreaView style={tw`flex-1 bg-gray-900 justify-center items-center`}>
-                <ActivityIndicator size="large" color="#9333ea" />
+                <ActivityIndicator size="large" color={theme.colors.secondary} />
             </SafeAreaView>
         );
     }
@@ -603,7 +860,7 @@ export default function BarberOnboardingPage() {
                 style={tw`flex-1`}
             >
                 <View style={tw`flex-1`}>
-                                            <View style={tw`px-6 pt-6`}>
+                    <View style={tw`px-6 pt-6`}>
                         <Text style={tw`text-white text-2xl font-bold text-center`}>
                             Complete Your Profile
                         </Text>
@@ -614,13 +871,13 @@ export default function BarberOnboardingPage() {
                                     <View key={step.id} style={tw`items-center`}>
                                         <View style={tw`flex-row items-center`}>
                                             {index > 0 && (
-                                                <View style={tw`h-0.5 w-12 ${
-                                                    index <= currentStep ? 'bg-purple-600' : 'bg-gray-700'
-                                                }`} />
+                                                <View style={[tw`h-0.5 w-12`, {
+                                                    backgroundColor: index <= currentStep ? theme.colors.secondary : '#374151'
+                                                }]} />
                                             )}
-                                            <View style={tw`w-10 h-10 rounded-full items-center justify-center ${
-                                                index <= currentStep ? 'bg-purple-600' : 'bg-gray-800'
-                                            }`}>
+                                            <View style={[tw`w-10 h-10 rounded-full items-center justify-center`, {
+                                                backgroundColor: index <= currentStep ? theme.colors.secondary : '#374151'
+                                            }]}>
                                                 {index < currentStep ? (
                                                     <Icon name="check" size={20} color="white" />
                                                 ) : (
@@ -628,22 +885,22 @@ export default function BarberOnboardingPage() {
                                                 )}
                                             </View>
                                             {index < steps.length - 1 && (
-                                                <View style={tw`h-0.5 w-12 ${
-                                                    index < currentStep ? 'bg-purple-600' : 'bg-gray-700'
-                                                }`} />
+                                                <View style={[tw`h-0.5 w-12`, {
+                                                    backgroundColor: index < currentStep ? theme.colors.secondary : '#374151'
+                                                }]} />
                                             )}
                                         </View>
                                     </View>
                                 ))}
                             </View>
                             <View style={tw`flex-row justify-between px-2 mt-2`}>
-                                <Text style={tw`text-xs ${currentStep >= 0 ? 'text-purple-400' : 'text-gray-500'} w-20 text-center`}>
+                                <Text style={[tw`text-xs w-20 text-center`, { color: currentStep >= 0 ? theme.colors.secondary : '#9CA3AF' }]}>
                                     Business Info
                                 </Text>
-                                <Text style={tw`text-xs ${currentStep >= 1 ? 'text-purple-400' : 'text-gray-500'} w-20 text-center`}>
+                                <Text style={[tw`text-xs w-20 text-center`, { color: currentStep >= 1 ? theme.colors.secondary : '#9CA3AF' }]}>
                                     Services
                                 </Text>
-                                <Text style={tw`text-xs ${currentStep >= 2 ? 'text-purple-400' : 'text-gray-500'} w-20 text-center`}>
+                                <Text style={[tw`text-xs w-20 text-center`, { color: currentStep >= 2 ? theme.colors.secondary : '#9CA3AF' }]}>
                                     Payments
                                 </Text>
                             </View>
@@ -673,9 +930,10 @@ export default function BarberOnboardingPage() {
                             
                             <TouchableOpacity
                                 onPress={handleNext}
-                                style={tw`flex-1 bg-purple-600 py-4 rounded-xl flex-row justify-center items-center ${
-                                    loading ? 'opacity-50' : ''
-                                }`}
+                                style={[tw`flex-1 py-4 rounded-xl flex-row justify-center items-center`, {
+                                    backgroundColor: theme.colors.secondary,
+                                    opacity: loading ? 0.5 : 1
+                                }]}
                                 disabled={loading}
                             >
                                 {loading ? (
@@ -693,6 +951,50 @@ export default function BarberOnboardingPage() {
                     </View>
                 </View>
             </KeyboardAvoidingView>
+
+            {/* Stripe WebView Modal */}
+            <Modal
+                visible={showStripeWebView}
+                animationType="slide"
+                onRequestClose={() => setShowStripeWebView(false)}
+            >
+                <SafeAreaView style={tw`flex-1 bg-gray-900`}>
+                    <View style={tw`flex-row justify-between items-center p-4 border-b border-gray-700`}>
+                        <Text style={tw`text-white text-lg font-semibold`}>Connect Stripe</Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                console.log('[WebView] Closing WebView modal');
+                                setShowStripeWebView(false);
+                                // Check status after closing
+                                setTimeout(() => {
+                                    console.log('[WebView] Checking status after close...');
+                                    checkStripeStatus();
+                                }, 2000);
+                            }}
+                        >
+                            <Icon name="x" size={24} color="white" />
+                        </TouchableOpacity>
+                    </View>
+                    <WebView
+                        source={{ uri: stripeUrl }}
+                        onNavigationStateChange={(navState) => {
+                            console.log('[WebView] Navigation state change:', navState.url);
+                            if (navState.url.includes('stripe-return')) {
+                                console.log('[WebView] Detected stripe-return URL');
+                                setShowStripeWebView(false);
+                                setTimeout(() => {
+                                    console.log('[WebView] Checking status after return...');
+                                    checkStripeStatus();
+                                }, 2000);
+                            }
+                        }}
+                        onError={(syntheticEvent) => {
+                            const { nativeEvent } = syntheticEvent;
+                            console.error('[WebView] Error:', nativeEvent);
+                        }}
+                    />
+                </SafeAreaView>
+            </Modal>
         </SafeAreaView>
     );
 }

@@ -7,7 +7,7 @@ interface InputProps extends TextInputProps {
   error?: string;
   containerStyle?: ViewStyle | ViewStyle[];
   inputStyle?: TextStyle | TextStyle[];
-  focusBorderColor?: string; // Add prop for custom focus color
+  focusBorderColor?: string;
 }
 
 const Input: React.FC<InputProps> = ({
@@ -16,25 +16,27 @@ const Input: React.FC<InputProps> = ({
   containerStyle,
   inputStyle,
   placeholder,
-  focusBorderColor = '#FFD180', // Saffron as default focus color
+  focusBorderColor = '#FFD180',
   ...props
 }) => {
   const [isFocused, setIsFocused] = React.useState(false);
+
   return (
-    <View style={[tw`space-y-2`, containerStyle]}>
+    <View style={[tw`w-full`, containerStyle]}>
       {label && (
-        <Text style={tw`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-white`}>
+        <Text style={tw`text-sm font-medium text-white mb-1.5`}>
           {label}
         </Text>
       )}
       <TextInput
         style={[
-          tw`flex h-11 w-full rounded-md px-3 text-base`,
+          tw`w-full rounded-xl px-4 py-3 text-base`,
           {
-            backgroundColor: 'rgba(255,255,255,0.10)', // glassy background
-            borderColor: isFocused ? focusBorderColor : 'rgba(255,255,255,0.20)', // white border, saffron on focus
+            backgroundColor: 'rgba(255,255,255,0.10)',
+            borderColor: isFocused ? focusBorderColor : 'rgba(255,255,255,0.20)',
             color: '#fff',
             borderWidth: 1,
+            height: 48,
           },
           error && { borderColor: '#ff4d4f' },
           inputStyle
@@ -52,7 +54,7 @@ const Input: React.FC<InputProps> = ({
         {...props}
       />
       {error && (
-        <Text style={tw`text-sm text-[#ff4d4f]`}>
+        <Text style={tw`text-sm text-[#ff4d4f] mt-1`}>
           {error}
         </Text>
       )}
@@ -60,4 +62,4 @@ const Input: React.FC<InputProps> = ({
   );
 };
 
-export default Input; 
+export default Input;

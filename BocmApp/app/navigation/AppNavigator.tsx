@@ -3,7 +3,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, Platform } from 'react-native';
+import { View, Text, Platform, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Home, Search, Settings as SettingsIcon } from 'lucide-react-native';
 import HomePage from '../pages/HomePage';
@@ -13,7 +13,9 @@ import FindBarberPage from '../pages/FindBarberPage';
 import BookingCalendarPage from '../pages/BookingCalendarPage';
 import BarberOnboardingPage from '../pages/BarberOnboardingPage';
 import EmailConfirmationScreen from '../pages/EmailConfirmationScreen';
+import BookingSuccessPage from '../pages/BookingSuccessPage';
 import SettingsPage from '../pages/SettingsPage';
+import TermsPage from '../pages/TermsPage';
 import tw from 'twrnc';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
@@ -26,7 +28,7 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       intensity={60}
       tint="dark"
       style={[
-        tw`absolute left-0 right-0 bottom-0 flex-row items-center justify-between px-6 py-2`,
+        tw`absolute left-0 right-0 bottom-0 flex-row items-center justify-between px-6 pt-2 pb-5`,
         { borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: 'rgba(30, 24, 44, 0.85)', borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.10)' }
       ]}
     >
@@ -56,7 +58,11 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         if (route.name === 'Browse') IconComponent = Search;
         if (route.name === 'Settings') IconComponent = SettingsIcon;
         return (
-          <View key={route.key} style={tw`flex-1 items-center`}>
+          <TouchableOpacity
+            key={route.key}
+            onPress={onPress}
+            style={tw`flex-1 items-center`}
+          >
             <IconComponent
               size={28}
               color={isFocused ? '#FFD180' : '#fff'}
@@ -68,7 +74,7 @@ function GlassyTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               {label}
             </Text>
             {isFocused && <View style={tw`h-1 w-6 rounded-full bg-[#FFD180] mt-1`} />}
-          </View>
+          </TouchableOpacity>
         );
       })}
     </BlurView>
@@ -102,6 +108,9 @@ export const AppNavigator = () => {
         <Stack.Screen name="BookingCalendar" component={BookingCalendarPage} />
         <Stack.Screen name="BarberOnboarding" component={BarberOnboardingPage} />
         <Stack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
+        <Stack.Screen name="Terms" component={TermsPage} />
+        <Stack.Screen name="Settings" component={SettingsPage} />
+        <Stack.Screen name="BookingSuccess" component={BookingSuccessPage} />
       </Stack.Navigator>
     </NavigationContainer>
   );

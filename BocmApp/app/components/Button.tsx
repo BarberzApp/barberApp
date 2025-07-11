@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  TouchableOpacity, 
-  Text, 
+import {
+  TouchableOpacity,
+  Text,
   TouchableOpacityProps,
   TextStyle,
-  ViewStyle 
+  ViewStyle
 } from 'react-native';
 import tw from 'twrnc';
 
@@ -32,10 +32,10 @@ const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const sizeStyles: Record<ButtonSize, string> = {
-    sm: 'h-9 px-3 rounded-md',
-    default: 'h-10 px-4 py-2 rounded-md',
-    lg: 'h-11 px-8 rounded-full', // slightly shorter
-    icon: 'h-10 w-10 rounded-md'
+    sm: 'h-9 px-3',
+    default: 'h-10 px-4',
+    lg: 'h-12 px-8',
+    icon: 'h-10 w-10'
   };
 
   const variantStyles: Record<ButtonVariant, string> = {
@@ -47,11 +47,11 @@ const Button: React.FC<ButtonProps> = ({
     link: 'bg-transparent'
   };
 
-  const textSizeStyles: Record<ButtonSize, string> = {
-    sm: 'text-sm',
-    default: 'text-sm',
-    lg: 'text-base', // fontSize 18 for lg
-    icon: 'text-sm'
+  const textSizeStyles: Record<ButtonSize, number> = {
+    sm: 14,
+    default: 16,
+    lg: 18,
+    icon: 14
   };
 
   const textVariantStyles: Record<ButtonVariant, string> = {
@@ -66,7 +66,7 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <TouchableOpacity
       style={[
-        tw`${sizeStyles[size]} ${variantStyles[variant]} flex-row items-center justify-center`,
+        tw`${sizeStyles[size]} ${variantStyles[variant]} rounded-full flex-row items-center justify-center`,
         disabled && tw`opacity-50`,
         style
       ]}
@@ -75,15 +75,19 @@ const Button: React.FC<ButtonProps> = ({
       activeOpacity={0.8}
       {...props}
     >
-      <Text
-        style={[
-          tw`${textSizeStyles[size]} ${textVariantStyles[variant]} font-bold text-center`,
-          { fontFamily: 'BebasNeue', fontSize: size === 'lg' ? 18 : undefined },
-          textStyle
-        ]}
-      >
-        {children}
-      </Text>
+      {typeof children === 'string' ? (
+        <Text
+          style={[
+            tw`${textVariantStyles[variant]} font-semibold text-center`,
+            { fontSize: textSizeStyles[size] },
+            textStyle
+          ]}
+        >
+          {children}
+        </Text>
+      ) : (
+        children
+      )}
     </TouchableOpacity>
   );
 };

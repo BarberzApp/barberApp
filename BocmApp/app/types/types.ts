@@ -8,11 +8,11 @@ export type RootStackParamList = {
   FindBarber: undefined;
   BarberOnboarding: undefined;
   BarberDashboard: undefined;
-  BookingPage: { 
+  BookingPage: {
     barberId: string;
     barberName: string;
   };
-  BookingCalendar: { 
+  BookingCalendar: {
     barberId: string;
     barberName: string;
   };
@@ -28,7 +28,11 @@ export type RootStackParamList = {
     userType: 'client' | 'barber';
   };
   Terms: undefined;
-};
+  BookingWebView: {
+    barberId: string;
+    barberName: string;
+  };
+}
 
 export type UserRole = 'client' | 'barber' | 'admin';
 
@@ -96,7 +100,7 @@ export interface Service {
 }
 
 // Booking Types
-export type BookingStatus = 
+export type BookingStatus =
   | 'pending'         // Initial state
   | 'payment_pending' // Awaiting payment
   | 'confirmed'       // Payment successful
@@ -107,7 +111,7 @@ export type BookingStatus =
   | 'failed'          // Payment failed
   | 'expired'         // Payment expired
 
-export type PaymentStatus = 
+export type PaymentStatus =
   | 'pending'
   | 'succeeded'
   | 'failed'

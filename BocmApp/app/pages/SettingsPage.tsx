@@ -14,11 +14,11 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import tw from 'twrnc';
 import { RootStackParamList } from '../types/types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { theme } from '../lib/theme';
 import Icon from 'react-native-vector-icons/Feather';
 
 type SettingsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
@@ -297,145 +297,209 @@ export default function SettingsPage() {
     };
 
     const renderProfileTab = () => (
-        <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false}>
+        <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-24`}>
             <View style={tw`p-4`}>
-                <Text style={tw`text-white text-lg font-semibold mb-4`}>Profile Information</Text>
+                <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>Profile Information</Text>
                 
                 <View style={tw`mb-4`}>
-                    <Text style={tw`text-gray-400 text-sm mb-1`}>Business Name</Text>
+                    <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Business Name</Text>
                     <TextInput
-                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                        style={[
+                            tw`px-4 py-3.5 rounded-xl text-base`, 
+                            { 
+                                backgroundColor: 'rgba(255,255,255,0.05)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.1)'
+                            }
+                        ]}
                         value={profileData.businessName}
                         onChangeText={(text) => setProfileData(prev => ({ ...prev, businessName: text }))}
                         placeholder="Your business name"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={theme.colors.mutedForeground}
                     />
                 </View>
 
                 <View style={tw`mb-4`}>
-                    <Text style={tw`text-gray-400 text-sm mb-1`}>Name</Text>
+                    <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Name</Text>
                     <TextInput
-                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                        style={[
+                            tw`px-4 py-3.5 rounded-xl text-base`, 
+                            { 
+                                backgroundColor: 'rgba(255,255,255,0.05)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.1)'
+                            }
+                        ]}
                         value={profileData.name}
                         onChangeText={(text) => setProfileData(prev => ({ ...prev, name: text }))}
                         placeholder="Your name"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={theme.colors.mutedForeground}
                     />
                 </View>
 
                 <View style={tw`mb-4`}>
-                    <Text style={tw`text-gray-400 text-sm mb-1`}>Email</Text>
+                    <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Email</Text>
                     <TextInput
-                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                        style={[
+                            tw`px-4 py-3.5 rounded-xl text-base`, 
+                            { 
+                                backgroundColor: 'rgba(255,255,255,0.05)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.1)'
+                            }
+                        ]}
                         value={profileData.email}
                         onChangeText={(text) => setProfileData(prev => ({ ...prev, email: text }))}
                         placeholder="Email"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={theme.colors.mutedForeground}
                         keyboardType="email-address"
                     />
                 </View>
 
                 <View style={tw`mb-4`}>
-                    <Text style={tw`text-gray-400 text-sm mb-1`}>Phone</Text>
+                    <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Phone</Text>
                     <TextInput
-                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                        style={[
+                            tw`px-4 py-3.5 rounded-xl text-base`, 
+                            { 
+                                backgroundColor: 'rgba(255,255,255,0.05)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.1)'
+                            }
+                        ]}
                         value={profileData.phone}
                         onChangeText={(text) => setProfileData(prev => ({ ...prev, phone: text }))}
                         placeholder="Phone number"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={theme.colors.mutedForeground}
                         keyboardType="phone-pad"
                     />
                 </View>
 
                 <View style={tw`mb-4`}>
-                    <Text style={tw`text-gray-400 text-sm mb-1`}>Location</Text>
+                    <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Location</Text>
                     <TextInput
-                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                        style={[
+                            tw`px-4 py-3.5 rounded-xl text-base`, 
+                            { 
+                                backgroundColor: 'rgba(255,255,255,0.05)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.1)'
+                            }
+                        ]}
                         value={profileData.location}
                         onChangeText={(text) => setProfileData(prev => ({ ...prev, location: text }))}
                         placeholder="City, State"
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={theme.colors.mutedForeground}
                     />
                 </View>
 
                 <View style={tw`mb-4`}>
-                    <Text style={tw`text-gray-400 text-sm mb-1`}>Bio</Text>
+                    <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Bio</Text>
                     <TextInput
-                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base h-28`, {lineHeight: 20, textAlignVertical: 'top'}]}
+                        style={[
+                            tw`px-4 py-3.5 rounded-xl text-base h-28`, 
+                            { 
+                                backgroundColor: 'rgba(255,255,255,0.05)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20,
+                                textAlignVertical: 'top',
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.1)'
+                            }
+                        ]}
                         value={profileData.bio}
                         onChangeText={(text) => setProfileData(prev => ({ ...prev, bio: text }))}
                         placeholder="Tell clients about yourself..."
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={theme.colors.mutedForeground}
                         multiline
                     />
                 </View>
 
                 <View style={tw`mb-6`}>
-                    <Text style={tw`text-gray-400 text-sm mb-1`}>Specialties</Text>
+                    <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Specialties</Text>
                     <TextInput
-                        style={[tw`bg-gray-800 text-white px-4 py-3.5 rounded-xl text-base`, {lineHeight: 20}]}
+                        style={[
+                            tw`px-4 py-3.5 rounded-xl text-base`, 
+                            { 
+                                backgroundColor: 'rgba(255,255,255,0.05)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.1)'
+                            }
+                        ]}
                         value={profileData.specialties.join(', ')}
                         onChangeText={(text) => setProfileData(prev => ({ 
                             ...prev, 
                             specialties: text.split(',').map(s => s.trim()).filter(s => s)
                         }))}
                         placeholder="Fades, Beard Trims, etc."
-                        placeholderTextColor="#6B7280"
+                        placeholderTextColor={theme.colors.mutedForeground}
                     />
                 </View>
 
-                <Text style={tw`text-white text-lg font-semibold mb-4`}>Privacy & Notifications</Text>
+                <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>Privacy & Notifications</Text>
 
-                <View style={tw`bg-gray-800 rounded-lg p-4 mb-4`}>
+                <View style={[tw`rounded-lg p-4 mb-4`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
                     <View style={tw`flex-row justify-between items-center mb-4`}>
                         <View style={tw`flex-1 mr-4`}>
-                            <Text style={tw`text-white font-medium`}>Public Profile</Text>
-                            <Text style={tw`text-gray-400 text-sm`}>Allow clients to find you</Text>
+                            <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>Public Profile</Text>
+                            <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Allow clients to find you</Text>
                         </View>
                         <Switch
                             value={profileData.isPublic}
                             onValueChange={(value) => setProfileData(prev => ({ ...prev, isPublic: value }))}
-                            trackColor={{ false: '#374151', true: '#9333ea' }}
-                            thumbColor="#fff"
+                            trackColor={{ false: '#374151', true: theme.colors.secondary }}
+                            thumbColor={theme.colors.foreground}
                         />
                     </View>
 
                     <View style={tw`flex-row justify-between items-center mb-4`}>
                         <View style={tw`flex-1 mr-4`}>
-                            <Text style={tw`text-white font-medium`}>Email Notifications</Text>
-                            <Text style={tw`text-gray-400 text-sm`}>Receive booking notifications</Text>
+                            <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>Email Notifications</Text>
+                            <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Receive booking notifications</Text>
                         </View>
                         <Switch
                             value={profileData.emailNotifications}
                             onValueChange={(value) => setProfileData(prev => ({ ...prev, emailNotifications: value }))}
-                            trackColor={{ false: '#374151', true: '#9333ea' }}
-                            thumbColor="#fff"
+                            trackColor={{ false: '#374151', true: theme.colors.secondary }}
+                            thumbColor={theme.colors.foreground}
                         />
                     </View>
 
                     <View style={tw`flex-row justify-between items-center`}>
                         <View style={tw`flex-1 mr-4`}>
-                            <Text style={tw`text-white font-medium`}>SMS Notifications</Text>
-                            <Text style={tw`text-gray-400 text-sm`}>Get text alerts</Text>
+                            <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>SMS Notifications</Text>
+                            <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Get text alerts</Text>
                         </View>
                         <Switch
                             value={profileData.smsNotifications}
                             onValueChange={(value) => setProfileData(prev => ({ ...prev, smsNotifications: value }))}
-                            trackColor={{ false: '#374151', true: '#9333ea' }}
-                            thumbColor="#fff"
+                            trackColor={{ false: '#374151', true: theme.colors.secondary }}
+                            thumbColor={theme.colors.foreground}
                         />
                     </View>
                 </View>
 
                 <TouchableOpacity
-                    style={tw`bg-purple-600 py-4 rounded-xl mb-6`}
+                    style={[tw`py-4 rounded-xl mb-6`, { backgroundColor: theme.colors.secondary }]}
                     onPress={saveProfile}
                     disabled={saving}
                 >
                     {saving ? (
-                        <ActivityIndicator color="white" />
+                        <ActivityIndicator color={theme.colors.primaryForeground} />
                     ) : (
-                        <Text style={tw`text-white text-center font-semibold`}>Save Changes</Text>
+                        <Text style={[tw`text-center font-semibold`, { color: theme.colors.primaryForeground }]}>Save Changes</Text>
                     )}
                 </TouchableOpacity>
             </View>
@@ -443,49 +507,70 @@ export default function SettingsPage() {
     );
 
     const renderServicesTab = () => (
-        <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false}>
+        <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-24`}>
             <View style={tw`p-4`}>
-                <Text style={tw`text-white text-lg font-semibold mb-4`}>Services & Pricing</Text>
+                <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>Services & Pricing</Text>
                 
-                <View style={tw`bg-gray-800 rounded-lg p-4 mb-4`}>
-                    <Text style={tw`text-white font-medium mb-3`}>
+                <View style={[tw`rounded-lg p-4 mb-4`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                    <Text style={[tw`font-medium mb-3`, { color: theme.colors.foreground }]}>
                         {editingService ? 'Edit Service' : 'Add New Service'}
                     </Text>
                     
                     <TextInput
-                        style={[tw`bg-gray-900 text-white px-3 py-2 rounded-lg mb-3 text-base font-medium`, {lineHeight: 20}]}
+                        style={[
+                            tw`px-3 py-2 rounded-lg mb-3 text-base font-medium`, 
+                            { 
+                                backgroundColor: 'rgba(0,0,0,0.3)', 
+                                color: theme.colors.foreground,
+                                lineHeight: 20 
+                            }
+                        ]}
                         value={newService.name}
                         onChangeText={(text) => setNewService(prev => ({ ...prev, name: text }))}
                         placeholder="Service name"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={theme.colors.mutedForeground}
                     />
                     
                     <View style={tw`flex-row gap-3 mb-3`}>
                         <View style={tw`flex-1`}>
-                            <Text style={tw`text-gray-400 text-xs mb-1`}>Price ($)</Text>
+                            <Text style={[tw`text-xs mb-1`, { color: theme.colors.mutedForeground }]}>Price ($)</Text>
                             <TextInput
-                                style={[tw`bg-gray-900 text-white text-base w-16 px-2 py-1.5 rounded text-center`, {lineHeight: 20}]}
+                                style={[
+                                    tw`text-base w-16 px-2 py-1.5 rounded text-center`, 
+                                    { 
+                                        backgroundColor: 'rgba(0,0,0,0.3)', 
+                                        color: theme.colors.foreground,
+                                        lineHeight: 20
+                                    }
+                                ]}
                                 value={newService.price.toString()}
                                 onChangeText={(text) => setNewService(prev => ({ 
                                     ...prev, 
                                     price: parseInt(text) || 0 
                                 }))}
                                 placeholder="0"
-                                placeholderTextColor="#9CA3AF"
+                                placeholderTextColor={theme.colors.mutedForeground}
                                 keyboardType="numeric"
                             />
                         </View>
                         <View style={tw`flex-1`}>
-                            <Text style={tw`text-gray-400 text-xs mb-1`}>Duration (min)</Text>
+                            <Text style={[tw`text-xs mb-1`, { color: theme.colors.mutedForeground }]}>Duration (min)</Text>
                             <TextInput
-                                style={[tw`bg-gray-900 text-white text-base w-12 px-2 py-1.5 rounded text-center`, {lineHeight: 20}]}
+                                style={[
+                                    tw`text-base w-12 px-2 py-1.5 rounded text-center`, 
+                                    { 
+                                        backgroundColor: 'rgba(0,0,0,0.3)', 
+                                        color: theme.colors.foreground,
+                                        lineHeight: 20
+                                    }
+                                ]}
                                 value={newService.duration.toString()}
                                 onChangeText={(text) => setNewService(prev => ({ 
                                     ...prev, 
                                     duration: parseInt(text) || 30 
                                 }))}
                                 placeholder="30"
-                                placeholderTextColor="#9CA3AF"
+                                placeholderTextColor={theme.colors.mutedForeground}
                                 keyboardType="numeric"
                             />
                         </View>
@@ -493,42 +578,42 @@ export default function SettingsPage() {
                     
                     <View style={tw`flex-row gap-2`}>
                         <TouchableOpacity
-                            style={tw`flex-1 bg-purple-600 py-2 rounded-lg`}
+                            style={[tw`flex-1 py-2 rounded-lg`, { backgroundColor: theme.colors.secondary }]}
                             onPress={addOrUpdateService}
                             disabled={saving}
                         >
-                            <Text style={tw`text-white text-center font-medium`}>
+                            <Text style={[tw`text-center font-medium`, { color: theme.colors.primaryForeground }]}>
                                 {editingService ? 'Update' : 'Add'} Service
                             </Text>
                         </TouchableOpacity>
                         {editingService && (
                             <TouchableOpacity
-                                style={tw`px-4 py-2 border border-gray-600 rounded-lg`}
+                                style={[tw`px-4 py-2 rounded-lg`, { borderWidth: 1, borderColor: theme.colors.mutedForeground }]}
                                 onPress={() => {
                                     setEditingService(null);
                                     setNewService({ name: '', price: 0, duration: 30 });
                                 }}
                             >
-                                <Text style={tw`text-white`}>Cancel</Text>
+                                <Text style={{ color: theme.colors.foreground }}>Cancel</Text>
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
 
-                <Text style={tw`text-white font-medium mb-3`}>Your Services</Text>
+                <Text style={[tw`font-medium mb-3`, { color: theme.colors.foreground }]}>Your Services</Text>
                 {services.length === 0 ? (
-                    <View style={tw`bg-gray-800 rounded-lg p-4`}>
-                        <Text style={tw`text-gray-400 text-center`}>
+                    <View style={[tw`rounded-lg p-4`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                        <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
                             No services added yet
                         </Text>
                     </View>
                 ) : (
                     services.map((service) => (
-                        <View key={service.id} style={tw`bg-gray-800 rounded-lg p-4 mb-2`}>
+                        <View key={service.id} style={[tw`rounded-lg p-4 mb-2`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
                             <View style={tw`flex-row justify-between items-center`}>
                                 <View style={tw`flex-1`}>
-                                    <Text style={tw`text-white font-medium`}>{service.name}</Text>
-                                    <Text style={tw`text-gray-400 text-sm`}>
+                                    <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>{service.name}</Text>
+                                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
                                         ${service.price} • {service.duration} minutes
                                     </Text>
                                 </View>
@@ -543,12 +628,12 @@ export default function SettingsPage() {
                                             });
                                         }}
                                     >
-                                        <Icon name="edit" size={20} color="#9333ea" />
+                                        <Icon name="edit" size={20} color={theme.colors.secondary} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => deleteService(service.id)}
                                     >
-                                        <Icon name="trash-2" size={20} color="#ef4444" />
+                                        <Icon name="trash-2" size={20} color={theme.colors.destructive} />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -560,71 +645,71 @@ export default function SettingsPage() {
     );
 
     const renderShareTab = () => (
-        <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false}>
+        <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-24`}>
             <View style={tw`p-4`}>
-                <Text style={tw`text-white text-lg font-semibold mb-4`}>Share Your Profile</Text>
+                <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>Share Your Profile</Text>
                 
                 {!profileData.isPublic && (
-                    <View style={tw`bg-yellow-900/20 border border-yellow-600 rounded-lg p-4 mb-4`}>
+                    <View style={[tw`rounded-lg p-4 mb-4`, { backgroundColor: 'rgba(255,193,7,0.1)', borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)' }]}>
                         <View style={tw`flex-row items-center`}>
-                            <Icon name="alert-circle" size={20} color="#fbbf24" />
-                            <Text style={tw`text-yellow-400 ml-2 flex-1`}>
+                            <Icon name="alert-circle" size={20} color="#ffc107" />
+                            <Text style={[tw`ml-2 flex-1`, { color: '#ffc107' }]}>
                                 Your profile is private. Make it public to allow bookings.
                             </Text>
                         </View>
                     </View>
                 )}
 
-                <View style={tw`bg-gray-800 rounded-lg p-4 mb-4`}>
-                    <Text style={tw`text-white font-medium mb-2`}>Your Booking Link</Text>
-                    <Text style={tw`text-gray-400 text-sm mb-3`}>
+                <View style={[tw`rounded-lg p-4 mb-4`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                    <Text style={[tw`font-medium mb-2`, { color: theme.colors.foreground }]}>Your Booking Link</Text>
+                    <Text style={[tw`text-sm mb-3`, { color: theme.colors.mutedForeground }]}>
                         Share this link with clients so they can book appointments
                     </Text>
                     
-                    <View style={tw`bg-gray-900 p-3 rounded-lg mb-3`}>
-                        <Text style={tw`text-purple-400 text-sm`} numberOfLines={1}>
+                    <View style={[tw`p-3 rounded-lg mb-3`, { backgroundColor: 'rgba(0,0,0,0.3)' }]}>
+                        <Text style={[tw`text-sm`, { color: theme.colors.secondary }]} numberOfLines={1}>
                             {barberId ? `https://barber-app-five.vercel.app/book/${barberId}` : 'Loading...'}
                         </Text>
                     </View>
                     
                     <View style={tw`flex-row gap-2`}>
                         <TouchableOpacity
-                            style={tw`flex-1 bg-purple-600 py-3 rounded-lg flex-row justify-center items-center`}
+                            style={[tw`flex-1 py-3 rounded-lg flex-row justify-center items-center`, { backgroundColor: theme.colors.secondary }]}
                             onPress={shareBookingLink}
                             disabled={!barberId}
                         >
-                            <Icon name="share-2" size={20} color="white" />
-                            <Text style={tw`text-white font-medium ml-2`}>Share Link</Text>
+                            <Icon name="share-2" size={20} color={theme.colors.primaryForeground} />
+                            <Text style={[tw`font-medium ml-2`, { color: theme.colors.primaryForeground }]}>Share Link</Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity
-                            style={tw`px-4 py-3 border border-gray-600 rounded-lg`}
+                            style={[tw`px-4 py-3 rounded-lg`, { borderWidth: 1, borderColor: theme.colors.mutedForeground }]}
                             onPress={copyBookingLink}
                             disabled={!barberId}
                         >
-                            <Icon name="copy" size={20} color="white" />
+                            <Icon name="copy" size={20} color={theme.colors.foreground} />
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                <View style={tw`bg-gray-800 rounded-lg p-4`}>
-                    <Text style={tw`text-white font-medium mb-3`}>How to Share</Text>
+                <View style={[tw`rounded-lg p-4`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                    <Text style={[tw`font-medium mb-3`, { color: theme.colors.foreground }]}>How to Share</Text>
                     <View style={tw`space-y-2`}>
                         <View style={tw`flex-row`}>
-                            <Text style={tw`text-purple-400 mr-2`}>1.</Text>
-                            <Text style={tw`text-gray-300 flex-1`}>
+                            <Text style={[tw`mr-2`, { color: theme.colors.secondary }]}>1.</Text>
+                            <Text style={[tw`flex-1`, { color: theme.colors.mutedForeground }]}>
                                 Copy or share the link above
                             </Text>
                         </View>
                         <View style={tw`flex-row`}>
-                            <Text style={tw`text-purple-400 mr-2`}>2.</Text>
-                            <Text style={tw`text-gray-300 flex-1`}>
+                            <Text style={[tw`mr-2`, { color: theme.colors.secondary }]}>2.</Text>
+                            <Text style={[tw`flex-1`, { color: theme.colors.mutedForeground }]}>
                                 Send it via text, email, or social media
                             </Text>
                         </View>
                         <View style={tw`flex-row`}>
-                            <Text style={tw`text-purple-400 mr-2`}>3.</Text>
-                            <Text style={tw`text-gray-300 flex-1`}>
+                            <Text style={[tw`mr-2`, { color: theme.colors.secondary }]}>3.</Text>
+                            <Text style={[tw`flex-1`, { color: theme.colors.mutedForeground }]}>
                                 Clients can book directly from the link
                             </Text>
                         </View>
@@ -636,53 +721,59 @@ export default function SettingsPage() {
 
     if (loading) {
         return (
-            <SafeAreaView style={tw`flex-1 bg-gray-900 justify-center items-center`}>
-                <ActivityIndicator size="large" color="#9333ea" />
+            <SafeAreaView style={[tw`flex-1 justify-center items-center`, { backgroundColor: theme.colors.background }]}>
+                <ActivityIndicator size="large" color={theme.colors.secondary} />
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={tw`flex-1 bg-gray-900`}>
+        <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.background }]}>
             <View style={tw`flex-1`}>
-                <View style={tw`px-6 py-4 border-b border-gray-800`}>
-                    <Text style={tw`text-white text-2xl font-bold`}>Settings</Text>
-                    <Text style={tw`text-gray-400 text-sm mt-1`}>
+                <View style={[tw`px-6 py-4`, { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' }]}>
+                    <Text style={[tw`text-2xl font-bold`, { color: theme.colors.foreground }]}>Settings</Text>
+                    <Text style={[tw`text-sm mt-1`, { color: theme.colors.mutedForeground }]}>
                         Manage your profile and preferences
                     </Text>
                     
                     {!profileComplete && (
                         <TouchableOpacity
-                            style={tw`bg-yellow-900/20 border border-yellow-600 rounded-lg p-3 mt-3`}
+                            style={[tw`rounded-lg p-3 mt-3`, { backgroundColor: 'rgba(255,193,7,0.1)', borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)' }]}
                             onPress={() => navigation.navigate('BarberOnboarding')}
                         >
                             <View style={tw`flex-row items-center justify-between`}>
                                 <View style={tw`flex-row items-center flex-1`}>
-                                    <Icon name="alert-circle" size={16} color="#fbbf24" />
-                                    <Text style={tw`text-yellow-400 ml-2`}>
+                                    <Icon name="alert-circle" size={16} color="#ffc107" />
+                                    <Text style={[tw`ml-2`, { color: '#ffc107' }]}>
                                         Complete your profile
                                     </Text>
                                 </View>
-                                <Icon name="chevron-right" size={20} color="#fbbf24" />
+                                <Icon name="chevron-right" size={20} color="#ffc107" />
                             </View>
                         </TouchableOpacity>
                     )}
                 </View>
 
-                <View style={tw`flex-row bg-gray-800`}>
+                <View style={[tw`flex-row`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
                     {['profile', 'services', 'share'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
-                            style={tw`flex-1 py-4 ${activeTab === tab ? 'border-b-2 border-purple-600' : ''}`}
+                            style={[
+                                tw`flex-1 py-4`,
+                                activeTab === tab && { borderBottomWidth: 2, borderBottomColor: theme.colors.secondary }
+                            ]}
                             onPress={() => setActiveTab(tab as any)}
                         >
                             <View style={tw`flex-row justify-center items-center`}>
                                 <Icon 
                                     name={tab === 'profile' ? 'user' : tab === 'services' ? 'scissors' : 'share-2'} 
                                     size={20} 
-                                    color={activeTab === tab ? '#9333ea' : '#9CA3AF'}
+                                    color={activeTab === tab ? theme.colors.secondary : theme.colors.mutedForeground}
                                 />
-                                <Text style={tw`ml-2 ${activeTab === tab ? 'text-purple-400' : 'text-gray-400'} font-medium`}>
+                                <Text style={[
+                                    tw`ml-2 font-medium`,
+                                    { color: activeTab === tab ? theme.colors.secondary : theme.colors.mutedForeground }
+                                ]}>
                                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                                 </Text>
                             </View>
@@ -695,10 +786,10 @@ export default function SettingsPage() {
                 {activeTab === 'share' && renderShareTab()}
 
                 <TouchableOpacity
-                    style={tw`mx-6 my-3 py-3 border border-red-600 rounded-lg`}
+                    style={[tw`mx-6 mb-12 mt-3 py-3 rounded-lg`, { borderWidth: 1, borderColor: theme.colors.destructive }]}
                     onPress={handleLogout}
                 >
-                    <Text style={tw`text-red-500 text-center font-medium`}>Logout</Text>
+                    <Text style={[tw`text-center font-medium`, { color: theme.colors.destructive }]}>Logout</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
