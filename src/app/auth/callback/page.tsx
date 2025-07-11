@@ -51,7 +51,7 @@ export default function AuthCallbackPage() {
         router.replace('/login')
       } finally {
         setLoading(false)
-      }
+    }
     }
     handleAuthCallback()
   }, [router, toast])

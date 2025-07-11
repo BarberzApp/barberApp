@@ -1066,7 +1066,7 @@ export default function ProfilePortfolio() {
           setVideoPreviewUrl(null);
         }
       }}>
-        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bebas text-white">Upload New Reel</DialogTitle>
             <DialogDescription className="text-white/80">

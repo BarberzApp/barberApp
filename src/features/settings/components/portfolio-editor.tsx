@@ -164,7 +164,7 @@ export function PortfolioEditor({ initialItems, open, onClose, onSave }: Portfol
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+      <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-3xl font-bebas text-white">Edit Portfolio</DialogTitle>
           <DialogDescription className="text-white/80">
@@ -220,7 +220,7 @@ export function PortfolioEditor({ initialItems, open, onClose, onSave }: Portfol
         </div>
         <div className="flex justify-end gap-4 mt-8">
           <Button variant="outline" onClick={onClose} disabled={isSaving} className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl font-semibold px-6 py-2">Cancel</Button>
-          <Button onClick={handleSave} disabled={isSaving || items.length === 0} className="bg-saffron text-primary font-semibold rounded-xl px-8 py-2 hover:bg-saffron/90">
+          <Button onClick={handleSave} disabled={isSaving} className="bg-saffron text-primary font-semibold rounded-xl px-8 py-2 hover:bg-saffron/90">
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

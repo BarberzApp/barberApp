@@ -79,81 +79,82 @@ export function CalendarWeekView({ date, events, onEventClick }: CalendarWeekVie
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="grid grid-cols-[60px_repeat(7,1fr)]">
-        {/* Header with days */}
-        <div className="sticky top-0 z-10 bg-background border-b"></div>
-        {weekDays.map((day, index) => (
-          <div
-            key={index}
-            className={cn(
-              "sticky top-0 z-10 text-center py-2 border-b border-r font-medium",
-              isToday(day) && "bg-muted",
-            )}
-          >
-            <div className="text-xs text-muted-foreground">{day.toLocaleDateString("en-US", { weekday: "short" })}</div>
-            <div
-              className={cn(
-                "text-sm mt-1 h-6 w-6 mx-auto flex items-center justify-center rounded-full",
-                isToday(day) && "bg-barber-500 text-white",
-              )}
-            >
-              {day.getDate()}
+      <div className="sm:overflow-x-visible overflow-x-auto">
+        {/* Modern week header */}
+        <div className="flex w-full min-w-[700px] mb-2">
+          {weekDays.map((day, index) => (
+            <div key={index} className="flex-1 flex flex-col items-center gap-1">
+              <span className="text-xs font-semibold text-saffron/80 tracking-wide uppercase">
+                {day.toLocaleDateString("en-US", { weekday: "short" })}
+              </span>
+              <span
+                className={cn(
+                  "text-2xl font-bold flex items-center justify-center w-10 h-10",
+                  isToday(day)
+                    ? "bg-saffron text-primary rounded-full shadow-lg border-2 border-saffron/60"
+                    : "text-white"
+                )}
+              >
+                {day.getDate()}
+              </span>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        {/* Week grid below (unchanged) */}
+        <div className="grid grid-cols-[60px_repeat(7,1fr)] min-w-[900px]">
+          {/* Time grid */}
+          {hours.map((hour) => (
+            <React.Fragment key={hour}>
+              {/* Hour label */}
+              <div className="border-b border-r p-2 text-xs text-right pr-2 sticky left-0 bg-background">
+                {formatHour(hour)}
+              </div>
 
-        {/* Time grid */}
-        {hours.map((hour) => (
-          <React.Fragment key={hour}>
-            {/* Hour label */}
-            <div className="border-b border-r p-2 text-xs text-right pr-2 sticky left-0 bg-background">
-              {formatHour(hour)}
-            </div>
+              {/* Day columns */}
+              {weekDays.map((day, dayIndex) => {
+                const hourEvents = getEventsForDayAndHour(day, hour)
 
-            {/* Day columns */}
-            {weekDays.map((day, dayIndex) => {
-              const hourEvents = getEventsForDayAndHour(day, hour)
+                return (
+                  <div
+                    key={`${hour}-${dayIndex}`}
+                    className={cn("border-b border-r min-h-[60px] relative", isToday(day) && "bg-muted/30")}
+                  >
+                    {hourEvents.map((event) => {
+                      const startTime = new Date(event.start)
+                      const endTime = new Date(event.end)
+                      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+                      const heightPercentage = Math.min(100, (durationMinutes / 60) * 100)
+                      const offsetMinutes = startTime.getMinutes()
+                      const topPercentage = (offsetMinutes / 60) * 100
 
-              return (
-                <div
-                  key={`${hour}-${dayIndex}`}
-                  className={cn("border-b border-r min-h-[60px] relative", isToday(day) && "bg-muted/30")}
-                >
-                  {hourEvents.map((event) => {
-                    const startTime = new Date(event.start)
-                    const endTime = new Date(event.end)
-                    const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
-                    const heightPercentage = Math.min(100, (durationMinutes / 60) * 100)
-                    const offsetMinutes = startTime.getMinutes()
-                    const topPercentage = (offsetMinutes / 60) * 100
-
-                    return (
-                      <div
-                        key={event.id}
-                        className={cn(
-                          "absolute left-0 right-0 mx-1 px-2 py-1 rounded text-xs overflow-hidden cursor-pointer",
-                          getEventColor(event.status),
-                        )}
-                        style={{
-                          top: `${topPercentage}%`,
-                          height: `${heightPercentage}%`,
-                          maxHeight: "calc(100% - 4px)",
-                        }}
-                        onClick={() => onEventClick(event)}
-                      >
-                        <div className="font-medium truncate">{event.title}</div>
-                        <div className="truncate">
-                          {startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
-                          {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      return (
+                        <div
+                          key={event.id}
+                          className={cn(
+                            "absolute left-0 right-0 mx-1 px-2 py-1 rounded text-xs overflow-hidden cursor-pointer",
+                            getEventColor(event.status),
+                          )}
+                          style={{
+                            top: `${topPercentage}%`,
+                            height: `${heightPercentage}%`,
+                            maxHeight: "calc(100% - 4px)",
+                          }}
+                          onClick={() => onEventClick(event)}
+                        >
+                          <div className="font-medium truncate">{event.title}</div>
+                          <div className="truncate">
+                            {startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
+                            {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </React.Fragment>
-        ))}
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter } from "@/shared/components/ui/card"
 import { Button } from "@/shared/components/ui/button"
 import { Badge } from "@/shared/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
-import { MapPin, Star, Clock, MessageSquare, Briefcase, Info, Heart, Calendar, DollarSign, Scissors, TrendingUp, Phone, Mail, Globe } from "lucide-react"
+import { MapPin, Star, Clock, MessageSquare, Briefcase, Info, Calendar, DollarSign, Scissors, TrendingUp, Phone, Mail, Globe } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip"
 import { motion } from "framer-motion"
 import Link from "next/link"
@@ -22,21 +22,6 @@ interface BarberCardProps {
 export function BarberCard({ barber, className }: BarberCardProps) {
   const { user } = useAuth()
   const router = useRouter()
-  const { addToFavorites, removeFromFavorites } = useAuth()
-  const isFavorite = user?.favorites?.includes(barber.id)
-
-  const handleFavorite = async () => {
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
-    if (isFavorite) {
-      await removeFromFavorites(barber.id)
-    } else {
-      await addToFavorites(barber.id)
-    }
-  }
 
   const getPriceRangeColor = (priceRange?: string) => {
     switch (priceRange) {
@@ -70,7 +55,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
         className="group"
       >
         <Card className={`overflow-hidden h-full border border-white/10 bg-darkpurple/90 shadow-2xl backdrop-blur-xl hover:border-saffron/30 transition-all duration-300 group-hover:shadow-saffron/20 ${className || ''}`}>
-          <CardContent className="p-0">
+          <CardContent className="p-0 pb-8 sm:pb-0">
             <div className="relative">
               {/* Hero Section with Avatar */}
               <div className="relative h-48 bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 flex items-center justify-center overflow-hidden">
@@ -124,18 +109,10 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                 )}
               </div>
               
-              {/* Favorite button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-3 right-3 bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-white/20 rounded-full transition-all duration-200"
-                onClick={handleFavorite}
-              >
-                <Heart className={`h-4 w-4 transition-colors ${isFavorite ? 'fill-red-500 text-red-500' : 'text-white/60 hover:text-red-400'}`} />
-              </Button>
+              {/* Favorite button removed */}
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 flex flex-col h-full">
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -224,7 +201,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-2 mt-10 sm:mb-0 ">
                 <Button
                   asChild
                   className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"

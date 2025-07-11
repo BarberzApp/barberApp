@@ -108,15 +108,14 @@ export function ClientProfile({ user }: ClientProfileProps) {
           Welcome back, <span className="text-saffron">{user.name}</span>
         </h1>
         <p className="text-xl text-white/80 max-w-2xl mx-auto">
-          Manage your bookings, favorites, and profile settings all in one place.
+          Manage your bookings and profile settings all in one place.
         </p>
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 bg-darkpurple/90 backdrop-blur-sm border border-white/10">
+        <TabsList className="grid w-full grid-cols-3 mb-8 bg-darkpurple/90 backdrop-blur-sm border border-white/10">
           <TabsTrigger value="overview" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Overview</TabsTrigger>
           <TabsTrigger value="bookings" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Bookings</TabsTrigger>
-          <TabsTrigger value="favorites" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Favorites</TabsTrigger>
           <TabsTrigger value="settings" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Settings</TabsTrigger>
         </TabsList>
 
@@ -300,17 +299,7 @@ export function ClientProfile({ user }: ClientProfileProps) {
         </Card>
       </TabsContent>
 
-      <TabsContent value="favorites">
-        <Card>
-          <CardHeader>
-            <CardTitle>Favorite Barbers</CardTitle>
-            <CardDescription>Barbers you've saved as favorites</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Implementation of favorites section */}
-          </CardContent>
-        </Card>
-      </TabsContent>
+      {/* Favorites tab removed */}
 
       <TabsContent value="settings">
         <Card>

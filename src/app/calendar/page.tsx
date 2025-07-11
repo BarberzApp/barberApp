@@ -175,7 +175,7 @@ export default function BarberCalendar() {
       box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
     }
     .barber-calendar .fc-button-active {
-      background: linear-gradient(135deg, #ffc107, #ff8c00) !important;
+      background: #ffc107 !important;
       color: white !important;
       box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
     }
@@ -191,6 +191,43 @@ export default function BarberCalendar() {
       font-size: 0.9rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+    .barber-calendar .fc-col-header-cell .fc-col-header-cell-cushion {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.1rem;
+      text-decoration: none !important;
+      color: white !important;
+      font-weight: 600;
+      font-size: 1.1rem;
+      line-height: 1.1;
+      height: 3.2rem;
+      min-width: 2.5rem;
+      padding: 0.2rem 0;
+    }
+    /* Custom weekday initial and day number stacked */
+    .barber-calendar .fc-col-header-cell .fc-col-header-cell-cushion > span {
+      display: block;
+      width: 100%;
+      text-align: center;
+      line-height: 1.1;
+    }
+    .barber-calendar .fc-col-header-cell .fc-col-header-cell-cushion .weekday-initial {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #ffc107;
+      margin-bottom: 0.1rem;
+      display: block;
+    }
+    .barber-calendar .fc-col-header-cell .fc-col-header-cell-cushion .day-number {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: white;
+      line-height: 1.1;
+      display: block;
     }
     .barber-calendar .fc-timegrid .fc-scrollgrid .fc-scrollgrid-section-header .fc-col-header-cell:first-child {
       border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -242,7 +279,7 @@ export default function BarberCalendar() {
     .barber-calendar .fc-event {
       border-radius: 12px !important;
       border: 2px solid rgba(255, 193, 7, 0.5) !important;
-      background: linear-gradient(135deg, #ffc107, #ff8c00) !important;
+      background: #ffc107 !important;
       color: white !important;
       font-weight: 600;
       cursor: pointer;
@@ -258,6 +295,7 @@ export default function BarberCalendar() {
       transform: translateY(-3px) scale(1.02);
       box-shadow: 0 12px 35px rgba(255, 193, 7, 0.4);
       border-color: rgba(255, 193, 7, 0.8) !important;
+      background: #ff8c00 !important;
     }
     .barber-calendar .fc-scrollgrid {
       border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -286,27 +324,99 @@ export default function BarberCalendar() {
     }
     /* Enhanced more link */
     .barber-calendar .fc-more-link {
-      background: linear-gradient(90deg, #ffc107, #ff8c00);
+      background: #ffc107;
       color: white !important;
       font-weight: bold;
       border-radius: 9999px;
       padding: 0.25em 1em;
       box-shadow: 0 2px 8px rgba(255,193,7,0.25);
       border: none;
-      font-size: 0.95em;
+      font-size: 1.1em;
       letter-spacing: 0.5px;
       transition: box-shadow 0.2s, background 0.2s;
-      display: inline-block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin-top: 0.25em;
       margin-bottom: 0.25em;
       cursor: pointer;
+      text-align: center;
+      min-width: 2.2em;
+    }
+    .barber-calendar .fc-more-link::after {
+      content: "" !important;
+      display: none !important;
     }
     .barber-calendar .fc-more-link:hover {
-      background: linear-gradient(90deg, #ff8c00, #ffc107);
+      background: #ff8c00;
       box-shadow: 0 4px 16px rgba(255,193,7,0.35);
       color: white !important;
       text-decoration: none;
       outline: none;
+    }
+    .barber-calendar .fc-popover, .barber-calendar .fc-more-popover {
+      background: rgba(38,43,46,0.95) !important;
+      border: 1.5px solid var(--saffron) !important;
+      border-radius: 1rem !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25) !important;
+      backdrop-filter: blur(12px) !important;
+      color: white !important;
+      padding: 0.5rem 0.75rem !important;
+    }
+    .barber-calendar .fc-popover .fc-popover-header, .barber-calendar .fc-more-popover .fc-popover-header {
+      background: transparent !important;
+      border-bottom: 1px solid var(--saffron) !important;
+      color: var(--saffron) !important;
+      font-weight: 600;
+      font-size: 1rem;
+      border-radius: 1rem 1rem 0 0 !important;
+    }
+    .barber-calendar .fc-popover .fc-popover-close, .barber-calendar .fc-more-popover .fc-popover-close {
+      color: var(--saffron) !important;
+      opacity: 0.8;
+      font-size: 1.2rem;
+      transition: opacity 0.2s;
+    }
+    .barber-calendar .fc-popover .fc-popover-close:hover, .barber-calendar .fc-more-popover .fc-popover-close:hover {
+      opacity: 1;
+    }
+    .barber-calendar .fc-popover .fc-daygrid-event-harness .fc-event, .barber-calendar .fc-more-popover .fc-daygrid-event-harness .fc-event {
+      background: #ffc107 !important;
+      color: white !important;
+      border-radius: 0.75rem !important;
+      border: none !important;
+      box-shadow: 0 2px 8px rgba(38,43,46,0.15);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 1rem;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+    .barber-calendar .fc-popover .fc-daygrid-event-harness .fc-event:hover, .barber-calendar .fc-more-popover .fc-daygrid-event-harness .fc-event:hover {
+      box-shadow: 0 4px 16px rgba(255,193,7,0.25);
+      background: #ff8c00 !important;
+    }
+    .barber-calendar .fc-popover .fc-daygrid-event-harness .fc-event .text-saffron, .barber-calendar .fc-more-popover .fc-daygrid-event-harness .fc-event .text-saffron {
+      color: var(--saffron) !important;
+    }
+    /* Today button and view toggles */
+    .barber-calendar .calendar-today-btn,
+    .barber-calendar .calendar-view-toggle-active {
+      background: #ffc107 !important;
+      color: white !important;
+      border: none !important;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(255,193,7,0.25);
+    }
+    .barber-calendar .calendar-today-btn:hover,
+    .barber-calendar .calendar-view-toggle-active:hover {
+      background: #ff8c00 !important;
+    }
+    /* Icon backgrounds */
+    .barber-calendar .calendar-header-icon {
+      background: #ffc107 !important;
+      color: white !important;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px rgba(255,193,7,0.15);
     }
   `;
 
@@ -372,7 +482,7 @@ export default function BarberCalendar() {
                 <Button 
                   variant="ghost" 
                   onClick={() => calendarRef.current?.getApi().today()}
-                  className="h-12 bg-gradient-to-r from-saffron to-orange-500 text-white border-0 shadow-lg font-bold px-8 hover:from-saffron/90 hover:to-orange-500/90 transition-all duration-200 hover:scale-105"
+                  className="h-12 bg-saffron text-white border-0 shadow-lg font-bold px-8 hover:from-saffron/90 hover:to-orange-500/90 transition-all duration-200 hover:scale-105"
                 >
                   Today
                 </Button>
@@ -399,7 +509,7 @@ export default function BarberCalendar() {
               <Button 
                 variant="ghost" 
                 onClick={() => calendarRef.current?.getApi().today()}
-                className="h-12 bg-gradient-to-r from-saffron to-orange-500 text-white border-0 shadow-lg font-bold px-8 hover:from-saffron/90 hover:to-orange-500/90 transition-all duration-200 hover:scale-105"
+                className="h-12 bg-saffron text-white border-0 shadow-lg font-bold px-8 hover:from-saffron/90 hover:to-orange-500/90 transition-all duration-200 hover:scale-105"
               >
                 Today
               </Button>
@@ -425,7 +535,7 @@ export default function BarberCalendar() {
             className={cn(
                   "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
               view === 'dayGridMonth' 
-                    ? 'bg-gradient-to-r from-saffron to-orange-500 text-white border-saffron shadow-lg scale-105' 
+                    ? 'bg-saffron text-white border-saffron shadow-lg scale-105' 
                     : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
             )}
           >
@@ -437,7 +547,7 @@ export default function BarberCalendar() {
             className={cn(
                   "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
               view === 'timeGridWeek' 
-                    ? 'bg-gradient-to-r from-saffron to-orange-500 text-white border-saffron shadow-lg scale-105' 
+                    ? 'bg-saffron text-white border-saffron shadow-lg scale-105' 
                     : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
             )}
           >
@@ -449,7 +559,7 @@ export default function BarberCalendar() {
             className={cn(
                   "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
               view === 'timeGridDay' 
-                    ? 'bg-gradient-to-r from-saffron to-orange-500 text-white border-saffron shadow-lg scale-105' 
+                    ? 'bg-saffron text-white border-saffron shadow-lg scale-105' 
                     : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
             )}
           >
@@ -523,6 +633,17 @@ export default function BarberCalendar() {
                       minute: '2-digit',
                       meridiem: 'short',
                       omitZeroMinute: true
+                    }}
+                    dayHeaderContent={(args) => {
+                      const date = args.date;
+                      const weekdayInitial = date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+                      const dayNumber = date.getDate();
+                      return (
+                        <span>
+                          <span className="weekday-initial">{weekdayInitial}</span>
+                          <span className="day-number">{dayNumber}</span>
+                        </span>
+                      );
                     }}
                     eventContent={(eventInfo) => {
                       const { serviceName, clientName } = eventInfo.event.extendedProps || {};

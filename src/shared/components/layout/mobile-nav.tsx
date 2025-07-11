@@ -4,7 +4,7 @@ import * as React from "react"
 import { useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, Heart, DollarSign, Users } from "lucide-react"
+import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut } from "lucide-react"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { cn } from "@/shared/lib/utils"
 
@@ -12,7 +12,7 @@ export function MobileNav() {
   const router = useRouter()
   const [pathname, setPathname] = React.useState("")
   const [mounted, setMounted] = React.useState(false)
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
 
   // Get current pathname safely and set mounted immediately
   React.useEffect(() => {
@@ -46,7 +46,6 @@ export function MobileNav() {
       case "client":
         return [
           { name: "Bookings", href: "/calendar", icon: Calendar },
-          { name: "Favorites", href: "/favorites", icon: Heart },
         ]
       case "barber":
         return [
@@ -59,6 +58,16 @@ export function MobileNav() {
   }, [user?.role])
 
   const allNavItems = [...baseNavItems, ...roleSpecificNavItems, { name: "Settings", href: "/settings", icon: SettingsIcon }]
+
+  // Handler for logout
+  const handleLogout = async () => {
+    try {
+      await logout()
+      window.location.href = "/"
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
@@ -73,7 +82,6 @@ export function MobileNav() {
             (item.href === "/settings" && pathname.startsWith("/settings")) ||
             (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
             (item.href === "/reels" && pathname.startsWith("/reels")) ||
-            (item.href === "/favorites" && pathname.startsWith("/favorites")) ||
             (item.href === "/browse" && pathname.startsWith("/browse"))
           
           return (
@@ -107,6 +115,20 @@ export function MobileNav() {
             </Link>
           )
         })}
+        {/* Logout button */}
+        {user && (
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-200 min-w-[60px] text-white/70 hover:text-white hover:bg-white/10"
+            )}
+            aria-label="Logout"
+            type="button"
+          >
+            <LogOut className="h-5 w-5 mb-1" />
+            <span className="text-xs font-medium">Logout</span>
+          </button>
+        )}
       </div>
     </div>
   )

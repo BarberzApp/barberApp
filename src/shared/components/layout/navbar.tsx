@@ -23,7 +23,6 @@ import {
   Calendar,
   Scissors,
   Search,
-  Heart,
   UserCircle,
   Video,
 } from "lucide-react"
@@ -83,11 +82,6 @@ export function Navbar() {
         href: "/calendar",
         icon: Calendar,
         label: "Book",
-      },
-      {
-        href: "/favorites",
-        icon: Heart,
-        label: "Favorites",
       },
     ]
   }
