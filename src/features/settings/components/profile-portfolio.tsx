@@ -38,6 +38,7 @@ interface BarberProfile {
   twitter?: string;
   facebook?: string;
   portfolio?: string[];
+  featured_portfolio?: string; // Added for featured portfolio
 }
 
 export default function ProfilePortfolio() {
@@ -963,10 +964,44 @@ export default function ProfilePortfolio() {
                         <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><Heart className="h-3 w-3" />{item.likes}</span>
                         <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><MessageCircle className="h-3 w-3" />{item.comments_count || 0}</span>
                       </div>
+                      {/* Action buttons on hover */}
+                      <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        {/* Feature toggle button */}
+                        <button
+                          className={`rounded-full p-2 text-xs font-semibold shadow transition-colors ${
+                            item.is_featured 
+                              ? 'bg-saffron text-primary hover:bg-saffron/90' 
+                              : 'bg-white/20 text-white hover:bg-white/30'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleFeatured(item.id, item.is_featured);
+                          }}
+                          type="button"
+                          title={item.is_featured ? 'Unfeature this reel' : 'Feature this reel'}
+                        >
+                          <Star className={`h-4 w-4 ${item.is_featured ? 'fill-current' : ''}`} />
+                        </button>
+                        {/* Edit button */}
+                        <button
+                          className="bg-saffron text-primary rounded-full px-3 py-2 text-xs font-semibold shadow hover:bg-saffron/90 transition-colors"
+                          onClick={() => handleEditReel(item)}
+                          type="button"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                     <div className="p-3 flex items-center justify-between">
-                      <div>
-                        <h5 className="font-semibold text-white text-sm mb-1 line-clamp-1">{item.title}</h5>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h5 className="font-semibold text-white text-sm line-clamp-1">{item.title}</h5>
+                          {item.is_featured && (
+                            <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30 text-xs">
+                              Featured
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-white/60 text-xs line-clamp-2 mb-2">{item.description}</p>
                       </div>
                       <button
@@ -1041,6 +1076,24 @@ export default function ProfilePortfolio() {
                 </span>
               </>
             )}
+            <button
+              className="absolute top-2 right-2 bg-white/90 hover:bg-saffron text-yellow-500 hover:text-primary rounded-full p-1.5 shadow-lg focus:outline-none border-2 border-white/40 transition-colors opacity-0 group-hover:opacity-100 z-10"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!user) return;
+                // Update featured status in DB and UI
+                await supabase
+                  .from('barbers')
+                  .update({ featured_portfolio: item.url })
+                  .eq('user_id', user.id);
+                // Optionally, update local state to reflect featured
+                setPortfolio((prev) => prev.map((p) => ({ ...p, is_featured: p.url === item.url })));
+                toast({ title: 'Featured', description: 'This item is now featured!' });
+              }}
+              type="button"
+            >
+              <Star className={`h-5 w-5 ${barberProfile?.featured_portfolio === item.url ? 'fill-yellow-400 text-yellow-500' : ''}`} />
+            </button>
           </div>
         ))}
       </div>
@@ -1211,7 +1264,7 @@ export default function ProfilePortfolio() {
           });
         }
       }}>
-        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bebas text-white">Edit Reel</DialogTitle>
             <DialogDescription className="text-white/80">
@@ -1270,6 +1323,51 @@ export default function ProfilePortfolio() {
               <p className="text-white/40 text-xs mt-1">Example: fade, tutorial, classic</p>
             </div>
 
+            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={editingReel?.is_featured || false}
+                  onCheckedChange={async (checked) => {
+                    if (!editingReel) return;
+                    try {
+                      const { error } = await supabase
+                        .from('reels')
+                        .update({ is_featured: checked })
+                        .eq('id', editingReel.id);
+                      
+                      if (error) throw error;
+                      
+                      setEditingReel((prev: any) => prev ? { ...prev, is_featured: checked } : prev);
+                      // Refresh reels list
+                      if (barberProfile) await fetchUserReels(barberProfile.id);
+                      
+                      toast({
+                        title: 'Success',
+                        description: `Reel ${checked ? 'featured' : 'unfeatured'} successfully!`,
+                      });
+                    } catch (error) {
+                      console.error('Error updating featured status:', error);
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to update featured status. Please try again.',
+                        variant: 'destructive',
+                      });
+                    }
+                  }}
+                  id="feature-reel-toggle"
+                  className="data-[state=checked]:bg-saffron data-[state=unchecked]:bg-white/20 border-white/30"
+                />
+                <Label htmlFor="feature-reel-toggle" className="text-white font-medium flex items-center gap-2">
+                  <Star className="h-4 w-4 text-saffron" />
+                  Feature this reel
+                </Label>
+              </div>
+              {editingReel?.is_featured && (
+                <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30">
+                  Currently Featured
+                </Badge>
+              )}
+            </div>
 
 
             {/* Action Buttons */}
@@ -1483,28 +1581,69 @@ export default function ProfilePortfolio() {
           {statsDialogReel && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-white">Reel Stats</DialogTitle>
-                <DialogDescription className="text-white/80">
-                  {statsDialogReel.title}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="p-6">
-                <div className="flex items-center gap-6 mb-4">
-                  <span className="flex items-center gap-1 text-white text-sm"><Eye className="h-4 w-4" />{statsDialogReel.views} Views</span>
-                  <span className="flex items-center gap-1 text-white text-sm"><Heart className="h-4 w-4" />{statsDialogReel.likes} Likes</span>
-                  <span className="flex items-center gap-1 text-white text-sm"><MessageCircle className="h-4 w-4" />{statsDialogReel.comments_count || 0} Comments</span>
+                <div className="flex flex-col items-center justify-center text-center py-2">
+                  <span className="text-2xl font-extrabold text-white tracking-wide mb-1">{statsDialogReel.title || 'Reel Stats'}</span>
+                  {statsDialogReel.id && (
+                    <span className="text-xs text-white/40">ID: {statsDialogReel.id}</span>
+                  )}
                 </div>
+                <div className="w-full h-px bg-white/10 my-2" />
+              </DialogHeader>
+              <div className="p-6 space-y-4">
+                {/* Video Preview */}
+                <div className="rounded-xl overflow-hidden aspect-video bg-black/40 mb-2">
+                  <video
+                    src={statsDialogReel.url}
+                    className="w-full h-full object-cover"
+                    controls
+                    poster=""
+                    onPlay={async () => {
+                      // Increment view count in DB and update UI
+                      await supabase
+                        .from('reels')
+                        .update({ views: (statsDialogReel.views || 0) + 1 })
+                        .eq('id', statsDialogReel.id);
+                      setStatsDialogReel((prev: any) => prev ? { ...prev, views: (prev.views || 0) + 1 } : prev);
+                    }}
+                  />
+                </div>
+                {/* Posted Date */}
+                <div className="text-xs text-white/60 mb-2">
+                  Posted: {statsDialogReel.created_at ? new Date(statsDialogReel.created_at).toLocaleDateString() : 'Unknown'}
+                </div>
+                {/* Stats Row */}
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <span className="flex flex-col items-center text-white"><Eye className="h-6 w-6 text-saffron mb-1" /><span className="text-lg font-bold">{statsDialogReel.views}</span><span className="text-xs text-white/60">Views</span></span>
+                  <button
+                    className="flex flex-col items-center text-white focus:outline-none"
+                    onClick={async () => {
+                      await supabase
+                        .from('reels')
+                        .update({ likes: (statsDialogReel.likes || 0) + 1 })
+                        .eq('id', statsDialogReel.id);
+                      setStatsDialogReel((prev: any) => prev ? { ...prev, likes: (prev.likes || 0) + 1 } : prev);
+                    }}
+                  >
+                    <Heart className="h-6 w-6 text-red-400 mb-1" />
+                    <span className="text-lg font-bold">{statsDialogReel.likes}</span>
+                    <span className="text-xs text-white/60">Likes</span>
+                  </button>
+                  <span className="flex flex-col items-center text-white"><MessageCircle className="h-6 w-6 text-blue-400 mb-1" /><span className="text-lg font-bold">{statsDialogReel.comments_count || 0}</span><span className="text-xs text-white/60">Comments</span></span>
+                </div>
+                {/* Comments Section */}
                 <div className="bg-white/5 rounded-xl p-4 max-h-60 overflow-y-auto">
                   <h4 className="text-white font-semibold mb-2 text-sm">Comments</h4>
                   {commentsLoading ? (
-                    <div className="text-white/60 text-sm">Loading comments...</div>
+                    <div className="flex items-center gap-2 text-white/60 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading comments...</div>
                   ) : comments.length === 0 ? (
                     <div className="text-white/60 text-sm">No comments yet.</div>
                   ) : (
                     <ul className="space-y-3">
                       {comments.map((c) => (
                         <li key={c.id} className="text-white/90 text-sm border-b border-white/10 pb-2">
-                          <span className="font-semibold text-saffron">{c.user_name || 'User'}:</span> {c.comment}
+                          <span className="font-semibold text-saffron">{c.user_name || 'User'}</span>
+                          <span className="text-white/50 text-xs ml-2">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</span>
+                          <div>{c.comment}</div>
                         </li>
                       ))}
                     </ul>
