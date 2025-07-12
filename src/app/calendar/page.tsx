@@ -3,15 +3,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, DollarSign } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, DollarSign, Grid, Calendar, Scissors, Mail, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/hooks/use-auth-zustand';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
+import { EnhancedCalendar } from '@/shared/components/calendar/enhanced-calendar';
 
 interface CalendarEvent {
   id: string;
@@ -92,8 +94,8 @@ export default function BarberCalendar() {
           title: `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`,
           start: startDate.toISOString(),
           end: endDate.toISOString(),
-          backgroundColor: '#8b5cf6',
-          borderColor: '#7c3aed',
+          backgroundColor: '#ffc107',
+          borderColor: '#ff8c00',
           textColor: '#FFFFFF',
           extendedProps: {
             status: booking.status,
@@ -445,357 +447,43 @@ export default function BarberCalendar() {
     });
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-darkpurple via-background to-darkpurple/80">
-      {mounted && <style>{customStyles}</style>}
-      <div className="container mx-auto max-w-7xl space-y-8 p-6">
-        {/* Enhanced Header */}
-        <div className="relative bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-3xl p-4 sm:p-8 backdrop-blur-xl shadow-2xl overflow-hidden w-full -mx-4 sm:mx-0">
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-saffron/5 rounded-full -translate-y-16 translate-x-16"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-500/5 rounded-full translate-y-12 -translate-x-12"></div>
-          
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between">
-            <div className="space-y-3 w-full">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-saffron to-orange-500 rounded-2xl shadow-lg">
-                  <CalendarIcon className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl sm:text-5xl font-bebas tracking-wide text-white drop-shadow-lg text-left">Calendar</h1>
-                  <p className="text-saffron/90 font-medium text-base sm:text-lg text-left">Manage your appointments and schedule</p>
-                </div>
-              </div>
-              {/* Quick stats */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6 mt-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-saffron rounded-full animate-pulse"></div>
-                  <span className="text-white/80 font-medium">{events.length} Appointments</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                  <span className="text-white/80 font-medium">Active Schedule</span>
-                </div>
-              </div>
-              {/* Navigation buttons for mobile */}
-              <div className="flex sm:hidden justify-center mt-4 gap-3 w-full">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => calendarRef.current?.getApi().prev()}
-                  className="h-12 w-12 bg-white/10 hover:bg-saffron/20 border border-white/20 text-saffron hover:text-white shadow-lg transition-all duration-200 hover:scale-105"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => calendarRef.current?.getApi().today()}
-                  className="h-12 bg-saffron text-white border-0 shadow-lg font-bold px-8 hover:from-saffron/90 hover:to-orange-500/90 transition-all duration-200 hover:scale-105"
-                >
-                  Today
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => calendarRef.current?.getApi().next()}
-                  className="h-12 w-12 bg-white/10 hover:bg-saffron/20 border border-white/20 text-saffron hover:text-white shadow-lg transition-all duration-200 hover:scale-105"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-            {/* Navigation buttons for desktop */}
-            <div className="hidden sm:flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => calendarRef.current?.getApi().prev()}
-                className="h-12 w-12 bg-white/10 hover:bg-saffron/20 border border-white/20 text-saffron hover:text-white shadow-lg transition-all duration-200 hover:scale-105"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={() => calendarRef.current?.getApi().today()}
-                className="h-12 bg-saffron text-white border-0 shadow-lg font-bold px-8 hover:from-saffron/90 hover:to-orange-500/90 transition-all duration-200 hover:scale-105"
-              >
-                Today
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => calendarRef.current?.getApi().next()}
-                className="h-12 w-12 bg-white/10 hover:bg-saffron/20 border border-white/20 text-saffron hover:text-white shadow-lg transition-all duration-200 hover:scale-105"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced View Toggle Buttons */}
-        <div className="flex items-center justify-center">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-2 shadow-xl">
-            <div className="flex items-center gap-1">
-          <Button
-                variant="ghost"
-            onClick={() => handleViewChange('dayGridMonth')}
-            className={cn(
-                  "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
-              view === 'dayGridMonth' 
-                    ? 'bg-saffron text-white border-saffron shadow-lg scale-105' 
-                    : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
-            )}
-          >
-            Month
-          </Button>
-          <Button
-                variant="ghost"
-            onClick={() => handleViewChange('timeGridWeek')}
-            className={cn(
-                  "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
-              view === 'timeGridWeek' 
-                    ? 'bg-saffron text-white border-saffron shadow-lg scale-105' 
-                    : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
-            )}
-          >
-            Week
-          </Button>
-          <Button
-                variant="ghost"
-            onClick={() => handleViewChange('timeGridDay')}
-            className={cn(
-                  "rounded-xl transition-all px-6 py-3 font-semibold shadow-md border-2",
-              view === 'timeGridDay' 
-                    ? 'bg-saffron text-white border-saffron shadow-lg scale-105' 
-                    : 'hover:bg-saffron/20 border-white/20 text-saffron hover:text-white'
-            )}
-          >
-            Day
-          </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Legend */}
-        <div
-  className="
-    flex flex-col sm:flex-row
-    items-start sm:items-center
-    gap-2 sm:gap-4
-    w-full max-w-4xl mx-auto mb-4
-    py-2 px-4
-    bg-white/5 rounded-xl
-    shadow
-  "
->
-  <div className="flex items-center gap-2">
-    <span className="w-3 h-3 rounded-full bg-orange-500 inline-block"></span>
-    <span className="text-white/90 font-medium">Appointments</span>
-  </div>
-  <div className="flex items-center gap-2">
-    <span className="w-3 h-3 rounded-full bg-green-400 inline-block"></span>
-    <span className="text-white/80 font-medium">Confirmed</span>
-  </div>
-  <div className="flex items-center gap-2">
-    <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>
-    <span className="text-white/80 font-medium">Pending</span>
-  </div>
-</div>
-
-        {/* Enhanced Calendar Container */}
-        <div className="relative w-full -mx-4 sm:mx-0">
-          {/* Calendar background decoration */}
-          <div className="absolute inset-0 bg-gradient-to-br from-saffron/5 to-orange-500/5 rounded-3xl blur-3xl"></div>
-          
-          <Card className="relative overflow-hidden bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl ring-1 ring-white/30 w-full">
-            <CardContent className="p-0 w-full">
-              <div className="barber-calendar w-full">
-                <div className="w-full" style={{ height: 700 }}>
-                  <FullCalendar
-                    ref={calendarRef}
-                    plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-                    initialView={view}
-                    headerToolbar={false}
-                    height={700}
-                    slotMinTime={slotMinTime}
-                    slotMaxTime={slotMaxTime}
-                    allDaySlot={false}
-                    slotDuration="01:00:00"
-                    events={events}
-                    editable={false}
-                    selectable={false}
-                    selectMirror={false}
-                    dayMaxEvents={true}
-                    weekends={true}
-                    nowIndicator={true}
-                    eventClick={handleEventClick}
-                    eventTimeFormat={{
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      meridiem: 'short',
-                      omitZeroMinute: true
-                    }}
-                    slotLabelFormat={{
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      meridiem: 'short',
-                      omitZeroMinute: true
-                    }}
-                    dayHeaderContent={(args) => {
-                      // Show three-letter weekday abbreviation for week view
-                      if (view === 'timeGridWeek') {
-                        const date = args.date;
-                        return date.toLocaleDateString('en-US', { weekday: 'short' });
-                      }
-                      // Default: show FullCalendar's normal header for month view
-                      return args.text;
-                    }}
-                    eventContent={(eventInfo) => {
-                      const { serviceName, clientName } = eventInfo.event.extendedProps || {};
-                      return (
-                        <>
-                          <div className="font-bold text-base text-white truncate drop-shadow">
-                            {serviceName || eventInfo.event.title}
-                          </div>
-                          <div className="text-xs text-white/80 font-medium truncate flex items-center gap-1">
-                            <User className="inline-block h-3 w-3 mr-1 text-saffron" />
-                            {clientName}
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-white/70 font-semibold mt-1">
-                            <Clock className="inline-block h-3 w-3 text-saffron" />
-                            {eventInfo.timeText}
-                          </div>
-                          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-white/20 to-transparent rounded-full"></div>
-                        </>
-                      );
-                    }}
-                    datesSet={(dateInfo) => {
-                      setView(dateInfo.view.type);
-                      if (calendarRef.current) {
-                        setCurrentDate(calendarRef.current.getApi().getDate());
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-saffron mx-auto"></div>
+          <p className="text-white mt-4 text-lg">Loading Calendar...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Enhanced Event Details Dialog */}
-      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="sm:max-w-lg bg-gradient-to-br from-white/10 to-white/5 border border-white/20 shadow-2xl rounded-3xl backdrop-blur-2xl ring-1 ring-white/30 overflow-hidden">
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-saffron/5 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-orange-500/5 rounded-full translate-y-8 -translate-x-8"></div>
-          
-          <DialogHeader className="relative">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-to-br from-saffron to-orange-500 rounded-xl shadow-lg">
-                <CalendarIcon className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-2xl font-bebas tracking-wide text-white drop-shadow">
-              Appointment Details
-            </DialogTitle>
-                <DialogDescription className="text-white/70">
-                  View detailed information about this appointment
-            </DialogDescription>
-              </div>
+  return (
+    <div className="min-h-screen bg-background">
+
+      <div className="relative z-10 container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+            <div className="p-2 sm:p-3 bg-saffron/20 rounded-xl">
+              <CalendarIcon className="h-6 w-6 sm:h-8 sm:w-8 text-saffron" />
             </div>
-          </DialogHeader>
-          
-          {selectedEvent && (
-            <div className="relative space-y-6">
-              {/* Service Header */}
-              <div className="bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-2xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-xl text-white">{selectedEvent.extendedProps.serviceName}</h3>
-                    <p className="text-saffron/90 font-medium">{selectedEvent.title}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-saffron">${selectedEvent.extendedProps.price}</div>
-                    <div className="text-white/60 text-sm">Service Price</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Appointment Details */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-saffron/20 rounded-lg">
-                  <User className="h-4 w-4 text-saffron" />
-                      </div>
-                      <span className="text-white font-semibold">Client Information</span>
-                    </div>
-                    <div className="text-white/90 font-medium text-lg">
-                      {selectedEvent.extendedProps.clientName}
-                      {selectedEvent.extendedProps.isGuest && (
-                        <span className="ml-2 px-2 py-1 bg-saffron/20 text-saffron text-xs rounded-full">Guest</span>
-                      )}
-                    </div>
-                </div>
-                  
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-saffron/20 rounded-lg">
-                  <Clock className="h-4 w-4 text-saffron" />
-                      </div>
-                      <span className="text-white font-semibold">Time & Date</span>
-                    </div>
-                    <div className="text-white/90 font-medium">
-                      {formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}
-                    </div>
-                    <div className="text-white/70 text-sm">
-                      {formatDate(new Date(selectedEvent.start))}
-                </div>
-                </div>
-                </div>
-                
-                {/* Status */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white font-semibold">Booking Status</span>
-                    <span className={cn(
-                      "px-4 py-2 rounded-full text-sm font-bold shadow-lg",
-                      selectedEvent.extendedProps.status === 'confirmed' 
-                        ? "bg-gradient-to-r from-green-400 to-green-500 text-white" 
-                        : "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white"
-                    )}>
-                      {selectedEvent.extendedProps.status.toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Guest Information */}
-              {selectedEvent.extendedProps.isGuest && (
-                <div className="bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-2xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-3 h-3 bg-saffron rounded-full animate-pulse"></div>
-                    <h4 className="font-bold text-saffron">Guest Information</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div className="bg-white/10 rounded-lg p-3">
-                      <div className="text-white/60 text-xs uppercase tracking-wider">Email</div>
-                      <div className="text-white font-medium">{selectedEvent.extendedProps.guestEmail}</div>
-                    </div>
-                    <div className="bg-white/10 rounded-lg p-3">
-                      <div className="text-white/60 text-xs uppercase tracking-wider">Phone</div>
-                      <div className="text-white font-medium">{selectedEvent.extendedProps.guestPhone}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div>
+              <h1 className="text-2xl sm:text-4xl font-bebas text-white tracking-wide">
+                Appointment Calendar
+              </h1>
+              <p className="text-white/70 text-sm sm:text-lg">
+                View your bookings and schedule
+              </p>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+
+        {/* Only show the EnhancedCalendar (Month View) */}
+        <EnhancedCalendar />
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: customStyles }} />
     </div>
   );
 } 

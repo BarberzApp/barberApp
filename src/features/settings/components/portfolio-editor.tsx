@@ -18,6 +18,7 @@ export type PortfolioItem = {
   type: 'image' | 'video'
   url: string
   file?: File
+  created_at?: string
 }
 
 interface PortfolioEditorProps {

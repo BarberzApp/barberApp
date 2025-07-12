@@ -67,11 +67,11 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                 </div>
                 
                 {/* Main Avatar */}
-                <Avatar className="h-24 w-24 border-4 border-white/20 shadow-2xl relative z-10">
+                <Avatar className="h-24 w-24 aspect-square border-4 border-white/20 shadow-2xl relative z-10 overflow-hidden">
                   {barber.image && barber.image !== "/placeholder.svg" ? (
-                    <AvatarImage src={barber.image} alt={barber.name} />
+                    <AvatarImage src={barber.image} alt={barber.name} className="object-cover w-full h-full aspect-square" />
                   ) : null}
-                  <AvatarFallback className="bg-saffron text-primary font-bold text-xl">
+                  <AvatarFallback className="bg-saffron text-primary font-bold text-xl w-full h-full flex items-center justify-center aspect-square">
                     {barber.name?.charAt(0) || "B"}
                   </AvatarFallback>
                 </Avatar>
@@ -206,7 +206,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                   asChild
                   className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"
                 >
-                  <Link href={`/book/${barber.id}`}>
+                  <Link href={`/book/${barber.id}`} className="flex items-center justify-center w-full h-full">
                     Book Now
                   </Link>
                 </Button>

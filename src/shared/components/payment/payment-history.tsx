@@ -162,7 +162,7 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-    }).format(amount / 100) // Convert from cents to dollars
+    }).format(amount) // Amount is already in dollars
   }
 
   const formatDate = (dateString: string) => {
@@ -289,7 +289,7 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
                 </div>
                 
                 <div className="text-right">
-                  <div className="text-lg font-bold text-white">{formatCurrency(payment.price * 100)}</div>
+                  <div className="text-lg font-bold text-white">{formatCurrency(payment.price)}</div>
                   <div className="text-sm text-saffron font-medium">
                     You earned: {formatCurrency(payment.barber_payout)}
                   </div>

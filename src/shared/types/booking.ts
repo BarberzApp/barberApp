@@ -8,6 +8,8 @@ export type Barber = {
   location?: string
 }
 
+import { ServiceAddon } from './addon'
+
 export interface Booking {
   id: string
   barber_id: string
@@ -20,6 +22,7 @@ export interface Booking {
   payment_intent_id: string
   platform_fee: number
   barber_payout: number
+  addon_total: number
   guest_name: string | null
   guest_email: string | null
   guest_phone: string | null
@@ -29,4 +32,5 @@ export interface Booking {
   barber?: any // Replace with proper barber type
   service?: any // Replace with proper service type
   client?: any // Replace with proper client type
+  addons?: ServiceAddon[]
 } 

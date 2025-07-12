@@ -49,7 +49,8 @@ export async function POST(request: Request) {
       guestEmail, 
       guestPhone, 
       clientId, 
-      paymentType 
+      paymentType,
+      addonIds = []
     } = body
 
     // Validate required fields
@@ -97,6 +98,39 @@ export async function POST(request: Request) {
     }
 
     const servicePrice = Math.round(Number(service.price) * 100) // Convert to cents
+    
+    // Get add-ons if any are selected
+    let addonTotal = 0
+    let addonItems: any[] = []
+    
+    if (addonIds && addonIds.length > 0) {
+      const { data: addons, error: addonsError } = await supabase
+        .from('service_addons')
+        .select('id, name, price')
+        .in('id', addonIds)
+        .eq('is_active', true)
+
+      if (addonsError) {
+        return NextResponse.json(
+          { error: 'Failed to fetch add-ons' },
+          { status: 500 }
+        )
+      }
+
+      addonTotal = addons.reduce((total, addon) => total + addon.price, 0)
+      addonItems = addons.map(addon => ({
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: addon.name,
+            description: "Additional service"
+          },
+          unit_amount: Math.round(addon.price * 100),
+        },
+        quantity: 1,
+      }))
+    }
+    
     let platformFee = 338 // $3.38 in cents
     let bocmShare = Math.round(platformFee * 0.60) // 60% of fee to BOCM
     let barberShare = platformFee - bocmShare // 40% of fee to barber
@@ -114,7 +148,7 @@ export async function POST(request: Request) {
     let transferAmount: number
 
     if (paymentType === 'fee') {
-      // Customer only pays the platform fee
+      // Customer only pays the platform fee (no add-ons in fee-only mode)
       totalAmount = platformFee
       transferAmount = barberShare // Barber gets 40% of fee (or 0 if developer)
       
@@ -132,9 +166,11 @@ export async function POST(request: Request) {
         }
       ]
     } else {
-      // Customer pays full amount (service + fee)
-      totalAmount = servicePrice + platformFee
-      transferAmount = barber.is_developer ? servicePrice : servicePrice + barberShare // Developer gets full price
+      // Customer pays full amount (service + add-ons + fee)
+      totalAmount = servicePrice + Math.round(addonTotal * 100) + platformFee
+      transferAmount = barber.is_developer ? 
+        servicePrice + Math.round(addonTotal * 100) : 
+        servicePrice + Math.round(addonTotal * 100) + barberShare // Developer gets full price
       
       lineItems = [
         {
@@ -148,6 +184,7 @@ export async function POST(request: Request) {
           },
           quantity: 1,
         },
+        ...addonItems, // Add add-on items
         {
           price_data: {
             currency: "usd",
@@ -191,12 +228,16 @@ export async function POST(request: Request) {
         clientId: clientId || 'guest',
         serviceName: service.name,
         servicePrice: servicePrice.toString(),
+        addonTotal: Math.round(addonTotal * 100).toString(),
+        addonIds: addonIds.join(','),
         platformFee: platformFee.toString(),
         paymentType,
         feeType: paymentType === 'fee' ? 'fee_only' : 'fee_and_cut',
         bocmShare: bocmShare.toString(),
         barberShare: barberShare.toString(),
         isDeveloper: barber.is_developer ? 'true' : 'false',
+        // Add flag to indicate if add-ons need separate payment
+        addonsPaidSeparately: (paymentType === 'fee' && addonIds.length > 0).toString(),
       },
     })
 

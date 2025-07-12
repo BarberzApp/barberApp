@@ -109,10 +109,8 @@ export async function GET(request: Request) {
       // If barber_payout is missing, calculate it based on price
       let calculatedBarberPayout = barberPayout
       if (!barberPayout && price > 0) {
-        // Default calculation: 40% of service price + 40% of platform fee
-        const servicePriceCents = Math.round(price * 100)
-        const defaultPlatformFee = Math.round(servicePriceCents * 0.2) // 20% platform fee
-        calculatedBarberPayout = servicePriceCents + Math.round(defaultPlatformFee * 0.4) // service price + 40% of platform fee
+        // Default calculation: barber gets 80% of service price (20% platform fee)
+        calculatedBarberPayout = price * 0.8
       }
       
       console.log('Processing booking:', { 
@@ -125,7 +123,7 @@ export async function GET(request: Request) {
       return {
         serviceFees: acc.serviceFees + price,
         platformFees: acc.platformFees + platformFee,
-        totalEarnings: acc.totalEarnings + (calculatedBarberPayout / 100) // Convert back to dollars
+        totalEarnings: acc.totalEarnings + calculatedBarberPayout
       }
     }, { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
 
@@ -138,22 +136,20 @@ export async function GET(request: Request) {
       // If barber_payout is missing, calculate it based on price
       let calculatedBarberPayout = barberPayout
       if (!barberPayout && price > 0) {
-        // Default calculation: 40% of service price + 40% of platform fee
-        const servicePriceCents = Math.round(price * 100)
-        const defaultPlatformFee = Math.round(servicePriceCents * 0.2) // 20% platform fee
-        calculatedBarberPayout = servicePriceCents + Math.round(defaultPlatformFee * 0.4) // service price + 40% of platform fee
+        // Default calculation: barber gets 80% of service price (20% platform fee)
+        calculatedBarberPayout = price * 0.8
       }
       
       return {
         serviceFees: acc.serviceFees + price,
         platformFees: acc.platformFees + platformFee,
-        totalEarnings: acc.totalEarnings + (calculatedBarberPayout / 100) // Convert back to dollars
+        totalEarnings: acc.totalEarnings + calculatedBarberPayout
       }
     }, { serviceFees: 0, platformFees: 0, totalEarnings: 0 }) || { serviceFees: 0, platformFees: 0, totalEarnings: 0 }
 
-    // Convert to cents
-    const currentTotal = currentBreakdown.totalEarnings * 100
-    const prevTotal = prevBreakdown.totalEarnings * 100
+    // Convert to cents for consistent API response
+    const currentTotal = Math.round(currentBreakdown.totalEarnings * 100)
+    const prevTotal = Math.round(prevBreakdown.totalEarnings * 100)
 
     console.log('Calculated totals:', {
       currentTotal,

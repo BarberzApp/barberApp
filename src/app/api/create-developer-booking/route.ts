@@ -16,7 +16,8 @@ export async function POST(request: Request) {
       guestEmail, 
       guestPhone, 
       clientId, 
-      paymentType 
+      paymentType,
+      addonIds = []
     } = body
 
     // Validate required fields
@@ -64,9 +65,29 @@ export async function POST(request: Request) {
 
     const servicePrice = Number(service.price)
     
+    // Get add-ons if any are selected
+    let addonTotal = 0
+    
+    if (addonIds && addonIds.length > 0) {
+      const { data: addons, error: addonsError } = await supabaseAdmin
+        .from('service_addons')
+        .select('id, name, price')
+        .in('id', addonIds)
+        .eq('is_active', true)
+
+      if (addonsError) {
+        return NextResponse.json(
+          { error: 'Failed to fetch add-ons' },
+          { status: 500 }
+        )
+      }
+
+      addonTotal = addons.reduce((total, addon) => total + addon.price, 0)
+    }
+    
     // For developer accounts, no platform fees
     const platformFee = 0
-    const barberPayout = servicePrice // Keep in dollars for consistency
+    const barberPayout = servicePrice + addonTotal // Keep in dollars for consistency
 
     // Create the booking directly (no payment processing needed)
     const bookingData = {
@@ -78,9 +99,10 @@ export async function POST(request: Request) {
       guest_email: guestEmail || null,
       guest_phone: guestPhone || null,
       client_id: clientId || null,
-              status: 'confirmed',
-        payment_status: 'succeeded', // Developer bookings are automatically paid
-      price: servicePrice,
+      status: 'confirmed',
+      payment_status: 'succeeded', // Developer bookings are automatically paid
+      price: servicePrice + addonTotal,
+      addon_total: addonTotal,
       platform_fee: platformFee,
       barber_payout: barberPayout,
       payment_intent_id: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID
@@ -108,12 +130,38 @@ export async function POST(request: Request) {
       )
     }
 
+    // Add add-ons to the booking if any were selected
+    if (addonIds && addonIds.length > 0) {
+      const { data: addons } = await supabaseAdmin
+        .from('service_addons')
+        .select('id, price')
+        .in('id', addonIds)
+        .eq('is_active', true)
+
+      if (addons && addons.length > 0) {
+        const bookingAddons = addons.map(addon => ({
+          booking_id: booking.id,
+          addon_id: addon.id,
+          price: addon.price
+        }))
+
+        const { error: addonError } = await supabaseAdmin
+          .from('booking_addons')
+          .insert(bookingAddons)
+
+        if (addonError) {
+          console.error('Error adding add-ons to booking:', addonError)
+        }
+      }
+    }
+
     console.log('Developer booking created successfully:', {
       bookingId: booking.id,
       barberId: booking.barber_id,
       serviceId: booking.service_id,
       date: booking.date,
-      price: booking.price
+      price: booking.price,
+      addonTotal: addonTotal
     })
 
     // Return success response with booking details

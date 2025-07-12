@@ -11,12 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/shared/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Switch } from '@/shared/components/ui/switch';
-import { Play, Instagram, Twitter, Facebook, Edit3, Upload, Video, Plus, X, Loader2, Sparkles, MapPin, Filter, Camera, MoreVertical, Star, Trash2, Edit, Eye, EyeOff, GripVertical, Heart, MessageCircle } from 'lucide-react';
+import { Play, Instagram, Twitter, Facebook, Edit3, Upload, Video, Plus, X, Loader2, Sparkles, MapPin, Filter, Camera, MoreVertical, Star, Trash2, Edit, Eye, EyeOff, GripVertical, Heart, MessageCircle, Image as ImageIcon, Video as VideoIcon, ArrowLeft, ArrowRight, User, Calendar, Building, Share2, Award, Phone, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/shared/hooks/use-auth-zustand';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/shared/components/ui/use-toast';
 import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-settings';
 import { useReels } from '@/shared/hooks/use-reels';
+import Cropper, { Area } from 'react-easy-crop';
+import getCroppedImg from '@/shared/lib/crop-image';
+import { useData } from '@/shared/hooks/use-data';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 interface UserProfile {
   id: string;
@@ -59,6 +64,8 @@ export default function ProfilePortfolio() {
     description: '',
     tags: ''
   });
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const editProfileButtonRef = useRef<HTMLButtonElement>(null);
   const editPortfolioButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +84,21 @@ export default function ProfilePortfolio() {
   const [statsDialogReel, setStatsDialogReel] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
+  const [selectedPortfolioItem, setSelectedPortfolioItem] = useState<PortfolioItem | null>(null);
+  // Starred/featured portfolio logic
+  const [featuredId, setFeaturedId] = useState<string | null>(barberProfile?.featured_portfolio || null);
+
+
+
+  const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
 
   // Get user's current location
   const getCurrentLocation = useCallback(() => {
@@ -250,7 +272,7 @@ export default function ProfilePortfolio() {
   }, [user, toast]);
 
   // Stats and socials based on real data
-  const stats = [
+  const profileStats = [
     { label: 'Posts', value: portfolio.length },
   ];
 
@@ -287,48 +309,35 @@ export default function ProfilePortfolio() {
         return;
       }
       
-      setAvatarLoading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file);
-        
-      if (error) throw error;
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-        
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user?.id);
-        
-      if (updateError) throw updateError;
-      
-      // Update local profile state
-      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
-      
-      toast({
-        title: 'Success',
-        description: 'Profile picture updated successfully!',
-      });
+      setSelectedImage(URL.createObjectURL(file));
+      setCropDialogOpen(true);
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload profile picture. Please try again.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to load image.', variant: 'destructive' });
+    }
+  };
+
+  const handleCropSave = async () => {
+    if (!selectedImage || !croppedAreaPixels) return;
+      setAvatarLoading(true);
+    try {
+      const croppedBlob = await getCroppedImg(selectedImage, croppedAreaPixels);
+      const fileExt = 'jpeg';
+      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      const { data, error } = await supabase.storage.from('avatars').upload(fileName, croppedBlob, { contentType: 'image/jpeg' });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
+      if (updateError) throw updateError;
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      toast({ title: 'Success', description: 'Profile picture updated successfully!' });
+      setCropDialogOpen(false);
+      setSelectedImage(null);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to upload cropped image.', variant: 'destructive' });
     } finally {
       setAvatarLoading(false);
     }
   };
-
-  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
 
   const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -659,6 +668,33 @@ export default function ProfilePortfolio() {
     setComments([]);
   };
 
+  // Starred/featured portfolio logic
+  const handleStarPortfolio = async (item: PortfolioItem) => {
+    if (!barberProfile) return;
+    setFeaturedId(item.id);
+    // Update backend
+    await supabase.from('barbers').update({ featured_portfolio: item.id }).eq('id', barberProfile.id);
+  };
+  // Delete portfolio item
+  const handleDeletePortfolio = async (item: PortfolioItem) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    // Remove from state
+    setPortfolio(prev => prev.filter(i => i.id !== item.id));
+    // Remove from backend
+    if (barberProfile) {
+      const newUrls = portfolio.filter(i => i.id !== item.id).map(i => i.url);
+      await supabase.from('barbers').update({ portfolio: newUrls }).eq('id', barberProfile.id);
+      // If deleted item was featured, clear featured_portfolio
+      if (featuredId === item.id) {
+        setFeaturedId(null);
+        await supabase.from('barbers').update({ featured_portfolio: null }).eq('id', barberProfile.id);
+      }
+    }
+    setPortfolioModalOpen(false);
+  };
+
+
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-32 relative">
@@ -672,53 +708,59 @@ export default function ProfilePortfolio() {
     );
   }
 
+  // Prepare props for ProfileHeader
+  const name = profile?.name || user?.name || 'Barber';
+  const avatarUrl = typeof profile?.avatar_url === 'string' ? profile.avatar_url : undefined;
+  const coverUrl = undefined; // Placeholder, can add upload later
+  const username = undefined; // Placeholder, can add username later
+  const headerStats = [
+    { label: 'Reels', value: reels.length },
+    { label: 'Portfolio', value: portfolio.length },
+  ];
+  const isOwner = true; // Always true for now
+
+  // Portfolio modal navigation
+  const handlePrevPortfolio = () => {
+    if (!selectedPortfolioItem || portfolio.length < 2) return;
+    const idx = portfolio.findIndex(i => i.url === selectedPortfolioItem.url);
+    const prevIdx = (idx - 1 + portfolio.length) % portfolio.length;
+    setSelectedPortfolioItem(portfolio[prevIdx]);
+  };
+  const handleNextPortfolio = () => {
+    if (!selectedPortfolioItem || portfolio.length < 2) return;
+    const idx = portfolio.findIndex(i => i.url === selectedPortfolioItem.url);
+    const nextIdx = (idx + 1) % portfolio.length;
+    setSelectedPortfolioItem(portfolio[nextIdx]);
+  };
+
   return (
-    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-32 md:pb-8 relative">
-      {/* Profile Stats Row */}
-      {analytics && (
-        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mt-6 sm:mt-8 w-full mb-4">
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-lg sm:text-xl text-white">{reelStats.length}</span>
-            <span className="text-xs text-white/60 uppercase tracking-wide">Reels</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-lg sm:text-xl text-white flex items-center gap-1"><Eye className="h-4 w-4 mr-1" />{analytics.total_views}</span>
-            <span className="text-xs text-white/60 uppercase tracking-wide">Views</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-lg sm:text-xl text-white flex items-center gap-1"><Heart className="h-4 w-4 mr-1" />{analytics.total_likes}</span>
-            <span className="text-xs text-white/60 uppercase tracking-wide">Likes</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-lg sm:text-xl text-white flex items-center gap-1"><MessageCircle className="h-4 w-4 mr-1" />{reelStats.reduce((sum, r) => sum + (r.comments_count || 0), 0)}</span>
-            <span className="text-xs text-white/60 uppercase tracking-wide">Comments</span>
-          </div>
-        </div>
-      )}
-      {/* Profile Card */}
-      <div className="bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-6 sm:p-8 md:p-10 mb-6 sm:mb-8 mt-6 sm:mt-8 flex flex-col items-center">
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Modern Profile Header */}
+      <div className="w-full flex flex-col items-center justify-center bg-gradient-to-br from-darkpurple/95 to-darkpurple/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-8 mb-8 relative">
         {/* Avatar */}
-        <div className="relative">
-          <Avatar className="h-24 w-24 sm:h-28 sm:w-28 mb-3 shadow-lg border-4 border-saffron/30 bg-primary">
+        <div className="relative mb-4">
+          <Avatar className="h-32 w-32 shadow-2xl border-4 border-saffron/40 bg-primary">
             <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
-            <AvatarFallback className="text-2xl bg-saffron text-primary font-bold">
+            <AvatarFallback className="text-4xl bg-saffron text-primary font-bold">
               {profile?.name?.charAt(0) || user?.name?.charAt(0) || "U"}
             </AvatarFallback>
           </Avatar>
-          <button
-            type="button"
-            className="absolute right-0 bottom-2 bg-gray-600 border-2 border-gray-800 rounded-full flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-500 z-50 transition-transform hover:scale-110 active:scale-95"
-            onClick={() => avatarFileInputRef.current?.click()}
-            disabled={avatarLoading}
-            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
-            aria-label="Change profile picture"
-          >
-            {avatarLoading ? (
-              <Loader2 className="w-4 h-4 text-white animate-spin" />
-            ) : (
-              <Camera className="w-4 h-4 text-white" />
-            )}
-          </button>
+          {isOwner && (
+            <button
+              type="button"
+              className="absolute bottom-2 right-2 bg-saffron border-2 border-primary rounded-full flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-saffron z-50 transition-transform hover:scale-110 active:scale-95"
+              onClick={() => avatarFileInputRef.current?.click()}
+              disabled={avatarLoading}
+              style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
+              aria-label="Change profile picture"
+            >
+              {avatarLoading ? (
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              ) : (
+                <Camera className="w-5 h-5 text-primary" />
+              )}
+            </button>
+          )}
           <input
             ref={avatarFileInputRef}
             type="file"
@@ -729,383 +771,474 @@ export default function ProfilePortfolio() {
           />
         </div>
         {/* Name & Username */}
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bebas font-bold text-white mb-1">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bebas font-bold text-white mb-1 text-center">
           {profile?.name || user?.name || 'Your Name'}
-        </h2>
-        <span className="text-saffron text-sm sm:text-base font-semibold mb-2">
+        </h1>
+        <span className="text-saffron text-lg sm:text-xl font-semibold mb-2 text-center block">
           @{profile?.name?.toLowerCase().replace(/\s+/g, '') || 'username'}
         </span>
-        {/* Bio */}
-        <p className="text-center text-sm sm:text-base text-white/80 mb-3 max-w-md line-clamp-3">
-          {barberProfile?.bio || profile?.bio || 'No bio yet. Click "Edit Profile" to add one.'}
-        </p>
-        {/* Location */}
-        {profile?.location && (
-          <div className="flex items-center gap-2 mb-3 text-white/60">
-            <MapPin className="h-4 w-4" />
-            <span className="text-sm">{profile.location}</span>
-          </div>
-        )}
-        {/* Socials */}
-        {socials.length > 0 && (
-          <div className="flex gap-4 mb-4">
-            {socials.map(({ icon: Icon, href, color }) => (
-              <a 
-                key={href} 
-                href={href} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className={color + ' hover:scale-110 transition-transform'}
-              >
-                <Icon className="h-6 w-6" />
-              </a>
-            ))}
-          </div>
-        )}
         {/* Edit Profile Button */}
-        <Button 
-          className="rounded-full px-6 sm:px-8 font-semibold bg-saffron text-primary hover:bg-saffron/90 shadow-lg text-base sm:text-lg mt-2"
-          onClick={handleEditProfile}
-          ref={editProfileButtonRef}
-        >
-          <Edit3 className="h-4 w-4 mr-2" />
-          Edit Profile
-        </Button>
+        {isOwner && (
+          <Button 
+            className="rounded-full px-8 py-3 font-semibold bg-saffron text-primary hover:bg-saffron/90 shadow-lg text-lg flex items-center gap-2 mb-4"
+            onClick={handleEditProfile}
+            ref={editProfileButtonRef}
+          >
+            <Edit3 className="h-5 w-5 mr-2" />
+            Edit Profile
+          </Button>
+        )}
         {/* Stats Row */}
-        <div className="flex justify-center gap-6 sm:gap-8 mt-6 sm:mt-8 w-full">
-          {stats.map((stat) => (
+        <div className="flex justify-center gap-10 mt-4 w-full">
+          {profileStats.map((stat) => (
             <div key={stat.label} className="flex flex-col items-center">
-              <span className="font-bold text-lg sm:text-xl text-white">{stat.value}</span>
+              <span className="font-bold text-2xl text-white">{stat.value}</span>
               <span className="text-xs text-white/60 uppercase tracking-wide">{stat.label}</span>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Video Upload Section */}
-      <div className="bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-saffron/20 flex items-center justify-center">
-              <Video className="h-5 w-5 sm:h-6 sm:w-6 text-saffron" />
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-bold text-white">Video Reels</h3>
-              <p className="text-white/60 text-xs sm:text-sm">Share your work with engaging video content</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowLocationFilter(true)}
-              className="text-white hover:bg-white/10 rounded-lg p-2"
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
-            <Button
-              onClick={() => setOpenDialog('upload')}
-              className="bg-saffron text-primary font-bold rounded-lg sm:rounded-xl px-4 sm:px-6 py-2 sm:py-3 hover:bg-saffron/90 text-sm sm:text-base"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Upload Reel
-            </Button>
-          </div>
-        </div>
-
-        {/* Location Filter Indicator */}
-        {(locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation) && (
-          <div className="bg-saffron/20 rounded-2xl p-4 mb-6 border border-saffron/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-white">
-                <MapPin className="h-4 w-4 text-saffron" />
-                <span className="text-sm">
-                  {locationFilter.useCurrentLocation 
-                    ? `Within ${locationFilter.range} miles`
-                    : `${locationFilter.city}${locationFilter.state ? `, ${locationFilter.state}` : ''}`
-                  }
-                </span>
+      {/* Tabbed Interface */}
+      <Tabs defaultValue="portfolio" className="w-full">
+        <TabsList className="flex justify-center gap-2 bg-darkpurple/80 backdrop-blur border border-white/10 rounded-xl mb-6 sticky top-0 z-20 shadow-lg">
+          <TabsTrigger value="portfolio" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Portfolio</TabsTrigger>
+          <TabsTrigger value="reels" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Reels</TabsTrigger>
+          <TabsTrigger value="about" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">About</TabsTrigger>
+        </TabsList>
+        {/* Portfolio Tab */}
+        <TabsContent value="portfolio">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {portfolio.length > 0 ? (
+              portfolio.map((item, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "relative rounded-xl overflow-hidden bg-white/10 backdrop-blur border border-white/10 shadow-lg transition-transform hover:scale-105 hover:shadow-2xl cursor-pointer group focus-within:ring-2 focus-within:ring-saffron",
+                    featuredId === item.id && 'ring-2 ring-saffron ring-offset-2'
+                  )}
+                  onClick={() => { setSelectedPortfolioItem(item); setPortfolioModalOpen(true); }}
+                  tabIndex={0}
+                  onKeyDown={e => { if (e.key === 'Enter') { setSelectedPortfolioItem(item); setPortfolioModalOpen(true); } }}
+                  aria-label="View portfolio item"
+                >
+                  {/* File type icon overlay */}
+                  <div className="absolute top-2 left-2 bg-black/60 rounded-full p-1 z-10">
+                    {item.type === 'image' ? (
+                      <ImageIcon className="w-4 h-4 text-saffron" />
+                    ) : (
+                      <VideoIcon className="w-4 h-4 text-saffron" />
+                    )}
+                  </div>
+                  {/* Starred indicator */}
+                  {featuredId === item.id && (
+                    <div className="absolute top-2 right-2 bg-saffron rounded-full p-1 z-10 shadow-lg">
+                      <Star className="w-4 h-4 text-primary" />
+                    </div>
+                  )}
+                  {item.type === 'image' ? (
+                    <img src={item.url} alt="Portfolio" className="w-full h-40 object-cover group-hover:opacity-90 transition-opacity" />
+                  ) : (
+                    <video src={item.url} controls className="w-full h-40 object-cover group-hover:opacity-90 transition-opacity" />
+                  )}
+                  {/* Upload date if available */}
+                  {item.created_at && (
+                    <div className="absolute bottom-2 left-2 bg-black/60 text-xs text-white px-2 py-0.5 rounded-full">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-2 sm:col-span-3 text-center text-white/60 py-8 flex flex-col items-center gap-4">
+                <span>No portfolio items yet.</span>
+                {isOwner && (
+                  <Button className="bg-saffron text-primary font-semibold px-6 py-2 rounded-full shadow-lg hover:bg-saffron/90 flex items-center gap-2" onClick={() => setOpenDialog('portfolio')}>
+                    <Plus className="w-4 h-4" /> Add to Portfolio
+                  </Button>
+                )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearLocationFilter}
-                className="text-white hover:bg-white/10 text-xs"
-              >
-                Clear
-              </Button>
-            </div>
+            )}
           </div>
-        )}
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white/5 rounded-2xl p-4 text-center">
-            <div className="text-2xl font-bold text-white mb-1">
-              {reels.length}
-            </div>
-            <div className="text-white/60 text-sm">Videos</div>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-4 text-center">
-            <div className="text-2xl font-bold text-white mb-1">
-              {portfolio.filter(item => item.type === 'image').length}
-            </div>
-            <div className="text-white/60 text-sm">Images</div>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-4 text-center">
-            <div className="text-2xl font-bold text-white mb-1">
-              {portfolio.length}
-            </div>
-            <div className="text-white/60 text-sm">Total</div>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-4 text-center">
-            <div className="text-2xl font-bold text-white mb-1">
-              {portfolio.length > 0 ? 'Active' : 'Empty'}
-            </div>
-            <div className="text-white/60 text-sm">Status</div>
-          </div>
-        </div>
-
-        {/* Enhanced Reels Display */}
-        {reels.length > 0 ? (
-          <div className="space-y-4">
-            {/* Featured Reels Section */}
-            {reels.filter(reel => reel.is_featured).length > 0 && (
-              <div>
-                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <Star className="h-5 w-5 text-saffron" />
-                  Featured Reels
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {reels.filter(reel => reel.is_featured).map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 shadow-lg"
+          {/* Portfolio Modal */}
+          <Dialog open={portfolioModalOpen} onOpenChange={setPortfolioModalOpen}>
+            {selectedPortfolioItem && selectedPortfolioItem.type === 'image' && (
+              <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
+                <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-saffron/20">
+                      <ImageIcon className="w-5 h-5 text-saffron" />
+                    </span>
+                    <span className="text-white text-lg font-bold">Portfolio Image</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isOwner && (
+                      <button
+                        onClick={() => handleDeletePortfolio(selectedPortfolioItem)}
+                        aria-label="Delete"
+                        className="text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-full p-1 transition-colors"
+                      >
+                        <Trash2 className="w-6 h-6" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setPortfolioModalOpen(false)}
+                      aria-label="Close"
+                      className="text-white hover:text-saffron focus:outline-none focus:ring-2 focus:ring-saffron rounded-full p-1 transition-colors"
                     >
-                      <div className="relative aspect-video">
-                        <video src={item.url} className="object-cover w-full h-full" controls={false} />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity group cursor-pointer"
-                             onClick={() => {
-                               setVideoUrl(item.url);
-                               setOpenDialog('video');
-                             }}>
-                          <Play className="h-8 w-8 text-white drop-shadow-lg" />
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="w-full flex-1 flex items-center justify-center p-4">
+                  <img
+                    src={selectedPortfolioItem.url}
+                    alt="Portfolio Full"
+                    className="max-h-[70vh] w-auto max-w-full object-contain rounded-2xl shadow-lg"
+                    draggable={false}
+                  />
+                </div>
+              </DialogContent>
+            )}
+            {selectedPortfolioItem && selectedPortfolioItem.type === 'video' && (
+              <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
+                <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-saffron/20">
+                      <VideoIcon className="w-5 h-5 text-saffron" />
+                    </span>
+                    <span className="text-white text-lg font-bold">Portfolio Video</span>
+                  </div>
+                  <button
+                    onClick={() => setPortfolioModalOpen(false)}
+                    aria-label="Close"
+                    className="text-white hover:text-saffron focus:outline-none focus:ring-2 focus:ring-saffron rounded-full p-1 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="w-full flex-1 flex items-center justify-center p-4">
+                  <video
+                    src={selectedPortfolioItem.url}
+                    controls
+                    autoPlay
+                    className="max-h-[70vh] w-auto max-w-full object-contain rounded-2xl shadow-lg"
+                  />
+                </div>
+              </DialogContent>
+            )}
+          </Dialog>
+        </TabsContent>
+        {/* Reels Tab */}
+        <TabsContent value="reels">
+          <div className="space-y-6">
+            {/* Upload Button for Owners */}
+            {isOwner && (
+              <div className="flex justify-center mb-6">
+                <Button 
+                  className="bg-saffron text-primary font-semibold px-6 py-3 rounded-full shadow-lg hover:bg-saffron/90 flex items-center gap-2"
+                  onClick={() => setOpenDialog('upload')}
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Reel
+                </Button>
+              </div>
+            )}
+            
+            {/* Reels Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {reels.length > 0 ? (
+                reels.map((reel, idx) => (
+                  <div key={idx} className="rounded-xl overflow-hidden bg-white/10 backdrop-blur border border-white/10 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 group">
+                    {/* Video Container */}
+                    <div className="relative">
+                      <video src={reel.url} controls className="w-full h-40 object-cover rounded-t-lg" />
+                      
+                      {/* Overlay with actions for owners */}
+                      {isOwner && (
+                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="bg-black/60 hover:bg-saffron/80 text-white rounded-full p-1"
+                            onClick={() => handleEditReel(reel)}
+                            aria-label="Edit reel"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="bg-black/60 hover:bg-red-500/80 text-white rounded-full p-1"
+                            onClick={() => handleDeleteReel(reel.id)}
+                            aria-label="Delete reel"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
                         </div>
-                        <div className="absolute top-2 right-2 flex items-center gap-1">
-                          <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30 text-xs">
+                      )}
+                      
+                      {/* Visibility toggle for owners */}
+                      {isOwner && (
+                        <div className="absolute top-2 left-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "rounded-full p-1 transition-all",
+                              reel.is_public 
+                                ? "bg-green-500/80 hover:bg-green-600/80 text-white" 
+                                : "bg-gray-500/80 hover:bg-gray-600/80 text-white"
+                            )}
+                            onClick={() => handleToggleReelVisibility(reel.id, !reel.is_public)}
+                            aria-label={reel.is_public ? "Make private" : "Make public"}
+                          >
+                            {reel.is_public ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Reel Info */}
+                    <div className="p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold text-white text-sm line-clamp-1">{reel.title || 'Untitled Reel'}</h4>
+                        <span className="text-xs text-white/60">Views: {reel.views || 0}</span>
+                      </div>
+                      
+                      {reel.description && (
+                        <p className="text-white/80 text-xs line-clamp-2 mb-2">{reel.description}</p>
+                      )}
+                      
+                      <div className="flex gap-3 text-xs text-saffron">
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3 h-3" />
+                          {reel.likes || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3" />
+                          {reel.comments_count || 0}
+                        </span>
+                        {reel.is_featured && (
+                          <span className="flex items-center gap-1 text-yellow-400">
+                            <Star className="w-3 h-3" />
                             Featured
-                          </Badge>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 bg-black/70 text-white hover:bg-black/90">
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-darkpurple border-white/10">
-                              <DropdownMenuItem onClick={() => handleEditReel(item)} className="text-white">
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleFeatured(item.id, item.is_featured)} className="text-white">
-                                <Star className="h-4 w-4 mr-2" />
-                                {item.is_featured ? 'Unfeature' : 'Feature'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleReelVisibility(item.id, item.is_public)} className="text-white">
-                                {item.is_public ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                                {item.is_public ? 'Make Private' : 'Make Public'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDeleteReel(item.id)} className="text-red-400">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        {/* Location Badge */}
-                        {(item.location_name || item.city) && (
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>{item.city || item.location_name}</span>
-                          </div>
+                          </span>
                         )}
                       </div>
-                      <div className="p-3">
-                        <h5 className="font-semibold text-white text-sm mb-1 line-clamp-1">{item.title}</h5>
-                        <p className="text-white/60 text-xs line-clamp-2 mb-2">{item.description}</p>
-                        <div className="flex items-center justify-between">
-                          <Badge variant="secondary" className="bg-white/10 text-white border-white/20 text-xs">
-                            {item.category.replace('-', ' ')}
-                          </Badge>
-                          <span className="text-white/40 text-xs">
-                            {new Date(item.created_at).toLocaleDateString()}
-                          </span>
+                      
+                      {/* Tags */}
+                      {reel.tags && reel.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {reel.tags.slice(0, 3).map((tag: string, tagIdx: number) => (
+                            <span key={tagIdx} className="bg-white/10 text-white/80 text-xs px-2 py-0.5 rounded-full">
+                              {tag}
+                            </span>
+                          ))}
+                          {reel.tags.length > 3 && (
+                            <span className="text-white/60 text-xs">+{reel.tags.length - 3} more</span>
+                          )}
                         </div>
+                      )}
+                      
+                      {/* Upload date */}
+                      {reel.created_at && (
+                        <div className="text-white/40 text-xs mt-2">
+                          {new Date(reel.created_at).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-1 sm:col-span-2 text-center text-white/60 py-12 flex flex-col items-center gap-4">
+                  <Video className="w-12 h-12 text-white/40" />
+                  <div>
+                    <p className="text-lg font-semibold mb-2">No reels yet</p>
+                    <p className="text-sm">Start sharing your work with engaging video content</p>
+                  </div>
+                  {isOwner && (
+                    <Button 
+                      className="bg-saffron text-primary font-semibold px-6 py-2 rounded-full shadow-lg hover:bg-saffron/90 flex items-center gap-2"
+                      onClick={() => setOpenDialog('upload')}
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Your First Reel
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* About Tab */}
+        <TabsContent value="about">
+          <div className="space-y-6">
+            {/* Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Personal Information */}
+              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
+                    <User className="w-5 h-5 text-saffron" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Personal Information</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Location */}
+                  {profile?.location && (
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                      <MapPin className="w-4 h-4 text-saffron flex-shrink-0" />
+                      <div>
+                        <div className="text-white/60 text-xs uppercase tracking-wide">Location</div>
+                        <div className="text-white font-medium">{profile.location}</div>
                       </div>
                     </div>
+                  )}
+                  
+                  {/* Join Date */}
+                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                    <Calendar className="w-4 h-4 text-saffron flex-shrink-0" />
+                    <div>
+                      <div className="text-white/60 text-xs uppercase tracking-wide">Member Since</div>
+                      <div className="text-white font-medium">
+                        {profile && 'created_at' in profile && profile.created_at ? 
+                          new Date(profile.created_at as string).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          }) :
+                          barberProfile && 'created_at' in barberProfile && barberProfile.created_at ? 
+                          new Date(barberProfile.created_at as string).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          }) :
+                          'Unknown'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Business Name */}
+                  {barberProfile?.business_name && (
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                      <Building className="w-4 h-4 text-saffron flex-shrink-0" />
+                      <div>
+                        <div className="text-white/60 text-xs uppercase tracking-wide">Business</div>
+                        <div className="text-white font-medium">{barberProfile.business_name}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Social Media */}
+              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
+                    <Share2 className="w-5 h-5 text-saffron" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Social Media</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  {socials.length > 0 ? (
+                    socials.map(({ icon: Icon, href, color }) => (
+                      <a 
+                        key={href} 
+                        href={href} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group"
+                      >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${color.replace('text-', 'bg-')}/20`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-white/60 text-xs uppercase tracking-wide">
+                            {href?.includes('instagram') ? 'Instagram' : 
+                             href?.includes('twitter') ? 'Twitter' : 
+                             href?.includes('facebook') ? 'Facebook' : 'Social'}
+                          </div>
+                          <div className="text-white font-medium group-hover:text-saffron transition-colors">
+                            {href?.includes('instagram') ? '@' + href.split('/').pop() : 
+                             href?.includes('twitter') ? '@' + href.split('/').pop() : 
+                             href?.includes('facebook') ? href.split('/').pop() : href}
+                          </div>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-white/40 group-hover:text-saffron transition-colors" />
+                      </a>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <Share2 className="w-12 h-12 text-white/30 mx-auto mb-3" />
+                      <p className="text-white/60 text-sm">No social media links added yet</p>
+                      {isOwner && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-3 border-white/20 text-white hover:bg-white/10"
+                          onClick={handleEditProfile}
+                        >
+                          Add Social Links
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Specialties Section */}
+            {barberProfile?.specialties && barberProfile.specialties.length > 0 && (
+              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
+                    <Award className="w-5 h-5 text-saffron" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Specialties</h3>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {barberProfile.specialties.map((specialty, index) => (
+                    <span 
+                      key={index}
+                      className="px-3 py-1 bg-saffron/20 text-saffron rounded-full text-sm font-medium border border-saffron/30"
+                    >
+                      {specialty}
+                    </span>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* All Reels Section */}
-            <div>
-              <h4 className="text-lg font-semibold text-white mb-3">All Reels ({reels.length})</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {reels.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 shadow-lg group relative"
-                  >
-                    <div className="relative aspect-video">
-                      <video src={item.url} className="object-cover w-full h-full" controls={false} />
-                      {/* Per-reel stats badges */}
-                      <div className="absolute top-2 left-2 flex gap-2">
-                        <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><Eye className="h-3 w-3" />{item.views}</span>
-                        <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><Heart className="h-3 w-3" />{item.likes}</span>
-                        <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-full"><MessageCircle className="h-3 w-3" />{item.comments_count || 0}</span>
-                      </div>
-                      {/* Action buttons on hover */}
-                      <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        {/* Feature toggle button */}
-                        <button
-                          className={`rounded-full p-2 text-xs font-semibold shadow transition-colors ${
-                            item.is_featured 
-                              ? 'bg-saffron text-primary hover:bg-saffron/90' 
-                              : 'bg-white/20 text-white hover:bg-white/30'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleFeatured(item.id, item.is_featured);
-                          }}
-                          type="button"
-                          title={item.is_featured ? 'Unfeature this reel' : 'Feature this reel'}
-                        >
-                          <Star className={`h-4 w-4 ${item.is_featured ? 'fill-current' : ''}`} />
-                        </button>
-                        {/* Edit button */}
-                        <button
-                          className="bg-saffron text-primary rounded-full px-3 py-2 text-xs font-semibold shadow hover:bg-saffron/90 transition-colors"
-                          onClick={() => handleEditReel(item)}
-                          type="button"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-3 flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h5 className="font-semibold text-white text-sm line-clamp-1">{item.title}</h5>
-                          {item.is_featured && (
-                            <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30 text-xs">
-                              Featured
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-white/60 text-xs line-clamp-2 mb-2">{item.description}</p>
-                      </div>
-                      <button
-                        className="ml-2 px-3 py-1 bg-saffron text-primary rounded-full text-xs font-semibold shadow hover:bg-saffron/90 transition-colors"
-                        onClick={() => openStatsDialog(item)}
-                      >
-                        Stats
-                      </button>
-                    </div>
+            {/* Contact Information */}
+            {profile?.phone && (
+              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-saffron" />
                   </div>
-                ))}
+                  <h3 className="text-lg font-bold text-white">Contact Information</h3>
+                </div>
+                
+                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                  <Phone className="w-4 h-4 text-saffron flex-shrink-0" />
+                  <div>
+                    <div className="text-white/60 text-xs uppercase tracking-wide">Phone</div>
+                    <div className="text-white font-medium">{profile.phone}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <Sparkles className="h-12 w-12 text-saffron mx-auto mb-4" />
-            <h4 className="text-lg font-semibold text-white mb-2">
-              {locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation 
-                ? 'No videos in this location'
-                : 'No videos yet'
-              }
-            </h4>
-            <p className="text-white/60 mb-4">
-              {locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation 
-                ? 'Try adjusting your location filters or upload a new video.'
-                : 'Start building your video portfolio'
-              }
-            </p>
-            <div className="flex gap-3 justify-center">
-              <Button
-                onClick={() => setOpenDialog('upload')}
-                className="bg-saffron text-primary font-bold rounded-xl px-6 py-3"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Video
-              </Button>
-              {(locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation) && (
-                <Button
-                  onClick={clearLocationFilter}
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Portfolio Grid */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-        {portfolio.map((item, idx) => (
-          <div
-            key={item.id}
-            className="aspect-square rounded-2xl overflow-hidden bg-primary/80 border-2 border-white/10 card-hover cursor-pointer flex items-center justify-center relative group shadow-lg"
-            onClick={() => {
-              if (item.type === 'video') {
-                setVideoUrl(item.url);
-                setOpenDialog('video');
-              }
-            }}
-          >
-            {item.type === 'image' ? (
-              <img src={item.url} alt="Portfolio item" className="object-cover w-full h-full" />
-            ) : (
-              <>
-                <video src={item.url} className="object-cover w-full h-full" controls={false} />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Play className="h-10 w-10 text-white drop-shadow-lg" />
-                </span>
-              </>
             )}
-            <button
-              className="absolute top-2 right-2 bg-white/90 hover:bg-saffron text-yellow-500 hover:text-primary rounded-full p-1.5 shadow-lg focus:outline-none border-2 border-white/40 transition-colors opacity-0 group-hover:opacity-100 z-10"
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (!user) return;
-                // Update featured status in DB and UI
-                await supabase
-                  .from('barbers')
-                  .update({ featured_portfolio: item.url })
-                  .eq('user_id', user.id);
-                // Optionally, update local state to reflect featured
-                setPortfolio((prev) => prev.map((p) => ({ ...p, is_featured: p.url === item.url })));
-                toast({ title: 'Featured', description: 'This item is now featured!' });
-              }}
-              type="button"
-            >
-              <Star className={`h-5 w-5 ${barberProfile?.featured_portfolio === item.url ? 'fill-yellow-400 text-yellow-500' : ''}`} />
-            </button>
           </div>
-        ))}
-      </div>
-      {/* Floating Edit Portfolio Button */}
-      <Button
-        className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-50 rounded-full bg-saffron text-primary shadow-lg hover:bg-saffron/90 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold border-4 border-white/20"
-        onClick={() => setOpenDialog('portfolio')}
-        ref={editPortfolioButtonRef}
-        style={{ boxShadow: '0 8px 32px rgba(124,58,237,0.18)' }}
-      >
-        Edit Portfolio
-      </Button>
+        </TabsContent>
+      </Tabs>
       {/* Upload Dialog */}
       <Dialog open={openDialog === 'upload'} onOpenChange={open => {
         setOpenDialog(open ? 'upload' : null);
@@ -1654,15 +1787,43 @@ export default function ProfilePortfolio() {
           )}
         </DialogContent>
       </Dialog>
+      {/* Cropping Dialog */}
+      <Dialog open={cropDialogOpen} onOpenChange={setCropDialogOpen}>
+        <DialogContent className="max-w-[400px] bg-darkpurple/95 border border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bebas text-white">Crop Profile Photo</DialogTitle>
+          </DialogHeader>
+          {selectedImage && (
+            <div className="relative w-full h-64 bg-black rounded-xl overflow-hidden">
+              <Cropper
+                image={selectedImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+          )}
+          <div className="flex gap-3 mt-4">
+            <Button onClick={() => setCropDialogOpen(false)} variant="outline" className="flex-1">Cancel</Button>
+            <Button onClick={handleCropSave} className="flex-1 bg-saffron text-white font-bold">Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
     </div>
   );
 }
 
 function ProfileEditorModal({ open, onClose, onProfileUpdated }: { open: boolean; onClose: () => void; onProfileUpdated: () => void }) {
-  // We'll use a key to force remount the form when opened, so it always loads fresh data
   const [formKey, setFormKey] = useState(0);
+  
   useEffect(() => {
-    if (open) setFormKey((k) => k + 1);
+    if (open) {
+      setFormKey(prev => prev + 1);
+    }
   }, [open]);
 
   return (

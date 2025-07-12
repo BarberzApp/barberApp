@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Booking } from '@/shared/types/booking'
 import { Service } from '@/shared/types/service'
+import { ServiceAddon } from '@/shared/types/addon'
 import { syncService } from '@/shared/lib/sync-service'
 import { supabase } from '@/shared/lib/supabase'
 import { Calendar } from '@/shared/components/ui/calendar'
@@ -20,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Badge } from '@/shared/components/ui/badge'
 import { Separator } from '@/shared/components/ui/separator'
+import { AddonSelector } from './addon-selector'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -36,6 +38,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [services, setServices] = useState<Service[]>([])
+  const [addons, setAddons] = useState<ServiceAddon[]>([])
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([])
   const [formData, setFormData] = useState({
     serviceId: '',
@@ -45,6 +48,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
     guestEmail: '',
     guestPhone: '',
   })
+  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
   const [date, setDate] = useState<Date>(selectedDate)
   const [bookedTimes, setBookedTimes] = useState<Set<string>>(new Set())
   const [paymentType] = useState<'fee'>('fee')
@@ -64,15 +68,25 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('barber_id', barberId)
+      const [servicesResponse, addonsResponse] = await Promise.all([
+        supabase
+          .from('services')
+          .select('*')
+          .eq('barber_id', barberId),
+        supabase
+          .from('service_addons')
+          .select('*')
+          .eq('barber_id', barberId)
+          .eq('is_active', true)
+      ])
 
-      if (error) throw error
-      setServices(data)
+      if (servicesResponse.error) throw servicesResponse.error
+      if (addonsResponse.error) throw addonsResponse.error
+      
+      setServices(servicesResponse.data || [])
+      setAddons(addonsResponse.data || [])
     } catch (error) {
-      console.error('Error fetching services:', error)
+      console.error('Error fetching services and add-ons:', error)
       toast({
         title: "Error",
         description: "Failed to load services. Please try again.",
@@ -217,6 +231,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
         guestPhone: formData.guestPhone,
         clientId: user?.id || null,
         paymentType,
+        addonIds: selectedAddonIds,
       }
 
       // Check if barber is a developer
@@ -586,6 +601,13 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
             </CardContent>
           </Card>
 
+          {/* Add-ons Selection */}
+          <AddonSelector
+            barberId={barberId}
+            selectedAddonIds={selectedAddonIds}
+            onAddonChange={setSelectedAddonIds}
+          />
+
           {/* Time Selection */}
           <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
             <CardContent className="p-6">
@@ -744,7 +766,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
             </CardContent>
           </Card>
 
-          {/* Payment Options */}
+          {/* Payment Summary */}
           <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
             <CardContent className="p-6">
               <div className="space-y-4">
@@ -752,22 +774,141 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                   <div className="p-2 bg-saffron/20 rounded-lg">
                     <CreditCard className="h-4 w-4 text-saffron" />
                   </div>
-                  <Label className="text-lg font-semibold text-white">Payment Option</Label>
+                  <Label className="text-lg font-semibold text-white">Payment Summary</Label>
                 </div>
                 
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-white font-medium">Platform Fee</p>
-                      <p className="text-white/60 text-sm">Secure payment processing</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-saffron">$3.38</p>
-                      <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
-                        Secure
-                      </Badge>
-                    </div>
-                  </div>
+                <div className="space-y-3">
+                  {paymentType === 'fee' ? (
+                    // Fee-only payment summary
+                    <>
+                      {/* Service Cost (for reference) */}
+                      {selectedService && (
+                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                          <div>
+                            <p className="text-white font-medium">{selectedService.name}</p>
+                            <p className="text-white/60 text-sm">Service cost (paid to barber)</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-white">${selectedService.price}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Add-ons Cost (for reference) */}
+                      {selectedAddonIds.length > 0 && (
+                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                          <div>
+                            <p className="text-white font-medium">Add-ons ({selectedAddonIds.length})</p>
+                            <p className="text-white/60 text-sm">Additional services (paid to barber)</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-saffron">
+                              +${selectedAddonIds.reduce((total, addonId) => {
+                                const addon = addons.find(a => a.id === addonId)
+                                return total + (addon?.price || 0)
+                              }, 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Platform Fee */}
+                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                        <div>
+                          <p className="text-white font-medium">Platform Fee</p>
+                          <p className="text-white/60 text-sm">Secure payment processing</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-saffron">$3.38</p>
+                          <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
+                            Secure
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Total */}
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-lg">
+                        <div>
+                          <p className="text-white font-bold text-lg">Total</p>
+                          <p className="text-white/60 text-sm">Amount to be charged</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-saffron">$3.38</p>
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <p className="text-blue-400 text-sm">
+                          💡 Service cost and any add-ons will be paid directly to the barber at your appointment.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    // Full payment summary (including add-ons)
+                    <>
+                      {/* Service Cost */}
+                      {selectedService && (
+                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                          <div>
+                            <p className="text-white font-medium">{selectedService.name}</p>
+                            <p className="text-white/60 text-sm">Service cost</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-white">${selectedService.price}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Add-ons Cost */}
+                      {selectedAddonIds.length > 0 && (
+                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                          <div>
+                            <p className="text-white font-medium">Add-ons ({selectedAddonIds.length})</p>
+                            <p className="text-white/60 text-sm">Additional services</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-saffron">
+                              +${selectedAddonIds.reduce((total, addonId) => {
+                                const addon = addons.find(a => a.id === addonId)
+                                return total + (addon?.price || 0)
+                              }, 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Platform Fee */}
+                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                        <div>
+                          <p className="text-white font-medium">Platform Fee</p>
+                          <p className="text-white/60 text-sm">Secure payment processing</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-saffron">$3.38</p>
+                          <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
+                            Secure
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Total */}
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-lg">
+                        <div>
+                          <p className="text-white font-bold text-lg">Total</p>
+                          <p className="text-white/60 text-sm">Amount to be charged</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-saffron">
+                            ${((selectedService?.price || 0) + 
+                               selectedAddonIds.reduce((total, addonId) => {
+                                 const addon = addons.find(a => a.id === addonId)
+                                 return total + (addon?.price || 0)
+                               }, 0) + 3.38).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>

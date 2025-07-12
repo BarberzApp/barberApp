@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { ProfileSettings } from './profile-settings'
 import { ServicesSettings } from './services-settings'
+import { AddonsSettings } from './addons-settings'
 import { ShareSettings } from './share-settings'
 import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-settings'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
-import { User, Scissors, Share2, Calendar, DollarSign, Bell, Lock, Settings as SettingsIcon, CheckCircle, AlertCircle, Sparkles } from 'lucide-react'
+import { User, Scissors, Share2, Calendar, DollarSign, Bell, Lock, Settings as SettingsIcon, CheckCircle, AlertCircle, Sparkles, Package } from 'lucide-react'
 import { AvailabilityManager } from '@/shared/components/booking/availability-manager'
 import { EarningsDashboard } from '@/shared/components/payment/earnings-dashboard'
 import { PaymentHistory } from '@/shared/components/payment/payment-history'
@@ -20,7 +21,7 @@ import { Button } from '@/shared/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/shared/components/ui/badge'
 
-type Tab = 'profile' | 'services' | 'availability' | 'earnings' | 'notifications'
+type Tab = 'profile' | 'services' | 'addons' | 'availability' | 'earnings' | 'notifications'
 
 interface SettingsData {
   profileComplete: boolean
@@ -371,7 +372,7 @@ export function SettingsPage() {
             <div className="relative flex justify-center p-4 sm:p-6">
               <div className="w-full max-w-4xl">
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl p-2">
-                  <TabsList className="flex w-full overflow-x-auto gap-2 bg-transparent snap-x snap-mandatory sm:grid sm:grid-cols-3 lg:grid-cols-5">
+                  <TabsList className="flex w-full overflow-x-auto gap-2 bg-transparent snap-x snap-mandatory sm:grid sm:grid-cols-3 lg:grid-cols-6">
                     <TabsTrigger 
                       value="profile" 
                       className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
@@ -402,6 +403,18 @@ export function SettingsPage() {
                           {getTabStatus('services') === 'complete' && (
                             <CheckCircle className="h-4 w-4 text-green-400" />
                           )}
+                        </TabsTrigger>
+                        
+                        <TabsTrigger 
+                          value="addons" 
+                          className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
+                            activeTab === 'addons' 
+                              ? 'bg-saffron text-primary shadow-lg' 
+                              : 'text-white/70 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <Package className="h-4 w-4" />
+                          <span className="hidden sm:inline">Add-ons</span>
                         </TabsTrigger>
                         
                         <TabsTrigger 
@@ -468,6 +481,10 @@ export function SettingsPage() {
                 <>
                   <TabsContent value="services" className="mt-0">
                     <ServicesSettings onUpdate={loadSettingsData} />
+                  </TabsContent>
+                  
+                  <TabsContent value="addons" className="mt-0">
+                    <AddonsSettings onUpdate={loadSettingsData} />
                   </TabsContent>
                   
                   <TabsContent value="availability" className="mt-0">

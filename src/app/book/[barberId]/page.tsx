@@ -40,6 +40,7 @@ type Barber = {
   avatar_url?: string
   specialties: string[]
   services: Service[]
+  portfolio: string[] // Added portfolio field
 }
 
 type FeaturedReel = {
@@ -74,6 +75,7 @@ type BarberFromDB = {
     price: number
     barber_id: string
   }>
+  portfolio: string[] // Added portfolio field
 }
 
 // Error boundary component
@@ -144,9 +146,42 @@ function BookPageContent() {
   const [showVideoDialog, setShowVideoDialog] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState<FeaturedReel | null>(null)
   const [loadingReels, setLoadingReels] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
   // Safely extract barberId from params
-  const barberId = Array.isArray(params.barberId) ? params.barberId[0] : params.barberId
+  const barberId = params && params.barberId ? (Array.isArray(params.barberId) ? params.barberId[0] : params.barberId) : undefined;
+
+  // Add guard for params in BookPageContent
+  if (!barberId) {
+    return (
+      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+        <div className="text-center max-w-md mx-auto">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Invalid Booking Link</h1>
+            <p className="text-gray-400 mb-6 text-sm sm:text-base">This booking link appears to be invalid or has expired.</p>
+          </div>
+          
+          <div className="space-y-3">
+            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base">
+              <Link href="/browse">Browse Available Barbers</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
+              <Link href="/">Go to Homepage</Link>
+            </Button>
+          </div>
+          
+          <p className="text-xs text-gray-500 mt-6">
+            If you believe this is an error, please contact the barber directly.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   // Detect mobile device - Universal detection
   useEffect(() => {
@@ -309,7 +344,8 @@ function BookPageContent() {
           duration: service.duration,
           price: service.price,
           barberId: service.barber_id
-        })) || []
+        })) || [],
+        portfolio: barberData.portfolio || [] // Add portfolio to transformedBarber
       }
 
       setBarber(transformedBarber)
@@ -397,37 +433,6 @@ function BookPageContent() {
           {isMobile && (
             <p className="text-sm text-gray-400 mt-2">If this takes too long, try refreshing the page</p>
           )}
-        </div>
-      </div>
-    )
-  }
-
-  if (!barberId) {
-    return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
-        <div className="text-center max-w-md mx-auto">
-          <div className="mb-6">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Invalid Booking Link</h1>
-            <p className="text-gray-400 mb-6 text-sm sm:text-base">This booking link appears to be invalid or has expired.</p>
-          </div>
-          
-          <div className="space-y-3">
-            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base">
-              <Link href="/browse">Browse Available Barbers</Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
-              <Link href="/">Go to Homepage</Link>
-            </Button>
-          </div>
-          
-          <p className="text-xs text-gray-500 mt-6">
-            If you believe this is an error, please contact the barber directly.
-          </p>
         </div>
       </div>
     )
@@ -552,6 +557,7 @@ function BookPageContent() {
                     </div>
                   </div>
                 </CardHeader>
+              </div> {/* <-- Added missing closing div for .relative wrapper */}
               <CardContent className="relative space-y-6">
                 {barber.bio && (
                   <div>
@@ -626,8 +632,7 @@ function BookPageContent() {
                   Book Appointment
                 </Button>
               </CardContent>
-            </div>
-          </Card>
+            </Card>
           </div>
 
           {/* Featured Reels Section */}
@@ -695,6 +700,34 @@ function BookPageContent() {
             </div>
           )}
 
+          {/* Portfolio Section */}
+          {barber.portfolio && barber.portfolio.length > 0 && (
+            <div className="w-full">
+              <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-white text-xl font-bold">Portfolio</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {barber.portfolio.map((item, index) => (
+                    <div
+                      key={index}
+                      className="group relative aspect-video rounded-2xl overflow-hidden bg-white/5 border border-white/10 cursor-pointer hover:border-saffron/50 transition-all duration-300"
+                      onClick={() => {
+                        setSelectedImage(item);
+                      }}
+                    >
+                      <img
+                        src={item}
+                        alt={`Portfolio item ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Contact Info Card */}
           <div className="w-full">
             <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl">
@@ -734,7 +767,7 @@ function BookPageContent() {
       {/* Video Dialog */}
       <Dialog open={showVideoDialog} onOpenChange={setShowVideoDialog}>
         <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
-          {selectedVideo && (
+          {selectedVideo ? (
             <>
               <div className="aspect-video">
                 <video
@@ -751,7 +784,6 @@ function BookPageContent() {
                     {selectedVideo.description}
                   </DialogDescription>
                 </DialogHeader>
-                
                 <div className="flex items-center gap-4 mt-4 text-white/60 text-sm">
                   <div className="flex items-center gap-1">
                     <Eye className="h-4 w-4" />
@@ -768,9 +800,44 @@ function BookPageContent() {
                 </div>
               </div>
             </>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* Image Dialog */}
+      {selectedImage !== null && (
+        <Dialog open={!!selectedImage} onOpenChange={open => !open && setSelectedImage(null)}>
+          <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
+            <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-saffron/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-saffron">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v10.5A2.25 2.25 0 0118.75 19.5H5.25A2.25 2.25 0 013 17.25v-.75zm0 0l5.25-5.25a2.25 2.25 0 013.18 0l5.32 5.32M3 16.5l5.25-5.25a2.25 2.25 0 013.18 0l5.32 5.32" />
+                  </svg>
+                </span>
+                <span className="text-white text-lg font-bold">Portfolio Image</span>
+              </div>
+              <button
+                onClick={() => setSelectedImage(null)}
+                aria-label="Close"
+                className="text-white hover:text-saffron focus:outline-none focus:ring-2 focus:ring-saffron rounded-full p-1 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="w-full flex-1 flex items-center justify-center p-4">
+              <img
+                src={selectedImage || ''}
+                alt="Portfolio item"
+                className="max-h-[70vh] w-auto max-w-full object-contain rounded-2xl shadow-lg"
+                draggable={false}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showBookingForm && barber && (
         <ErrorBoundary>
@@ -778,7 +845,7 @@ function BookPageContent() {
             isOpen={showBookingForm}
             onClose={() => setShowBookingForm(false)}
             selectedDate={selectedDate || new Date()}
-            barberId={barber.id}
+            barberId={barber!.id}
             onBookingCreated={(booking) => {
               setShowBookingForm(false)
               toast({

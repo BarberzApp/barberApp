@@ -316,7 +316,7 @@ export async function POST(request: Request) {
         if (!existingBooking) {
           // Create the booking using metadata
           const meta = paymentIntent.metadata || {}
-          const { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId } = meta
+          const { barberId, serviceId, date, notes, guestName, guestEmail, guestPhone, clientId, addonIds, addonTotal, addonsPaidSeparately } = meta
           
           // Debug logging
           console.log('Payment intent metadata:', meta)
@@ -343,6 +343,23 @@ export async function POST(request: Request) {
             price = Number(service.price)
           }
 
+          // Calculate add-on total from add-ons table using addonIds
+          let addon_total = 0
+          let addonIdArray: string[] = []
+          if (addonIds && typeof addonIds === 'string' && addonIds.length > 0) {
+            addonIdArray = addonIds.split(',').filter(id => id.trim())
+            if (addonIdArray.length > 0) {
+              const { data: addons } = await supabase
+                .from('service_addons')
+                .select('price')
+                .in('id', addonIdArray)
+                .eq('is_active', true)
+              if (addons && addons.length > 0) {
+                addon_total = addons.reduce((sum, addon) => sum + Number(addon.price), 0)
+              }
+            }
+          }
+
           const { data: newBooking, error: createError } = await supabase.from('bookings').insert({
             barber_id: barberId,
             service_id: serviceId,
@@ -350,7 +367,8 @@ export async function POST(request: Request) {
             status: 'confirmed',
             payment_status: 'succeeded',
             payment_intent_id: paymentIntent.id,
-            price,
+            price,        // base service price only
+            addon_total,  // add-ons only
             platform_fee,
             barber_payout,
             notes: notes || null,
@@ -377,6 +395,36 @@ export async function POST(request: Request) {
 
           bookingId = newBooking.id
           console.log('Booking created after payment for payment_intent:', paymentIntent.id)
+
+          // Add add-ons to the booking if any were selected
+          if (addonIds && addonIds.length > 0) {
+            const addonIdArray = addonIds.split(',').filter(id => id.trim())
+            if (addonIdArray.length > 0) {
+              const { data: addons } = await supabase
+                .from('service_addons')
+                .select('id, price')
+                .in('id', addonIdArray)
+                .eq('is_active', true)
+
+              if (addons && addons.length > 0) {
+                const bookingAddons = addons.map(addon => ({
+                  booking_id: newBooking.id,
+                  addon_id: addon.id,
+                  price: addon.price
+                }))
+
+                const { error: addonError } = await supabase
+                  .from('booking_addons')
+                  .insert(bookingAddons)
+
+                if (addonError) {
+                  console.error('Error adding add-ons to booking:', addonError)
+                } else {
+                  console.log(`Added ${addons.length} add-ons to booking`)
+                }
+              }
+            }
+          }
         } else if (findError && typeof findError === 'object' && (findError as any).code !== 'PGRST116') {
           // Only log error if it's not the 'no rows' error
           console.error('Error finding booking:', findError)
