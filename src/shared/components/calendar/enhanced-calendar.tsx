@@ -620,20 +620,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           Today
         </button>
 
-        {/* Debug Panel - Remove this in production */}
-        <div className="mt-4 p-3 bg-white/10 rounded-lg text-xs text-white/80">
-          <div>User: {user?.id ? 'Logged in' : 'Not logged in'}</div>
-          <div>Total Events: {events.length}</div>
-          <div>Selected Date: {selectedDate ? format(selectedDate, 'MMM d, yyyy') : 'None'}</div>
-          {events.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-white/20">
-              <div>Sample Event Pricing:</div>
-              <div>Base: ${events[0].extendedProps.basePrice}</div>
-              <div>Add-ons: ${events[0].extendedProps.addonTotal}</div>
-              <div>Total: ${events[0].extendedProps.price}</div>
-            </div>
-          )}
-        </div>
+
 
         {/* Events Panel */}
         {selectedDate && (
