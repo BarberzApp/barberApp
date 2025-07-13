@@ -37,6 +37,7 @@ import { geocodeAddress, getAddressSuggestionsNominatim } from '@/shared/lib/geo
 const barberProfileSchema = z.object({
   // Basic Info
   name: z.string().min(2, 'Name must be at least 2 characters'),
+  username: z.string().min(3, 'Username must be at least 3 characters').max(30, 'Username must be less than 30 characters').regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
   bio: z.string().max(500, 'Bio must be less than 500 characters'),
   location: z.string().min(2, 'Location is required'),
@@ -86,6 +87,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
     resolver: zodResolver(barberProfileSchema),
     defaultValues: {
       name: '',
+      username: '',
       businessName: '',
       bio: '',
       location: '',
@@ -216,6 +218,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       // Update form with fetched data
       form.reset({
         name: profile.name || '',
+        username: profile.username || '',
         businessName: barber.business_name || '',
         bio: barber.bio || profile.bio || '',
         location: profile.location || '',
@@ -266,6 +269,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         .from('profiles')
         .update({
           name: data.name,
+          username: data.username,
           location: data.location,
           phone: data.phone,
           bio: data.bio,
@@ -361,18 +365,35 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
 
                   <FormField
                     control={form.control}
-                    name="businessName"
+                    name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-white font-semibold">Business Name *</FormLabel>
+                        <FormLabel className="text-white font-semibold">Username *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Your business name" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
+                          <Input placeholder="your_username" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
                         </FormControl>
+                        <FormDescription className="text-white/60">
+                          Used in your booking link: bocmstyle.com/book/{field.value || 'your_username'}
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="businessName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white font-semibold">Business Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your business name" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}

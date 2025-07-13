@@ -27,6 +27,7 @@ export interface Barber {
   id: string;
   name: string;
   email: string;
+  username?: string;
   phone?: string;
   location?: string;
   bio?: string;

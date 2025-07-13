@@ -29,6 +29,7 @@ interface AuthState {
   isLoading: boolean
   status: "loading" | "authenticated" | "unauthenticated"
   isInitialized: boolean
+  showLoginModal: boolean
 }
 
 interface AuthActions {
@@ -45,6 +46,7 @@ interface AuthActions {
   setLoading: (loading: boolean) => void
   setStatus: (status: "loading" | "authenticated" | "unauthenticated") => void
   setInitialized: (initialized: boolean) => void
+  setShowLoginModal: (show: boolean) => void
   
   // Initialize auth state
   initialize: () => Promise<void>
@@ -60,12 +62,14 @@ export const useAuthStore = create<AuthStore>()(
     isLoading: true,
     status: "loading",
     isInitialized: false,
+    showLoginModal: false,
 
     // State setters
     setUser: (user) => set({ user }),
     setLoading: (loading) => set({ isLoading: loading }),
     setStatus: (status) => set({ status }),
     setInitialized: (initialized) => set({ isInitialized: initialized }),
+    setShowLoginModal: (show) => set({ showLoginModal: show }),
 
     // Initialize auth state
     initialize: async () => {
@@ -515,3 +519,4 @@ export const useIsAuthenticated = () => useAuthStore((state) => state.status ===
 export const useIsLoading = () => useAuthStore((state) => state.isLoading)
 export const useAuthStatus = () => useAuthStore((state) => state.status)
 export const useIsInitialized = () => useAuthStore((state) => state.isInitialized) 
+export const useShowLoginModal = () => useAuthStore((state) => state.showLoginModal) 

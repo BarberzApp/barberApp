@@ -72,7 +72,7 @@ export function Navbar() {
         {
           href: "/reels",
           icon: Video,
-          label: "Reels",
+          label: "Cuts",
         },
       ]
     }
@@ -134,6 +134,9 @@ export function Navbar() {
                   )}
                 >
                   <item.icon className={cn("h-5 w-5 mr-1 inline", isActive ? "text-saffron" : "text-foreground/60")} /> {item.label}
+                  {item.label === 'Cuts' && (
+                    <span className="ml-1 bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full align-middle">Beta</span>
+                  )}
                 </Link>
               )
             })}

@@ -200,7 +200,7 @@ export async function POST(request: Request) {
     }
 
     // Create success and cancel URLs
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bocmstyle.com'
     const successUrl = `${baseUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${baseUrl}/booking/cancel`
 

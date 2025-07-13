@@ -206,7 +206,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                   asChild
                   className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"
                 >
-                  <Link href={`/book/${barber.id}`} className="flex items-center justify-center w-full h-full">
+                  <Link href={`/book/${barber.username || barber.id}`} className="flex items-center justify-center w-full h-full">
                     Book Now
                   </Link>
                 </Button>

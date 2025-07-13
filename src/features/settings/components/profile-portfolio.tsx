@@ -16,7 +16,7 @@ import { useAuth } from '@/shared/hooks/use-auth-zustand';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/shared/components/ui/use-toast';
 import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-settings';
-import { useReels } from '@/shared/hooks/use-reels';
+import { useCuts } from '@/shared/hooks/use-cuts';
 import Cropper, { Area } from 'react-easy-crop';
 import getCroppedImg from '@/shared/lib/crop-image';
 import { useData } from '@/shared/hooks/use-data';
@@ -52,9 +52,9 @@ export default function ProfilePortfolio() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
-  const [openDialog, setOpenDialog] = useState<null | 'profile' | 'portfolio' | 'video' | 'upload' | 'edit-reel'>(null);
-  const [selectedReel, setSelectedReel] = useState<any>(null);
-  const [editingReel, setEditingReel] = useState<any>(null);
+  const [openDialog, setOpenDialog] = useState<null | 'profile' | 'portfolio' | 'video' | 'upload' | 'edit-cut'>(null);
+  const [selectedCut, setSelectedCut] = useState<any>(null);
+  const [editingCut, setEditingCut] = useState<any>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -70,7 +70,7 @@ export default function ProfilePortfolio() {
   const editPortfolioButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
-  const [reels, setReels] = useState<any[]>([]);
+  const [cuts, setCuts] = useState<any[]>([]);
   const [showLocationFilter, setShowLocationFilter] = useState(false);
   const [locationFilter, setLocationFilter] = useState({
     city: '',
@@ -79,9 +79,9 @@ export default function ProfilePortfolio() {
     useCurrentLocation: false
   });
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const { reels: reelStats, analytics } = useReels();
+  const { cuts: cutStats, analytics } = useCuts();
   const [statsDialogOpen, setStatsDialogOpen] = useState(false);
-  const [statsDialogReel, setStatsDialogReel] = useState<any>(null);
+  const [statsDialogCut, setStatsDialogCut] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
@@ -134,10 +134,10 @@ export default function ProfilePortfolio() {
     return R * c;
   };
 
-  // Fetch user's reels from the reels table with location filtering
-  const fetchUserReels = async (barberId: string) => {
+  // Fetch user's cuts from the cuts table with location filtering
+  const fetchUserCuts = async (barberId: string) => {
     let query = supabase
-      .from('reels')
+      .from('cuts')
       .select('*')
       .eq('barber_id', barberId)
       .order('created_at', { ascending: false });
@@ -152,17 +152,17 @@ export default function ProfilePortfolio() {
 
     const { data, error } = await query;
     if (!error && data) {
-      let filteredReels = data;
+      let filteredCuts = data;
 
       // Apply distance filter if using current location
       if (locationFilter.useCurrentLocation && userLocation) {
-        filteredReels = filteredReels.filter((reel: any) => {
-          if (reel.latitude && reel.longitude) {
+        filteredCuts = filteredCuts.filter((cut: any) => {
+          if (cut.latitude && cut.longitude) {
             const distance = calculateDistance(
               userLocation.lat,
               userLocation.lng,
-              reel.latitude,
-              reel.longitude
+              cut.latitude,
+              cut.longitude
             );
             return distance <= locationFilter.range;
           }
@@ -170,7 +170,7 @@ export default function ProfilePortfolio() {
         });
       }
 
-      setReels(filteredReels);
+      setCuts(filteredCuts);
     }
   };
 
@@ -180,7 +180,7 @@ export default function ProfilePortfolio() {
       getCurrentLocation();
     }
     if (barberProfile) {
-      fetchUserReels(barberProfile.id);
+      fetchUserCuts(barberProfile.id);
     }
     setShowLocationFilter(false);
   };
@@ -195,7 +195,7 @@ export default function ProfilePortfolio() {
     });
     setUserLocation(null);
     if (barberProfile) {
-      fetchUserReels(barberProfile.id);
+      fetchUserCuts(barberProfile.id);
     }
   };
 
@@ -237,8 +237,8 @@ export default function ProfilePortfolio() {
             }));
             setPortfolio(portfolioItems);
           }
-          // Fetch advanced reels
-          await fetchUserReels(barberResult.data.id);
+          // Fetch advanced cuts
+          await fetchUserCuts(barberResult.data.id);
         } else {
           // User is not a barber yet, create a barber profile
           const { data: newBarber, error: createError } = await supabase
@@ -369,7 +369,7 @@ export default function ProfilePortfolio() {
     setVideoPreviewUrl(URL.createObjectURL(file));
   };
 
-  const handlePostReel = async () => {
+  const handlePostCut = async () => {
     if (!selectedVideoFile || !barberProfile) return;
 
     setUploading(true);
@@ -377,7 +377,7 @@ export default function ProfilePortfolio() {
     try {
       // Upload to Supabase Storage
       const fileExt = selectedVideoFile.name.split('.').pop()
-      const fileName = `${user?.id}/reels/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const fileName = `${user?.id}/cuts/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('portfolio')
@@ -390,9 +390,9 @@ export default function ProfilePortfolio() {
         .from('portfolio')
         .getPublicUrl(fileName)
 
-      // Insert into reels table
+      // Insert into cuts table
       const { error: insertError } = await supabase
-        .from('reels')
+        .from('cuts')
         .insert({
           barber_id: barberProfile.id,
           title: uploadForm.title || selectedVideoFile.name.replace(/\.[^/.]+$/, ''),
@@ -413,11 +413,11 @@ export default function ProfilePortfolio() {
       
       toast({
         title: 'Success',
-        description: 'Reel posted successfully!',
+        description: 'Cut posted successfully!',
       })
       
-      // Refresh reels
-      await fetchUserReels(barberProfile.id)
+      // Refresh cuts
+      await fetchUserCuts(barberProfile.id)
       
       // Reset form and close dialog
       setOpenDialog(null)
@@ -430,10 +430,10 @@ export default function ProfilePortfolio() {
       setVideoPreviewUrl(null);
 
     } catch (error) {
-      console.error('Error posting reel:', error)
+      console.error('Error posting cut:', error)
       toast({
         title: 'Error',
-        description: 'Failed to post reel. Please try again.',
+        description: 'Failed to post cut. Please try again.',
         variant: 'destructive',
       })
     } finally {
@@ -441,24 +441,24 @@ export default function ProfilePortfolio() {
     }
   }
 
-  const handleEditReel = (reel: any) => {
-    setEditingReel(reel);
+  const handleEditCut = (cut: any) => {
+    setEditingCut(cut);
     setUploadForm({
-      title: reel.title || '',
-      description: reel.description || '',
-      tags: reel.tags?.join(', ') || ''
+      title: cut.title || '',
+      description: cut.description || '',
+      tags: cut.tags?.join(', ') || ''
     });
-    setOpenDialog('edit-reel');
+    setOpenDialog('edit-cut');
   };
 
-  const handleUpdateReel = async () => {
-    if (!editingReel || !barberProfile) return;
+  const handleUpdateCut = async () => {
+    if (!editingCut || !barberProfile) return;
 
     try {
       setUploading(true);
       
       const { error: updateError } = await supabase
-        .from('reels')
+        .from('cuts')
         .update({
           title: uploadForm.title,
           description: uploadForm.description,
@@ -471,29 +471,29 @@ export default function ProfilePortfolio() {
           longitude: null,
           updated_at: new Date().toISOString()
         })
-        .eq('id', editingReel.id);
+        .eq('id', editingCut.id);
 
       if (updateError) throw updateError;
 
       toast({
         title: 'Success',
-        description: 'Reel updated successfully!',
+        description: 'Cut updated successfully!',
       });
 
-      // Refresh reels
-      await fetchUserReels(barberProfile.id);
+      // Refresh cuts
+      await fetchUserCuts(barberProfile.id);
       setOpenDialog(null);
-      setEditingReel(null);
+      setEditingCut(null);
       setUploadForm({
         title: '',
         description: '',
         tags: ''
       });
     } catch (error) {
-      console.error('Error updating reel:', error);
+      console.error('Error updating cut:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update reel. Please try again.',
+        description: 'Failed to update cut. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -501,85 +501,85 @@ export default function ProfilePortfolio() {
     }
   };
 
-  const handleDeleteReel = async (reelId: string) => {
+  const handleDeleteCut = async (cutId: string) => {
     if (!barberProfile) return;
 
     try {
       const { error: deleteError } = await supabase
-        .from('reels')
+        .from('cuts')
         .delete()
-        .eq('id', reelId);
+        .eq('id', cutId);
 
       if (deleteError) throw deleteError;
 
       toast({
         title: 'Success',
-        description: 'Reel deleted successfully!',
+        description: 'Cut deleted successfully!',
       });
 
-      // Refresh reels
-      await fetchUserReels(barberProfile.id);
+      // Refresh cuts
+      await fetchUserCuts(barberProfile.id);
     } catch (error) {
-      console.error('Error deleting reel:', error);
+      console.error('Error deleting cut:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete reel. Please try again.',
+        description: 'Failed to delete cut. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
-  const handleToggleReelVisibility = async (reelId: string, isPublic: boolean) => {
+  const handleToggleCutVisibility = async (cutId: string, isPublic: boolean) => {
     if (!barberProfile) return;
 
     try {
       const { error: updateError } = await supabase
-        .from('reels')
+        .from('cuts')
         .update({ is_public: !isPublic })
-        .eq('id', reelId);
+        .eq('id', cutId);
 
       if (updateError) throw updateError;
 
       toast({
         title: 'Success',
-        description: `Reel ${!isPublic ? 'published' : 'made private'} successfully!`,
+        description: `Cut ${!isPublic ? 'published' : 'made private'} successfully!`,
       });
 
-      // Refresh reels
-      await fetchUserReels(barberProfile.id);
+      // Refresh cuts
+      await fetchUserCuts(barberProfile.id);
     } catch (error) {
-      console.error('Error updating reel visibility:', error);
+      console.error('Error updating cut visibility:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update reel visibility. Please try again.',
+        description: 'Failed to update cut visibility. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
-  const handleToggleFeatured = async (reelId: string, isFeatured: boolean) => {
+  const handleToggleFeatured = async (cutId: string, isFeatured: boolean) => {
     if (!barberProfile) return;
 
     try {
       const { error: updateError } = await supabase
-        .from('reels')
+        .from('cuts')
         .update({ is_featured: !isFeatured })
-        .eq('id', reelId);
+        .eq('id', cutId);
 
       if (updateError) throw updateError;
 
       toast({
         title: 'Success',
-        description: `Reel ${!isFeatured ? 'featured' : 'unfeatured'} successfully!`,
+        description: `Cut ${!isFeatured ? 'featured' : 'unfeatured'} successfully!`,
       });
 
-      // Refresh reels
-      await fetchUserReels(barberProfile.id);
+      // Refresh cuts
+      await fetchUserCuts(barberProfile.id);
     } catch (error) {
-      console.error('Error updating reel featured status:', error);
+      console.error('Error updating cut featured status:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update reel featured status. Please try again.',
+        description: 'Failed to update cut featured status. Please try again.',
         variant: 'destructive',
       });
     }
@@ -648,15 +648,15 @@ export default function ProfilePortfolio() {
     }
   };
 
-  const openStatsDialog = async (reel: any) => {
-    setStatsDialogReel(reel);
+  const openStatsDialog = async (cut: any) => {
+    setStatsDialogCut(cut);
     setStatsDialogOpen(true);
     setCommentsLoading(true);
-    // Fetch comments for this reel
+    // Fetch comments for this cut
     const { data, error } = await supabase
-      .from('reel_comments')
+      .from('cut_comments')
       .select('*')
-      .eq('reel_id', reel.id)
+      .eq('cut_id', cut.id)
       .order('created_at', { ascending: false });
     setComments(data || []);
     setCommentsLoading(false);
@@ -664,7 +664,7 @@ export default function ProfilePortfolio() {
 
   const closeStatsDialog = () => {
     setStatsDialogOpen(false);
-    setStatsDialogReel(null);
+    setStatsDialogCut(null);
     setComments([]);
   };
 
@@ -714,7 +714,7 @@ export default function ProfilePortfolio() {
   const coverUrl = undefined; // Placeholder, can add upload later
   const username = undefined; // Placeholder, can add username later
   const headerStats = [
-    { label: 'Reels', value: reels.length },
+    { label: 'Cuts', value: cuts.length },
     { label: 'Portfolio', value: portfolio.length },
   ];
   const isOwner = true; // Always true for now
@@ -802,7 +802,7 @@ export default function ProfilePortfolio() {
       <Tabs defaultValue="portfolio" className="w-full">
         <TabsList className="flex justify-center gap-2 bg-darkpurple/80 backdrop-blur border border-white/10 rounded-xl mb-6 sticky top-0 z-20 shadow-lg">
           <TabsTrigger value="portfolio" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Portfolio</TabsTrigger>
-          <TabsTrigger value="reels" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Reels</TabsTrigger>
+          <TabsTrigger value="cuts" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Cuts</TabsTrigger>
           <TabsTrigger value="about" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">About</TabsTrigger>
         </TabsList>
         {/* Portfolio Tab */}
@@ -865,31 +865,21 @@ export default function ProfilePortfolio() {
               <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
                 <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
                   <div className="flex items-center gap-2">
+                    {isOwner && (
+                      <button
+                        onClick={() => handleDeletePortfolio(selectedPortfolioItem)}
+                        aria-label="Delete"
+                        className="text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        <Trash2 className="w-6 h-6" />
+                      </button>
+                    )}
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-saffron/20">
                       <ImageIcon className="w-5 h-5 text-saffron" />
                     </span>
                     <span className="text-white text-lg font-bold">Portfolio Image</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isOwner && (
-                      <button
-                        onClick={() => handleDeletePortfolio(selectedPortfolioItem)}
-                        aria-label="Delete"
-                        className="text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-full p-1 transition-colors"
-                      >
-                        <Trash2 className="w-6 h-6" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setPortfolioModalOpen(false)}
-                      aria-label="Close"
-                      className="text-white hover:text-saffron focus:outline-none focus:ring-2 focus:ring-saffron rounded-full p-1 transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
+                  {/* Only one close button remains */}
                 </div>
                 <div className="w-full flex-1 flex items-center justify-center p-4">
                   <img
@@ -932,8 +922,8 @@ export default function ProfilePortfolio() {
             )}
           </Dialog>
         </TabsContent>
-        {/* Reels Tab */}
-        <TabsContent value="reels">
+        {/* Cuts Tab */}
+        <TabsContent value="cuts">
           <div className="space-y-6">
             {/* Upload Button for Owners */}
             {isOwner && (
@@ -943,19 +933,19 @@ export default function ProfilePortfolio() {
                   onClick={() => setOpenDialog('upload')}
                 >
                   <Upload className="w-4 h-4" />
-                  Upload Reel
+                  Upload Cut
                 </Button>
               </div>
             )}
             
-            {/* Reels Grid */}
+            {/* Cuts Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {reels.length > 0 ? (
-                reels.map((reel, idx) => (
+              {cuts.length > 0 ? (
+                cuts.map((cut, idx) => (
                   <div key={idx} className="rounded-xl overflow-hidden bg-white/10 backdrop-blur border border-white/10 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 group">
                     {/* Video Container */}
                     <div className="relative">
-                      <video src={reel.url} controls className="w-full h-40 object-cover rounded-t-lg" />
+                      <video src={cut.url} controls className="w-full h-40 object-cover rounded-t-lg" />
                       
                       {/* Overlay with actions for owners */}
                       {isOwner && (
@@ -964,8 +954,8 @@ export default function ProfilePortfolio() {
                             variant="ghost"
                             size="sm"
                             className="bg-black/60 hover:bg-saffron/80 text-white rounded-full p-1"
-                            onClick={() => handleEditReel(reel)}
-                            aria-label="Edit reel"
+                            onClick={() => handleEditCut(cut)}
+                            aria-label="Edit cut"
                           >
                             <Edit className="w-3 h-3" />
                           </Button>
@@ -973,8 +963,8 @@ export default function ProfilePortfolio() {
                             variant="ghost"
                             size="sm"
                             className="bg-black/60 hover:bg-red-500/80 text-white rounded-full p-1"
-                            onClick={() => handleDeleteReel(reel.id)}
-                            aria-label="Delete reel"
+                            onClick={() => handleDeleteCut(cut.id)}
+                            aria-label="Delete cut"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
@@ -989,40 +979,40 @@ export default function ProfilePortfolio() {
                             size="sm"
                             className={cn(
                               "rounded-full p-1 transition-all",
-                              reel.is_public 
+                              cut.is_public 
                                 ? "bg-green-500/80 hover:bg-green-600/80 text-white" 
                                 : "bg-gray-500/80 hover:bg-gray-600/80 text-white"
                             )}
-                            onClick={() => handleToggleReelVisibility(reel.id, !reel.is_public)}
-                            aria-label={reel.is_public ? "Make private" : "Make public"}
+                            onClick={() => handleToggleCutVisibility(cut.id, !cut.is_public)}
+                            aria-label={cut.is_public ? "Make private" : "Make public"}
                           >
-                            {reel.is_public ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                            {cut.is_public ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                           </Button>
                         </div>
                       )}
                     </div>
                     
-                    {/* Reel Info */}
+                    {/* Cut Info */}
                     <div className="p-3">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-semibold text-white text-sm line-clamp-1">{reel.title || 'Untitled Reel'}</h4>
-                        <span className="text-xs text-white/60">Views: {reel.views || 0}</span>
+                        <h4 className="font-semibold text-white text-sm line-clamp-1">{cut.title || 'Untitled Cut'}</h4>
+                        <span className="text-xs text-white/60">Views: {cut.views || 0}</span>
                       </div>
                       
-                      {reel.description && (
-                        <p className="text-white/80 text-xs line-clamp-2 mb-2">{reel.description}</p>
+                      {cut.description && (
+                        <p className="text-white/80 text-xs line-clamp-2 mb-2">{cut.description}</p>
                       )}
                       
                       <div className="flex gap-3 text-xs text-saffron">
                         <span className="flex items-center gap-1">
                           <Heart className="w-3 h-3" />
-                          {reel.likes || 0}
+                          {cut.likes || 0}
                         </span>
                         <span className="flex items-center gap-1">
                           <MessageCircle className="w-3 h-3" />
-                          {reel.comments_count || 0}
+                          {cut.comments_count || 0}
                         </span>
-                        {reel.is_featured && (
+                        {cut.is_featured && (
                           <span className="flex items-center gap-1 text-yellow-400">
                             <Star className="w-3 h-3" />
                             Featured
@@ -1031,23 +1021,23 @@ export default function ProfilePortfolio() {
                       </div>
                       
                       {/* Tags */}
-                      {reel.tags && reel.tags.length > 0 && (
+                      {cut.tags && cut.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {reel.tags.slice(0, 3).map((tag: string, tagIdx: number) => (
+                          {cut.tags.slice(0, 3).map((tag: string, tagIdx: number) => (
                             <span key={tagIdx} className="bg-white/10 text-white/80 text-xs px-2 py-0.5 rounded-full">
                               {tag}
                             </span>
                           ))}
-                          {reel.tags.length > 3 && (
-                            <span className="text-white/60 text-xs">+{reel.tags.length - 3} more</span>
+                          {cut.tags.length > 3 && (
+                            <span className="text-white/60 text-xs">+{cut.tags.length - 3} more</span>
                           )}
                         </div>
                       )}
                       
                       {/* Upload date */}
-                      {reel.created_at && (
+                      {cut.created_at && (
                         <div className="text-white/40 text-xs mt-2">
-                          {new Date(reel.created_at).toLocaleDateString()}
+                          {new Date(cut.created_at).toLocaleDateString()}
                         </div>
                       )}
                     </div>
@@ -1057,7 +1047,7 @@ export default function ProfilePortfolio() {
                 <div className="col-span-1 sm:col-span-2 text-center text-white/60 py-12 flex flex-col items-center gap-4">
                   <Video className="w-12 h-12 text-white/40" />
                   <div>
-                    <p className="text-lg font-semibold mb-2">No reels yet</p>
+                    <p className="text-lg font-semibold mb-2">No cuts yet</p>
                     <p className="text-sm">Start sharing your work with engaging video content</p>
                   </div>
                   {isOwner && (
@@ -1066,7 +1056,7 @@ export default function ProfilePortfolio() {
                       onClick={() => setOpenDialog('upload')}
                     >
                       <Upload className="w-4 h-4" />
-                      Upload Your First Reel
+                      Upload Your First Cut
                     </Button>
                   )}
                 </div>
@@ -1254,7 +1244,7 @@ export default function ProfilePortfolio() {
       }}>
         <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Upload New Reel</DialogTitle>
+            <DialogTitle className="text-2xl font-bebas text-white">Upload New Cut</DialogTitle>
             <DialogDescription className="text-white/80">
               Share your latest work with the community
             </DialogDescription>
@@ -1355,7 +1345,7 @@ export default function ProfilePortfolio() {
                 {/* Post Button */}
                 <div className="flex gap-3 pt-4">
                   <Button
-                    onClick={handlePostReel}
+                    onClick={handlePostCut}
                     disabled={uploading}
                     className="flex-1 bg-saffron text-primary font-bold rounded-xl px-6 py-3 hover:bg-saffron/90"
                   >
@@ -1367,7 +1357,7 @@ export default function ProfilePortfolio() {
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Post Reel
+                        Post Cut
                       </>
                     )}
                   </Button>
@@ -1385,11 +1375,11 @@ export default function ProfilePortfolio() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Reel Dialog */}
-      <Dialog open={openDialog === 'edit-reel'} onOpenChange={open => {
-        setOpenDialog(open ? 'edit-reel' : null);
+      {/* Edit Cut Dialog */}
+      <Dialog open={openDialog === 'edit-cut'} onOpenChange={open => {
+        setOpenDialog(open ? 'edit-cut' : null);
         if (!open) {
-          setEditingReel(null);
+          setEditingCut(null);
           setUploadForm({
             title: '',
             description: '',
@@ -1399,19 +1389,19 @@ export default function ProfilePortfolio() {
       }}>
         <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Edit Reel</DialogTitle>
+            <DialogTitle className="text-2xl font-bebas text-white">Edit Cut</DialogTitle>
             <DialogDescription className="text-white/80">
-              Update your reel information and settings
+              Update your cut information and settings
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6">
             {/* Video Preview */}
-            {editingReel && (
+            {editingCut && (
               <div className="bg-white/5 rounded-2xl p-4">
                 <h4 className="text-white font-medium mb-3">Video Preview</h4>
                 <div className="aspect-video rounded-xl overflow-hidden">
-                  <video src={editingReel.url} className="w-full h-full object-cover" controls />
+                  <video src={editingCut.url} className="w-full h-full object-cover" controls />
                 </div>
               </div>
             )}
@@ -1459,24 +1449,24 @@ export default function ProfilePortfolio() {
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
               <div className="flex items-center gap-3">
                 <Switch
-                  checked={editingReel?.is_featured || false}
+                  checked={editingCut?.is_featured || false}
                   onCheckedChange={async (checked) => {
-                    if (!editingReel) return;
+                    if (!editingCut) return;
                     try {
                       const { error } = await supabase
-                        .from('reels')
+                        .from('cuts')
                         .update({ is_featured: checked })
-                        .eq('id', editingReel.id);
+                        .eq('id', editingCut.id);
                       
                       if (error) throw error;
                       
-                      setEditingReel((prev: any) => prev ? { ...prev, is_featured: checked } : prev);
-                      // Refresh reels list
-                      if (barberProfile) await fetchUserReels(barberProfile.id);
+                      setEditingCut((prev: any) => prev ? { ...prev, is_featured: checked } : prev);
+                      // Refresh cuts list
+                      if (barberProfile) await fetchUserCuts(barberProfile.id);
                       
                       toast({
                         title: 'Success',
-                        description: `Reel ${checked ? 'featured' : 'unfeatured'} successfully!`,
+                        description: `Cut ${checked ? 'featured' : 'unfeatured'} successfully!`,
                       });
                     } catch (error) {
                       console.error('Error updating featured status:', error);
@@ -1487,15 +1477,15 @@ export default function ProfilePortfolio() {
                       });
                     }
                   }}
-                  id="feature-reel-toggle"
+                  id="feature-cut-toggle"
                   className="data-[state=checked]:bg-saffron data-[state=unchecked]:bg-white/20 border-white/30"
                 />
-                <Label htmlFor="feature-reel-toggle" className="text-white font-medium flex items-center gap-2">
+                <Label htmlFor="feature-cut-toggle" className="text-white font-medium flex items-center gap-2">
                   <Star className="h-4 w-4 text-saffron" />
-                  Feature this reel
+                  Feature this cut
                 </Label>
               </div>
-              {editingReel?.is_featured && (
+              {editingCut?.is_featured && (
                 <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30">
                   Currently Featured
                 </Badge>
@@ -1506,7 +1496,7 @@ export default function ProfilePortfolio() {
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
-                onClick={handleUpdateReel}
+                onClick={handleUpdateCut}
                 disabled={uploading}
                 className="flex-1 bg-saffron text-primary font-bold rounded-xl px-6 py-3 hover:bg-saffron/90"
               >
@@ -1518,7 +1508,7 @@ export default function ProfilePortfolio() {
                 ) : (
                   <>
                     <Edit className="h-4 w-4 mr-2" />
-                    Update Reel
+                    Update Cut
                   </>
                 )}
               </Button>
@@ -1618,9 +1608,9 @@ export default function ProfilePortfolio() {
       <Dialog open={showLocationFilter} onOpenChange={setShowLocationFilter}>
         <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Filter My Videos</DialogTitle>
+            <DialogTitle className="text-2xl font-bebas text-white">Filter My Cuts</DialogTitle>
             <DialogDescription className="text-white/80">
-              Filter your videos by location
+              Filter your cuts by location
             </DialogDescription>
           </DialogHeader>
           
@@ -1711,13 +1701,13 @@ export default function ProfilePortfolio() {
       {/* Stats Dialog */}
       <Dialog open={statsDialogOpen} onOpenChange={closeStatsDialog}>
         <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
-          {statsDialogReel && (
+          {statsDialogCut && (
             <>
               <DialogHeader>
                 <div className="flex flex-col items-center justify-center text-center py-2">
-                  <span className="text-2xl font-extrabold text-white tracking-wide mb-1">{statsDialogReel.title || 'Reel Stats'}</span>
-                  {statsDialogReel.id && (
-                    <span className="text-xs text-white/40">ID: {statsDialogReel.id}</span>
+                  <span className="text-2xl font-extrabold text-white tracking-wide mb-1">{statsDialogCut.title || 'Cut Stats'}</span>
+                  {statsDialogCut.id && (
+                    <span className="text-xs text-white/40">ID: {statsDialogCut.id}</span>
                   )}
                 </div>
                 <div className="w-full h-px bg-white/10 my-2" />
@@ -1726,42 +1716,42 @@ export default function ProfilePortfolio() {
                 {/* Video Preview */}
                 <div className="rounded-xl overflow-hidden aspect-video bg-black/40 mb-2">
                   <video
-                    src={statsDialogReel.url}
+                    src={statsDialogCut.url}
                     className="w-full h-full object-cover"
                     controls
                     poster=""
                     onPlay={async () => {
                       // Increment view count in DB and update UI
                       await supabase
-                        .from('reels')
-                        .update({ views: (statsDialogReel.views || 0) + 1 })
-                        .eq('id', statsDialogReel.id);
-                      setStatsDialogReel((prev: any) => prev ? { ...prev, views: (prev.views || 0) + 1 } : prev);
+                        .from('cuts')
+                        .update({ views: (statsDialogCut.views || 0) + 1 })
+                        .eq('id', statsDialogCut.id);
+                      setStatsDialogCut((prev: any) => prev ? { ...prev, views: (prev.views || 0) + 1 } : prev);
                     }}
                   />
                 </div>
                 {/* Posted Date */}
                 <div className="text-xs text-white/60 mb-2">
-                  Posted: {statsDialogReel.created_at ? new Date(statsDialogReel.created_at).toLocaleDateString() : 'Unknown'}
+                  Posted: {statsDialogCut.created_at ? new Date(statsDialogCut.created_at).toLocaleDateString() : 'Unknown'}
                 </div>
                 {/* Stats Row */}
                 <div className="flex items-center justify-between gap-4 mb-4">
-                  <span className="flex flex-col items-center text-white"><Eye className="h-6 w-6 text-saffron mb-1" /><span className="text-lg font-bold">{statsDialogReel.views}</span><span className="text-xs text-white/60">Views</span></span>
+                  <span className="flex flex-col items-center text-white"><Eye className="h-6 w-6 text-saffron mb-1" /><span className="text-lg font-bold">{statsDialogCut.views}</span><span className="text-xs text-white/60">Views</span></span>
                   <button
                     className="flex flex-col items-center text-white focus:outline-none"
                     onClick={async () => {
                       await supabase
-                        .from('reels')
-                        .update({ likes: (statsDialogReel.likes || 0) + 1 })
-                        .eq('id', statsDialogReel.id);
-                      setStatsDialogReel((prev: any) => prev ? { ...prev, likes: (prev.likes || 0) + 1 } : prev);
+                        .from('cuts')
+                        .update({ likes: (statsDialogCut.likes || 0) + 1 })
+                        .eq('id', statsDialogCut.id);
+                      setStatsDialogCut((prev: any) => prev ? { ...prev, likes: (prev.likes || 0) + 1 } : prev);
                     }}
                   >
                     <Heart className="h-6 w-6 text-red-400 mb-1" />
-                    <span className="text-lg font-bold">{statsDialogReel.likes}</span>
+                    <span className="text-lg font-bold">{statsDialogCut.likes}</span>
                     <span className="text-xs text-white/60">Likes</span>
                   </button>
-                  <span className="flex flex-col items-center text-white"><MessageCircle className="h-6 w-6 text-blue-400 mb-1" /><span className="text-lg font-bold">{statsDialogReel.comments_count || 0}</span><span className="text-xs text-white/60">Comments</span></span>
+                  <span className="flex flex-col items-center text-white"><MessageCircle className="h-6 w-6 text-blue-400 mb-1" /><span className="text-lg font-bold">{statsDialogCut.comments_count || 0}</span><span className="text-xs text-white/60">Comments</span></span>
                 </div>
                 {/* Comments Section */}
                 <div className="bg-white/5 rounded-xl p-4 max-h-60 overflow-y-auto">

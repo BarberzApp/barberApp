@@ -4,6 +4,7 @@ export type PaymentStatus = "pending" | "succeeded" | "failed" | "refunded"
 export type Barber = {
   id: string
   name: string
+  username?: string
   image?: string
   location?: string
 }

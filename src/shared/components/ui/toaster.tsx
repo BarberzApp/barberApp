@@ -7,6 +7,7 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
+  SwipeInstruction,
 } from "@/shared/components/ui/toast"
 import { useToast } from "@/shared/components/ui/use-toast"
 
@@ -26,6 +27,7 @@ export function Toaster() {
             </div>
             {action}
             <ToastClose />
+            <SwipeInstruction />
           </Toast>
         )
       })}

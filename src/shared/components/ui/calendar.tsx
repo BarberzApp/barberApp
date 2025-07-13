@@ -56,6 +56,12 @@ function Calendar({
         day_hidden: "invisible",
         ...classNames,
       }}
+      style={{
+        maxWidth: '320px',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        padding: '0.5rem',
+      }}
       components={{
         IconLeft: ({ ...props }) => <ChevronLeft className="h-5 w-5" />,
         IconRight: ({ ...props }) => <ChevronRight className="h-5 w-5" />,

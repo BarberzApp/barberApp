@@ -29,7 +29,7 @@ interface CreateAccountRequest {
 
 // Use environment variable for business profile URL
 const getBusinessProfileUrl = (barberId: string) => {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://barber-app-five.vercel.app';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bocmstyle.com';
   return `${appUrl}/barber/${barberId}`;
 };
 

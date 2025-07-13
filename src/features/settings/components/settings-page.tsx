@@ -44,7 +44,7 @@ export function SettingsPage() {
   const [barberId, setBarberId] = useState<string>('')
   const [showVerifyBanner, setShowVerifyBanner] = useState(true)
   const [latestUser, setLatestUser] = useState<any>(null)
-  const { user, status } = useAuth()
+  const { user, status, logout } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -555,6 +555,31 @@ export function SettingsPage() {
             </div>
           </Tabs>
         </Card>
+      </div>
+      {/* Logout Button at the bottom */}
+      <div className="container max-w-6xl mx-auto px-4 mt-8 mb-8 flex justify-center">
+        <Button
+          onClick={async () => {
+            try {
+              await logout();
+              toast({
+                title: 'Logged out',
+                description: 'You have been logged out successfully.',
+                variant: 'success',
+              });
+              router.push('/login');
+            } catch (error) {
+              toast({
+                title: 'Logout failed',
+                description: 'There was a problem logging out. Please try again.',
+                variant: 'destructive',
+              });
+            }
+          }}
+          className="w-full max-w-md bg-saffron/90 hover:bg-saffron text-primary font-semibold rounded-2xl shadow-lg py-3 text-lg glassy"
+        >
+          Log Out
+        </Button>
       </div>
     </div>
   )

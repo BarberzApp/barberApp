@@ -351,96 +351,15 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Date Selection */}
-          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-saffron/20 rounded-lg">
-                    <CalendarIcon className="h-4 w-4 text-saffron" />
-                  </div>
-                  <Label className="text-lg font-semibold text-white">Select Date</Label>
-                </div>
-                
-                {/* Enhanced Selected Date Display */}
-                <div className="relative bg-gradient-to-br from-saffron/10 to-white/5 border border-saffron/20 rounded-2xl p-6 mb-6 overflow-hidden">
-                  {/* Background Pattern */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,193,7,0.1),transparent_50%)]"></div>
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-saffron/5 rounded-full -translate-y-10 translate-x-10"></div>
-                  
-                  <div className="relative text-center">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <div className="w-2 h-2 bg-saffron rounded-full animate-pulse"></div>
-                      <span className="text-saffron/80 text-sm font-medium uppercase tracking-wider">Selected Date</span>
-                      <div className="w-2 h-2 bg-saffron rounded-full animate-pulse"></div>
-                    </div>
-                    
-                    <div className="text-4xl font-bebas text-saffron tracking-wide mb-1">
-                      {date.getDate()}
-                    </div>
-                    <div className="text-white/90 font-semibold text-lg mb-1">
-                      {getDayName(date)}
-                    </div>
-                    <div className="text-white/60 text-sm font-medium">
-                      {getMonthName(date)} {date.getFullYear()}
-                    </div>
-                    
-                    {/* Quick date indicators */}
-                    <div className="flex items-center justify-center gap-4 mt-4 text-xs">
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        <span className="text-white/70">Available</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                        <span className="text-white/70">Booked</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Enhanced Calendar */}
-                <div className="relative">
-                  {/* Calendar Header with Navigation */}
-                  <div className="flex items-center justify-between mb-4 p-3 bg-white/5 rounded-xl border border-white/10">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-white hover:bg-saffron/20 hover:text-saffron transition-all duration-200"
-                      onClick={() => {
-                        const newDate = new Date(date)
-                        newDate.setMonth(newDate.getMonth() - 1)
-                        setDate(newDate)
-                      }}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    
-                    <div className="text-center">
-                      <div className="text-white font-semibold text-lg">
-                        {getMonthName(date)} {date.getFullYear()}
-                      </div>
-                      <div className="text-white/60 text-xs">Select your preferred date</div>
-                    </div>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-white hover:bg-saffron/20 hover:text-saffron transition-all duration-200"
-                      onClick={() => {
-                        const newDate = new Date(date)
-                        newDate.setMonth(newDate.getMonth() + 1)
-                        setDate(newDate)
-                      }}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-
+          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl max-w-xs mx-auto">
+            <CardContent className="p-4">
+              <div className="space-y-2">
+                {/* Calendar Only (no extra header/label) */}
                 <Calendar
                   mode="single"
                   selected={date}
                   onSelect={(date) => date && setDate(date)}
-                    className="w-full"
+                  className="w-full"
                   disabled={(date) => {
                     // Disable past dates
                     const today = new Date()
@@ -448,75 +367,53 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                     return date < today
                   }}
                   modifiers={{
-                    available: (date) => {
-                      // Add your availability logic here
-                      return true
-                    },
+                    available: (date) => true,
                     today: (date) => {
                       const today = new Date()
                       return date.toDateString() === today.toDateString()
-                      },
-                      weekend: (date) => {
-                        return date.getDay() === 0 || date.getDay() === 6
-                    }
+                    },
+                    weekend: (date) => date.getDay() === 0 || date.getDay() === 6
                   }}
                   modifiersStyles={{
-                    available: {
-                      fontWeight: 'bold',
-                    },
+                    available: { fontWeight: 'bold' },
                     today: {
-                        backgroundColor: 'hsl(var(--saffron) / 0.3)',
+                      backgroundColor: 'hsl(var(--saffron) / 0.3)',
                       color: 'hsl(var(--saffron))',
-                        border: '2px solid hsl(var(--saffron) / 0.5)',
-                      },
-                      weekend: {
-                        color: 'hsl(var(--saffron) / 0.8)',
-                    }
+                      border: '2px solid hsl(var(--saffron) / 0.5)',
+                    },
+                    weekend: { color: 'hsl(var(--saffron) / 0.8)' }
                   }}
                   classNames={{
-                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                      month: "space-y-4",
-                      caption: "flex justify-center pt-1 relative items-center",
-                      caption_label: "text-white font-semibold text-lg",
-                      nav: "space-x-1 flex items-center",
-                      nav_button: "h-8 w-8 bg-white/10 hover:bg-saffron/20 text-white hover:text-saffron rounded-lg transition-all duration-200",
-                      nav_button_previous: "absolute left-1",
-                      nav_button_next: "absolute right-1",
-                      table: "w-full border-collapse space-y-1",
-                      head_row: "flex",
-                      head_cell: "text-white/70 font-medium rounded-md w-9 font-normal text-sm",
-                      row: "flex w-full mt-2",
-                      cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                      day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 text-white hover:bg-saffron/20 hover:text-saffron rounded-lg transition-all duration-200 focus:bg-saffron/20 focus:text-saffron",
-                      day_range_end: "day-range-end",
-                      day_selected: "bg-gradient-to-br from-saffron to-orange-500 text-white font-semibold hover:bg-gradient-to-br hover:from-saffron/90 hover:to-orange-500/90 focus:bg-gradient-to-br focus:from-saffron focus:to-orange-500 shadow-lg transform scale-105 transition-all duration-200",
-                      day_today: "bg-saffron/20 text-saffron font-semibold border-2 border-saffron/50",
-                      day_outside: "day-outside text-white/30 opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-                      day_disabled: "text-white/30 opacity-30 aria-selected:bg-background aria-selected:text-muted-foreground",
-                      day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-                      day_hidden: "invisible",
-                    }}
-                  />
-                  
-                  {/* Calendar Footer with Quick Actions */}
-                  <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
-                    <div className="flex items-center justify-between text-xs text-white/60">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-saffron rounded-full"></div>
-                          <span>Today</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-gradient-to-r from-saffron to-orange-500 rounded-full"></div>
-                          <span>Selected</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-saffron font-medium">Available Slots</div>
-                        <div className="text-white/80">{availableTimeSlots.length} times</div>
-                      </div>
-                    </div>
+                    months: "flex flex-col",
+                    month: "space-y-2",
+                    caption: "flex justify-center pt-1 relative items-center h-10",
+                    caption_label: "text-white font-semibold text-lg",
+                    nav: "space-x-1 flex items-center",
+                    nav_button: "h-8 w-8 bg-white/10 p-0 rounded-lg transition-all duration-200 sm:h-8 sm:w-8 !m-0 min-w-[36px] min-h-[36px] md:h-8 md:w-8 md:min-w-0 md:min-h-0",
+                    nav_button_previous: "absolute left-1",
+                    nav_button_next: "absolute right-1",
+                    table: "w-full border-collapse space-y-1",
+                    head_row: "flex",
+                    head_cell: "text-white/70 font-medium rounded-md w-9 font-normal text-sm",
+                    row: "flex w-full mt-2",
+                    cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                    day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 text-white hover:bg-saffron/20 hover:text-saffron rounded-lg transition-all duration-200 focus:bg-saffron/20 focus:text-saffron",
+                    day_range_end: "day-range-end",
+                    day_selected: "bg-gradient-to-br from-saffron to-orange-500 text-white font-semibold hover:bg-gradient-to-br hover:from-saffron/90 hover:to-orange-500/90 focus:bg-gradient-to-br focus:from-saffron focus:to-orange-500 shadow-lg scale-105 transition-all duration-200",
+                    day_today: "bg-saffron/20 text-saffron font-semibold border-2 border-saffron/50",
+                    day_outside: "day-outside text-white/30 opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+                    day_disabled: "text-white/30 opacity-30 aria-selected:bg-background aria-selected:text-muted-foreground",
+                    day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                    day_hidden: "invisible",
+                  }}
+                />
+                {/* Legend Row */}
+                <div className="flex items-center justify-between mt-2 px-1 text-xs text-white/60">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-saffron rounded-full inline-block"></span>Today</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gradient-to-r from-saffron to-orange-500 rounded-full inline-block"></span>Selected</span>
                   </div>
+                  <span className="text-saffron font-medium">Available Slots {availableTimeSlots.length}</span>
                 </div>
               </div>
             </CardContent>

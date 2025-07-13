@@ -29,11 +29,13 @@ import {
   Sparkles,
   MapPin,
   Filter,
-  X
+  X,
+  Car
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
-interface VideoReel {
+interface VideoCut {
   id: string
   title: string
   description?: string
@@ -50,17 +52,19 @@ interface VideoReel {
   is_featured: boolean
   barber_name?: string
   barber_avatar?: string
+  barber_id?: string
   location_name?: string
   city?: string
   state?: string
   latitude?: number
   longitude?: number
   is_liked?: boolean
+  price?: number // Added for the new UI
 }
 
-interface ReelComment {
+interface CutComment {
   id: string
-  reel_id: string
+  cut_id: string
   user_id: string
   comment: string
   created_at: string
@@ -77,22 +81,23 @@ interface VideoAnalytics {
   recent_uploads: number
 }
 
-export default function ReelsPage() {
+export default function CutsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [reels, setReels] = useState<VideoReel[]>([])
+  const router = useRouter()
+  const [cuts, setCuts] = useState<VideoCut[]>([])
   const [analytics, setAnalytics] = useState<VideoAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
-  const [currentReelIndex, setCurrentReelIndex] = useState(0)
+  const [currentCutIndex, setCurrentCutIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [showShareDialog, setShowShareDialog] = useState(false)
-  const [selectedReel, setSelectedReel] = useState<VideoReel | null>(null)
+  const [selectedCut, setSelectedCut] = useState<VideoCut | null>(null)
   const [showLocationFilter, setShowLocationFilter] = useState(false)
   const [showCommentsDialog, setShowCommentsDialog] = useState(false)
-  const [comments, setComments] = useState<ReelComment[]>([])
+  const [comments, setComments] = useState<CutComment[]>([])
   const [newComment, setNewComment] = useState('')
-  const [commentingReelId, setCommentingReelId] = useState<string | null>(null)
+  const [commentingCutId, setCommentingCutId] = useState<string | null>(null)
   const [isIntersecting, setIsIntersecting] = useState<boolean[]>([])
   const [locationFilter, setLocationFilter] = useState({
     city: '',
@@ -103,6 +108,7 @@ export default function ReelsPage() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
+  const [showInfoOverlay, setShowInfoOverlay] = useState(false)
 
   const categories = [
     'all',
@@ -162,13 +168,13 @@ export default function ReelsPage() {
     return R * c
   }
 
-  // Fetch reels data from the reels table with location filtering
-  const fetchReels = useCallback(async () => {
+  // Fetch cuts data from the cuts table with location filtering
+  const fetchCuts = useCallback(async () => {
     try {
       setLoading(true)
       
       let query = supabase
-        .from('reels')
+        .from('cuts')
         .select(`
           *,
           barbers:barber_id(
@@ -193,21 +199,21 @@ export default function ReelsPage() {
       const { data, error } = await query
       if (error) throw error
 
-      let filteredReels = data?.map((reel: any) => ({
-        ...reel,
-        barber_name: reel.barbers?.profiles?.name || 'Unknown Barber',
-        barber_avatar: reel.barbers?.profiles?.avatar_url
-      })) as VideoReel[]
+      let filteredCuts = data?.map((cut: any) => ({
+        ...cut,
+        barber_name: cut.barbers?.profiles?.name || 'Unknown Barber',
+        barber_avatar: cut.barbers?.profiles?.avatar_url
+      })) as VideoCut[]
 
       // Apply distance filter if using current location
       if (locationFilter.useCurrentLocation && userLocation) {
-        filteredReels = filteredReels.filter(reel => {
-          if (reel.latitude && reel.longitude) {
+        filteredCuts = filteredCuts.filter(cut => {
+          if (cut.latitude && cut.longitude) {
             const distance = calculateDistance(
               userLocation.lat,
               userLocation.lng,
-              reel.latitude,
-              reel.longitude
+              cut.latitude,
+              cut.longitude
             )
             return distance <= locationFilter.range
           }
@@ -215,15 +221,15 @@ export default function ReelsPage() {
         })
       }
 
-      setReels(filteredReels)
+      setCuts(filteredCuts)
 
       // Calculate analytics
-      const totalViews = filteredReels.reduce((sum: number, reel: any) => sum + (reel.views || 0), 0)
-      const totalLikes = filteredReels.reduce((sum: number, reel: any) => sum + (reel.likes || 0), 0)
-      const totalShares = filteredReels.reduce((sum: number, reel: any) => sum + (reel.shares || 0), 0)
+      const totalViews = filteredCuts.reduce((sum: number, cut: any) => sum + (cut.views || 0), 0)
+      const totalLikes = filteredCuts.reduce((sum: number, cut: any) => sum + (cut.likes || 0), 0)
+      const totalShares = filteredCuts.reduce((sum: number, cut: any) => sum + (cut.shares || 0), 0)
       const engagementRate = totalViews > 0 ? ((totalLikes + totalShares) / totalViews) * 100 : 0
-      const categoryViews = filteredReels.reduce((acc: Record<string, number>, reel: any) => {
-        acc[reel.category] = (acc[reel.category] || 0) + (reel.views || 0)
+      const categoryViews = filteredCuts.reduce((acc: Record<string, number>, cut: any) => {
+        acc[cut.category] = (acc[cut.category] || 0) + (cut.views || 0)
         return acc
       }, {})
       const topCategory = Object.entries(categoryViews).sort(([,a], [,b]) => b - a)[0]?.[0] || 'tutorials'
@@ -233,16 +239,16 @@ export default function ReelsPage() {
         total_shares: totalShares,
         engagement_rate: engagementRate,
         top_performing_category: topCategory,
-        recent_uploads: filteredReels.filter((r: any) => {
+        recent_uploads: filteredCuts.filter((r: any) => {
           const daysAgo = (Date.now() - new Date(r.created_at).getTime()) / (1000 * 60 * 60 * 24)
           return daysAgo <= 7
         }).length
       })
     } catch (error) {
-      console.error('Error fetching reels:', error)
+      console.error('Error fetching cuts:', error)
       toast({
         title: 'Error',
-        description: 'Failed to load reels.',
+        description: 'Failed to load cuts.',
         variant: 'destructive',
       })
     } finally {
@@ -251,14 +257,14 @@ export default function ReelsPage() {
   }, [toast, locationFilter, userLocation])
 
   useEffect(() => {
-    fetchReels()
-  }, [fetchReels])
+    fetchCuts()
+  }, [fetchCuts])
 
   useEffect(() => {
-    if (reels.length > 0) {
+    if (cuts.length > 0) {
       checkUserLikes()
     }
-  }, [reels.length])
+  }, [cuts.length])
 
   // Intersection Observer for auto-play
   useEffect(() => {
@@ -278,12 +284,12 @@ export default function ReelsPage() {
             })
             
             // Track view
-            if (reels[index]) {
-              trackView(reels[index].id)
+            if (cuts[index]) {
+              trackView(cuts[index].id)
             }
             
-            // Update current reel index
-            setCurrentReelIndex(index)
+            // Update current cut index
+            setCurrentCutIndex(index)
           } else if (video) {
             // Pause video when it goes out of view
             video.pause()
@@ -300,14 +306,14 @@ export default function ReelsPage() {
     videoElements.forEach((el) => observer.observe(el))
 
     return () => observer.disconnect()
-  }, [reels])
+  }, [cuts])
 
   // Handle location filter changes
   const handleLocationFilter = () => {
     if (locationFilter.useCurrentLocation && !userLocation) {
       getCurrentLocation()
     }
-    fetchReels()
+    fetchCuts()
     setShowLocationFilter(false)
   }
 
@@ -345,8 +351,8 @@ export default function ReelsPage() {
 
   // Handle video end
   const handleVideoEnd = (index: number) => {
-    if (index < reels.length - 1) {
-      setCurrentReelIndex(index + 1)
+    if (index < cuts.length - 1) {
+      setCurrentCutIndex(index + 1)
       // Auto-play next video
       setTimeout(() => {
         const nextVideo = videoRefs.current[index + 1]
@@ -360,7 +366,7 @@ export default function ReelsPage() {
 
   // Handle scroll to video
   const scrollToVideo = (index: number) => {
-    setCurrentReelIndex(index)
+    setCurrentCutIndex(index)
     const videoElement = videoRefs.current[index]
     if (videoElement) {
       videoElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -370,9 +376,9 @@ export default function ReelsPage() {
   }
 
   // Handle share
-  const handleShare = async (reel: VideoReel, platform?: string) => {
-    const shareUrl = `${window.location.origin}/reels/${reel.id}`
-    const shareText = `Check out this amazing ${reel.category.replace('-', ' ')} by @${reel.barber_name || 'barber'}`
+  const handleShare = async (cut: VideoCut, platform?: string) => {
+    const shareUrl = `${window.location.origin}/cuts/${cut.id}`
+    const shareText = `Check out this amazing ${cut.category.replace('-', ' ')} by @${cut.barber_name || 'barber'}`
 
     try {
       if (platform === 'copy') {
@@ -411,60 +417,72 @@ export default function ReelsPage() {
   }
 
   // Track view when video is played
-  const trackView = async (reelId: string) => {
+  const trackView = async (cutId: string) => {
     if (!user) return
     
     try {
-      await supabase
-        .from('reel_analytics')
-        .upsert({
-          reel_id: reelId,
+      const { error } = await supabase
+        .from('cut_analytics')
+        .insert({
+          cut_id: cutId,
           user_id: user.id,
           action_type: 'view',
           ip_address: null,
           user_agent: navigator.userAgent
-        }, {
-          onConflict: 'reel_id,user_id,action_type'
         })
+      
+      if (error) {
+        console.error('Error tracking view:', error)
+      }
     } catch (error) {
       console.error('Error tracking view:', error)
     }
   }
 
   // Handle like/unlike
-  const handleLike = async (reelId: string, isLiked: boolean) => {
+  const handleLike = async (cutId: string, isLiked: boolean) => {
     if (!user) return
     
     try {
       if (isLiked) {
         // Unlike - remove from analytics
-        await supabase
-          .from('reel_analytics')
+        const { error: deleteError } = await supabase
+          .from('cut_analytics')
           .delete()
-          .eq('reel_id', reelId)
+          .eq('cut_id', cutId)
           .eq('user_id', user.id)
           .eq('action_type', 'like')
+        
+        if (deleteError) {
+          console.error('Error removing like:', deleteError)
+          throw deleteError
+        }
       } else {
         // Like - add to analytics
-        await supabase
-          .from('reel_analytics')
-          .upsert({
-            reel_id: reelId,
+        const { error: insertError } = await supabase
+          .from('cut_analytics')
+          .insert({
+            cut_id: cutId,
             user_id: user.id,
             action_type: 'like',
             ip_address: null,
             user_agent: navigator.userAgent
-          }, {
-            onConflict: 'reel_id,user_id,action_type'
           })
+        
+        if (insertError) {
+          console.error('Error adding like:', insertError)
+          throw insertError
+        }
       }
       
       // Update local state
-      setReels(prev => prev.map(reel => 
-        reel.id === reelId 
-          ? { ...reel, is_liked: !isLiked, likes: isLiked ? reel.likes - 1 : reel.likes + 1 }
-          : reel
+      setCuts(prev => prev.map(cut => 
+        cut.id === cutId 
+          ? { ...cut, is_liked: !isLiked, likes: isLiked ? cut.likes - 1 : cut.likes + 1 }
+          : cut
       ))
+      
+      // Removed toast for like/unlike
     } catch (error) {
       console.error('Error handling like:', error)
       toast({
@@ -476,10 +494,10 @@ export default function ReelsPage() {
   }
 
   // Handle comments
-  const fetchComments = async (reelId: string) => {
+  const fetchComments = async (cutId: string) => {
     try {
       const { data, error } = await supabase
-        .from('reel_comments')
+        .from('cut_comments')
         .select(`
           *,
           profiles:user_id(
@@ -487,7 +505,7 @@ export default function ReelsPage() {
             avatar_url
           )
         `)
-        .eq('reel_id', reelId)
+        .eq('cut_id', cutId)
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -496,7 +514,7 @@ export default function ReelsPage() {
         ...comment,
         user_name: comment.profiles?.name || 'Unknown User',
         user_avatar: comment.profiles?.avatar_url
-      })) as ReelComment[]
+      })) as CutComment[]
       
       setComments(formattedComments)
     } catch (error) {
@@ -510,13 +528,13 @@ export default function ReelsPage() {
   }
 
   const handleAddComment = async () => {
-    if (!user || !commentingReelId || !newComment.trim()) return
+    if (!user || !commentingCutId || !newComment.trim()) return
     
     try {
       const { error } = await supabase
-        .from('reel_comments')
+        .from('cut_comments')
         .insert({
-          reel_id: commentingReelId,
+          cut_id: commentingCutId,
           user_id: user.id,
           comment: newComment.trim()
         })
@@ -524,14 +542,14 @@ export default function ReelsPage() {
       if (error) throw error
       
       // Update local state
-      setReels(prev => prev.map(reel => 
-        reel.id === commentingReelId 
-          ? { ...reel, comments_count: reel.comments_count + 1 }
-          : reel
+      setCuts(prev => prev.map(cut => 
+        cut.id === commentingCutId 
+          ? { ...cut, comments_count: cut.comments_count + 1 }
+          : cut
       ))
       
       // Refresh comments
-      await fetchComments(commentingReelId)
+      await fetchComments(commentingCutId)
       setNewComment('')
       
       toast({
@@ -548,24 +566,24 @@ export default function ReelsPage() {
     }
   }
 
-  // Check if user has liked each reel
+  // Check if user has liked each cut
   const checkUserLikes = async () => {
     if (!user) return
     
     try {
       const { data, error } = await supabase
-        .from('reel_analytics')
-        .select('reel_id')
+        .from('cut_analytics')
+        .select('cut_id')
         .eq('user_id', user.id)
         .eq('action_type', 'like')
       
       if (error) throw error
       
-      const likedReelIds = new Set(data?.map(item => item.reel_id))
+      const likedCutIds = new Set(data?.map(item => item.cut_id))
       
-      setReels(prev => prev.map(reel => ({
-        ...reel,
-        is_liked: likedReelIds.has(reel.id)
+      setCuts(prev => prev.map(cut => ({
+        ...cut,
+        is_liked: likedCutIds.has(cut.id)
       })))
     } catch (error) {
       console.error('Error checking user likes:', error)
@@ -576,7 +594,7 @@ export default function ReelsPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/80 text-lg">Please log in to access reels.</p>
+          <p className="text-white/80 text-lg">Please log in to access cuts.</p>
         </div>
       </div>
     )
@@ -587,23 +605,23 @@ export default function ReelsPage() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saffron mx-auto mb-4"></div>
-          <p className="text-white/80 text-lg">Loading reels...</p>
+          <p className="text-white/80 text-lg">Loading cuts...</p>
         </div>
       </div>
     )
   }
 
-  if (reels.length === 0) {
+  if (cuts.length === 0) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="mb-6">
             <Sparkles className="h-16 w-16 text-saffron mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">No reels found</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">No cuts found</h2>
             <p className="text-white/60 mb-6">
               {locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation 
-                ? 'No reels found in your selected location. Try adjusting your filters.'
-                : 'No reels available yet. Be the first to upload!'
+                ? 'No cuts found in your selected location. Try adjusting your filters.'
+                : 'No cuts available yet. Be the first to upload!'
               }
             </p>
           </div>
@@ -612,7 +630,7 @@ export default function ReelsPage() {
               onClick={() => window.location.href = '/settings/barber-profile'}
               className="bg-saffron text-primary font-bold rounded-xl px-6 py-3"
             >
-              Upload Reel
+              Upload Cut
             </Button>
             <Button
               onClick={clearLocationFilter}
@@ -627,430 +645,225 @@ export default function ReelsPage() {
     )
   }
 
+  const currentCut = cuts[currentCutIndex]
+
+  // Responsive height calculation for card
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  const cardHeight = isDesktop ? 'calc(100dvh - 72px)' : 'calc(100dvh - 80px)';
+
   return (
-    <div className="min-h-screen bg-black">
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.history.back()}
-            className="text-white hover:bg-white/10"
+    <div
+      className="relative w-full flex flex-col bg-background max-w-[430px] mx-auto shadow-2xl rounded-3xl md:mt-[72px] md:overflow-hidden overflow-hidden mt-0"
+      style={{ height: cardHeight }}
+    >
+      {/* Full-bleed video or image */}
+      {currentCut?.url ? (
+        <video
+          src={currentCut.url}
+          className="absolute inset-0 w-full h-full object-cover z-0 rounded-3xl"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      ) : (
+        <div className="absolute inset-0 w-full h-full bg-darkpurple/80 z-0 rounded-3xl" />
+      )}
+      {/* Glassy overlay - reduce blur for mobile */}
+      <div className="absolute inset-0 bg-black/30 md:bg-black/40 md:backdrop-blur-md backdrop-blur-none z-10 rounded-3xl" />
+
+      {/* Top Bar - Centered Profile Button */}
+      <div className="relative z-20 flex items-center justify-center px-2 pt-4 sm:px-4 sm:pt-6 max-w-[430px] mx-auto">
+        <Button variant="ghost" className="bg-white/10 border-white/20 text-white/80 p-2 rounded-full" onClick={() => setShowInfoOverlay(v => !v)}>
+          <User className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Action buttons vertical stack (always visible, floating right) */}
+      <div className="absolute right-4 bottom-24 z-30 flex flex-col gap-3 items-end pointer-events-auto">
+        <div className="flex flex-col gap-3 items-end pointer-events-auto pr-2 md:pr-4">
+          <Button 
+            variant="ghost" 
+            className="bg-white/10 border-white/20 text-white/80 p-3 rounded-full shadow-md hover:bg-white/20 transition-all"
+            onClick={() => handleLike(currentCut.id, currentCut.is_liked || false)}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <Heart 
+              className={`h-5 w-5 ${currentCut.is_liked ? 'fill-red-500 text-red-500' : ''}`} 
+            />
           </Button>
-          <h1 className="text-lg font-bold text-white">Reels</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowLocationFilter(true)}
-              className="text-white hover:bg-white/10"
-            >
-              <Filter className="h-5 w-5" />
-            </Button>
-            {(locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearLocationFilter}
-                className="text-white hover:bg-white/10"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
+          <Button 
+            variant="ghost" 
+            className="bg-white/10 border-white/20 text-white/80 p-3 rounded-full shadow-md hover:bg-white/20 transition-all"
+            onClick={() => {
+              setCommentingCutId(currentCut.id)
+              setShowCommentsDialog(true)
+              fetchComments(currentCut.id)
+            }}
+          >
+            <MessageCircle className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="bg-white/10 border-white/20 text-white/80 p-3 rounded-full shadow-md hover:bg-white/20 transition-all"
+            onClick={() => {
+              setSelectedCut(currentCut)
+              setShowShareDialog(true)
+            }}
+          >
+            <Share2 className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
-      {/* Location Filter Indicator */}
-      {(locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation) && (
-        <div className="fixed top-16 left-0 right-0 z-40 bg-saffron/20 backdrop-blur-xl border-b border-saffron/30 px-4 py-2">
-          <div className="flex items-center justify-between max-w-md mx-auto">
-            <div className="flex items-center gap-2 text-white">
-              <MapPin className="h-4 w-4 text-saffron" />
-              <span className="text-sm">
-                {locationFilter.useCurrentLocation 
-                  ? `Within ${locationFilter.range} miles`
-                  : `${locationFilter.city}${locationFilter.state ? `, ${locationFilter.state}` : ''}`
-                }
-              </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearLocationFilter}
-              className="text-white hover:bg-white/10 text-xs"
+      {/* Info overlay (hidden by default, appears near top when toggled) */}
+      {showInfoOverlay && (
+        <div className="fixed left-0 right-0 top-0 z-40 px-0 pt-0 animate-slide-down max-w-[430px] mx-auto">
+          <div className="relative w-full flex items-start">
+            {/* Info card */}
+            <div 
+              className="flex-1 bg-white/10 border border-white/20 rounded-b-2xl rounded-t-lg shadow-2xl backdrop-blur-sm p-3 sm:p-5 m-2 mt-4 flex flex-col gap-2 w-full cursor-pointer"
+              onClick={() => setShowInfoOverlay(false)}
             >
-              Clear
-            </Button>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg sm:text-2xl font-bebas text-white font-bold tracking-wide">{currentCut?.title || 'Cut Name'}</h2>
+              </div>
+              <div className="text-white/80 text-sm sm:text-base mb-1">{currentCut?.description || 'Description of the cut goes here.'}</div>
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin className="h-4 w-4 text-saffron" />
+                <span className="text-saffron font-semibold text-xs sm:text-sm">
+                  {currentCut?.location_name && `${currentCut.location_name}, ${currentCut.city || ''} ${currentCut.state || ''}`.trim() || 'Barber Shop'}
+                </span>
+              </div>
+              {/* Tags and ratings row */}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge variant="glassy-saffron" className="text-xs">POPULAR</Badge>
+                <span className="flex items-center gap-1 text-white/80 text-xs"><span className="font-bold">4.3</span>★ (660+)</span>
+                <span className="flex items-center gap-1 text-white/80 text-xs"><span className="font-bold">3.9</span>★ (330+)</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Video Feed */}
-      <div 
-        ref={containerRef}
-        className={cn(
-          "pt-16 pb-4 h-screen overflow-y-auto snap-y snap-mandatory",
-          (locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation) && "pt-24"
-        )}
-      >
-        {reels.map((reel, index) => (
-          <div
-            key={reel.id}
-            data-index={index}
-            className="relative h-screen snap-start flex items-center justify-center bg-black"
+      {/* Sticky Bottom Action Bar (mobile friendly, above nav bar) */}
+      <div className="fixed left-0 right-0 bottom-20 md:bottom-0 z-40 flex justify-center pb-[env(safe-area-inset-bottom)]">
+        <div className="w-full max-w-[430px] flex gap-2 sm:gap-4 mx-auto mb-5">
+          <Button 
+            className="flex-[3] bg-saffron text-primary font-bold text-base sm:text-lg py-3 sm:py-4 rounded-xl shadow-xl hover:bg-saffron/90 transition-all"
+            onClick={() => {
+              // Navigate to booking page using the barber_id from the cut data
+              if (currentCut?.barber_id) {
+                router.push(`/book/${currentCut.barber_id}`)
+              } else {
+                toast({
+                  title: 'Booking Error',
+                  description: 'Unable to find barber information.',
+                  variant: 'destructive',
+                })
+              }
+            }}
           >
-            {/* Video Player */}
-            <div className="relative w-full h-full max-w-md mx-auto">
-              <video
-                ref={(el) => (videoRefs.current[index] = el)}
-                src={reel.url}
-                className="w-full h-full object-cover rounded-lg"
-                loop
-                muted={isMuted}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onEnded={() => handleVideoEnd(index)}
-                onClick={() => handleVideoPlay(index)}
-              />
-              
-              {/* Video Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-lg" />
-              
-              {/* Video Controls */}
-              <div className="absolute bottom-4 left-4 right-4">
-                {/* Video Info */}
-                <div className="mb-4">
-                  <h3 className="text-white font-bold text-lg mb-1">{reel.title}</h3>
-                  <p className="text-white/80 text-sm mb-2">{reel.description}</p>
-                  
-                  {/* Barber Info */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-saffron/20 flex items-center justify-center">
-                      <User className="h-4 w-4 text-saffron" />
-                    </div>
-                    <span className="text-white/90 text-sm font-medium">{reel.barber_name}</span>
-                    {reel.is_featured && (
-                      <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30 text-xs">
-                        Featured
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {/* Location Info */}
-                  {(reel.location_name || reel.city) && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <MapPin className="h-4 w-4 text-white/60" />
-                      <span className="text-white/80 text-sm">
-                        {reel.location_name && `${reel.location_name}${reel.city ? ', ' : ''}`}
-                        {reel.city && `${reel.city}${reel.state ? ', ' : ''}`}
-                        {reel.state}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Tags */}
-                  {reel.tags && reel.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {reel.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="bg-white/10 text-white border-white/20 text-xs">
-                          #{tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleVideoPlay(index)}
-                      className="text-white hover:bg-white/10 rounded-full p-2"
-                    >
-                      {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsMuted(!isMuted)}
-                      className="text-white hover:bg-white/10 rounded-full p-2"
-                    >
-                      {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className="text-white/60 text-sm">{formatDuration(reel.duration)}</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Right Side Actions */}
-              <div className="absolute right-4 bottom-20 flex flex-col items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleLike(reel.id, reel.is_liked || false)}
-                  className={cn(
-                    "text-white hover:bg-white/10 rounded-full p-2 flex flex-col items-center gap-1",
-                    reel.is_liked && "text-red-500"
-                  )}
-                >
-                  <Heart className={cn("h-6 w-6", reel.is_liked && "fill-current")} />
-                  <span className="text-xs">{formatViews(reel.likes)}</span>
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    setCommentingReelId(reel.id)
-                    await fetchComments(reel.id)
-                    setShowCommentsDialog(true)
-                  }}
-                  className="text-white hover:bg-white/10 rounded-full p-2 flex flex-col items-center gap-1"
-                >
-                  <MessageCircle className="h-6 w-6" />
-                  <span className="text-xs">{formatViews(reel.comments_count ?? 0)}</span>
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedReel(reel)
-                    setShowShareDialog(true)
-                  }}
-                  className="text-white hover:bg-white/10 rounded-full p-2 flex flex-col items-center gap-1"
-                >
-                  <Share2 className="h-6 w-6" />
-                  <span className="text-xs">{formatViews(reel.shares)}</span>
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/10 rounded-full p-2"
-                >
-                  <MoreVertical className="h-6 w-6" />
-                </Button>
-              </div>
-              
-              {/* Stats */}
-              <div className="absolute top-4 right-4">
-                <div className="flex items-center gap-2 text-white/80 text-sm">
-                  <Eye className="h-4 w-4" />
-                  <span>{formatViews(reel.views)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+            Book Now
+          </Button>
+          <Button
+            className="flex-[1] flex items-center gap-2 bg-white/20 border border-saffron/60 text-saffron font-bold px-6 py-3 rounded-full shadow-xl backdrop-blur-lg hover:bg-saffron/80 hover:text-primary focus:outline-none focus:ring-2 focus:ring-saffron transition-all"
+            onClick={() => router.push('/reach')}
+            aria-label="Reach"
+            type="button"
+          >
+            <Car className="w-5 h-5" />
+            Reach
+          </Button>
+        </div>
       </div>
 
-      {/* Location Filter Dialog */}
-      <Dialog open={showLocationFilter} onOpenChange={setShowLocationFilter}>
-        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
+      {/* Comments Dialog */}
+      <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
+        <DialogContent className="bg-darkpurple/95 border border-white/10 shadow-2xl backdrop-blur-xl max-w-md mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Location Filter</DialogTitle>
+            <DialogTitle className="text-white font-bebas text-xl">Comments</DialogTitle>
             <DialogDescription className="text-white/80">
-              Filter reels by location
+              Share your thoughts about this cut
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 overflow-y-auto max-h-[calc(90vh-200px)] pr-2">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="city" className="text-white font-medium mb-2 block">
-                  City
-                </Label>
-                <Input
-                  id="city"
-                  placeholder="Enter city name"
-                  value={locationFilter.city}
-                  onChange={(e) => setLocationFilter(prev => ({ ...prev, city: e.target.value }))}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="state" className="text-white font-medium mb-2 block">
-                  State/Province
-                </Label>
-                <Input
-                  id="state"
-                  placeholder="Enter state or province"
-                  value={locationFilter.state}
-                  onChange={(e) => setLocationFilter(prev => ({ ...prev, state: e.target.value }))}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                />
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="useCurrentLocation"
-                    checked={locationFilter.useCurrentLocation}
-                    onChange={(e) => setLocationFilter(prev => ({ ...prev, useCurrentLocation: e.target.checked }))}
-                    className="rounded border-white/20 bg-white/10 text-saffron focus:ring-saffron"
-                  />
-                  <Label htmlFor="useCurrentLocation" className="text-white font-medium">
-                    Use my current location
-                  </Label>
-                </div>
-                
-                {locationFilter.useCurrentLocation && (
-                  <div>
-                    <Label htmlFor="range" className="text-white font-medium mb-2 block">
-                      Range (miles)
-                    </Label>
-                    <Select 
-                      value={locationFilter.range.toString()} 
-                      onValueChange={(value) => setLocationFilter(prev => ({ ...prev, range: parseInt(value) }))}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-darkpurple border-white/20">
-                        <SelectItem value="10" className="text-white">10 miles</SelectItem>
-                        <SelectItem value="25" className="text-white">25 miles</SelectItem>
-                        <SelectItem value="50" className="text-white">50 miles</SelectItem>
-                        <SelectItem value="100" className="text-white">100 miles</SelectItem>
-                      </SelectContent>
-                    </Select>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {comments.length === 0 ? (
+              <p className="text-white/60 text-center py-8">No comments yet. Be the first to comment!</p>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="flex gap-3 p-3 bg-white/5 rounded-xl">
+                  <div className="w-8 h-8 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="h-4 w-4 text-saffron" />
                   </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex gap-3 pt-4 border-t border-white/10">
-              <Button
-                onClick={handleLocationFilter}
-                className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 flex-1"
-              >
-                Apply Filter
-              </Button>
-              <Button
-                onClick={clearLocationFilter}
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
-              >
-                Clear
-              </Button>
-            </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-medium text-sm">{comment.user_name}</span>
+                      <span className="text-white/40 text-xs">
+                        {new Date(comment.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-white/80 text-sm">{comment.comment}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          
+          <div className="flex gap-2 pt-4 border-t border-white/10">
+            <Input
+              placeholder="Add a comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+            />
+            <Button 
+              onClick={handleAddComment}
+              disabled={!newComment.trim()}
+              className="bg-saffron text-primary hover:bg-saffron/90"
+            >
+              Post
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Share Dialog */}
       <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
+        <DialogContent className="bg-darkpurple/95 border border-white/10 shadow-2xl backdrop-blur-xl max-w-md mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Share Reel</DialogTitle>
+            <DialogTitle className="text-white font-bebas text-xl">Share Cut</DialogTitle>
             <DialogDescription className="text-white/80">
-              Share this amazing content with your audience
+              Share this amazing cut with others
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                onClick={() => selectedReel && handleShare(selectedReel, 'instagram')}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl p-4"
-              >
-                Instagram
-              </Button>
-              <Button
-                onClick={() => selectedReel && handleShare(selectedReel, 'facebook')}
-                className="bg-blue-600 text-white font-bold rounded-xl p-4"
-              >
-                Facebook
-              </Button>
-              <Button
-                onClick={() => selectedReel && handleShare(selectedReel, 'twitter')}
-                className="bg-blue-400 text-white font-bold rounded-xl p-4"
-              >
-                Twitter
-              </Button>
-              <Button
-                onClick={() => selectedReel && handleShare(selectedReel, 'copy')}
-                className="bg-white/10 text-white font-bold rounded-xl p-4 border border-white/20"
-              >
-                Copy Link
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Comments Dialog */}
-      <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
-        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Comments</DialogTitle>
-            <DialogDescription className="text-white/80">
-              What do you think about this reel?
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex flex-col h-full">
-            {/* Comments List */}
-            <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
-              {comments.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageCircle className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                  <p className="text-white/60">No comments yet. Be the first to comment!</p>
-                </div>
-              ) : (
-                comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-3 p-3 bg-white/5 rounded-xl">
-                    <div className="w-8 h-8 rounded-full bg-saffron/20 flex items-center justify-center flex-shrink-0">
-                      {comment.user_avatar ? (
-                        <img src={comment.user_avatar} alt={comment.user_name} className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <User className="h-4 w-4 text-saffron" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-white font-medium text-sm">{comment.user_name}</span>
-                        <span className="text-white/40 text-xs">
-                          {new Date(comment.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-white/80 text-sm">{comment.comment}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            {/* Add Comment */}
-            <div className="border-t border-white/10 pt-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-                  className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                />
-                <Button
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim()}
-                  className="bg-saffron text-primary font-bold rounded-xl px-4 py-2"
-                >
-                  Post
-                </Button>
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              onClick={() => handleShare(selectedCut!, 'twitter')}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              Twitter
+            </Button>
+            <Button
+              onClick={() => handleShare(selectedCut!, 'facebook')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Facebook
+            </Button>
+            <Button
+              onClick={() => handleShare(selectedCut!, 'instagram')}
+              className="bg-pink-500 hover:bg-pink-600 text-white"
+            >
+              Instagram
+            </Button>
+            <Button
+              onClick={() => handleShare(selectedCut!, 'copy')}
+              className="bg-saffron hover:bg-saffron/90 text-primary"
+            >
+              Copy Link
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

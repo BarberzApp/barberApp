@@ -377,7 +377,7 @@ export default function BrowsePage() {
       const userIds = barberData.map(barber => barber.user_id)
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, name, location, bio, avatar_url, is_public')
+        .select('id, name, location, bio, avatar_url, is_public, username')
         .in('id', userIds)
 
       if (profileError) throw profileError
@@ -391,6 +391,7 @@ export default function BrowsePage() {
         return {
           id: barber.id,
           name: profile?.name || 'Unknown',
+          username: profile?.username,
           businessName: barber.business_name,
           location: profile?.location,
           specialties: barber.specialties || [],
@@ -529,12 +530,12 @@ export default function BrowsePage() {
               Connect with talented barbers who match your style and preferences. Book appointments with confidence.
             </p>
 
-            {/* Reels Button */}
+            {/* Cuts Button */}
             <div className="flex justify-center pt-4">
-              <Link href="/reels">
+              <Link href="/cuts">
                 <Button className="bg-saffron text-white font-bold rounded-xl px-8 py-4 shadow-md hover:bg-saffron/90 transition-all duration-200 flex items-center justify-center gap-2">
                   <Sparkles className="h-5 w-5 mr-2" />
-                  Watch Barber Reels
+                  Watch Barber Cuts
                 </Button>
               </Link>
             </div>

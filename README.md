@@ -69,7 +69,7 @@ src/
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
    STRIPE_SECRET_KEY=your_stripe_secret
    STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   NEXT_PUBLIC_APP_URL=https://bocmstyle.com
    ```
 4. Run development server:
    ```bash

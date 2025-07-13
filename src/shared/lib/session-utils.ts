@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { useAuthStore } from '@/shared/stores/auth-store'
 
 export interface SessionValidationResult {
   isValid: boolean
@@ -169,12 +170,15 @@ export async function withValidSession<T>(
   callback: (userId: string) => Promise<T>
 ): Promise<T | null> {
   const result = await validateSession(true)
-  
   if (!result.isValid || !result.session) {
+    // Trigger login modal via Zustand
+    if (typeof window !== 'undefined') {
+      const store = await import('@/shared/stores/auth-store')
+      store.useAuthStore.getState().setShowLoginModal(true)
+    }
     console.log('Session not valid for authenticated request:', result.error)
     return null
   }
-  
   try {
     return await callback(result.session.user.id)
   } catch (error) {

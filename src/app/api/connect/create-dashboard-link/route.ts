@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     }
 
     // Validate environment variable
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bocmstyle.com';
     console.log('Using app URL for dashboard link:', appUrl);
 
     // Create login link for dashboard access

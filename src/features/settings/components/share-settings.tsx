@@ -17,6 +17,7 @@ interface ProfileData {
   name?: string
   business_name?: string
   is_public?: boolean
+  username?: string
 }
 
 export function ShareSettings() {
@@ -38,10 +39,10 @@ export function ShareSettings() {
     try {
       setIsLoading(true)
       
-      // Fetch profile data
+      // Fetch profile data including username
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('name, is_public')
+        .select('name, is_public, username')
         .eq('id', user?.id)
         .single()
 
@@ -76,19 +77,19 @@ export function ShareSettings() {
     }
   }
 
-  // Use barber ID for the booking link if available, otherwise use user ID as fallback
+  // Use username for the booking link if available, otherwise use barber ID as fallback
   // Use production domain to ensure the link is publicly accessible
   const getBookingLink = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://barber-app-five.vercel.app'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bocmstyle.com'
     
-    // Always use barber ID if available, as it's more reliable
-    if (barberId) {
-      return `${baseUrl}/book/${barberId}`
+    // Use username if available, as it's more user-friendly
+    if (profileData.username) {
+      return `${baseUrl}/book/${profileData.username}`
     }
     
-    // Fallback to user ID only if no barber ID is available
-    if (user?.id) {
-      return `${baseUrl}/book/${user.id}`
+    // Fallback to barber ID if no username is available
+    if (barberId) {
+      return `${baseUrl}/book/${barberId}`
     }
     
     // If neither is available, return a placeholder
@@ -236,14 +237,14 @@ export function ShareSettings() {
             </Badge>
           </div>
           
-          <div className="relative">
+          <div className="relative flex items-center">
             <Input
               value={bookingLink}
               readOnly
-              className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron pr-20"
+              className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron pr-28 flex-1"
               placeholder="Complete your profile to get your booking link"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <Button
                 size="sm"
                 variant="ghost"

@@ -4,7 +4,7 @@ import { Instagram, Twitter, Facebook, Share2, Copy, Check } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { cn } from '@/shared/lib/utils'
 import { useState } from 'react'
-import { useToast } from '@/shared/components/ui/use-toast'
+import { useCustomToast } from '@/shared/hooks/use-custom-toast'
 
 interface SocialMediaLinksProps {
   instagram?: string
@@ -32,7 +32,7 @@ export function SocialMediaLinks({
   shareTitle = 'Check out this barber!'
 }: SocialMediaLinksProps) {
   const [copied, setCopied] = useState(false)
-  const { toast } = useToast()
+  const toast = useCustomToast()
 
   const sizeClasses = {
     sm: 'h-8 w-8',
@@ -62,17 +62,10 @@ export function SocialMediaLinks({
       try {
         await navigator.clipboard.writeText(shareUrl)
         setCopied(true)
-        toast({
-          title: "Link copied!",
-          description: "The booking link has been copied to your clipboard.",
-        })
+        toast.success('Link copied!', 'The booking link has been copied to your clipboard.')
         setTimeout(() => setCopied(false), 2000)
       } catch (err) {
-        toast({
-          title: "Failed to copy",
-          description: "Please copy the link manually.",
-          variant: "destructive",
-        })
+        toast.error('Failed to copy', 'Please copy the link manually.')
       }
     }
   }

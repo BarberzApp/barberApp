@@ -461,9 +461,9 @@ export default function BarberCalendar() {
   return (
     <div className="min-h-screen bg-background">
 
-      <div className="relative z-10 container mx-auto px-4 py-8">
+      <div className="relative z-10 container mx-auto px-4 py-8 flex flex-col items-center">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-6 sm:mb-8 w-full">
           <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
             <div className="p-2 sm:p-3 bg-saffron/20 rounded-xl">
               <CalendarIcon className="h-6 w-6 sm:h-8 sm:w-8 text-saffron" />
@@ -479,8 +479,12 @@ export default function BarberCalendar() {
           </div>
         </div>
 
-        {/* Only show the EnhancedCalendar (Month View) */}
-        <EnhancedCalendar />
+        {/* Centered EnhancedCalendar */}
+        <div className="w-full flex justify-center">
+          <div className="max-w-2xl w-full mx-auto p-0 overflow-visible" style={{ maxWidth: '700px' }}>
+            <EnhancedCalendar />
+          </div>
+        </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: customStyles }} />

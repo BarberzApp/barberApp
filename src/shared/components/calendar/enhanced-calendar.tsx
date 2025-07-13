@@ -567,48 +567,47 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           </button>
         </div>
 
-        {/* Weekdays Header */}
-        <div className="weekdays-header">
-          {weekdays.map(day => (
-            <div key={day} className="weekday">
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* Calendar Grid */}
-        <div className="calendar-grid">
-          {calendarDays.map((day, index) => {
-            const isCurrentMonth = isSameMonth(day, currentDate)
-            const isTodayDate = isToday(day)
-            const isSelected = selectedDate && isSameDay(day, selectedDate)
-            const dayEvents = getEventsForDate(day)
-            
-            return (
-              <div
-                key={index}
-                className={cn(
-                  "calendar-day",
-                  !isCurrentMonth && "other-month",
-                  isTodayDate && "today",
-                  isSelected && "selected",
-                  dayEvents.length > 0 && "has-events"
-                )}
-                onClick={() => handleDateClick(day)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    handleDateClick(day)
-                  }
-                }}
-                aria-label={`${format(day, 'EEEE, MMMM d, yyyy')}${dayEvents.length > 0 ? ` - ${dayEvents.length} events` : ''}`}
-              >
-                {format(day, 'd')}
+        {/* Weekdays Header + Calendar Grid aligned */}
+        <div className="w-full">
+          <div className="weekdays-header" style={{ gap: 0, padding: 0 }}>
+            {weekdays.map(day => (
+              <div key={day} className="weekday">
+                {day}
               </div>
-            )
-          })}
+            ))}
+          </div>
+          <div className="calendar-grid" style={{ gap: 0, padding: 0 }}>
+            {calendarDays.map((day, index) => {
+              const isCurrentMonth = isSameMonth(day, currentDate)
+              const isTodayDate = isToday(day)
+              const isSelected = selectedDate && isSameDay(day, selectedDate)
+              const dayEvents = getEventsForDate(day)
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    "calendar-day",
+                    !isCurrentMonth && "other-month",
+                    isTodayDate && "today",
+                    isSelected && "selected",
+                    dayEvents.length > 0 && "has-events"
+                  )}
+                  onClick={() => handleDateClick(day)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleDateClick(day)
+                    }
+                  }}
+                  aria-label={`${format(day, 'EEEE, MMMM d, yyyy')}${dayEvents.length > 0 ? ` - ${dayEvents.length} events` : ''}`}
+                >
+                  {format(day, 'd')}
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {/* Today Button */}
@@ -619,8 +618,6 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         >
           Today
         </button>
-
-
 
         {/* Events Panel */}
         {selectedDate && (
@@ -661,14 +658,9 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                       </div>
                                              <div className="text-right">
                          <Badge variant="secondary" className="text-xs">
-                           ${event.extendedProps.price}
+                           ${event.extendedProps.basePrice}
                          </Badge>
-                         {event.extendedProps.addonTotal > 0 && (
-                           <div className="text-xs text-saffron mt-1">
-                             +${event.extendedProps.addonTotal} add-ons
-                           </div>
-                         )}
-                       </div>
+                      </div>
                     </div>
                   </div>
                 ))

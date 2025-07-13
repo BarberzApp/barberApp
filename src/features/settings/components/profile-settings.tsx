@@ -21,6 +21,7 @@ import { Separator } from '@/shared/components/ui/separator'
 
 interface ProfileFormData {
   name: string
+  username: string
   email: string
   phone: string
   bio: string
@@ -63,6 +64,10 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
     const errors: {[key: string]: string} = {}
     
     if (!data.name?.trim()) errors.name = 'Full name is required'
+    if (!data.username?.trim()) errors.username = 'Username is required'
+    if (data.username && !/^[a-zA-Z0-9_]{3,30}$/.test(data.username)) {
+      errors.username = 'Username must be 3-30 characters and contain only letters, numbers, and underscores'
+    }
     if (!data.email?.trim()) errors.email = 'Email is required'
     if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
       errors.email = 'Please enter a valid email address'
@@ -113,6 +118,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           // Use barber's bio if available, otherwise use profile's bio
           reset({
             name: profile.name || '',
+            username: profile.username || '',
             email: profile.email || '',
             phone: profile.phone || '',
             bio: barber.bio || profile.bio || '',
@@ -138,6 +144,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         // For non-barbers, just use profile data
         reset({
           name: profile.name || '',
+          username: profile.username || '',
           email: profile.email || '',
           phone: profile.phone || '',
           bio: profile.bio || '',
@@ -284,6 +291,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         .from('profiles')
         .update({
           name: data.name,
+          username: data.username,
           email: data.email,
           phone: data.phone,
           bio: data.bio,
@@ -484,6 +492,31 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                     {validationErrors.name}
                   </p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-white font-medium flex items-center gap-2">
+                  <User className="h-4 w-4 text-saffron" />
+                  Username *
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
+                    validationErrors.username ? 'border-red-400' : ''
+                  }`}
+                  {...register('username', { required: 'Username is required' })}
+                  placeholder="your_username"
+                />
+                {validationErrors.username && (
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.username}
+                  </p>
+                )}
+                <p className="text-xs text-white/60">
+                  Used in your booking link: bocmstyle.com/book/{watch('username') || 'your_username'}
+                </p>
               </div>
 
               <div className="space-y-2">

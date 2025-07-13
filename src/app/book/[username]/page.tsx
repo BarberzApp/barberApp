@@ -28,7 +28,6 @@ import {
   Video,
   Eye
 } from 'lucide-react'
-import './portrait-fixes.css'
 
 type Barber = {
   id: string
@@ -148,11 +147,11 @@ function BookPageContent() {
   const [loadingReels, setLoadingReels] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
-  // Safely extract barberId from params
-  const barberId = params && params.barberId ? (Array.isArray(params.barberId) ? params.barberId[0] : params.barberId) : undefined;
+  // Safely extract identifier from params (could be username or barber ID)
+  const identifier = params && params.username ? (Array.isArray(params.username) ? params.username[0] : params.username) : undefined;
 
   // Add guard for params in BookPageContent
-  if (!barberId) {
+  if (!identifier) {
     return (
       <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
@@ -225,23 +224,23 @@ function BookPageContent() {
 
   useEffect(() => {
     try {
-      if (barberId) {
+      if (identifier) {
         fetchBarberDetails()
       } else {
         setLoading(false)
-        setError('Invalid barber ID')
+        setError('Invalid identifier')
       }
     } catch (err) {
       console.error('Error in useEffect:', err)
       setError('Failed to load page')
       setLoading(false)
     }
-  }, [barberId])
+  }, [identifier])
 
   const fetchBarberDetails = async () => {
-    if (!barberId) {
+    if (!identifier) {
       setLoading(false)
-      setError('Invalid barber ID')
+      setError('Invalid identifier')
       return
     }
 
@@ -249,20 +248,21 @@ function BookPageContent() {
       let profileData: any = null;
       let barberData: any = null;
 
-      // First, try to find a profile with this ID
+      // First, try to find the profile by username
       const { data: profileResult, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', barberId)
+        .eq('username', identifier)
+        .eq('role', 'barber')
         .single()
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError)
-        // Continue to try barber lookup
+        console.error('Error fetching profile by username:', profileError)
+        // Continue to try other methods
       }
 
       if (profileResult) {
-        // If we found a profile, this is a user ID
+        // If we found a profile by username, this is a username
         profileData = profileResult;
         
         // Then, get the barber's details using the user_id
@@ -283,36 +283,71 @@ function BookPageContent() {
 
         barberData = barberResult;
       } else {
-        // If no profile found, try to find a barber directly with this ID
-        const { data: barberResult, error: barberError } = await supabase
-          .from('barbers')
-          .select('*')
-          .eq('id', barberId)
-          .single()
-
-        if (barberError) {
-          console.error('Error fetching barber directly:', barberError)
-          throw barberError
-        }
-
-        if (!barberResult) {
-          throw new Error('Barber not found')
-        }
-
-        barberData = barberResult;
-        
-        // Get the profile data for this barber
+        // If no profile found by username, try to find a profile with this ID
         const { data: profileResult, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', barberData.user_id)
+          .eq('id', identifier)
           .single()
 
-        if (profileError) {
-          console.error('Error fetching profile for barber:', profileError)
-          // Continue without profile data
-        } else {
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error fetching profile by ID:', profileError)
+          // Continue to try barber lookup
+        }
+
+        if (profileResult) {
+          // If we found a profile, this is a user ID
           profileData = profileResult;
+          
+          // Then, get the barber's details using the user_id
+          const { data: barberResult, error: barberError } = await supabase
+            .from('barbers')
+            .select('*')
+            .eq('user_id', profileData.id)
+            .single()
+
+          if (barberError) {
+            console.error('Error fetching barber:', barberError)
+            throw barberError
+          }
+
+          if (!barberResult) {
+            throw new Error('Barber not found')
+          }
+
+          barberData = barberResult;
+        } else {
+          // If no profile found, try to find a barber directly with this ID
+          const { data: barberResult, error: barberError } = await supabase
+            .from('barbers')
+            .select('*')
+            .eq('id', identifier)
+            .single()
+
+          if (barberError) {
+            console.error('Error fetching barber directly:', barberError)
+            throw barberError
+          }
+
+          if (!barberResult) {
+            throw new Error('Barber not found')
+          }
+
+          barberData = barberResult;
+          
+          // Get the profile data for this barber
+          const { data: profileResult, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', barberData.user_id)
+            .single()
+
+          if (profileError) {
+            console.error('Error fetching profile for barber:', profileError)
+            // Continue without profile data
+          } else {
+            profileData = profileResult;
+          }
         }
       }
 
@@ -557,7 +592,7 @@ function BookPageContent() {
                     </div>
                   </div>
                 </CardHeader>
-              </div> {/* <-- Added missing closing div for .relative wrapper */}
+              </div>
               <CardContent className="relative space-y-6">
                 {barber.bio && (
                   <div>
