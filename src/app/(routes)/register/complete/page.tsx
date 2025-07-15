@@ -75,6 +75,18 @@ export default function RegisterCompletePage() {
       return
     }
 
+    // If barber, ensure a barbers row exists
+    if (form.role === 'barber') {
+      const { data: existingBarber } = await supabase
+        .from('barbers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+      if (!existingBarber) {
+        await supabase.from('barbers').insert({ user_id: user.id })
+      }
+    }
+
     // Fetch the updated profile to confirm
     const { data: updatedProfile, error: fetchError } = await supabase
       .from("profiles")
