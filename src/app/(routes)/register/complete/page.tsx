@@ -30,6 +30,10 @@ export default function RegisterCompletePage() {
         .single()
       setProfile(data)
       setLoading(false)
+      // Autofill username if present and not already set in form
+      if (data && data.username && !form.username) {
+        setForm((prev) => ({ ...prev, username: data.username }))
+      }
       // If profile is complete, redirect to correct onboarding
       if (data && data.role && data.username) {
         if (data.role === 'barber') {
