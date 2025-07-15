@@ -20,14 +20,14 @@ export default function AuthCallbackPage() {
         // Fetch profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('role, location, email')
+          .select('role, username, location, email')
           .eq('id', userId)
           .single()
         if (profileError || !profile) throw profileError || new Error('No profile')
 
-        // If no role, redirect to select-role
-        if (!profile.role) {
-          router.replace('/select-role')
+        // If missing role or username, redirect to registration completion
+        if (!profile.role || !profile.username) {
+          router.replace('/register/complete')
           return
         }
 

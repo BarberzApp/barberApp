@@ -143,6 +143,9 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: 'https://www.bocmstyle.com/auth/callback'
+      }
     })
     if (error) {
       console.error('Google login error:', error.message)

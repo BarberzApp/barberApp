@@ -93,6 +93,9 @@ export default function RegisterPage() {
     sessionStorage.setItem('pendingRole', role); // Store selected role
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: 'https://www.bocmstyle.com/auth/callback'
+      }
     })
     if (error) {
       console.error('Google signup error:', error.message)

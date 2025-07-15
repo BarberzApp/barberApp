@@ -1266,12 +1266,21 @@ export default function ProfilePortfolio() {
           <TabsContent value="portfolio">
             <div className="grid grid-cols-3 gap-1">
               {portfolio.map((item) => (
-                <div key={item.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden">
+                <div key={item.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden group">
                   {item.type === 'image' ? (
                     <img src={item.url} alt={item.title || 'Portfolio'} className="w-full h-full object-cover" />
                   ) : (
                     <video src={item.url} className="w-full h-full object-cover" controls={false} muted playsInline preload="metadata" />
                   )}
+                  {/* Delete button (visible on hover) */}
+                  <button
+                    className="absolute top-2 right-2 bg-white/90 hover:bg-red-600 text-red-600 hover:text-white rounded-full p-1.5 shadow-lg focus:outline-none border-2 border-white/40 transition-colors opacity-0 group-hover:opacity-100"
+                    onClick={() => handleDeletePortfolio(item)}
+                    aria-label="Delete portfolio item"
+                    type="button"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
                   <div className="absolute bottom-2 left-2 right-2">
                     <div className="flex items-center justify-between text-white text-xs">
                       <div className="flex items-center gap-2">
