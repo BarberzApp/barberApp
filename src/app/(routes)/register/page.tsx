@@ -23,7 +23,7 @@ export default function RegisterPage() {
   const { toast } = useToast()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [role, setRole] = useState<"client" | "barber">("client")
+  const [role, setRole] = useState<"" | "client" | "barber">("")
 
   const [formData, setFormData] = useState({
     name: "",
@@ -45,6 +45,15 @@ export default function RegisterPage() {
     console.log('Form submitted')
     e.preventDefault()
     setError(null)
+
+    if (!role) {
+      toast({
+        title: "Select a role",
+        description: "Please choose whether you are a Client or Barber.",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       toast({
@@ -90,6 +99,14 @@ export default function RegisterPage() {
   }
 
   const handleGoogleSignUp = async () => {
+    if (!role) {
+      toast({
+        title: "Select a role",
+        description: "Please choose whether you are a Client or Barber.",
+        variant: "destructive",
+      })
+      return
+    }
     sessionStorage.setItem('pendingRole', role); // Store selected role
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -295,7 +312,7 @@ export default function RegisterPage() {
               <Button 
                 type="submit" 
                 className="w-full h-11 bg-saffron text-primary font-semibold rounded-full hover:bg-saffron/90 transition-colors" 
-                disabled={loading}
+                disabled={loading || !role}
               >
                 {loading ? 'Creating account...' : 'Create account'}
               </Button>
@@ -314,6 +331,7 @@ export default function RegisterPage() {
                   className="flex items-center justify-center w-full h-11 rounded-full bg-white border border-gray-300 shadow hover:bg-gray-100 transition gap-2"
                   aria-label="Sign up with Google"
                   type="button"
+                  disabled={!role}
                 >
                   <GoogleIcon />
                   <span className="text-black font-medium">Sign up with Google</span>

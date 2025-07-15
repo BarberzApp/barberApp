@@ -26,9 +26,13 @@ export default function CompleteRegistrationPage() {
         .single();
       setProfile(data);
       setLoading(false);
-      // If profile is complete, redirect
+      // If profile is complete, redirect to correct onboarding
       if (data && data.role && data.username) {
-        router.replace("/onboarding"); // or dashboard
+        if (data.role === 'barber') {
+          router.replace('/barber/onboarding');
+        } else {
+          router.replace('/client/onboarding');
+        }
       }
     };
     fetchProfile();
@@ -45,7 +49,12 @@ export default function CompleteRegistrationPage() {
       username: form.username,
     }).eq("id", user.id);
     setLoading(false);
-    router.replace("/onboarding"); // or dashboard
+    // Redirect to correct onboarding page
+    if (form.role === 'barber') {
+      router.replace('/barber/onboarding');
+    } else {
+      router.replace('/client/onboarding');
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-primary text-white">Loading...</div>;
