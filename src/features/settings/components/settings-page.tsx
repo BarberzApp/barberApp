@@ -9,7 +9,7 @@ import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-setting
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
-import { User, Scissors, Share2, Calendar, DollarSign, Bell, Lock, Settings as SettingsIcon, CheckCircle, AlertCircle, Sparkles, Package } from 'lucide-react'
+import { User, Scissors, Share2, Calendar, DollarSign, Lock, Settings as SettingsIcon, AlertCircle, Sparkles, Package } from 'lucide-react'
 import { AvailabilityManager } from '@/shared/components/booking/availability-manager'
 import { EarningsDashboard } from '@/shared/components/payment/earnings-dashboard'
 import { PaymentHistory } from '@/shared/components/payment/payment-history'
@@ -20,8 +20,9 @@ import { useToast } from '@/shared/components/ui/use-toast'
 import { Button } from '@/shared/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/shared/components/ui/badge'
+import { Switch } from '@/shared/components/ui/switch'
 
-type Tab = 'profile' | 'services' | 'addons' | 'availability' | 'earnings' | 'notifications'
+type Tab = 'profile' | 'services' | 'addons' | 'availability' | 'earnings'
 
 interface SettingsData {
   profileComplete: boolean
@@ -215,8 +216,7 @@ export function SettingsPage() {
         return settingsData.availabilityComplete ? 'complete' : 'incomplete'
       case 'earnings':
         return settingsData.stripeConnected ? 'complete' : 'incomplete'
-      case 'notifications':
-        return settingsData.notificationsConfigured ? 'complete' : 'incomplete'
+
       default:
         return 'neutral'
     }
@@ -251,13 +251,13 @@ export function SettingsPage() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 bg-background">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 bg-black">
         <div className="text-center space-y-4">
           <div className="relative">
             <SettingsIcon className="h-12 w-12 animate-spin mx-auto text-saffron" />
             <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
           </div>
-          <p className="text-muted-foreground font-medium">Loading your settings...</p>
+          <p className="text-white/60 font-medium">Loading your settings...</p>
         </div>
       </div>
     )
@@ -265,8 +265,8 @@ export function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 bg-background">
-        <Card className="max-w-md bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 bg-black">
+        <Card className="max-w-md bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl">
           <CardContent className="p-6">
             <Alert className="border-saffron/20 bg-saffron/10">
               <AlertCircle className="h-4 w-4 text-saffron" />
@@ -281,98 +281,100 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-4 sm:py-8 bg-background pb-24 sm:pb-8">
-      <div className="container max-w-6xl mx-auto px-4">
-        {/* Show prominent booking link banner for barbers */}
-        {user?.role === 'barber' && <ShareSettings />}
-        
-        {/* Email Verification Banner */}
-        {latestUser && !isEmailVerified && showVerifyBanner && (
-          <Card className="mb-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 shadow-lg backdrop-blur-xl">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-500/20 rounded-full">
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-yellow-800">
-                    Please verify your email address
-                  </p>
-                  <p className="text-xs text-yellow-700">
-                    Check your inbox for a verification link
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={handleResendVerification} className="border-yellow-500/30 text-yellow-700 hover:bg-yellow-500/10">
-                  Resend
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowVerifyBanner(false)} className="text-yellow-600 hover:bg-yellow-500/10">
-                  ×
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Main Settings Card */}
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl overflow-hidden">
-          <CardHeader className="bg-white/5 border-b border-white/10 p-6 sm:p-8 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-3 bg-saffron/20 rounded-full">
-                <SettingsIcon className="h-6 w-6 text-saffron" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl sm:text-3xl font-bebas text-white tracking-wide">
-                  Settings
-                </CardTitle>
-                <CardDescription className="text-white/80 mt-1">
-                  Manage your profile, services, and preferences
-                </CardDescription>
-              </div>
+    <div className="min-h-screen bg-black pb-32">
+      {/* Main Content */}
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <div className="space-y-8">
+          {/* Header Section */}
+          <div className="flex flex-col items-center text-center py-8">
+            <div className="p-5 bg-saffron/20 rounded-full shadow-lg mb-4 flex items-center justify-center">
+              <SettingsIcon className="h-10 w-10 text-saffron" />
             </div>
-            
-            {/* Progress Section - Only show if there are incomplete sections */}
-            {getCompletionPercentage() < 100 && (
-              <div className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex items-center gap-2 justify-center sm:justify-start">
-                    <Sparkles className="h-4 w-4 text-saffron" />
-                    <span className="text-xs sm:text-sm font-medium text-white">Profile Completion</span>
-                  </div>
-                  <Badge variant="glassy-saffron" className="text-xs self-center sm:self-auto">
-                    {getCompletionPercentage()}% Complete
-                  </Badge>
-                </div>
-                <div className="relative">
-                  <Progress 
-                    value={getCompletionPercentage()} 
-                    className="h-2 sm:h-3 bg-white/10 border border-white/20" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-saffron/20 to-saffron/40 rounded-full" style={{ width: `${getCompletionPercentage()}%` }} />
-                </div>
-                <p className="text-xs text-white/60 px-2 text-center">
-                  Complete all sections to optimize your profile for clients
-                </p>
-                {user?.role === 'barber' && (
-                  <Button 
-                    onClick={() => router.push('/barber/onboarding')}
-                    className="mt-2 w-full sm:w-auto bg-saffron hover:bg-saffron/90 text-primary font-semibold"
-                    size="sm"
-                  >
-                    Complete Onboarding
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardHeader>
+            <h1 className="text-4xl font-bold text-white mb-2">Settings</h1>
+            <p className="text-white/70 text-base max-w-xs">
+              Manage your profile, services, and preferences
+            </p>
+          </div>
 
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            {/* Modern Tab Navigation */}
-            <div className="relative flex justify-center p-4 sm:p-6">
-              <div className="w-full max-w-4xl">
+          {/* Show prominent booking link banner for barbers */}
+          {user?.role === 'barber' && <ShareSettings />}
+          
+          {/* Email Verification Banner */}
+          {latestUser && !isEmailVerified && showVerifyBanner && (
+            <Card className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 shadow-lg backdrop-blur-xl rounded-2xl">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-500/20 rounded-full">
+                    <AlertCircle className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">
+                      Please verify your email address
+                    </p>
+                    <p className="text-xs text-yellow-700">
+                      Check your inbox for a verification link
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={handleResendVerification} className="border-yellow-500/30 text-yellow-700 hover:bg-yellow-500/10">
+                    Resend
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowVerifyBanner(false)} className="text-yellow-600 hover:bg-yellow-500/10">
+                    ×
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Progress Section - Only show if there are incomplete sections */}
+          {getCompletionPercentage() < 100 && (
+            <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-saffron" />
+                      <span className="text-sm font-medium text-white">Profile Completion</span>
+                    </div>
+                    <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30">
+                      {getCompletionPercentage()}% Complete
+                    </Badge>
+                  </div>
+                  <div className="relative">
+                    <Progress 
+                      value={getCompletionPercentage()} 
+                      className="h-3 bg-white/10 border border-white/20" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-saffron/20 to-saffron/40 rounded-full" style={{ width: `${getCompletionPercentage()}%` }} />
+                  </div>
+                  <p className="text-sm text-white/60 text-center">
+                    Complete all sections to optimize your profile for clients
+                  </p>
+                  {user?.role === 'barber' && (
+                    <div className="flex justify-center">
+                      <Button 
+                        onClick={() => router.push('/barber/onboarding')}
+                        className="bg-saffron hover:bg-saffron/90 text-primary font-semibold rounded-xl px-6 py-3"
+                        size="sm"
+                      >
+                        Complete Onboarding
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Main Settings Card */}
+          <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl overflow-hidden">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+              {/* Modern Tab Navigation */}
+              <div className="p-6 border-b border-white/10">
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl p-2">
-                  <TabsList className="flex w-full overflow-x-auto gap-2 bg-transparent snap-x snap-mandatory sm:grid sm:grid-cols-3 lg:grid-cols-6">
+                  <TabsList className="flex w-full overflow-x-auto gap-2 bg-transparent snap-x snap-mandatory sm:grid sm:grid-cols-5">
                     <TabsTrigger 
                       value="profile" 
                       className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
@@ -383,9 +385,6 @@ export function SettingsPage() {
                     >
                       <User className="h-4 w-4" />
                       <span className="hidden sm:inline">Profile</span>
-                      {getTabStatus('profile') === 'complete' && (
-                        <CheckCircle className="h-4 w-4 text-green-400" />
-                      )}
                     </TabsTrigger>
                     
                     {user?.role === 'barber' && (
@@ -400,9 +399,18 @@ export function SettingsPage() {
                         >
                           <Scissors className="h-4 w-4" />
                           <span className="hidden sm:inline">Services</span>
-                          {getTabStatus('services') === 'complete' && (
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                          )}
+                        </TabsTrigger>
+                        
+                        <TabsTrigger 
+                          value="earnings" 
+                          className={`relative flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 rounded-xl transition-all duration-200 text-sm sm:text-base font-semibold snap-start ${
+                            activeTab === 'earnings' 
+                              ? 'bg-saffron text-primary shadow-lg scale-105' 
+                              : 'text-white/80 hover:text-white hover:bg-white/10 bg-saffron/10 border border-saffron/20'
+                          }`}
+                        >
+                          <DollarSign className="h-5 w-5" />
+                          <span className="hidden sm:inline">Earnings</span>
                         </TabsTrigger>
                         
                         <TabsTrigger 
@@ -427,134 +435,64 @@ export function SettingsPage() {
                         >
                           <Calendar className="h-4 w-4" />
                           <span className="hidden sm:inline">Schedule</span>
-                          {getTabStatus('availability') === 'complete' && (
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                          )}
-                        </TabsTrigger>
-                        
-                        <TabsTrigger 
-                          value="earnings" 
-                          className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
-                            activeTab === 'earnings' 
-                              ? 'bg-saffron text-primary shadow-lg' 
-                              : 'text-white/70 hover:text-white hover:bg-white/10'
-                          }`}
-                        >
-                          <DollarSign className="h-4 w-4" />
-                          <span className="hidden sm:inline">Payments</span>
-                          {getTabStatus('earnings') === 'complete' && (
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                          )}
                         </TabsTrigger>
                       </>
                     )}
                     
-                    <TabsTrigger 
-                      value="notifications" 
-                      className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
-                        activeTab === 'notifications' 
-                          ? 'bg-saffron text-primary shadow-lg' 
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <Bell className="h-4 w-4" />
-                      <span className="hidden sm:inline">Alerts</span>
-                      {getTabStatus('notifications') === 'complete' && (
-                        <CheckCircle className="h-4 w-4 text-green-400" />
-                      )}
-                    </TabsTrigger>
+
                   </TabsList>
                 </div>
               </div>
-            </div>
 
-            <div className="p-4 sm:p-6">
-              <TabsContent value="profile" className="mt-0">
-                {user?.role === 'barber' ? (
-                  <EnhancedBarberProfileSettings />
-                ) : (
-                  <ProfileSettings onUpdate={loadSettingsData} />
-                )}
-              </TabsContent>
-              
-              {user?.role === 'barber' && (
-                <>
-                  <TabsContent value="services" className="mt-0">
-                    <ServicesSettings onUpdate={loadSettingsData} />
-                  </TabsContent>
-                  
-                  <TabsContent value="addons" className="mt-0">
-                    <AddonsSettings onUpdate={loadSettingsData} />
-                  </TabsContent>
-                  
-                  <TabsContent value="availability" className="mt-0">
-                    {barberId && <AvailabilityManager barberId={barberId} />}
-                    {!barberId && (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="text-center space-y-4">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron mx-auto" />
-                          <p className="text-white/60">Loading barber information...</p>
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="earnings" className="mt-0">
-                    {barberId && (
+              <div className="p-6">
+                <TabsContent value="profile" className="mt-0">
+                  {user?.role === 'barber' ? (
+                    <EnhancedBarberProfileSettings />
+                  ) : (
+                    <ProfileSettings />
+                  )}
+                </TabsContent>
+
+                {user?.role === 'barber' && (
+                  <>
+                    <TabsContent value="services" className="mt-0">
+                      <ServicesSettings />
+                    </TabsContent>
+                    
+                    <TabsContent value="addons" className="mt-0">
+                      <AddonsSettings />
+                    </TabsContent>
+                    
+                    <TabsContent value="availability" className="mt-0">
                       <div className="space-y-6">
-                        <EarningsDashboard barberId={barberId} />
-                        <PaymentHistory barberId={barberId} />
+                        <div className="text-center space-y-2">
+                          <h2 className="text-2xl font-bold text-white">Schedule Management</h2>
+                          <p className="text-white/60">Manage your availability and working hours</p>
+                        </div>
+                        <AvailabilityManager barberId={barberId} />
                       </div>
-                    )}
-                    {!barberId && (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="text-center space-y-4">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron mx-auto" />
-                          <p className="text-white/60">Loading barber information...</p>
+                    </TabsContent>
+                    
+                    <TabsContent value="earnings" className="mt-0">
+                      <div className="space-y-6">
+                        <div className="text-center space-y-2">
+                          <h2 className="text-2xl font-bold text-white">Earnings & Payments</h2>
+                          <p className="text-white/60">Track your earnings and manage payments</p>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <EarningsDashboard barberId={barberId} />
+                          <PaymentHistory barberId={barberId} />
                         </div>
                       </div>
-                    )}
-                  </TabsContent>
-                </>
-              )}
-              
-              <TabsContent value="notifications" className="mt-0">
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                      <div className="p-3 bg-saffron/20 rounded-full">
-                        <Bell className="h-6 w-6 text-saffron" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
-                          Notification Settings
-                        </h3>
-                        <p className="text-white/80 mt-1">Manage your notification preferences</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl">
-                    <CardContent className="p-6">
-                      <Alert className="border-saffron/20 bg-saffron/10">
-                        <Bell className="h-4 w-4 text-saffron" />
-                        <AlertDescription className="text-white">
-                          Notification settings are managed in your profile. 
-                          <button 
-                            onClick={() => setActiveTab('profile')}
-                            className="text-saffron hover:text-saffron/80 underline ml-1 font-medium"
-                          >
-                            Go to Profile Settings
-                          </button>
-                        </AlertDescription>
-                      </Alert>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </Card>
+                    </TabsContent>
+                  </>
+                )}
+                
+
+              </div>
+            </Tabs>
+          </Card>
+        </div>
       </div>
       {/* Logout Button at the bottom */}
       <div className="container max-w-6xl mx-auto px-4 mt-8 mb-8 flex justify-center">
@@ -576,7 +514,7 @@ export function SettingsPage() {
               });
             }
           }}
-          className="w-full max-w-md bg-saffron/90 hover:bg-saffron text-primary font-semibold rounded-2xl shadow-lg py-3 text-lg glassy"
+          className="w-full max-w-md bg-red-600 hover:bg-red-700 text-white font-semibold rounded-2xl shadow-lg py-3 text-lg"
         >
           Log Out
         </Button>

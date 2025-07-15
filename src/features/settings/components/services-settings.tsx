@@ -270,7 +270,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
           </div>
         </div>
         
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
           <CardContent className="p-6">
             <div className="flex items-center justify-center min-h-[200px]">
               <div className="text-center space-y-4">
@@ -304,7 +304,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       </div>
 
       {/* Add Service Form */}
-      <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+      <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
         <CardHeader className="bg-white/5 border-b border-white/10">
           <CardTitle className="text-white flex items-center gap-2">
             {editingService ? (
@@ -423,7 +423,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
         </div>
         
         {services.length === 0 ? (
-          <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl">
+          <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-3xl">
             <CardContent className="p-8 text-center">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <div className="p-3 bg-saffron/20 rounded-full">
@@ -439,7 +439,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
         ) : (
           <div className="grid gap-4">
             {services.map((service) => (
-              <Card key={service.id} className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl hover:shadow-2xl transition-all duration-200">
+              <Card key={service.id} className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl hover:shadow-2xl transition-all duration-200 rounded-3xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">

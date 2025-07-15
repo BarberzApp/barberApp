@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/shared/components/ui/use-toast'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { supabase } from '@/shared/lib/supabase'
+import { BARBER_SPECIALTIES } from '@/shared/constants/specialties'
 import { 
   Play, 
   Pause, 
@@ -30,10 +31,13 @@ import {
   MapPin,
   Filter,
   X,
-  Car
+  Car,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { BookingForm } from '@/shared/components/booking/booking-form';
 
 interface VideoCut {
   id: string
@@ -52,6 +56,7 @@ interface VideoCut {
   is_featured: boolean
   barber_name?: string
   barber_avatar?: string
+  barber_username?: string
   barber_id?: string
   location_name?: string
   city?: string
@@ -60,6 +65,7 @@ interface VideoCut {
   longitude?: number
   is_liked?: boolean
   price?: number // Added for the new UI
+  specialties?: string[]
 }
 
 interface CutComment {
@@ -109,30 +115,71 @@ export default function CutsPage() {
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
   const [showInfoOverlay, setShowInfoOverlay] = useState(false)
+  const filterScrollRef = useRef<HTMLDivElement>(null)
+  const [isFilterAnimating, setIsFilterAnimating] = useState(false)
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
 
   const categories = [
-    'all',
-    'fade-cuts',
-    'beard-trims',
-    'hair-styling',
-    'color-work',
-    'specialty-cuts',
-    'behind-scenes',
-    'tutorials',
-    'before-after'
+    { id: 'all', label: 'For You' },
+    ...BARBER_SPECIALTIES.map(specialty => ({
+      id: specialty.toLowerCase().replace(/\s+/g, '-'),
+      label: specialty
+    }))
   ]
 
-  const categoryLabels = {
-    'all': 'All Videos',
-    'fade-cuts': 'Fade Cuts',
-    'beard-trims': 'Beard Trims',
-    'hair-styling': 'Hair Styling',
-    'color-work': 'Color Work',
-    'specialty-cuts': 'Specialty Cuts',
-    'behind-scenes': 'Behind Scenes',
-    'tutorials': 'Tutorials',
-    'before-after': 'Before & After'
-  }
+  const [currentCategory, setCurrentCategory] = useState('all')
+
+  // Auto-scroll to center selected filter
+  const scrollToSelectedFilter = useCallback((categoryId: string) => {
+    if (filterScrollRef.current) {
+      const container = filterScrollRef.current
+      const buttons = container.querySelectorAll('button')
+      const selectedButton = Array.from(buttons).find(button => 
+        button.getAttribute('data-category') === categoryId
+      )
+      
+      if (selectedButton) {
+        const containerRect = container.getBoundingClientRect()
+        const buttonRect = selectedButton.getBoundingClientRect()
+        const scrollLeft = selectedButton.offsetLeft - (containerRect.width / 2) + (buttonRect.width / 2)
+        
+        container.scrollTo({
+          left: scrollLeft,
+          behavior: 'smooth'
+        })
+      }
+    }
+  }, [])
+
+  // Handle category selection with auto-scroll
+  const handleCategorySelect = useCallback((categoryId: string) => {
+    if (categoryId === currentCategory) return // Prevent unnecessary updates
+    
+    setIsFilterAnimating(true)
+    setCurrentCategory(categoryId)
+    scrollToSelectedFilter(categoryId)
+    
+    // Haptic feedback for mobile devices
+    if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+      navigator.vibrate(50) // Short vibration for feedback
+    }
+    
+    // Reset animation state after animation completes
+    setTimeout(() => {
+      setIsFilterAnimating(false)
+    }, 600)
+  }, [scrollToSelectedFilter, currentCategory])
+
+  // Auto-scroll to selected category on mount
+  useEffect(() => {
+    if (currentCategory && filterScrollRef.current) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        scrollToSelectedFilter(currentCategory)
+      }, 100)
+    }
+  }, [currentCategory, scrollToSelectedFilter])
 
   // Get user's current location
   const getCurrentLocation = useCallback(() => {
@@ -181,7 +228,8 @@ export default function CutsPage() {
             user_id,
             profiles:user_id(
               name,
-              avatar_url
+              avatar_url,
+              username
             )
           )
         `)
@@ -202,8 +250,28 @@ export default function CutsPage() {
       let filteredCuts = data?.map((cut: any) => ({
         ...cut,
         barber_name: cut.barbers?.profiles?.name || 'Unknown Barber',
-        barber_avatar: cut.barbers?.profiles?.avatar_url
+        barber_avatar: cut.barbers?.profiles?.avatar_url,
+        barber_username: cut.barbers?.profiles?.username,
+        specialties: cut.specialties // ensure specialties is present
       })) as VideoCut[]
+
+      // Robust client-side specialty filter
+      if (currentCategory !== 'all') {
+        const specialtyFilter = currentCategory.replace(/-/g, ' ').toLowerCase().trim();
+        filteredCuts = filteredCuts.filter(cut => {
+          const specialties = Array.isArray(cut.specialties)
+            ? cut.specialties
+            : typeof cut.specialties === 'string'
+              ? [cut.specialties]
+              : [];
+          if (!specialties.length) return false;
+          return specialties.some(
+            (s: string) =>
+              s &&
+              s.toLowerCase().replace(/-/g, ' ').trim() === specialtyFilter
+          );
+        });
+      }
 
       // Apply distance filter if using current location
       if (locationFilter.useCurrentLocation && userLocation) {
@@ -258,7 +326,7 @@ export default function CutsPage() {
 
   useEffect(() => {
     fetchCuts()
-  }, [fetchCuts])
+  }, [fetchCuts, currentCategory])
 
   useEffect(() => {
     if (cuts.length > 0) {
@@ -652,219 +720,362 @@ export default function CutsPage() {
   const cardHeight = isDesktop ? 'calc(100dvh - 72px)' : 'calc(100dvh - 80px)';
 
   return (
-    <div
-      className="relative w-full flex flex-col bg-background max-w-[430px] mx-auto shadow-2xl rounded-3xl md:mt-[72px] md:overflow-hidden overflow-hidden mt-0"
-      style={{ height: cardHeight }}
-    >
-      {/* Full-bleed video or image */}
-      {currentCut?.url ? (
-        <video
-          src={currentCut.url}
-          className="absolute inset-0 w-full h-full object-cover z-0 rounded-3xl"
-          autoPlay
-          loop
-          muted
-          playsInline
-        />
-      ) : (
-        <div className="absolute inset-0 w-full h-full bg-darkpurple/80 z-0 rounded-3xl" />
-      )}
-      {/* Glassy overlay - reduce blur for mobile */}
-      <div className="absolute inset-0 bg-black/30 md:bg-black/40 md:backdrop-blur-md backdrop-blur-none z-10 rounded-3xl" />
-
-      {/* Top Bar - Centered Profile Button */}
-      <div className="relative z-20 flex items-center justify-center px-2 pt-4 sm:px-4 sm:pt-6 max-w-[430px] mx-auto">
-        <Button variant="ghost" className="bg-white/10 border-white/20 text-white/80 p-2 rounded-full" onClick={() => setShowInfoOverlay(v => !v)}>
-          <User className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {/* Action buttons vertical stack (always visible, floating right) */}
-      <div className="absolute right-4 bottom-24 z-30 flex flex-col gap-3 items-end pointer-events-auto">
-        <div className="flex flex-col gap-3 items-end pointer-events-auto pr-2 md:pr-4">
-          <Button 
-            variant="ghost" 
-            className="bg-white/10 border-white/20 text-white/80 p-3 rounded-full shadow-md hover:bg-white/20 transition-all"
-            onClick={() => handleLike(currentCut.id, currentCut.is_liked || false)}
-          >
-            <Heart 
-              className={`h-5 w-5 ${currentCut.is_liked ? 'fill-red-500 text-red-500' : ''}`} 
-            />
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="bg-white/10 border-white/20 text-white/80 p-3 rounded-full shadow-md hover:bg-white/20 transition-all"
-            onClick={() => {
-              setCommentingCutId(currentCut.id)
-              setShowCommentsDialog(true)
-              fetchComments(currentCut.id)
-            }}
-          >
-            <MessageCircle className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="bg-white/10 border-white/20 text-white/80 p-3 rounded-full shadow-md hover:bg-white/20 transition-all"
-            onClick={() => {
-              setSelectedCut(currentCut)
-              setShowShareDialog(true)
-            }}
-          >
-            <Share2 className="h-5 w-5" />
-          </Button>
+    <div className="relative h-screen bg-black">
+      {/* Enhanced filter bar with ring-like scrolling */}
+      <div className="fixed top-0 md:top-[64px] left-0 w-full z-50 h-[56px] bg-black/90 backdrop-blur-xl border-b border-white/10">
+        <div className="relative h-full flex items-center justify-center">
+          {/* Left gradient overlay */}
+          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/90 to-transparent z-10 pointer-events-none" />
+          
+          {/* Scrollable filter container */}
+          <div className="flex-1 overflow-hidden" ref={filterScrollRef}>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide px-4 py-2 snap-x snap-mandatory filter-scroll-container">
+              {categories.map((category, index) => (
+                <button
+                  key={category.id}
+                  onClick={() => handleCategorySelect(category.id)}
+                  className={cn(
+                    "flex-shrink-0 snap-center transition-all duration-300 ease-out transform",
+                    "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap",
+                    "border-2 shadow-lg backdrop-blur-sm",
+                    "hover:scale-105 active:scale-95 touch-manipulation",
+                    "focus:outline-none focus:ring-2 focus:ring-white/50",
+                    currentCategory === category.id 
+                      ? "bg-white text-black border-white shadow-xl scale-110 ring-4 ring-white/20 filter-item-active" 
+                      : "bg-black/40 text-white border-white/20 hover:bg-white/10 hover:border-white/40 filter-item-hover",
+                    currentCategory === category.id && isFilterAnimating && "animate-bounce-in"
+                  )}
+                  style={{ 
+                    minWidth: 'max-content',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  data-category={category.id}
+                >
+                  <span className="flex items-center gap-2">
+                    {category.label}
+                    {currentCategory === category.id && (
+                      <div className="w-2 h-2 bg-black rounded-full animate-pulse-slow" />
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Right gradient overlay */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/90 to-transparent z-10 pointer-events-none" />
+          
+          {/* Scroll indicators */}
+          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-20">
+            <div className="w-1 h-1 bg-white/30 rounded-full animate-pulse-slow" />
+            <div className="w-1 h-1 bg-white/20 rounded-full animate-pulse-slow delay-75" />
+            <div className="w-1 h-1 bg-white/10 rounded-full animate-pulse-slow delay-150" />
+          </div>
         </div>
       </div>
+      {/* Snap container fills space between filter bar, action bar, and navbar */}
+      <div className="h-[calc(100dvh-80px-56px-56px)] md:h-[calc(100dvh-80px-56px-56px-64px)] w-full overflow-y-scroll snap-y snap-mandatory relative">
+        {cuts.map((cut, index) => (
+          <div key={cut.id} className="relative h-full min-h-[inherit] w-full snap-start overflow-hidden">
+            <video
+              src={cut.url}
+              className="h-full w-full object-contain bg-black"
+              autoPlay={index === currentCutIndex}
+              loop
+              muted
+              playsInline
+            />
+            {/* Side action buttons, anchored to snap container */}
+            {index === currentCutIndex && (
+              <div className="absolute right-4 z-30 flex flex-col gap-8 md:bottom-[120px]" style={{ bottom: '80px' }}>
+                {/* Like button */}
+                <button className="flex flex-col items-center" onClick={() => handleLike(currentCut.id, currentCut.is_liked || false)} aria-label="Like video">
+                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
+                    <Heart className={cn("h-6 w-6", currentCut.is_liked ? "fill-red-500 text-red-500" : "text-white")} />
+                  </div>
+                  <span className="text-white text-xs font-medium">{currentCut.likes || 0}</span>
+                </button>
 
-      {/* Info overlay (hidden by default, appears near top when toggled) */}
-      {showInfoOverlay && (
-        <div className="fixed left-0 right-0 top-0 z-40 px-0 pt-0 animate-slide-down max-w-[430px] mx-auto">
-          <div className="relative w-full flex items-start">
-            {/* Info card */}
-            <div 
-              className="flex-1 bg-white/10 border border-white/20 rounded-b-2xl rounded-t-lg shadow-2xl backdrop-blur-sm p-3 sm:p-5 m-2 mt-4 flex flex-col gap-2 w-full cursor-pointer"
-              onClick={() => setShowInfoOverlay(false)}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg sm:text-2xl font-bebas text-white font-bold tracking-wide">{currentCut?.title || 'Cut Name'}</h2>
+                {/* Comments button */}
+                <button
+                  className="flex flex-col items-center"
+                  onClick={() => {
+                    setCommentingCutId(currentCut.id)
+                    setShowCommentsDialog(true)
+                    fetchComments(currentCut.id)
+                  }}
+                  aria-label="Show comments"
+                >
+                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
+                    <MessageCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white text-xs font-medium">{currentCut.comments_count || 0}</span>
+                </button>
+
+                {/* Share button */}
+                <button className="flex flex-col items-center" onClick={() => {
+                  setSelectedCut(currentCut)
+                  setShowShareDialog(true)
+                }} aria-label="Share video">
+                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
+                    <Share2 className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white text-xs font-medium">{currentCut.shares || 0}</span>
+                </button>
+
+                {/* Booking button */}
+                <button
+                  className="flex flex-col items-center"
+                  onClick={() => {
+                    if (cut.barber_id) {
+                      setSelectedBarberId(cut.barber_id);
+                      setShowBookingForm(true);
+                    }
+                  }}
+                  aria-label="Book appointment"
+                >
+                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white text-xs font-medium">Book</span>
+                </button>
               </div>
-              <div className="text-white/80 text-sm sm:text-base mb-1">{currentCut?.description || 'Description of the cut goes here.'}</div>
-              <div className="flex items-center gap-2 mb-1">
-                <MapPin className="h-4 w-4 text-saffron" />
-                <span className="text-saffron font-semibold text-xs sm:text-sm">
-                  {currentCut?.location_name && `${currentCut.location_name}, ${currentCut.city || ''} ${currentCut.state || ''}`.trim() || 'Barber Shop'}
-                </span>
-              </div>
-              {/* Tags and ratings row */}
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge variant="glassy-saffron" className="text-xs">POPULAR</Badge>
-                <span className="flex items-center gap-1 text-white/80 text-xs"><span className="font-bold">4.3</span>★ (660+)</span>
-                <span className="flex items-center gap-1 text-white/80 text-xs"><span className="font-bold">3.9</span>★ (330+)</span>
-              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Overlay for profile/location, anchored to the screen just above the action bar */}
+      {currentCut && (
+        <div className="absolute left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent z-50 pb-safe flex flex-col justify-end min-h-[180px]" style={{ bottom: '136px' }}>
+          {/* Creator info */}
+          <div className="flex items-center mb-3">
+            <div className="h-10 w-10 border-2 border-white rounded-full mr-3 bg-saffron/20 flex items-center justify-center">
+              {currentCut.barber_avatar ? (
+                <img src={currentCut.barber_avatar} alt={currentCut.barber_name} className="h-full w-full rounded-full object-cover" />
+              ) : (
+                <User className="h-5 w-5 text-saffron" />
+              )}
             </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center">
+                <p className="font-semibold text-white mr-1 truncate">@{currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '') || 'barber'}</p>
+              </div>
+              <p className="text-white/70 text-sm truncate">{currentCut.barber_name}</p>
+            </div>
+          </div>
+
+          {/* Video description */}
+          <p className="text-white mb-2 line-clamp-2">{currentCut.description || currentCut.title}</p>
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-1 mb-3">
+            {currentCut.tags?.map((tag) => (
+              <span key={tag} className="text-white/90 text-sm">
+                #{tag}
+              </span>
+            ))}
+          </div>
+
+          {/* Location and price */}
+          <div className="flex items-center mb-4">
+            <Badge className="bg-white/10 text-white border-0">
+              {(() => {
+                if (!currentCut.location_name) return 'Barber Shop';
+                const parts = currentCut.location_name.split(',').map(s => s.trim());
+                console.log('Location parts:', parts); // Debug log
+                
+                if (parts.length >= 8) {
+                  // For old Nominatim format: pull parts 0, 1, and 6 (0-indexed)
+                  const street = parts[0];
+                  const city = parts[1];
+                  const state = parts[6];
+                  return `${street}, ${city}, ${state}`;
+                } else if (parts.length >= 4) {
+                  // For format: "88 Doe Court, Wynwood Drive, South Brunswick, NJ"
+                  // Show: "South Brunswick, NJ" (second-to-last and last parts)
+                  const city = parts[parts.length - 2];
+                  const state = parts[parts.length - 1];
+                  return `${city}, ${state}`;
+                } else if (parts.length >= 3) {
+                  // For format: "88 Doe Court, South Brunswick, NJ"
+                  // Show: "South Brunswick, NJ" (city and state)
+                  const city = parts[1];
+                  const state = parts[2];
+                  return `${city}, ${state}`;
+                } else if (parts.length >= 2) {
+                  // Fallback for shorter formats
+                  const city = parts[0];
+                  const state = parts[1];
+                  return `${city}, ${state}`;
+                } else {
+                  return currentCut.location_name;
+                }
+              })()}
+            </Badge>
+          </div>
+
+          {/* Action buttons (desktop only) */}
+          <div className="hidden md:flex justify-between items-center">
+            <Button
+              variant="outline"
+              className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 mr-2 bg-transparent"
+              onClick={() => router.push("/reach")}
+            >
+              <Car className="h-5 w-5 mr-2" />
+              <span>Reach</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 bg-transparent"
+              onClick={() => {
+                const username = currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '')
+                if (username) {
+                  router.push(`/book/${username}`)
+                } else {
+                  setShowInfoOverlay(true)
+                }
+              }}
+            >
+              <span>More Info</span>
+            </Button>
           </div>
         </div>
       )}
-
-      {/* Sticky Bottom Action Bar (mobile friendly, above nav bar) */}
-      <div className="fixed left-0 right-0 bottom-20 md:bottom-0 z-40 flex justify-center pb-[env(safe-area-inset-bottom)]">
-        <div className="w-full max-w-[430px] flex gap-2 sm:gap-4 mx-auto mb-5">
-          <Button 
-            className="flex-[3] bg-saffron text-primary font-bold text-base sm:text-lg py-3 sm:py-4 rounded-xl shadow-xl hover:bg-saffron/90 transition-all"
-            onClick={() => {
-              // Navigate to booking page using the barber_id from the cut data
-              if (currentCut?.barber_id) {
-                router.push(`/book/${currentCut.barber_id}`)
-              } else {
-                toast({
-                  title: 'Booking Error',
-                  description: 'Unable to find barber information.',
-                  variant: 'destructive',
-                })
-              }
-            }}
-          >
-            Book Now
-          </Button>
-          <Button
-            className="flex-[1] flex items-center gap-2 bg-white/20 border border-saffron/60 text-saffron font-bold px-6 py-3 rounded-full shadow-xl backdrop-blur-lg hover:bg-saffron/80 hover:text-primary focus:outline-none focus:ring-2 focus:ring-saffron transition-all"
-            onClick={() => router.push('/reach')}
-            aria-label="Reach"
-            type="button"
-          >
-            <Car className="w-5 h-5" />
-            Reach
-          </Button>
-        </div>
+      {/* Fixed action bar above the navbar */}
+      <div className="fixed bottom-[80px] left-0 right-0 z-50 flex md:hidden justify-between items-center px-4">
+        <Button
+          variant="outline"
+          className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 mr-2 bg-transparent"
+          onClick={() => router.push("/reach")}
+        >
+          <Car className="h-5 w-5 mr-2" />
+          <span>Reach</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 bg-transparent"
+          onClick={() => {
+            const username = currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '')
+            if (username) {
+              router.push(`/book/${username}`)
+            } else {
+              setShowInfoOverlay(true)
+            }
+          }}
+        >
+          <span>More Info</span>
+        </Button>
       </div>
 
       {/* Comments Dialog */}
       <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
-        <DialogContent className="bg-darkpurple/95 border border-white/10 shadow-2xl backdrop-blur-xl max-w-md mx-auto">
-          <DialogHeader>
-            <DialogTitle className="text-white font-bebas text-xl">Comments</DialogTitle>
-            <DialogDescription className="text-white/80">
-              Share your thoughts about this cut
-            </DialogDescription>
+        <DialogContent className="bg-black border border-white/10 text-white max-w-md mx-auto max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b border-white/10 pb-2">
+            <DialogTitle className="text-center">
+              {currentCut?.comments_count || 0} Comments
+            </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto py-4 space-y-4">
             {comments.length === 0 ? (
               <p className="text-white/60 text-center py-8">No comments yet. Be the first to comment!</p>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3 p-3 bg-white/5 rounded-xl">
-                  <div className="w-8 h-8 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <div key={comment.id} className="flex gap-3 px-4">
+                  <div className="w-9 h-9 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
                     <User className="h-4 w-4 text-saffron" />
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white font-medium text-sm">{comment.user_name}</span>
-                      <span className="text-white/40 text-xs">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm">{comment.user_name}</p>
+                      <span className="text-white/50 text-xs">
                         {new Date(comment.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-white/80 text-sm">{comment.comment}</p>
+                    <p className="text-white/90 text-sm mt-1">{comment.comment}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button className="text-white/50 text-xs hover:text-white">Reply</button>
+                      <div className="flex items-center gap-1">
+                        <button className="text-white/50 hover:text-white">
+                          <Heart className="h-3 w-3" />
+                        </button>
+                        <span className="text-white/50 text-xs">0</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))
             )}
           </div>
           
-          <div className="flex gap-2 pt-4 border-t border-white/10">
-            <Input
-              placeholder="Add a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-            />
-            <Button 
-              onClick={handleAddComment}
-              disabled={!newComment.trim()}
-              className="bg-saffron text-primary hover:bg-saffron/90"
-            >
-              Post
-            </Button>
+          <div className="border-t border-white/10 pt-3 px-4 mt-auto">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-saffron/20 rounded-full flex items-center justify-center">
+                <User className="h-4 w-4 text-saffron" />
+              </div>
+              <Input
+                placeholder="Add a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                className="flex-1 bg-white/10 border-white/20 text-white rounded-full"
+                onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
+              />
+              <Button
+                size="sm"
+                className="bg-white text-black hover:bg-white/90 rounded-full"
+                onClick={handleAddComment}
+                disabled={!newComment.trim()}
+              >
+                Post
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Share Dialog */}
       <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent className="bg-darkpurple/95 border border-white/10 shadow-2xl backdrop-blur-xl max-w-md mx-auto">
+        <DialogContent className="bg-black border border-white/10 text-white max-w-md mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-white font-bebas text-xl">Share Cut</DialogTitle>
-            <DialogDescription className="text-white/80">
-              Share this amazing cut with others
-            </DialogDescription>
+            <DialogTitle className="text-center">Share to</DialogTitle>
           </DialogHeader>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              onClick={() => handleShare(selectedCut!, 'twitter')}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              Twitter
-            </Button>
-            <Button
-              onClick={() => handleShare(selectedCut!, 'facebook')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Facebook
-            </Button>
-            <Button
-              onClick={() => handleShare(selectedCut!, 'instagram')}
-              className="bg-pink-500 hover:bg-pink-600 text-white"
-            >
-              Instagram
-            </Button>
-            <Button
-              onClick={() => handleShare(selectedCut!, 'copy')}
-              className="bg-saffron hover:bg-saffron/90 text-primary"
-            >
-              Copy Link
-            </Button>
+
+          <div className="grid grid-cols-3 gap-4 py-4">
+            {[
+              { name: "Instagram", color: "bg-gradient-to-tr from-purple-600 to-pink-500" },
+              { name: "TikTok", color: "bg-black" },
+              { name: "Twitter", color: "bg-blue-500" },
+              { name: "Facebook", color: "bg-blue-600" },
+              { name: "WhatsApp", color: "bg-green-500" },
+              { name: "Copy Link", color: "bg-gray-700" },
+            ].map((platform) => (
+              <button
+                key={platform.name}
+                className="flex flex-col items-center gap-2"
+                onClick={() => handleShare(selectedCut!, platform.name.toLowerCase())}
+              >
+                <div className={`${platform.color} h-14 w-14 rounded-full flex items-center justify-center`}>
+                  <span className="text-white text-xl">{platform.name.charAt(0)}</span>
+                </div>
+                <span className="text-white text-xs">{platform.name}</span>
+              </button>
+            ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Booking Form Dialog */}
+      <Dialog open={showBookingForm} onOpenChange={setShowBookingForm}>
+        <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+          {selectedBarberId && (
+            <BookingForm
+              isOpen={showBookingForm}
+              onClose={() => setShowBookingForm(false)}
+              barberId={selectedBarberId}
+              selectedDate={new Date()}
+              onBookingCreated={() => setShowBookingForm(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

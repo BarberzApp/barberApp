@@ -72,6 +72,7 @@ type BarberFromDB = {
 type Barber = {
   id: string
   name: string
+  username?: string
   businessName?: string
   location?: string
   specialties: string[]
@@ -375,6 +376,7 @@ export default function BrowsePage() {
 
       // Fetch profiles for all barbers
       const userIds = barberData.map(barber => barber.user_id)
+      
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, name, location, bio, avatar_url, is_public, username')
@@ -388,6 +390,7 @@ export default function BrowsePage() {
       // Combine barber and profile data
       const combinedBarbers: Barber[] = barberData.map(barber => {
         const profile = profileMap.get(barber.user_id)
+        
         return {
           id: barber.id,
           name: profile?.name || 'Unknown',
@@ -510,19 +513,19 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary">
+    <div className="min-h-screen bg-black">
       {/* Main Content */}
-      <div className="container mx-auto max-w-7xl px-4 py-12">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
         <div className="space-y-8">
           {/* Hero Section */}
           <div className="text-center space-y-6">
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="p-3 bg-saffron/20 rounded-full">
-                <Scissors className="h-8 w-8 text-saffron" />
+            <div className="flex flex-col items-center text-center gap-4 mb-6 sm:flex-row sm:text-left sm:items-center sm:justify-center">
+              <div className="p-4 bg-saffron/20 rounded-full flex-shrink-0">
+                <Scissors className="h-10 w-10 text-saffron" />
               </div>
               <div>
-                <h1 className="text-4xl font-bebas text-white tracking-wide">Find Your Perfect Barber</h1>
-                <p className="text-white/80 mt-1">Discover skilled professionals in your area</p>
+                <h1 className="text-3xl sm:text-5xl font-bold text-white tracking-wide">Find Your Perfect Barber</h1>
+                <p className="text-white/80 mt-2 text-base sm:text-lg">Discover skilled professionals in your area</p>
               </div>
             </div>
             
@@ -531,10 +534,10 @@ export default function BrowsePage() {
             </p>
 
             {/* Cuts Button */}
-            <div className="flex justify-center pt-4">
-              <Link href="/cuts">
-                <Button className="bg-saffron text-white font-bold rounded-xl px-8 py-4 shadow-md hover:bg-saffron/90 transition-all duration-200 flex items-center justify-center gap-2">
-                  <Sparkles className="h-5 w-5 mr-2" />
+            <div className="flex justify-center pt-6">
+              <Link href="/reels">
+                <Button className="bg-saffron text-primary font-bold rounded-xl px-8 py-4 shadow-lg hover:bg-saffron/90 transition-all duration-200 flex items-center justify-center gap-2">
+                  <Sparkles className="h-5 w-5" />
                   Watch Barber Cuts
                 </Button>
               </Link>
@@ -545,41 +548,27 @@ export default function BrowsePage() {
           <div className="space-y-6">
             {/* Search Bar */}
             <div className="max-w-2xl mx-auto">
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="flex-1 w-full">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="relative">
-                          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60">
-                            <Search className="h-5 w-5" />
-                          </div>
-                          <Input
-                            placeholder="Search by name, business, location, or specialty..."
-                            value={searchQuery}
-                            onChange={handleSearch}
-                            onKeyDown={handleKeyDown}
-                            className="w-full pl-12 py-4 text-base bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-2xl backdrop-blur-xl"
-                          />
-                          {searchQuery && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={clearSearch}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 text-white/60 hover:text-white hover:bg-white/10 rounded-full"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-darkpurple/90 border border-white/10 text-white">
-                        <p>Search by name, business, location, or specialty</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60 z-10">
+                  <Search className="h-5 w-5" />
                 </div>
-                
+                <Input
+                  placeholder="Search by name, business, location, or specialty..."
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  onKeyDown={handleKeyDown}
+                  className="w-full pl-12 py-4 text-base bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-2xl backdrop-blur-xl"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 text-white/60 hover:text-white hover:bg-white/10 rounded-full"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -588,32 +577,32 @@ export default function BrowsePage() {
               <div className="max-w-2xl mx-auto">
                 <Card className="bg-saffron/20 border border-saffron/30 rounded-2xl">
                   <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-white">
-                      <MapIcon className="h-4 w-4 text-saffron" />
-                      <span className="text-sm">
-                        {locationFilter.useCurrentLocation 
-                          ? `Within ${locationFilter.range} miles`
-                          : `${locationFilter.city}${locationFilter.state ? `, ${locationFilter.state}` : ''}`
-                        }
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-white">
+                        <MapIcon className="h-4 w-4 text-saffron" />
+                        <span className="text-sm font-medium">
+                          {locationFilter.useCurrentLocation 
+                            ? `Within ${locationFilter.range} miles`
+                            : `${locationFilter.city}${locationFilter.state ? `, ${locationFilter.state}` : ''}`
+                          }
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearLocationFilter}
+                        className="text-white hover:bg-white/10 text-xs"
+                      >
+                        Clear
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearLocationFilter}
-                      className="text-white hover:bg-white/10 text-xs"
-                    >
-                      Clear
-                    </Button>
-                  </div>
                   </CardContent>
                 </Card>
               </div>
             )}
 
             {/* Filters and Sort Controls */}
-            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
+            <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -629,9 +618,9 @@ export default function BrowsePage() {
                           )}
                         </Button>
                       </SheetTrigger>
-                      <SheetContent side="left" className="w-[300px] sm:w-[400px] bg-darkpurple/95 border-r border-white/10">
+                      <SheetContent side="left" className="w-[300px] sm:w-[400px] bg-black/95 border-r border-white/10">
                         <SheetHeader className="border-b border-white/10 pb-4">
-                          <SheetTitle className="text-white">Filters</SheetTitle>
+                          <SheetTitle className="text-white text-xl font-bold">Filters</SheetTitle>
                         </SheetHeader>
                         <div className="space-y-6 mt-6 overflow-y-auto max-h-[calc(100vh-200px)]">
                           {/* Specialties Filter */}
@@ -663,7 +652,7 @@ export default function BrowsePage() {
                               <SelectTrigger className="bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                              <SelectContent className="bg-black/90 border border-white/10 backdrop-blur-xl">
                                 <SelectItem value="all" className="text-white hover:bg-white/10">All Prices</SelectItem>
                                 <SelectItem value="Budget" className="text-white hover:bg-white/10">Budget</SelectItem>
                                 <SelectItem value="Mid-range" className="text-white hover:bg-white/10">Mid-range</SelectItem>
@@ -699,7 +688,7 @@ export default function BrowsePage() {
                       <SelectTrigger className="w-full sm:w-[140px] bg-white/10 border-white/20 text-white focus:border-saffron rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
+                      <SelectContent className="bg-black/90 border border-white/10 backdrop-blur-xl">
                         <SelectItem value="name" className="text-white hover:bg-white/10">Name</SelectItem>
                         <SelectItem value="rating" className="text-white hover:bg-white/10">Rating</SelectItem>
                         <SelectItem value="location" className="text-white hover:bg-white/10">Location</SelectItem>
@@ -725,37 +714,38 @@ export default function BrowsePage() {
 
           {/* Error Alert */}
           {error && (
-              <Alert variant="destructive" className="bg-red-900/30 border-red-400/30">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-white">{error}</AlertDescription>
-              </Alert>
+            <Alert variant="destructive" className="bg-red-900/30 border-red-400/30 rounded-2xl">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-white">{error}</AlertDescription>
+            </Alert>
           )}
 
           {/* Results Summary */}
           {!error && (
-              <SearchResultsSummary
-                totalResults={barbers.length}
-                filteredResults={filteredBarbers.length}
-                searchQuery={searchQuery}
-                activeFilters={{
-                  specialties: selectedSpecialties,
-                  priceRange,
-                  location: locationFilter.city || locationFilter.state
-                }}
-                onClearFilters={clearAllFilters}
-                onClearSearch={clearSearch}
-              />
+            <SearchResultsSummary
+              totalResults={barbers.length}
+              filteredResults={filteredBarbers.length}
+              searchQuery={searchQuery}
+              activeFilters={{
+                specialties: selectedSpecialties,
+                priceRange,
+                location: locationFilter.city || locationFilter.state
+              }}
+              onClearFilters={clearAllFilters}
+              onClearSearch={clearSearch}
+            />
           )}
 
           {/* Barbers Grid */}
           {!error && filteredBarbers.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredBarbers.map((barber) => (
                 <BarberCard
                   key={barber.id}
                   barber={{
                     id: barber.id,
                     name: barber.name,
+                    username: barber.username,
                     email: '', // Email not available in browse view
                     businessName: barber.businessName,
                     location: barber.location,
@@ -775,7 +765,7 @@ export default function BrowsePage() {
                     isPublic: barber.isPublic,
                     nextAvailable: undefined
                   }}
-                  className="hover:-translate-y-1 card-hover"
+                  className="hover:-translate-y-2 transition-all duration-300"
                 />
               ))}
             </div>
@@ -783,57 +773,57 @@ export default function BrowsePage() {
 
           {/* No Results */}
           {!error && filteredBarbers.length === 0 && !loading && (
-            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-              <CardContent className="p-12 text-center">
-                  <div className="space-y-4">
-                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
-                    <AlertCircle className="h-8 w-8 text-white/60" />
-                    </div>
-                    <div className="space-y-2">
-                    <h3 className="text-xl font-semibold text-white">No barbers found</h3>
-                    <p className="text-white/60 text-base">
-                        {activeFiltersCount > 0
-                          ? "Try adjusting your filters or search terms to find more barbers."
-                          : "No barbers are currently available. Please check back later."
-                        }
-                      </p>
-                    </div>
-                    {activeFiltersCount > 0 && (
-                      <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl mt-4">
-                        Clear all filters
-                      </Button>
-                    )}
+            <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
+              <CardContent className="p-16 text-center">
+                <div className="space-y-6">
+                  <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto">
+                    <AlertCircle className="h-10 w-10 text-white/60" />
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="space-y-3">
+                    <h3 className="text-2xl font-bold text-white">No barbers found</h3>
+                    <p className="text-white/60 text-lg max-w-md mx-auto">
+                      {activeFiltersCount > 0
+                        ? "Try adjusting your filters or search terms to find more barbers."
+                        : "No barbers are currently available. Please check back later."
+                      }
+                    </p>
+                  </div>
+                  {activeFiltersCount > 0 && (
+                    <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl px-8 py-3">
+                      Clear all filters
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Empty State */}
           {!error && barbers.length === 0 && !loading && (
-            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-              <CardContent className="p-12 text-center">
-                  <div className="space-y-4">
-                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto">
-                    <Users className="h-8 w-8 text-white/60" />
-                    </div>
-                    <div className="space-y-2">
-                    <h3 className="text-xl font-semibold text-white">No barbers available</h3>
-                    <p className="text-white/60 text-base">
-                        No barbers have set up their profiles yet. Check back soon!
-                      </p>
-                    </div>
+            <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
+              <CardContent className="p-16 text-center">
+                <div className="space-y-6">
+                  <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto">
+                    <Users className="h-10 w-10 text-white/60" />
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="space-y-3">
+                    <h3 className="text-2xl font-bold text-white">No barbers available</h3>
+                    <p className="text-white/60 text-lg max-w-md mx-auto">
+                      No barbers have set up their profiles yet. Check back soon!
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
 
       {/* Location Filter Dialog */}
       <Dialog open={showLocationFilter} onOpenChange={setShowLocationFilter}>
-        <DialogContent className="max-w-md w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-md w-full bg-black/95 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-8 max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Filter by Location</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-white">Filter by Location</DialogTitle>
             <DialogDescription className="text-white/80 text-base">
               Find barbers in specific areas or near your current location
             </DialogDescription>
@@ -846,11 +836,11 @@ export default function BrowsePage() {
                   City
                 </Label>
                 <div className="relative">
-                <Input
-                  id="city"
+                  <Input
+                    id="city"
                     ref={cityInputRef}
-                  placeholder="Enter city name"
-                  value={locationFilter.city}
+                    placeholder="Enter city name"
+                    value={locationFilter.city}
                     onChange={(e) => {
                       setLocationFilter(prev => ({ ...prev, city: e.target.value }));
                       setShowLocationSuggestions(true);
@@ -862,11 +852,11 @@ export default function BrowsePage() {
                         setShowLocationSuggestions(false);
                       }, 200);
                     }}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 rounded-xl"
-                />
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/40 rounded-xl"
+                  />
                   {/* Location suggestions dropdown */}
                   {showLocationSuggestions && (locationSuggestions.length > 0 || locationSuggestionsLoading) && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-darkpurple border border-white/20 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-black border border-white/20 rounded-xl shadow-xl max-h-48 overflow-y-auto">
                       {locationSuggestionsLoading && (
                         <div className="px-4 py-2 text-white/60 text-sm">
                           <div className="flex items-center gap-2">
@@ -932,7 +922,7 @@ export default function BrowsePage() {
                       <SelectTrigger className="bg-white/10 border-white/20 text-white rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-darkpurple border-white/20">
+                      <SelectContent className="bg-black border-white/20">
                         <SelectItem value="10" className="text-white">10 miles</SelectItem>
                         <SelectItem value="25" className="text-white">25 miles</SelectItem>
                         <SelectItem value="50" className="text-white">50 miles</SelectItem>
@@ -944,19 +934,19 @@ export default function BrowsePage() {
               </div>
             </div>
             
-            <div className="flex gap-3 pt-4 border-t border-white/10">
+            <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleLocationFilter}
-                className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 flex-1 text-base"
+                className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"
               >
                 Apply Filter
               </Button>
               <Button
-                onClick={clearLocationFilter}
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3 text-base"
+                onClick={() => setShowLocationFilter(false)}
+                className="border-white/20 text-white hover:bg-white/10 rounded-xl"
               >
-                Clear
+                Cancel
               </Button>
             </div>
           </div>

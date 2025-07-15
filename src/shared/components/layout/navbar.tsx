@@ -27,6 +27,7 @@ import {
   Video,
 } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
+import { UpdatesBadge } from "@/shared/components/updates/updates-badge"
 
 export function Navbar() {
   const router = useRouter();
@@ -143,6 +144,7 @@ export function Navbar() {
           </nav>
         </div>
         <div className="flex items-center gap-3 ml-auto">
+          {user && <UpdatesBadge />}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -19,7 +19,7 @@ export default function SelectRolePage() {
     // If user already has a role, redirect them
     if (user && user.role) {
       if (user.role === "barber") {
-        router.replace("/settings");
+        router.replace("/barber/onboarding");
       } else if (user.role === "client") {
         if (user.location) {
           router.replace("/browse");

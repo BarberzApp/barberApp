@@ -449,7 +449,7 @@ export default function BarberCalendar() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-saffron mx-auto"></div>
           <p className="text-white mt-4 text-lg">Loading Calendar...</p>
@@ -459,7 +459,7 @@ export default function BarberCalendar() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-black">
 
       <div className="relative z-10 container mx-auto px-4 py-8 flex flex-col items-center">
         {/* Header */}

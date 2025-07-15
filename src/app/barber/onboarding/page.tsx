@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Button } from '@/shared/components/ui/button'
@@ -11,11 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Progress } from '@/shared/components/ui/progress'
-import { CheckCircle, AlertCircle, Loader2, CreditCard, Building, Scissors, X } from 'lucide-react'
+import { CheckCircle, AlertCircle, Loader2, CreditCard, Building, Scissors, X, Instagram, Twitter, Music, Facebook } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import Link from 'next/link'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
+import { SocialMediaLinks } from '@/shared/components/social-media-links'
+import React from 'react'
+import { getAddressSuggestionsNominatim } from '@/shared/lib/geocode'
 
 const steps = [
   {
@@ -77,6 +80,25 @@ async function validateAddress(address: string, city: string, state: string, zip
   }
 }
 
+// Utility function to extract handle from URL or return as-is if already a handle
+function extractHandle(input: string): string {
+  if (!input) return '';
+  input = input.trim();
+  try {
+    const url = new URL(input);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0) {
+      let handle = pathParts[pathParts.length - 1];
+      if (handle.startsWith('@')) handle = handle.slice(1);
+      return '@' + handle;
+    }
+  } catch {
+    // Not a URL
+  }
+  if (input.startsWith('@')) return input;
+  return '@' + input;
+}
+
 export default function BarberOnboardingPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -88,6 +110,13 @@ export default function BarberOnboardingPage() {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [showCompleteBanner, setShowCompleteBanner] = useState(true)
+
+  // Add state for location input and suggestions
+  const [locationInput, setLocationInput] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   useEffect(() => {
     setIsRouterReady(true)
@@ -380,8 +409,8 @@ export default function BarberOnboardingPage() {
           if (!service.price || service.price <= 0) {
             errors[`service-${index}-price`] = 'Valid price is required';
           }
-          if (!service.duration || service.duration < 15) {
-            errors[`service-${index}-duration`] = 'Duration must be at least 15 minutes';
+          if (!service.duration || service.duration < 1) {
+            errors[`service-${index}-duration`] = 'Duration must be at least 1 minute';
           }
         });
       }
@@ -506,10 +535,10 @@ export default function BarberOnboardingPage() {
             business_name: formData.businessName,
             bio: formData.bio,
             specialties: formData.specialties,
-            instagram: formData.socialMedia.instagram,
-            twitter: formData.socialMedia.twitter,
-            tiktok: formData.socialMedia.tiktok,
-            facebook: formData.socialMedia.facebook,
+            instagram: extractHandle(formData.socialMedia.instagram),
+            twitter: extractHandle(formData.socialMedia.twitter),
+            tiktok: extractHandle(formData.socialMedia.tiktok),
+            facebook: extractHandle(formData.socialMedia.facebook),
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
 
@@ -526,10 +555,10 @@ export default function BarberOnboardingPage() {
           business_name: formData.businessName,
           bio: formData.bio,
           specialties: formData.specialties,
-          instagram: formData.socialMedia.instagram,
-          twitter: formData.socialMedia.twitter,
-          tiktok: formData.socialMedia.tiktok,
-          facebook: formData.socialMedia.facebook,
+          instagram: extractHandle(formData.socialMedia.instagram),
+          twitter: extractHandle(formData.socialMedia.twitter),
+          tiktok: extractHandle(formData.socialMedia.tiktok),
+          facebook: extractHandle(formData.socialMedia.facebook),
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user?.id)
@@ -755,6 +784,63 @@ export default function BarberOnboardingPage() {
     }
   };
 
+  // Debounced fetch suggestions
+  const debouncedFetchSuggestions = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setLocationSuggestions([]);
+      return;
+    }
+    setSuggestionsLoading(true);
+    try {
+      const suggestions = await getAddressSuggestionsNominatim(query);
+      setLocationSuggestions(suggestions);
+    } catch (error) {
+      setLocationSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, []);
+
+  // Fetch suggestions as user types
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    if (showSuggestions && locationInput.length >= 3) {
+      const timer = setTimeout(() => {
+        debouncedFetchSuggestions(locationInput);
+      }, 300);
+      debounceTimerRef.current = timer;
+    } else if (locationInput.length < 3) {
+      setLocationSuggestions([]);
+    }
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [locationInput, showSuggestions, debouncedFetchSuggestions]);
+
+  // Handle location input change
+  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocationInput(e.target.value ?? '');
+    setShowSuggestions(true);
+    setFormData(prev => ({ ...prev, address: '', city: '', state: '', zipCode: '' }));
+  };
+
+  // Handle suggestion select
+  const handleSuggestionSelect = (suggestion: any) => {
+    const address = suggestion.address || {};
+    const house = address.house_number ? address.house_number : '';
+    const road = address.road ? address.road : '';
+    const city = address.city || address.town || address.village || address.hamlet || '';
+    const state = address.state || address.state_code || '';
+    const zip = address.postcode || '';
+    let line1 = [house, road].filter(Boolean).join(' ');
+    let line2 = [city, state].filter(Boolean).join(', ');
+    let formatted = [line1, line2].filter(Boolean).join(', ');
+    setLocationInput(formatted);
+    setShowSuggestions(false);
+    setLocationSuggestions([]);
+    setFormData(prev => ({ ...prev, address: line1, city, state, zipCode: zip }));
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 0:
@@ -790,61 +876,35 @@ export default function BarberOnboardingPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="address" className="text-sm font-medium text-white">Address *</Label>
+              <Label htmlFor="location" className="text-sm font-medium text-white">Location *</Label>
               <Input
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.address ? 'border-red-500' : ''}`}
-                placeholder="123 Main St"
+                id="location"
+                name="location"
+                value={locationInput}
+                onChange={handleLocationChange}
+                onFocus={() => setShowSuggestions(true)}
+                className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                placeholder="Start typing your address..."
+                autoComplete="off"
               />
+              {showSuggestions && locationSuggestions.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full bg-black border border-white/20 rounded-xl shadow-lg max-h-60 overflow-auto">
+                  {locationSuggestions.map((suggestion, idx) => {
+                    const display = suggestion.display_name || suggestion.name;
+                    return (
+                      <div
+                        key={idx}
+                        className="px-4 py-2 cursor-pointer hover:bg-saffron/10 text-white"
+                        onClick={() => handleSuggestionSelect(suggestion)}
+                      >
+                        {display}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {validationErrors.address && (
                 <p className="text-sm text-red-400">{validationErrors.address}</p>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city" className="text-sm font-medium text-white">City *</Label>
-                <Input
-                  id="city"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.city ? 'border-red-500' : ''}`}
-                  placeholder="City"
-                />
-                {validationErrors.city && (
-                  <p className="text-sm text-red-400">{validationErrors.city}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state" className="text-sm font-medium text-white">State *</Label>
-                <Input
-                  id="state"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.state ? 'border-red-500' : ''}`}
-                  placeholder="State"
-                />
-                {validationErrors.state && (
-                  <p className="text-sm text-red-400">{validationErrors.state}</p>
-                )}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="zipCode" className="text-sm font-medium text-white">ZIP Code *</Label>
-              <Input
-                id="zipCode"
-                name="zipCode"
-                value={formData.zipCode}
-                onChange={handleChange}
-                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.zipCode ? 'border-red-500' : ''}`}
-                placeholder="12345"
-              />
-              {validationErrors.zipCode && (
-                <p className="text-sm text-red-400">{validationErrors.zipCode}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -878,58 +938,81 @@ export default function BarberOnboardingPage() {
             {/* Social Media Section */}
             <div className="space-y-4">
               <div>
-                <Label className="text-base font-medium text-white">Social Media (Optional)</Label>
+                <Label className="text-base font-medium text-white flex items-center gap-2">
+                  <span>Social Media (Optional)</span>
+                </Label>
                 <p className="text-sm text-white/60">
-                  Add your social media links to help clients connect with you
+                  Add your social media handles to help clients connect with you
                 </p>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.instagram" className="text-sm font-medium text-white">Instagram</Label>
-                <Input
-                  id="socialMedia.instagram"
-                  name="socialMedia.instagram"
-                  value={formData.socialMedia.instagram}
-                  onChange={handleChange}
-                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
-                  placeholder="https://instagram.com/yourusername"
+              {/* Live preview of clickable icons */}
+              <div className="flex items-center gap-2 mb-2">
+                <SocialMediaLinks
+                  instagram={formData.socialMedia.instagram}
+                  twitter={formData.socialMedia.twitter}
+                  tiktok={formData.socialMedia.tiktok}
+                  facebook={formData.socialMedia.facebook}
+                  size="md"
+                  className="justify-center"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.twitter" className="text-sm font-medium text-white">Twitter/X</Label>
-                <Input
-                  id="socialMedia.twitter"
-                  name="socialMedia.twitter"
-                  value={formData.socialMedia.twitter}
-                  onChange={handleChange}
-                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
-                  placeholder="https://twitter.com/yourusername"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.tiktok" className="text-sm font-medium text-white">TikTok</Label>
-                <Input
-                  id="socialMedia.tiktok"
-                  name="socialMedia.tiktok"
-                  value={formData.socialMedia.tiktok}
-                  onChange={handleChange}
-                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
-                  placeholder="https://tiktok.com/@yourusername"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.facebook" className="text-sm font-medium text-white">Facebook</Label>
-                <Input
-                  id="socialMedia.facebook"
-                  name="socialMedia.facebook"
-                  value={formData.socialMedia.facebook}
-                  onChange={handleChange}
-                  className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron"
-                  placeholder="https://facebook.com/yourusername"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="socialMedia.instagram" className="text-white font-semibold flex items-center gap-2">
+                    <Instagram className="h-4 w-4 text-[#E1306C]" /> Instagram
+                  </Label>
+                  <Input
+                    id="socialMedia.instagram"
+                    name="socialMedia.instagram"
+                    value={formData.socialMedia.instagram}
+                    onChange={handleChange}
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    placeholder="@yourusername"
+                  />
+                  <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="socialMedia.twitter" className="text-white font-semibold flex items-center gap-2">
+                    <Twitter className="h-4 w-4 text-[#1DA1F2]" /> Twitter/X
+                  </Label>
+                  <Input
+                    id="socialMedia.twitter"
+                    name="socialMedia.twitter"
+                    value={formData.socialMedia.twitter}
+                    onChange={handleChange}
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    placeholder="@yourusername"
+                  />
+                  <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="socialMedia.tiktok" className="text-white font-semibold flex items-center gap-2">
+                    <Music className="h-4 w-4 text-black" /> TikTok
+                  </Label>
+                  <Input
+                    id="socialMedia.tiktok"
+                    name="socialMedia.tiktok"
+                    value={formData.socialMedia.tiktok}
+                    onChange={handleChange}
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    placeholder="@yourusername"
+                  />
+                  <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="socialMedia.facebook" className="text-white font-semibold flex items-center gap-2">
+                    <Facebook className="h-4 w-4 text-[#1877F3]" /> Facebook
+                  </Label>
+                  <Input
+                    id="socialMedia.facebook"
+                    name="socialMedia.facebook"
+                    value={formData.socialMedia.facebook}
+                    onChange={handleChange}
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    placeholder="yourpagename"
+                  />
+                  <p className="text-xs text-white/60">Only your page name (e.g., yourpagename)</p>
+                </div>
               </div>
             </div>
           </div>
@@ -1001,8 +1084,8 @@ export default function BarberOnboardingPage() {
                         handleServiceChange(index, 'duration', numVal);
                       }}
                       className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors[`service-${index}-duration`] ? 'border-red-500' : ''}`}
-                      min="15"
-                      step="15"
+                      min="1"
+                      step="1"
                       placeholder="30"
                     />
                     {validationErrors[`service-${index}-duration`] && (
@@ -1136,7 +1219,7 @@ export default function BarberOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary flex flex-col">
+    <div className="min-h-screen bg-black flex flex-col">
       {/* Header */}
       <header className="w-full py-6 px-6 bg-transparent">
         <div className="max-w-7xl mx-auto flex items-center">
@@ -1144,147 +1227,104 @@ export default function BarberOnboardingPage() {
         </div>
       </header>
 
+      {/* Progress Bar & Step Indicator */}
+      <div className="w-full max-w-2xl mx-auto mt-4 px-4">
+        <div className="flex items-center justify-between mb-4">
+          {steps.map((step, idx) => (
+            <div key={step.id} className="flex-1 flex flex-col items-center">
+              <div className={`rounded-full border-2 ${currentStep === idx ? 'border-saffron bg-saffron/20' : 'border-white/20 bg-white/10'} w-12 h-12 flex items-center justify-center mb-2 transition-all`}>
+                <step.icon className={`h-6 w-6 ${currentStep === idx ? 'text-saffron' : 'text-white/60'}`} />
+              </div>
+              <span className={`text-xs font-semibold ${currentStep === idx ? 'text-saffron' : 'text-white/60'}`}>{step.title}</span>
+            </div>
+          ))}
+        </div>
+        <Progress value={getProgressPercentage()} className="h-2 bg-white/10 rounded-full" />
+      </div>
+
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="w-full max-w-4xl space-y-8">
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-2xl">
           {/* Onboarding Complete Banner */}
           {onboardingComplete && showCompleteBanner && (
-            <div className="relative">
-              <Card className="bg-green-50/90 border border-green-200/20 shadow-2xl rounded-3xl">
+            <div className="flex justify-center mb-8">
+              <Card className="bg-gradient-to-br from-green-900/80 to-green-700/60 border border-green-400/30 shadow-2xl rounded-3xl max-w-lg w-full relative">
                 <button
-                  className="absolute top-4 right-4 text-green-700 hover:text-green-900 rounded-full p-1 focus:outline-none"
+                  className="absolute top-4 right-4 text-green-200 hover:text-green-100 rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-green-400"
                   aria-label="Dismiss"
                   onClick={() => setShowCompleteBanner(false)}
                 >
                   <X className="h-5 w-5" />
                 </button>
-                <CardContent className="pt-6 pb-6">
-                  <div className="flex flex-col items-center text-center gap-2">
-                    <div className="flex items-center justify-center mb-2">
-                      <span className="inline-flex items-center justify-center rounded-full bg-green-100 p-3">
-                        <CheckCircle className="h-8 w-8 text-green-600" />
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bebas text-green-800">Onboarding Complete!</h3>
-                    <p className="text-sm text-green-700 max-w-md">
-                      Your profile is now complete. You can now manage your account and bookings.
-                    </p>
-                    <Button
-                      onClick={() => router.push('/settings/barber-profile')}
-                      className="mt-3 bg-saffron hover:bg-saffron/90 text-primary font-semibold px-6 py-2 rounded-full shadow"
-                    >
-                      Go to Profile
-                    </Button>
+                <CardHeader className="bg-transparent rounded-t-3xl flex flex-col items-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <CheckCircle className="h-10 w-10 text-saffron drop-shadow-lg" />
                   </div>
+                  <CardTitle className="text-2xl font-bold text-white text-center">Onboarding Complete!</CardTitle>
+                  <CardDescription className="text-green-100 text-center mt-2">
+                    Your profile is ready. You can now receive bookings and payments.<br />
+                    Welcome to the platform!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center pb-8 pt-2">
+                  <Button asChild className="bg-saffron text-primary font-semibold rounded-xl px-8 py-3 mt-4 hover:bg-saffron/90 shadow-lg text-lg transition-all duration-200 hover:scale-105 active:scale-100 focus:ring-2 focus:ring-saffron focus:ring-offset-2 focus:ring-offset-darkpurple">
+                    <Link href="/profile">Go to Profile</Link>
+                  </Button>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bebas text-white">Complete Your Profile</h1>
-            <p className="text-white/80">
-              {steps[currentStep].description}
-            </p>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-white/80">
-              <span>Step {currentStep + 1} of {steps.length}</span>
-              <span>{Math.round(getProgressPercentage())}% Complete</span>
-            </div>
-            <Progress value={getProgressPercentage()} className="h-2 bg-white/10" />
-          </div>
-
-          {/* Step Indicators */}
-          <div className="flex justify-between mb-8">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = index <= currentStep;
-              return (
-                <div
-                  key={step.id}
-                  className={`flex-1 text-center ${
-                    isActive ? 'text-saffron' : 'text-white/60'
-                  }`}
-                >
-                  <div
-                    className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-2 ${
-                      isActive ? 'bg-saffron' : 'bg-white/10'
-                    }`}
-                  >
-                    <Icon className={`h-6 w-6 ${isActive ? 'text-white' : 'text-saffron'}`} />
-                  </div>
-                  <div className="text-sm font-medium">{step.title}</div>
-                  <div className="text-xs text-white/60 mt-1">
-                    {index === 0 && 'Business Info'}
-                    {index === 1 && 'Services'}
-                    {index === 2 && 'Payments'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl rounded-3xl">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-white">
-                {(() => {
-                  const Icon = steps[currentStep].icon;
-                  return <Icon className="h-5 w-5 text-saffron" />;
-                })()}
+          {/* Step Card */}
+          <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
+            <CardHeader className="bg-white/5 border-b border-white/10 rounded-t-3xl">
+              <CardTitle className="text-white flex items-center gap-2">
+                {React.createElement(steps[currentStep].icon, { className: 'h-6 w-6 text-saffron' })}
                 {steps[currentStep].title}
               </CardTitle>
-              <CardDescription className="text-white/80">{steps[currentStep].description}</CardDescription>
+              <CardDescription className="text-white/70">
+                {steps[currentStep].description}
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8">
               {renderStep()}
-              <div className="mt-6 flex justify-between">
-                {currentStep > 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep(currentStep - 1)}
-                    disabled={loading}
-                    className="border-white/20 text-white hover:bg-white/10"
-                  >
-                    Previous
-                  </Button>
-                )}
-                {currentStep < steps.length - 1 ? (
-                  <Button
-                    className="ml-auto bg-saffron hover:bg-saffron/90 text-primary"
-                    onClick={handleSubmit}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Next'
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    className="ml-auto bg-saffron hover:bg-saffron/90 text-primary"
-                    onClick={handleSubmit}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Completing...
-                      </>
-                    ) : (
-                      'Complete Setup'
-                    )}
-                  </Button>
-                )}
-              </div>
             </CardContent>
           </Card>
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between items-center mt-8 gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
+              onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
+              disabled={currentStep === 0}
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              className="bg-saffron text-primary font-semibold rounded-xl px-8 py-3 hover:bg-saffron/90 shadow-lg text-lg transition-all duration-200 hover:scale-105 active:scale-100 focus:ring-2 focus:ring-saffron focus:ring-offset-2 focus:ring-offset-darkpurple"
+              onClick={async () => {
+                if (await validateStep(currentStep)) {
+                  if (currentStep < steps.length - 1) {
+                    setCurrentStep((prev) => prev + 1)
+                  } else {
+                    handleSubmit()
+                  }
+                } else {
+                  toast({
+                    title: 'Validation Error',
+                    description: 'Please fix the errors before continuing.',
+                    variant: 'destructive',
+                  })
+                }
+              }}
+              disabled={loading}
+            >
+              {currentStep < steps.length - 1 ? 'Next' : 'Finish'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

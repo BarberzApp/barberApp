@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { PortfolioEditor } from './portfolio-editor';
-import type { PortfolioItem } from './portfolio-editor';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
@@ -22,17 +21,30 @@ import getCroppedImg from '@/shared/lib/crop-image';
 import { useData } from '@/shared/hooks/use-data';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { BookingForm } from '@/shared/components/booking/booking-form';
 
 interface UserProfile {
   id: string;
   name: string;
   email: string;
+  username?: string;
   avatar_url?: string;
   bio?: string;
   location?: string;
   phone?: string;
+  coverphoto?: string; // Fix: match database column name
 }
 
+// Update PortfolioItem type
+type PortfolioItem = {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  title?: string;
+  likes?: number;
+  comments?: number;
+};
+// Update BarberProfile type
 interface BarberProfile {
   id: string;
   user_id: string;
@@ -43,7 +55,22 @@ interface BarberProfile {
   twitter?: string;
   facebook?: string;
   portfolio?: string[];
-  featured_portfolio?: string; // Added for featured portfolio
+  featured_portfolio?: string;
+  services?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    duration: string;
+    description: string;
+  }>;
+  reviews?: Array<{
+    id: string;
+    user: string;
+    avatar: string;
+    rating: number;
+    comment: string;
+    date: string;
+  }>;
 }
 
 export default function ProfilePortfolio() {
@@ -52,7 +79,7 @@ export default function ProfilePortfolio() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
-  const [openDialog, setOpenDialog] = useState<null | 'profile' | 'portfolio' | 'video' | 'upload' | 'edit-cut'>(null);
+  const [openDialog, setOpenDialog] = useState<null | 'profile' | 'portfolio' | 'video' | 'upload' | 'edit-cut' | 'portfolio-upload' | 'services' | 'addons'>(null);
   const [selectedCut, setSelectedCut] = useState<any>(null);
   const [editingCut, setEditingCut] = useState<any>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -70,7 +97,7 @@ export default function ProfilePortfolio() {
   const editPortfolioButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
-  const [cuts, setCuts] = useState<any[]>([]);
+  // Remove duplicate cuts state - use only useCuts hook
   const [showLocationFilter, setShowLocationFilter] = useState(false);
   const [locationFilter, setLocationFilter] = useState({
     city: '',
@@ -79,7 +106,134 @@ export default function ProfilePortfolio() {
     useCurrentLocation: false
   });
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const { cuts: cutStats, analytics } = useCuts();
+  const { cuts, analytics, refreshCuts, loading: cutsLoading, createCut } = useCuts(); // Use only this hook for cuts data
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('Profile Portfolio - Cuts data:', cuts)
+    console.log('Profile Portfolio - Cuts loading:', cutsLoading)
+    console.log('Profile Portfolio - User:', user)
+    console.log('Profile Portfolio - Barber Profile:', barberProfile)
+  }, [cuts, cutsLoading, user, barberProfile])
+
+  // Test database connection
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cuts')
+          .select('count')
+          .limit(1)
+        
+        if (error) {
+          console.error('Database connection test failed:', error)
+        } else {
+          console.log('Database connection test successful')
+        }
+      } catch (error) {
+        console.error('Database connection test error:', error)
+      }
+    }
+
+    testConnection()
+  }, [])
+
+  // Fetch services
+  const fetchServices = useCallback(async () => {
+    if (!barberProfile?.id) return
+
+    try {
+      setServicesLoading(true)
+      console.log('Fetching services for barber:', barberProfile.id)
+      
+      const { data: servicesData, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .eq('barber_id', barberProfile.id)
+        .order('created_at', { ascending: false })
+
+      if (servicesError) {
+        console.error('Error fetching services:', servicesError)
+        throw servicesError
+      }
+
+      console.log('Found services data:', servicesData)
+      setServices(servicesData || [])
+
+    } catch (error) {
+      console.error('Error fetching services:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load services.',
+        variant: 'destructive',
+      })
+    } finally {
+      setServicesLoading(false)
+    }
+  }, [barberProfile?.id, toast])
+
+  // Fetch add-ons
+  const fetchAddons = useCallback(async () => {
+    if (!barberProfile?.id) return
+
+    try {
+      setAddonsLoading(true)
+      console.log('Fetching add-ons for barber:', barberProfile.id)
+      
+      const { data: addonsData, error: addonsError } = await supabase
+        .from('service_addons')
+        .select('*')
+        .eq('barber_id', barberProfile.id)
+        .order('created_at', { ascending: false })
+
+      if (addonsError) {
+        console.error('Error fetching add-ons:', addonsError)
+        throw addonsError
+      }
+
+      console.log('Found add-ons data:', addonsData)
+      setAddons(addonsData || [])
+
+    } catch (error) {
+      console.error('Error fetching add-ons:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load add-ons.',
+        variant: 'destructive',
+      })
+    } finally {
+      setAddonsLoading(false)
+    }
+  }, [barberProfile?.id, toast])
+
+  // Fetch services and add-ons when barber profile is loaded
+  useEffect(() => {
+    if (barberProfile?.id) {
+      fetchServices()
+      fetchAddons()
+    }
+  }, [barberProfile?.id, fetchServices, fetchAddons])
+
+  // Handle booking service
+  const handleBookService = (service: any) => {
+    setSelectedBookingDate(new Date())
+    setBookingFormOpen(true)
+  }
+
+  // Handle add to booking (for add-ons)
+  const handleAddToBooking = (addon: any) => {
+    setSelectedBookingDate(new Date())
+    setBookingFormOpen(true)
+  }
+
+  // Handle booking created
+  const handleBookingCreated = (booking: any) => {
+    setBookingFormOpen(false)
+    toast({
+      title: 'Booking Confirmed!',
+      description: 'Your appointment has been scheduled successfully.',
+    })
+  }
   const [statsDialogOpen, setStatsDialogOpen] = useState(false);
   const [statsDialogCut, setStatsDialogCut] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -91,13 +245,31 @@ export default function ProfilePortfolio() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
   const [selectedPortfolioItem, setSelectedPortfolioItem] = useState<PortfolioItem | null>(null);
+  // Cover photo cropping state
+  const [coverCropDialogOpen, setCoverCropDialogOpen] = useState(false);
+  const [selectedCoverImage, setSelectedCoverImage] = useState<string | null>(null);
+  const [coverCrop, setCoverCrop] = useState({ x: 0, y: 0 });
+  const [coverZoom, setCoverZoom] = useState(1);
+  const [coverCroppedAreaPixels, setCoverCroppedAreaPixels] = useState<Area | null>(null);
   // Starred/featured portfolio logic
   const [featuredId, setFeaturedId] = useState<string | null>(barberProfile?.featured_portfolio || null);
+  // Services state
+  const [services, setServices] = useState<any[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [addons, setAddons] = useState<any[]>([]);
+  const [addonsLoading, setAddonsLoading] = useState(false);
+  // Booking state
+  const [bookingFormOpen, setBookingFormOpen] = useState(false);
+  const [selectedBookingDate, setSelectedBookingDate] = useState<Date>(new Date());
 
 
 
   const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const onCoverCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
+    setCoverCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
   // Get user's current location
@@ -134,70 +306,9 @@ export default function ProfilePortfolio() {
     return R * c;
   };
 
-  // Fetch user's cuts from the cuts table with location filtering
-  const fetchUserCuts = async (barberId: string) => {
-    let query = supabase
-      .from('cuts')
-      .select('*')
-      .eq('barber_id', barberId)
-      .order('created_at', { ascending: false });
+  // Remove fetchUserCuts function - no longer needed
 
-    // Apply location filters
-    if (locationFilter.city) {
-      query = query.ilike('city', `%${locationFilter.city}%`);
-    }
-    if (locationFilter.state) {
-      query = query.ilike('state', `%${locationFilter.state}%`);
-    }
-
-    const { data, error } = await query;
-    if (!error && data) {
-      let filteredCuts = data;
-
-      // Apply distance filter if using current location
-      if (locationFilter.useCurrentLocation && userLocation) {
-        filteredCuts = filteredCuts.filter((cut: any) => {
-          if (cut.latitude && cut.longitude) {
-            const distance = calculateDistance(
-              userLocation.lat,
-              userLocation.lng,
-              cut.latitude,
-              cut.longitude
-            );
-            return distance <= locationFilter.range;
-          }
-          return false;
-        });
-      }
-
-      setCuts(filteredCuts);
-    }
-  };
-
-  // Handle location filter changes
-  const handleLocationFilter = () => {
-    if (locationFilter.useCurrentLocation && !userLocation) {
-      getCurrentLocation();
-    }
-    if (barberProfile) {
-      fetchUserCuts(barberProfile.id);
-    }
-    setShowLocationFilter(false);
-  };
-
-  // Clear location filters
-  const clearLocationFilter = () => {
-    setLocationFilter({
-      city: '',
-      state: '',
-      range: 50,
-      useCurrentLocation: false
-    });
-    setUserLocation(null);
-    if (barberProfile) {
-      fetchUserCuts(barberProfile.id);
-    }
-  };
+  // Remove handleLocationFilter and clearLocationFilter functions - no longer needed
 
   // Fetch user profile data
   useEffect(() => {
@@ -206,6 +317,7 @@ export default function ProfilePortfolio() {
 
       try {
         setLoading(true);
+        console.log('Fetching profile data for user:', user.id);
         
         // Fetch profile and barber data in parallel
         const [profileResult, barberResult] = await Promise.all([
@@ -220,6 +332,17 @@ export default function ProfilePortfolio() {
             .eq('user_id', user.id)
             .single()
         ]);
+
+        console.log('Profile result:', profileResult);
+        console.log('Barber result:', barberResult);
+
+        if (profileResult.error) {
+          console.error('Profile fetch error:', profileResult.error);
+        }
+
+        if (barberResult.error) {
+          console.error('Barber fetch error:', barberResult.error);
+        }
 
         if (profileResult.data) {
           setProfile(profileResult.data);
@@ -237,10 +360,10 @@ export default function ProfilePortfolio() {
             }));
             setPortfolio(portfolioItems);
           }
-          // Fetch advanced cuts
-          await fetchUserCuts(barberResult.data.id);
+          // Remove fetchUserCuts call - useCuts hook handles this
         } else {
           // User is not a barber yet, create a barber profile
+          console.log('Creating new barber profile for user:', user.id);
           const { data: newBarber, error: createError } = await supabase
             .from('barbers')
             .insert({
@@ -252,8 +375,13 @@ export default function ProfilePortfolio() {
             .select()
             .single();
           
+          if (createError) {
+            console.error('Error creating barber profile:', createError);
+          }
+          
           if (newBarber && !createError) {
             setBarberProfile(newBarber);
+            console.log('Created new barber profile:', newBarber);
           }
         }
       } catch (error) {
@@ -273,7 +401,7 @@ export default function ProfilePortfolio() {
 
   // Stats and socials based on real data
   const profileStats = [
-    { label: 'Posts', value: portfolio.length },
+    { label: 'Posts', value: cuts.length },
   ];
 
   const socials = [
@@ -313,6 +441,117 @@ export default function ProfilePortfolio() {
       setCropDialogOpen(true);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to load image.', variant: 'destructive' });
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || !e.target.files[0]) return;
+      const file = e.target.files[0];
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please select an image file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: 'Please select an image smaller than 5MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Open cropping dialog instead of uploading directly
+      setSelectedCoverImage(URL.createObjectURL(file));
+      setCoverCropDialogOpen(true);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to load image.', variant: 'destructive' });
+    }
+  };
+
+  const handleCoverCropSave = async () => {
+    if (!selectedCoverImage || !coverCroppedAreaPixels) return;
+    setLoading(true);
+    try {
+      const croppedBlob = await getCroppedImg(selectedCoverImage, coverCroppedAreaPixels);
+      const fileExt = 'jpeg';
+      const fileName = `${user?.id}/cover/${Date.now()}.${fileExt}`;
+      const { data, error } = await supabase.storage.from('portfolio').upload(fileName, croppedBlob, { contentType: 'image/jpeg' });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(fileName);
+      const { error: updateError } = await supabase.from('profiles').update({ coverphoto: publicUrl }).eq('id', user?.id);
+      if (updateError) throw updateError;
+      setProfile(prev => prev ? { ...prev, coverphoto: publicUrl } : null);
+      toast({ title: 'Success', description: 'Cover photo updated successfully!' });
+      setCoverCropDialogOpen(false);
+      setSelectedCoverImage(null);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to upload cropped cover image.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePortfolioUpload = async (file: File) => {
+    try {
+      if (!barberProfile) return;
+      
+      setLoading(true);
+      
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/portfolio/${Date.now()}.${fileExt}`;
+      const { data, error } = await supabase.storage
+        .from('portfolio')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('portfolio')
+        .getPublicUrl(fileName);
+
+      // Add to portfolio array
+      const newPortfolioItem: PortfolioItem = {
+        id: `item-${Date.now()}`,
+        type: file.type.startsWith('video/') ? 'video' : 'image',
+        url: publicUrl,
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        likes: 0,
+        comments: 0
+      };
+
+      setPortfolio(prev => [newPortfolioItem, ...prev]);
+      
+      // Update barber profile
+      const updatedPortfolio = [publicUrl, ...(barberProfile.portfolio || [])];
+      const { error: updateError } = await supabase
+        .from('barbers')
+        .update({ portfolio: updatedPortfolio })
+        .eq('id', barberProfile.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Success',
+        description: 'Portfolio item uploaded successfully!',
+      });
+    } catch (error) {
+      console.error('Error uploading portfolio item:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload portfolio item. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -417,7 +656,7 @@ export default function ProfilePortfolio() {
       })
       
       // Refresh cuts
-      await fetchUserCuts(barberProfile.id)
+      refreshCuts(); // Use refreshCuts from useCuts
       
       // Reset form and close dialog
       setOpenDialog(null)
@@ -481,7 +720,7 @@ export default function ProfilePortfolio() {
       });
 
       // Refresh cuts
-      await fetchUserCuts(barberProfile.id);
+      refreshCuts(); // Use refreshCuts from useCuts
       setOpenDialog(null);
       setEditingCut(null);
       setUploadForm({
@@ -518,7 +757,7 @@ export default function ProfilePortfolio() {
       });
 
       // Refresh cuts
-      await fetchUserCuts(barberProfile.id);
+      refreshCuts(); // Use refreshCuts from useCuts
     } catch (error) {
       console.error('Error deleting cut:', error);
       toast({
@@ -546,7 +785,7 @@ export default function ProfilePortfolio() {
       });
 
       // Refresh cuts
-      await fetchUserCuts(barberProfile.id);
+      refreshCuts(); // Use refreshCuts from useCuts
     } catch (error) {
       console.error('Error updating cut visibility:', error);
       toast({
@@ -574,7 +813,7 @@ export default function ProfilePortfolio() {
       });
 
       // Refresh cuts
-      await fetchUserCuts(barberProfile.id);
+      refreshCuts(); // Use refreshCuts from useCuts
     } catch (error) {
       console.error('Error updating cut featured status:', error);
       toast({
@@ -693,542 +932,541 @@ export default function ProfilePortfolio() {
     setPortfolioModalOpen(false);
   };
 
-
+  const isOwner = true; // Always true for now, since this is the user's own profile
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-32 relative">
-        <div className="bg-white/90 shadow-xl rounded-2xl p-6 sm:p-8 mb-6 mt-6 flex flex-col items-center">
-          <div className="h-28 w-28 mb-3 rounded-full bg-muted animate-pulse" />
-          <div className="h-8 w-32 mb-2 bg-muted animate-pulse rounded" />
-          <div className="h-4 w-24 mb-3 bg-muted animate-pulse rounded" />
-          <div className="h-16 w-64 mb-4 bg-muted animate-pulse rounded" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-xl font-semibold animate-pulse">Loading profile...</div>
       </div>
     );
   }
 
-  // Prepare props for ProfileHeader
-  const name = profile?.name || user?.name || 'Barber';
-  const avatarUrl = typeof profile?.avatar_url === 'string' ? profile.avatar_url : undefined;
-  const coverUrl = undefined; // Placeholder, can add upload later
-  const username = undefined; // Placeholder, can add username later
-  const headerStats = [
-    { label: 'Cuts', value: cuts.length },
-    { label: 'Portfolio', value: portfolio.length },
-  ];
-  const isOwner = true; // Always true for now
-
-  // Portfolio modal navigation
-  const handlePrevPortfolio = () => {
-    if (!selectedPortfolioItem || portfolio.length < 2) return;
-    const idx = portfolio.findIndex(i => i.url === selectedPortfolioItem.url);
-    const prevIdx = (idx - 1 + portfolio.length) % portfolio.length;
-    setSelectedPortfolioItem(portfolio[prevIdx]);
-  };
-  const handleNextPortfolio = () => {
-    if (!selectedPortfolioItem || portfolio.length < 2) return;
-    const idx = portfolio.findIndex(i => i.url === selectedPortfolioItem.url);
-    const nextIdx = (idx + 1) % portfolio.length;
-    setSelectedPortfolioItem(portfolio[nextIdx]);
-  };
-
+  // Main layout and header (new design)
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Modern Profile Header */}
-      <div className="w-full flex flex-col items-center justify-center bg-gradient-to-br from-darkpurple/95 to-darkpurple/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-8 mb-8 relative">
+    <div className="min-h-screen bg-black text-white">
+      {/* Cover Photo */}
+      <div className="relative h-48 sm:h-64 md:h-80 w-full bg-gray-800">
+        <img
+          src={profile?.coverphoto || '/placeholder.svg'}
+          alt="Cover"
+          className="w-full h-full object-cover"
+        />
+        {/* Glassy overlay */}
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        {/* Cover photo upload button */}
+        {isOwner && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 bg-black/50 text-white hover:bg-black/70"
+            onClick={() => document.getElementById('cover-upload')?.click()}
+          >
+            <Camera className="h-5 w-5" />
+          </Button>
+        )}
         {/* Avatar */}
-        <div className="relative mb-4">
-          <Avatar className="h-32 w-32 shadow-2xl border-4 border-saffron/40 bg-primary">
-            <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
-            <AvatarFallback className="text-4xl bg-saffron text-primary font-bold">
-              {profile?.name?.charAt(0) || user?.name?.charAt(0) || "U"}
-            </AvatarFallback>
+        <div className="absolute left-1/2 -bottom-16 transform -translate-x-1/2 z-10">
+          <Avatar className="h-32 w-32 border-4 border-black shadow-xl">
+            <AvatarImage src={profile?.avatar_url || '/placeholder.svg'} alt={profile?.name || 'Avatar'} />
+            <AvatarFallback>{profile?.name?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
+          {/* Avatar upload button */}
           {isOwner && (
-            <button
-              type="button"
-              className="absolute bottom-2 right-2 bg-saffron border-2 border-primary rounded-full flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-saffron z-50 transition-transform hover:scale-110 active:scale-95"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute -bottom-1 -right-1 h-8 w-8 bg-white text-black hover:bg-white/90 rounded-full"
               onClick={() => avatarFileInputRef.current?.click()}
               disabled={avatarLoading}
-              style={{ width: 40, height: 40, minWidth: 40, minHeight: 40 }}
-              aria-label="Change profile picture"
             >
               {avatarLoading ? (
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Camera className="w-5 h-5 text-primary" />
+                <Camera className="h-4 w-4" />
               )}
-            </button>
+            </Button>
           )}
-          <input
-            ref={avatarFileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarUpload}
-            disabled={avatarLoading}
-          />
         </div>
-        {/* Name & Username */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bebas font-bold text-white mb-1 text-center">
-          {profile?.name || user?.name || 'Your Name'}
-        </h1>
-        <span className="text-saffron text-lg sm:text-xl font-semibold mb-2 text-center block">
-          @{profile?.name?.toLowerCase().replace(/\s+/g, '') || 'username'}
-        </span>
-        {/* Edit Profile Button */}
-        {isOwner && (
-          <Button 
-            className="rounded-full px-8 py-3 font-semibold bg-saffron text-primary hover:bg-saffron/90 shadow-lg text-lg flex items-center gap-2 mb-4"
-            onClick={handleEditProfile}
-            ref={editProfileButtonRef}
+      </div>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={avatarFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleAvatarUpload}
+        disabled={avatarLoading}
+      />
+      <input
+        id="cover-upload"
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleCoverUpload}
+      />
+
+      {/* Floating Action Button for Portfolio Upload */}
+      {isOwner && (
+        <div className="fixed bottom-20 right-4 z-50">
+          <Button
+            className="bg-saffron text-primary hover:bg-saffron/90 rounded-full p-4 shadow-lg"
+            onClick={() => setOpenDialog('portfolio-upload')}
           >
-            <Edit3 className="h-5 w-5 mr-2" />
-            Edit Profile
+            <Plus className="h-6 w-6" />
           </Button>
+        </div>
+      )}
+      {/* Name, Username, Stats */}
+      <div className="pt-20 pb-6 px-4 text-center">
+        <h1 className="text-3xl font-bold mb-1">{profile?.name || 'Your Name'}</h1>
+        <div className="text-saffron text-lg font-semibold mb-2">@{profile?.username || profile?.name?.toLowerCase().replace(/\s+/g, '') || 'username'}</div>
+        {/* City and State */}
+        {profile?.location && (
+          <div className="text-white/70 text-base font-medium mb-2">
+            {(() => {
+              const parts = profile.location.split(',').map(s => s.trim());
+              console.log('Location parts:', parts); // Debug log
+              
+              if (parts.length >= 8) {
+                // For old Nominatim format: pull parts 1, 2, and 8 (0-indexed)
+                const street = parts[0];
+                const city = parts[1];
+                const state = parts[6];
+                return `${street}, ${city}, ${state}`;
+              } else if (parts.length >= 4) {
+                // For format: "88 Doe Court, Wynwood Drive, South Brunswick, NJ"
+                // Show: "South Brunswick, NJ" (second-to-last and last parts)
+                const city = parts[parts.length - 2];
+                const state = parts[parts.length - 1];
+                return `${city}, ${state}`;
+              } else if (parts.length >= 3) {
+                // For format: "88 Doe Court, South Brunswick, NJ"
+                // Show: "South Brunswick, NJ" (city and state)
+                const city = parts[1];
+                const state = parts[2];
+                return `${city}, ${state}`;
+              } else if (parts.length >= 2) {
+                // Fallback for shorter formats
+                const city = parts[0];
+                const state = parts[1];
+                return `${city}, ${state}`;
+              } else {
+                return profile.location;
+              }
+            })()}
+          </div>
         )}
         {/* Stats Row */}
         <div className="flex justify-center gap-10 mt-4 w-full">
-          {profileStats.map((stat) => (
-            <div key={stat.label} className="flex flex-col items-center">
-              <span className="font-bold text-2xl text-white">{stat.value}</span>
-              <span className="text-xs text-white/60 uppercase tracking-wide">{stat.label}</span>
-            </div>
-          ))}
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-2xl text-white">{cuts.length}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Cuts</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-2xl text-white">{portfolio.length}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Portfolio</span>
+          </div>
         </div>
       </div>
-      {/* Tabbed Interface */}
-      <Tabs defaultValue="portfolio" className="w-full">
-        <TabsList className="flex justify-center gap-2 bg-darkpurple/80 backdrop-blur border border-white/10 rounded-xl mb-6 sticky top-0 z-20 shadow-lg">
-          <TabsTrigger value="portfolio" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Portfolio</TabsTrigger>
-          <TabsTrigger value="cuts" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">Cuts</TabsTrigger>
-          <TabsTrigger value="about" className="text-white data-[state=active]:bg-saffron data-[state=active]:text-primary">About</TabsTrigger>
-        </TabsList>
-        {/* Portfolio Tab */}
-        <TabsContent value="portfolio">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {portfolio.length > 0 ? (
-              portfolio.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "relative rounded-xl overflow-hidden bg-white/10 backdrop-blur border border-white/10 shadow-lg transition-transform hover:scale-105 hover:shadow-2xl cursor-pointer group focus-within:ring-2 focus-within:ring-saffron",
-                    featuredId === item.id && 'ring-2 ring-saffron ring-offset-2'
-                  )}
-                  onClick={() => { setSelectedPortfolioItem(item); setPortfolioModalOpen(true); }}
-                  tabIndex={0}
-                  onKeyDown={e => { if (e.key === 'Enter') { setSelectedPortfolioItem(item); setPortfolioModalOpen(true); } }}
-                  aria-label="View portfolio item"
+      {/* Tabs Section (modern, mobile-first) */}
+      <div className="max-w-3xl mx-auto w-full px-2 sm:px-4">
+        <Tabs defaultValue="portfolio" className="w-full">
+          <TabsList className="w-full flex justify-between bg-black border border-white/20 p-1 rounded-lg mb-6 sticky top-0 z-20">
+            <TabsTrigger value="portfolio" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">Portfolio</TabsTrigger>
+            <TabsTrigger value="reels" className="flex-1 rounded-md text-sm data-[state=active]:bg-white data-[state=active]:text-black">
+              <div className="flex items-center gap-2">
+                <VideoIcon className="h-4 w-4" />
+                Cuts
+                {cutsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+              </div>
+            </TabsTrigger>
+            <TabsTrigger value="services" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">Services</TabsTrigger>
+            <TabsTrigger value="reviews" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">Reviews</TabsTrigger>
+          </TabsList>
+
+          {/* Reels Tab */}
+          <TabsContent value="reels">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold">Your Cuts ({cuts.length})</h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={refreshCuts}
+                  disabled={cutsLoading}
+                  className="text-white/60 hover:text-white"
                 >
-                  {/* File type icon overlay */}
-                  <div className="absolute top-2 left-2 bg-black/60 rounded-full p-1 z-10">
-                    {item.type === 'image' ? (
-                      <ImageIcon className="w-4 h-4 text-saffron" />
-                    ) : (
-                      <VideoIcon className="w-4 h-4 text-saffron" />
-                    )}
-                  </div>
-                  {/* Starred indicator */}
-                  {featuredId === item.id && (
-                    <div className="absolute top-2 right-2 bg-saffron rounded-full p-1 z-10 shadow-lg">
-                      <Star className="w-4 h-4 text-primary" />
-                    </div>
-                  )}
-                  {item.type === 'image' ? (
-                    <img src={item.url} alt="Portfolio" className="w-full h-40 object-cover group-hover:opacity-90 transition-opacity" />
-                  ) : (
-                    <video src={item.url} controls className="w-full h-40 object-cover group-hover:opacity-90 transition-opacity" />
-                  )}
-                  {/* Upload date if available */}
-                  {item.created_at && (
-                    <div className="absolute bottom-2 left-2 bg-black/60 text-xs text-white px-2 py-0.5 rounded-full">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="col-span-2 sm:col-span-3 text-center text-white/60 py-8 flex flex-col items-center gap-4">
-                <span>No portfolio items yet.</span>
+                  <Loader2 className={cn("h-4 w-4", cutsLoading && "animate-spin")} />
+                </Button>
                 {isOwner && (
-                  <Button className="bg-saffron text-primary font-semibold px-6 py-2 rounded-full shadow-lg hover:bg-saffron/90 flex items-center gap-2" onClick={() => setOpenDialog('portfolio')}>
-                    <Plus className="w-4 h-4" /> Add to Portfolio
+                  <Button
+                    onClick={() => setOpenDialog('upload')}
+                    size="sm"
+                    className="bg-saffron text-primary hover:bg-saffron/90"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Cut
                   </Button>
                 )}
               </div>
-            )}
-          </div>
-          {/* Portfolio Modal */}
-          <Dialog open={portfolioModalOpen} onOpenChange={setPortfolioModalOpen}>
-            {selectedPortfolioItem && selectedPortfolioItem.type === 'image' && (
-              <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
-                <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    {isOwner && (
-                      <button
-                        onClick={() => handleDeletePortfolio(selectedPortfolioItem)}
-                        aria-label="Delete"
-                        className="text-red-500 hover:text-red-700 transition-colors"
+            </div>
+            
+            {cutsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-saffron mx-auto mb-4" />
+                  <p className="text-white/60">Loading your cuts...</p>
+                </div>
+              </div>
+            ) : cuts.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-8 max-w-md mx-auto">
+                  <VideoIcon className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-semibold mb-2">No cuts yet</h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    Start sharing your work by uploading your first cut
+                  </p>
+                  {isOwner && (
+                    <div className="space-y-3">
+                      <Button
+                        onClick={() => setOpenDialog('upload')}
+                        className="bg-saffron text-primary hover:bg-saffron/90 w-full"
                       >
-                        <Trash2 className="w-6 h-6" />
-                      </button>
-                    )}
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-saffron/20">
-                      <ImageIcon className="w-5 h-5 text-saffron" />
-                    </span>
-                    <span className="text-white text-lg font-bold">Portfolio Image</span>
-                  </div>
-                  {/* Only one close button remains */}
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload First Cut
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const testCut = await createCut({
+                              title: 'Test Cut',
+                              description: 'This is a test cut',
+                              url: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+                              category: 'hair-styling',
+                              duration: 30,
+                              tags: ['test', 'demo'],
+                              is_public: true
+                            })
+                            if (testCut) {
+                              toast({
+                                title: 'Success',
+                                description: 'Test cut created successfully!',
+                              })
+                            }
+                          } catch (error) {
+                            console.error('Error creating test cut:', error)
+                            toast({
+                              title: 'Error',
+                              description: 'Failed to create test cut.',
+                              variant: 'destructive',
+                            })
+                          }
+                        }}
+                        variant="outline"
+                        className="w-full border-white/20 text-white hover:bg-white/10"
+                      >
+                        Create Test Cut
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <div className="w-full flex-1 flex items-center justify-center p-4">
-                  <img
-                    src={selectedPortfolioItem.url}
-                    alt="Portfolio Full"
-                    className="max-h-[70vh] w-auto max-w-full object-contain rounded-2xl shadow-lg"
-                    draggable={false}
-                  />
-                </div>
-              </DialogContent>
-            )}
-            {selectedPortfolioItem && selectedPortfolioItem.type === 'video' && (
-              <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
-                <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-saffron/20">
-                      <VideoIcon className="w-5 h-5 text-saffron" />
-                    </span>
-                    <span className="text-white text-lg font-bold">Portfolio Video</span>
-                  </div>
-                  <button
-                    onClick={() => setPortfolioModalOpen(false)}
-                    aria-label="Close"
-                    className="text-white hover:text-saffron focus:outline-none focus:ring-2 focus:ring-saffron rounded-full p-1 transition-colors"
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-1">
+                {cuts.map((cut) => (
+                  <div 
+                    key={cut.id} 
+                    className="relative aspect-[3/4] bg-gray-800 rounded-lg overflow-hidden group cursor-pointer"
+                    onMouseEnter={(e) => {
+                      const video = e.currentTarget.querySelector('video') as HTMLVideoElement;
+                      if (video) {
+                        video.play().catch(() => {
+                          // Auto-play might be blocked
+                        });
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const video = e.currentTarget.querySelector('video') as HTMLVideoElement;
+                      if (video) {
+                        video.pause();
+                        video.currentTime = 0;
+                      }
+                    }}
+                    onClick={(e) => {
+                      const video = e.currentTarget.querySelector('video') as HTMLVideoElement;
+                      if (video) {
+                        if (video.paused) {
+                          video.play().catch(() => {
+                            // Auto-play might be blocked
+                          });
+                        } else {
+                          video.pause();
+                        }
+                      }
+                    }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="w-full flex-1 flex items-center justify-center p-4">
-                  <video
-                    src={selectedPortfolioItem.url}
-                    controls
-                    autoPlay
-                    className="max-h-[70vh] w-auto max-w-full object-contain rounded-2xl shadow-lg"
-                  />
-                </div>
-              </DialogContent>
-            )}
-          </Dialog>
-        </TabsContent>
-        {/* Cuts Tab */}
-        <TabsContent value="cuts">
-          <div className="space-y-6">
-            {/* Upload Button for Owners */}
-            {isOwner && (
-              <div className="flex justify-center mb-6">
-                <Button 
-                  className="bg-saffron text-primary font-semibold px-6 py-3 rounded-full shadow-lg hover:bg-saffron/90 flex items-center gap-2"
-                  onClick={() => setOpenDialog('upload')}
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload Cut
-                </Button>
+                    <video
+                      src={cut.url}
+                      poster={cut.thumbnail || '/placeholder.svg'}
+                      className="w-full h-full object-cover"
+                      controls={false}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      loop
+                    />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/30 transition-colors pointer-events-none">
+                      <Play className="h-8 w-8 text-white group-hover:opacity-0 transition-opacity" />
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <p className="text-white text-xs font-medium truncate">{cut.title}</p>
+                      <div className="flex items-center justify-between text-white/70 text-xs mt-1">
+                        <span>{cut.views || 0} views</span>
+                        <span>{cut.duration || 0}s</span>
+                      </div>
+                    </div>
+                    {/* Action buttons for owner */}
+                    {isOwner && (
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 text-white hover:bg-black/70">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-black/90 border-white/20">
+                            <DropdownMenuItem onClick={() => handleEditCut(cut)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openStatsDialog(cut)}>
+                              <Award className="h-4 w-4 mr-2" />
+                              View Stats
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteCut(cut.id)}
+                              className="text-red-400 focus:text-red-400"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-            
-            {/* Cuts Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {cuts.length > 0 ? (
-                cuts.map((cut, idx) => (
-                  <div key={idx} className="rounded-xl overflow-hidden bg-white/10 backdrop-blur border border-white/10 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 group">
-                    {/* Video Container */}
-                    <div className="relative">
-                      <video src={cut.url} controls className="w-full h-40 object-cover rounded-t-lg" />
-                      
-                      {/* Overlay with actions for owners */}
-                      {isOwner && (
-                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="bg-black/60 hover:bg-saffron/80 text-white rounded-full p-1"
-                            onClick={() => handleEditCut(cut)}
-                            aria-label="Edit cut"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="bg-black/60 hover:bg-red-500/80 text-white rounded-full p-1"
-                            onClick={() => handleDeleteCut(cut.id)}
-                            aria-label="Delete cut"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {/* Visibility toggle for owners */}
-                      {isOwner && (
-                        <div className="absolute top-2 left-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              "rounded-full p-1 transition-all",
-                              cut.is_public 
-                                ? "bg-green-500/80 hover:bg-green-600/80 text-white" 
-                                : "bg-gray-500/80 hover:bg-gray-600/80 text-white"
-                            )}
-                            onClick={() => handleToggleCutVisibility(cut.id, !cut.is_public)}
-                            aria-label={cut.is_public ? "Make private" : "Make public"}
-                          >
-                            {cut.is_public ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Cut Info */}
-                    <div className="p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-semibold text-white text-sm line-clamp-1">{cut.title || 'Untitled Cut'}</h4>
-                        <span className="text-xs text-white/60">Views: {cut.views || 0}</span>
-                      </div>
-                      
-                      {cut.description && (
-                        <p className="text-white/80 text-xs line-clamp-2 mb-2">{cut.description}</p>
-                      )}
-                      
-                      <div className="flex gap-3 text-xs text-saffron">
-                        <span className="flex items-center gap-1">
-                          <Heart className="w-3 h-3" />
-                          {cut.likes || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MessageCircle className="w-3 h-3" />
-                          {cut.comments_count || 0}
-                        </span>
-                        {cut.is_featured && (
-                          <span className="flex items-center gap-1 text-yellow-400">
-                            <Star className="w-3 h-3" />
-                            Featured
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Tags */}
-                      {cut.tags && cut.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {cut.tags.slice(0, 3).map((tag: string, tagIdx: number) => (
-                            <span key={tagIdx} className="bg-white/10 text-white/80 text-xs px-2 py-0.5 rounded-full">
-                              {tag}
-                            </span>
-                          ))}
-                          {cut.tags.length > 3 && (
-                            <span className="text-white/60 text-xs">+{cut.tags.length - 3} more</span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Upload date */}
-                      {cut.created_at && (
-                        <div className="text-white/40 text-xs mt-2">
-                          {new Date(cut.created_at).toLocaleDateString()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-1 sm:col-span-2 text-center text-white/60 py-12 flex flex-col items-center gap-4">
-                  <Video className="w-12 h-12 text-white/40" />
-                  <div>
-                    <p className="text-lg font-semibold mb-2">No cuts yet</p>
-                    <p className="text-sm">Start sharing your work with engaging video content</p>
-                  </div>
-                  {isOwner && (
-                    <Button 
-                      className="bg-saffron text-primary font-semibold px-6 py-2 rounded-full shadow-lg hover:bg-saffron/90 flex items-center gap-2"
-                      onClick={() => setOpenDialog('upload')}
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload Your First Cut
-                    </Button>
+          </TabsContent>
+
+          {/* Portfolio Tab */}
+          <TabsContent value="portfolio">
+            <div className="grid grid-cols-3 gap-1">
+              {portfolio.map((item) => (
+                <div key={item.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden">
+                  {item.type === 'image' ? (
+                    <img src={item.url} alt={item.title || 'Portfolio'} className="w-full h-full object-cover" />
+                  ) : (
+                    <video src={item.url} className="w-full h-full object-cover" controls={false} muted playsInline preload="metadata" />
                   )}
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <div className="flex items-center justify-between text-white text-xs">
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-3 w-3" />
+                        <span>{item.likes || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-3 w-3" />
+                        <span>{item.comments || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Services Tab */}
+          <TabsContent value="services">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold">Services & Add-ons</h3>
+              {isOwner && (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setOpenDialog('addons')}
+                    size="sm"
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-white/10 px-2 py-1 text-xs"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add-on
+                  </Button>
+                  <Button
+                    onClick={() => setOpenDialog('services')}
+                    size="sm"
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-white/10 px-2 py-1 text-xs"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Service
+                  </Button>
                 </div>
               )}
             </div>
-          </div>
-        </TabsContent>
+            
+            {/* Sub-tabs for Services and Add-ons */}
+            <Tabs defaultValue="services" className="w-full">
+              <TabsList className="w-full flex bg-white/5 border border-white/10 p-1 rounded-lg mb-4">
+                <TabsTrigger value="services" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">
+                  Services ({services.length})
+                </TabsTrigger>
+                <TabsTrigger value="addons" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">
+                  Add-ons ({addons.length})
+                </TabsTrigger>
+              </TabsList>
 
-        {/* About Tab */}
-        <TabsContent value="about">
-          <div className="space-y-6">
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Personal Information */}
-              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
-                    <User className="w-5 h-5 text-saffron" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">Personal Information</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  {/* Location */}
-                  {profile?.location && (
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                      <MapPin className="w-4 h-4 text-saffron flex-shrink-0" />
-                      <div>
-                        <div className="text-white/60 text-xs uppercase tracking-wide">Location</div>
-                        <div className="text-white font-medium">{profile.location}</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Join Date */}
-                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                    <Calendar className="w-4 h-4 text-saffron flex-shrink-0" />
-                    <div>
-                      <div className="text-white/60 text-xs uppercase tracking-wide">Member Since</div>
-                      <div className="text-white font-medium">
-                        {profile && 'created_at' in profile && profile.created_at ? 
-                          new Date(profile.created_at as string).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          }) :
-                          barberProfile && 'created_at' in barberProfile && barberProfile.created_at ? 
-                          new Date(barberProfile.created_at as string).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          }) :
-                          'Unknown'}
-                      </div>
+              {/* Services Sub-tab */}
+              <TabsContent value="services">
+                {servicesLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-saffron mx-auto mb-4" />
+                      <p className="text-white/60">Loading services...</p>
                     </div>
                   </div>
-                  
-                  {/* Business Name */}
-                  {barberProfile?.business_name && (
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                      <Building className="w-4 h-4 text-saffron flex-shrink-0" />
-                      <div>
-                        <div className="text-white/60 text-xs uppercase tracking-wide">Business</div>
-                        <div className="text-white font-medium">{barberProfile.business_name}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Social Media */}
-              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
-                    <Share2 className="w-5 h-5 text-saffron" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">Social Media</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  {socials.length > 0 ? (
-                    socials.map(({ icon: Icon, href, color }) => (
-                      <a 
-                        key={href} 
-                        href={href} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group"
-                      >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${color.replace('text-', 'bg-')}/20`}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-white/60 text-xs uppercase tracking-wide">
-                            {href?.includes('instagram') ? 'Instagram' : 
-                             href?.includes('twitter') ? 'Twitter' : 
-                             href?.includes('facebook') ? 'Facebook' : 'Social'}
-                          </div>
-                          <div className="text-white font-medium group-hover:text-saffron transition-colors">
-                            {href?.includes('instagram') ? '@' + href.split('/').pop() : 
-                             href?.includes('twitter') ? '@' + href.split('/').pop() : 
-                             href?.includes('facebook') ? href.split('/').pop() : href}
-                          </div>
-                        </div>
-                        <ExternalLink className="w-4 h-4 text-white/40 group-hover:text-saffron transition-colors" />
-                      </a>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <Share2 className="w-12 h-12 text-white/30 mx-auto mb-3" />
-                      <p className="text-white/60 text-sm">No social media links added yet</p>
+                ) : services.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-8 max-w-md mx-auto">
+                      <Building className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                      <h3 className="text-white font-semibold mb-2">No services yet</h3>
+                      <p className="text-white/60 text-sm mb-6">
+                        Add your services to let clients know what you offer
+                      </p>
                       {isOwner && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-3 border-white/20 text-white hover:bg-white/10"
-                          onClick={handleEditProfile}
+                        <Button
+                          onClick={() => setOpenDialog('services')}
+                          className="bg-saffron text-primary hover:bg-saffron/90"
                         >
-                          Add Social Links
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add First Service
                         </Button>
                       )}
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {services.map((service) => (
+                      <div key={service.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-white">{service.name}</h3>
+                          <div className="text-right">
+                            <div className="font-bold text-white">${service.price}</div>
+                            <div className="text-white/70 text-sm">{service.duration}</div>
+                          </div>
+                        </div>
+                        {service.description && (
+                          <p className="text-white/80 text-sm mb-3">{service.description}</p>
+                        )}
+                        <Button 
+                          onClick={() => handleBookService(service)}
+                          className="w-full bg-saffron text-primary hover:bg-saffron/90"
+                        >
+                          Book This Service
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Add-ons Sub-tab */}
+              <TabsContent value="addons">
+                {addonsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-saffron mx-auto mb-4" />
+                      <p className="text-white/60">Loading add-ons...</p>
+                    </div>
+                  </div>
+                ) : addons.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-8 max-w-md mx-auto">
+                      <Plus className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                      <h3 className="text-white font-semibold mb-2">No add-ons yet</h3>
+                      <p className="text-white/60 text-sm mb-6">
+                        Add extra services that clients can choose from
+                      </p>
+                      {isOwner && (
+                        <Button
+                          onClick={() => setOpenDialog('addons')}
+                          className="bg-saffron text-primary hover:bg-saffron/90"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add First Add-on
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {addons.map((addon) => (
+                      <div key={addon.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-white">{addon.name}</h3>
+                          <div className="text-right">
+                            <div className="font-bold text-white">${addon.price}</div>
+                            <div className="text-white/70 text-sm">{addon.duration || 'Quick add-on'}</div>
+                          </div>
+                        </div>
+                        {addon.description && (
+                          <p className="text-white/80 text-sm mb-3">{addon.description}</p>
+                        )}
+                        <Button 
+                          onClick={() => handleAddToBooking(addon)}
+                          className="w-full bg-saffron text-primary hover:bg-saffron/90"
+                        >
+                          Add to Booking
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          {/* Reviews Tab */}
+          <TabsContent value="reviews">
+            <div className="space-y-4">
+              {(barberProfile?.reviews || []).map((review) => (
+                <div key={review.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={review.avatar || '/placeholder.svg'} alt={review.user} />
+                      <AvatarFallback>{review.user?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">{review.user}</h4>
+                        <span className="text-white/70 text-sm">{review.date}</span>
+                      </div>
+                      <div className="flex items-center mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className={cn('h-4 w-4', i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-white/30')} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-white/90">{review.comment}</p>
                 </div>
-              </div>
+              ))}
             </div>
-
-            {/* Specialties Section */}
-            {barberProfile?.specialties && barberProfile.specialties.length > 0 && (
-              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
-                    <Award className="w-5 h-5 text-saffron" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">Specialties</h3>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  {barberProfile.specialties.map((specialty, index) => (
-                    <span 
-                      key={index}
-                      className="px-3 py-1 bg-saffron/20 text-saffron rounded-full text-sm font-medium border border-saffron/30"
-                    >
-                      {specialty}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Contact Information */}
-            {profile?.phone && (
-              <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-saffron/20 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-saffron" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">Contact Information</h3>
-                </div>
-                
-                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                  <Phone className="w-4 h-4 text-saffron flex-shrink-0" />
-                  <div>
-                    <div className="text-white/60 text-xs uppercase tracking-wide">Phone</div>
-                    <div className="text-white font-medium">{profile.phone}</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </div>
       {/* Upload Dialog */}
       <Dialog open={openDialog === 'upload'} onOpenChange={open => {
         setOpenDialog(open ? 'upload' : null);
@@ -1242,21 +1480,20 @@ export default function ProfilePortfolio() {
           setVideoPreviewUrl(null);
         }
       }}>
-        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
+        <DialogContent className="max-w-md w-full bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bebas text-white">Upload New Cut</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-white">Upload New Cut</DialogTitle>
             <DialogDescription className="text-white/80">
               Share your latest work with the community
             </DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-6">
             {/* Video Selection */}
             <div>
               <Label htmlFor="video-upload" className="text-white font-medium mb-2 block">
                 Select Video File
               </Label>
-              <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center hover:border-saffron/50 transition-colors">
+              <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-saffron/50 transition-colors">
                 <input
                   ref={fileInputRef}
                   id="video-upload"
@@ -1288,17 +1525,15 @@ export default function ProfilePortfolio() {
                 </p>
               </div>
             </div>
-
             {/* Video Preview */}
             {videoPreviewUrl && (
-              <div className="bg-white/5 rounded-2xl p-4">
+              <div className="bg-white/5 rounded-xl p-4">
                 <h4 className="text-white font-medium mb-3">Video Preview</h4>
-                <div className="aspect-video rounded-xl overflow-hidden">
+                <div className="aspect-video rounded-lg overflow-hidden">
                   <video src={videoPreviewUrl} className="w-full h-full object-cover" controls />
                 </div>
               </div>
             )}
-
             {/* Form Fields */}
             {selectedVideoFile && (
               <div className="space-y-4">
@@ -1314,7 +1549,6 @@ export default function ProfilePortfolio() {
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="description" className="text-white font-medium mb-2 block">
                     Description
@@ -1327,7 +1561,6 @@ export default function ProfilePortfolio() {
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/40 min-h-[100px]"
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="tags" className="text-white font-medium mb-2 block">
                     Tags
@@ -1341,7 +1574,6 @@ export default function ProfilePortfolio() {
                   />
                   <p className="text-white/40 text-xs mt-1">Example: fade, tutorial, classic</p>
                 </div>
-
                 {/* Post Button */}
                 <div className="flex gap-3 pt-4">
                   <Button
@@ -1462,7 +1694,7 @@ export default function ProfilePortfolio() {
                       
                       setEditingCut((prev: any) => prev ? { ...prev, is_featured: checked } : prev);
                       // Refresh cuts list
-                      if (barberProfile) await fetchUserCuts(barberProfile.id);
+                      refreshCuts(); // Use refreshCuts from useCuts
                       
                       toast({
                         title: 'Success',
@@ -1682,15 +1914,26 @@ export default function ProfilePortfolio() {
             
             <div className="flex gap-3 pt-4 border-t border-white/10">
               <Button
-                onClick={handleLocationFilter}
+                onClick={() => {
+                  setShowLocationFilter(false);
+                }}
                 className="bg-saffron text-primary font-bold rounded-xl px-6 py-3 flex-1"
               >
                 Apply Filter
               </Button>
               <Button
-                onClick={clearLocationFilter}
+                onClick={() => {
+                  setLocationFilter({
+                    city: '',
+                    state: '',
+                    range: 50,
+                    useCurrentLocation: false
+                  });
+                  setUserLocation(null);
+                  setShowLocationFilter(false);
+                }}
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
+                className="border-white/20 text-white rounded-xl px-6 py-3"
               >
                 Clear
               </Button>
@@ -1802,6 +2045,175 @@ export default function ProfilePortfolio() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Cover Photo Cropping Dialog */}
+      <Dialog open={coverCropDialogOpen} onOpenChange={setCoverCropDialogOpen}>
+        <DialogContent className="max-w-[600px] bg-black/95 border border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-white">Crop Cover Photo</DialogTitle>
+            <DialogDescription className="text-white/80">
+              Adjust your cover photo to fit the banner (16:9 ratio)
+            </DialogDescription>
+          </DialogHeader>
+          {selectedCoverImage && (
+            <div className="relative w-full h-80 bg-black rounded-xl overflow-hidden">
+              <Cropper
+                image={selectedCoverImage}
+                crop={coverCrop}
+                zoom={coverZoom}
+                aspect={16/9}
+                onCropChange={setCoverCrop}
+                onZoomChange={setCoverZoom}
+                onCropComplete={onCoverCropComplete}
+              />
+            </div>
+          )}
+          <div className="flex gap-3 mt-4">
+            <Button onClick={() => setCoverCropDialogOpen(false)} variant="outline" className="flex-1 border-white/20 text-white hover:bg-white/10">Cancel</Button>
+            <Button onClick={handleCoverCropSave} className="flex-1 bg-saffron text-primary font-bold">Save Cover</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+
+
+      {/* Services Dialog */}
+      <Dialog open={openDialog === 'services'} onOpenChange={open => {
+        setOpenDialog(open ? 'services' : null);
+      }}>
+        <DialogContent className="max-w-md w-full bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">Add Service</DialogTitle>
+            <DialogDescription className="text-white/80">
+              Add a new service to your offerings
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <Label htmlFor="service-name" className="text-white font-medium mb-2 block">
+                Service Name
+              </Label>
+              <Input
+                id="service-name"
+                placeholder="e.g., Haircut, Beard Trim"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              />
+            </div>
+            <div>
+              <Label htmlFor="service-price" className="text-white font-medium mb-2 block">
+                Price ($)
+              </Label>
+              <Input
+                id="service-price"
+                type="number"
+                placeholder="25"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              />
+            </div>
+            <div>
+              <Label htmlFor="service-duration" className="text-white font-medium mb-2 block">
+                Duration
+              </Label>
+              <Input
+                id="service-duration"
+                placeholder="30 minutes"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              />
+            </div>
+            <div>
+              <Label htmlFor="service-description" className="text-white font-medium mb-2 block">
+                Description (Optional)
+              </Label>
+              <Textarea
+                id="service-description"
+                placeholder="Describe what's included in this service..."
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                rows={3}
+                style={{ whiteSpace: 'pre-wrap' }}
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={() => setOpenDialog(null)}
+                variant="outline"
+                className="flex-1 border-white/20 text-white hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  // TODO: Implement service creation
+                  toast({
+                    title: 'Coming Soon',
+                    description: 'Service creation will be available soon!',
+                  })
+                  setOpenDialog(null)
+                }}
+                className="flex-1 bg-saffron text-primary hover:bg-saffron/90"
+              >
+                Add Service
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Portfolio Upload Dialog */}
+      <Dialog open={openDialog === 'portfolio-upload'} onOpenChange={open => {
+        setOpenDialog(open ? 'portfolio-upload' : null);
+      }}>
+        <DialogContent className="max-w-md w-full bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">Add to Portfolio</DialogTitle>
+            <DialogDescription className="text-white/80">
+              Upload photos or videos to your portfolio
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <Label htmlFor="portfolio-upload" className="text-white font-medium mb-2 block">
+                Select File
+              </Label>
+              <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-saffron/50 transition-colors">
+                <input
+                  id="portfolio-upload"
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handlePortfolioUpload(file);
+                      setOpenDialog(null);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => document.getElementById('portfolio-upload')?.click()}
+                  className="bg-saffron text-primary font-bold rounded-xl px-8 py-3 mb-4"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose File
+                </Button>
+                <p className="text-white/60 text-sm">
+                  Images or videos up to 50MB
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Existing Booking Form */}
+      {barberProfile && (
+        <BookingForm
+          isOpen={bookingFormOpen}
+          onClose={() => setBookingFormOpen(false)}
+          selectedDate={selectedBookingDate}
+          barberId={barberProfile.id}
+          onBookingCreated={handleBookingCreated}
+        />
+      )}
       
     </div>
   );

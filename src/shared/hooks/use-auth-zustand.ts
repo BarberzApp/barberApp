@@ -26,7 +26,7 @@ export const getRedirectPath = async (userId: string) => {
     if (profile.email === 'primbocm@gmail.com') {
       return '/super-admin'
     } else if (profile.role === 'barber') {
-      return '/settings'
+      return '/barber/onboarding'
     } else if (profile.location) {
       return '/browse'
     } else {

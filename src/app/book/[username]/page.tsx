@@ -11,8 +11,8 @@ import { Service } from '@/shared/types/service'
 import { useToast } from '@/shared/components/ui/use-toast'
 import { Badge } from '@/shared/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
 import Link from 'next/link'
-import Head from 'next/head'
 import { 
   Play, 
   Heart, 
@@ -26,20 +26,37 @@ import {
   ArrowLeft,
   Sparkles,
   Video,
-  Eye
+  Eye,
+  Grid3X3,
+  BookOpen,
+  Settings,
+  MoreHorizontal,
+  Instagram,
+  Twitter,
+  Facebook,
+  Mail,
+  Users,
+  Award,
+  CheckCircle
 } from 'lucide-react'
 
 type Barber = {
   id: string
   userId: string
   name: string
+  username?: string
   location?: string
   phone?: string
   bio?: string
   avatar_url?: string
+  coverphoto?: string
   specialties: string[]
   services: Service[]
-  portfolio: string[] // Added portfolio field
+  portfolio: string[]
+  instagram?: string
+  twitter?: string
+  facebook?: string
+  email?: string
 }
 
 type FeaturedReel = {
@@ -63,8 +80,15 @@ type BarberFromDB = {
   specialties: string[]
   profiles: Array<{
     name: string
+    username?: string
     location: string | null
     phone: string | null
+    avatar_url?: string
+    coverphoto?: string
+    instagram?: string
+    twitter?: string
+    facebook?: string
+    email?: string
   }>
   services: Array<{
     id: string
@@ -74,7 +98,7 @@ type BarberFromDB = {
     price: number
     barber_id: string
   }>
-  portfolio: string[] // Added portfolio field
+  portfolio: string[]
 }
 
 // Error boundary component
@@ -98,7 +122,7 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#181A20] flex items-center justify-center">
+        <div className="min-h-screen bg-black flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="mb-6">
               <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -113,7 +137,7 @@ class ErrorBoundary extends React.Component<
             <div className="space-y-3">
               <Button 
                 onClick={() => window.location.reload()} 
-                className="w-full rounded-full bg-primary text-white px-6 py-3"
+                className="w-full rounded-full bg-saffron text-black px-6 py-3"
               >
                 Reload Page
               </Button>
@@ -146,6 +170,49 @@ function BookPageContent() {
   const [selectedVideo, setSelectedVideo] = useState<FeaturedReel | null>(null)
   const [loadingReels, setLoadingReels] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('cuts')
+
+  // Share functionality
+  const handleShare = async () => {
+    if (!barber) return
+
+    const shareUrl = `${window.location.origin}/book/${barber.username || barber.id}`
+    const shareText = `Book your next haircut with ${barber.name} on BOCM Style!`
+
+    try {
+      if (navigator.share) {
+        // Use native sharing on mobile devices
+        await navigator.share({
+          title: `Book with ${barber.name}`,
+          text: shareText,
+          url: shareUrl,
+        })
+      } else {
+        // Fallback to clipboard copy
+        await navigator.clipboard.writeText(shareUrl)
+        toast({
+          title: 'Link copied!',
+          description: 'Booking link copied to clipboard.',
+        })
+      }
+    } catch (error) {
+      console.error('Error sharing:', error)
+      // Fallback to clipboard copy if native sharing fails
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        toast({
+          title: 'Link copied!',
+          description: 'Booking link copied to clipboard.',
+        })
+      } catch (clipboardError) {
+        toast({
+          title: 'Error',
+          description: 'Failed to share or copy link.',
+          variant: 'destructive',
+        })
+      }
+    }
+  }
 
   // Safely extract identifier from params (could be username or barber ID)
   const identifier = params && params.username ? (Array.isArray(params.username) ? params.username[0] : params.username) : undefined;
@@ -153,7 +220,7 @@ function BookPageContent() {
   // Add guard for params in BookPageContent
   if (!identifier) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -161,12 +228,12 @@ function BookPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Invalid Booking Link</h1>
-            <p className="text-gray-400 mb-6 text-sm sm:text-base">This booking link appears to be invalid or has expired.</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Invalid Profile Link</h1>
+            <p className="text-gray-400 mb-6 text-sm sm:text-base">This profile link appears to be invalid or has expired.</p>
           </div>
           
           <div className="space-y-3">
-            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base">
+            <Button asChild className="w-full rounded-full bg-saffron text-black px-6 py-3 text-sm sm:text-base">
               <Link href="/browse">Browse Available Barbers</Link>
             </Button>
             <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
@@ -199,41 +266,30 @@ function BookPageContent() {
   // Check if we're in a mobile browser and handle PWA/service worker interference
   useEffect(() => {
     const checkMobileAndPWA = () => {
-      // Universal mobile detection
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS|FxiOS/i.test(navigator.userAgent) ||
-        (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
-        window.matchMedia('(max-width: 768px)').matches;
-      
-      const isPWA = (window.navigator as any).standalone || 
-        window.matchMedia('(display-mode: standalone)').matches;
-      
-      // Only show fallback if we're on mobile, not in PWA, and page hasn't loaded after timeout
-      if (isMobile && !isPWA) {
-        const timer = setTimeout(() => {
-          if (!barber && !loading) {
-            setShowMobileFallback(true);
-          }
-        }, 5000); // 5 second timeout
+      // Check for PWA/service worker interference
+      if (isMobile && typeof window !== 'undefined') {
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                     (window.navigator as any).standalone === true;
         
-        return () => clearTimeout(timer);
+        if (isPWA) {
+          // PWA detected, set a timeout for fallback
+          setTimeout(() => {
+            if (loading) {
+              setShowMobileFallback(true);
+            }
+          }, 10000); // 10 second timeout
+        }
       }
-    };
+    }
     
-    checkMobileAndPWA();
-  }, [barber, loading]);
+    if (isMobile) {
+      checkMobileAndPWA();
+    }
+  }, [isMobile, loading])
 
   useEffect(() => {
-    try {
-      if (identifier) {
-        fetchBarberDetails()
-      } else {
-        setLoading(false)
-        setError('Invalid identifier')
-      }
-    } catch (err) {
-      console.error('Error in useEffect:', err)
-      setError('Failed to load page')
-      setLoading(false)
+    if (identifier) {
+      fetchBarberDetails()
     }
   }, [identifier])
 
@@ -288,110 +344,79 @@ function BookPageContent() {
           .from('profiles')
           .select('*')
           .eq('id', identifier)
+          .eq('role', 'barber')
           .single()
 
-        if (profileError && profileError.code !== 'PGRST116') {
+        if (profileError) {
           console.error('Error fetching profile by ID:', profileError)
-          // Continue to try barber lookup
+          throw new Error('Profile not found')
         }
 
-        if (profileResult) {
-          // If we found a profile, this is a user ID
-          profileData = profileResult;
-          
-          // Then, get the barber's details using the user_id
-          const { data: barberResult, error: barberError } = await supabase
-            .from('barbers')
-            .select('*')
-            .eq('user_id', profileData.id)
-            .single()
-
-          if (barberError) {
-            console.error('Error fetching barber:', barberError)
-            throw barberError
-          }
-
-          if (!barberResult) {
-            throw new Error('Barber not found')
-          }
-
-          barberData = barberResult;
-        } else {
-          // If no profile found, try to find a barber directly with this ID
-          const { data: barberResult, error: barberError } = await supabase
-            .from('barbers')
-            .select('*')
-            .eq('id', identifier)
-            .single()
-
-          if (barberError) {
-            console.error('Error fetching barber directly:', barberError)
-            throw barberError
-          }
-
-          if (!barberResult) {
-            throw new Error('Barber not found')
-          }
-
-          barberData = barberResult;
-          
-          // Get the profile data for this barber
-          const { data: profileResult, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', barberData.user_id)
-            .single()
-
-          if (profileError) {
-            console.error('Error fetching profile for barber:', profileError)
-            // Continue without profile data
-          } else {
-            profileData = profileResult;
-          }
+        if (!profileResult) {
+          throw new Error('Profile not found')
         }
+
+        // If we found a profile, this is a user ID
+        profileData = profileResult;
+        
+        // Then, get the barber's details using the user_id
+        const { data: barberResult, error: barberError } = await supabase
+          .from('barbers')
+          .select('*')
+          .eq('user_id', profileData.id)
+          .single()
+
+        if (barberError) {
+          console.error('Error fetching barber:', barberError)
+          throw barberError
+        }
+
+        if (!barberResult) {
+          throw new Error('Barber not found')
+        }
+
+        barberData = barberResult;
       }
 
-      // Get services for this barber
-      const { data: servicesResult, error: servicesError } = await supabase
+      // Fetch services for this barber
+      const { data: servicesData, error: servicesError } = await supabase
         .from('services')
         .select('*')
         .eq('barber_id', barberData.id)
 
       if (servicesError) {
         console.error('Error fetching services:', servicesError)
-        // Continue without services
       }
 
-      // Transform the data to match our Barber type
-      const transformedBarber: Barber = {
+      // Construct the barber object
+      const barberObject: Barber = {
         id: barberData.id,
-        userId: barberData.user_id,
-        name: profileData?.name || 'Unknown Barber',
-        location: profileData?.location || null,
-        phone: profileData?.phone || null,
-        bio: barberData.bio || null,
-        avatar_url: profileData?.avatar_url || null,
+        userId: profileData.id,
+        name: profileData.name || 'Unknown Barber',
+        username: profileData.username,
+        location: profileData.location,
+        phone: profileData.phone,
+        bio: barberData.bio,
+        avatar_url: profileData.avatar_url,
+        coverphoto: profileData.coverphoto,
         specialties: barberData.specialties || [],
-        services: servicesResult?.map(service => ({
-          id: service.id,
-          name: service.name,
-          description: service.description,
-          duration: service.duration,
-          price: service.price,
-          barberId: service.barber_id
-        })) || [],
-        portfolio: barberData.portfolio || [] // Add portfolio to transformedBarber
+        services: servicesData || [],
+        portfolio: barberData.portfolio || [],
+        instagram: barberData.instagram,
+        twitter: barberData.twitter,
+        facebook: barberData.facebook,
+        email: profileData.email
       }
 
-      setBarber(transformedBarber)
-      
-      // Fetch featured reels for this barber
+      setBarber(barberObject)
+
+      // Fetch featured reels
       await fetchFeaturedReels(barberData.id)
-      
-      setLoading(false)
-    } catch (err: any) {
-      console.error('Error fetching barber details:', err)
-      setError(err.message || 'Failed to load barber details')
+
+    } catch (error) {
+      console.error('Error fetching barber details:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load barber details')
+    } finally {
       setLoading(false)
     }
   }
@@ -401,22 +426,21 @@ function BookPageContent() {
       setLoadingReels(true)
       
       const { data, error } = await supabase
-        .from('reels')
+        .from('cuts')
         .select('*')
         .eq('barber_id', barberId)
         .eq('is_public', true)
-        .eq('is_featured', true)
         .order('created_at', { ascending: false })
-        .limit(6)
+        .limit(9)
 
       if (error) {
-        console.error('Error fetching featured reels:', error)
+        console.error('Error fetching featured cuts:', error)
         return
       }
 
       setFeaturedReels(data || [])
     } catch (error) {
-      console.error('Error fetching featured reels:', error)
+      console.error('Error fetching featured cuts:', error)
     } finally {
       setLoadingReels(false)
     }
@@ -428,10 +452,34 @@ function BookPageContent() {
     return views.toString()
   }
 
+  const formatLocation = (location: string) => {
+    if (!location) return '';
+    const parts = location.split(',').map(s => s.trim());
+    
+    if (parts.length >= 4) {
+      // For format: "88 Doe Court, Wynwood Drive, South Brunswick, NJ"
+      const city = parts[parts.length - 2];
+      const state = parts[parts.length - 1];
+      return `${city}, ${state}`;
+    } else if (parts.length >= 3) {
+      // For format: "88 Doe Court, South Brunswick, NJ"
+      const city = parts[1];
+      const state = parts[2];
+      return `${city}, ${state}`;
+    } else if (parts.length >= 2) {
+      // Fallback for shorter formats
+      const city = parts[0];
+      const state = parts[1];
+      return `${city}, ${state}`;
+    } else {
+      return location;
+    }
+  }
+
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -446,7 +494,7 @@ function BookPageContent() {
           <div className="space-y-3">
             <Button 
               onClick={() => window.location.reload()} 
-              className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base"
+              className="w-full rounded-full bg-saffron text-black px-6 py-3 text-sm sm:text-base"
             >
               Try Again
             </Button>
@@ -461,10 +509,10 @@ function BookPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-white text-sm sm:text-base">Loading barber details...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron mx-auto mb-4"></div>
+          <p className="text-white text-sm sm:text-base">Loading profile...</p>
           {isMobile && (
             <p className="text-sm text-gray-400 mt-2">If this takes too long, try refreshing the page</p>
           )}
@@ -475,7 +523,7 @@ function BookPageContent() {
 
   if (!barber) {
     return (
-      <div className="min-h-screen bg-[#181A20] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -483,12 +531,12 @@ function BookPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Barber Not Found</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">Profile Not Found</h1>
             <p className="text-gray-400 mb-6 text-sm sm:text-base">The barber you're looking for doesn't exist or has been removed from the platform.</p>
           </div>
           
           <div className="space-y-3">
-            <Button asChild className="w-full rounded-full bg-primary text-white px-6 py-3 text-sm sm:text-base">
+            <Button asChild className="w-full rounded-full bg-saffron text-black px-6 py-3 text-sm sm:text-base">
               <Link href="/browse">Browse Available Barbers</Link>
             </Button>
             <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
@@ -497,7 +545,7 @@ function BookPageContent() {
           </div>
           
           <p className="text-xs text-gray-500 mt-6">
-            The barber may have deactivated their account or changed their booking link.
+            The barber may have deactivated their account or changed their profile link.
           </p>
         </div>
       </div>
@@ -507,19 +555,19 @@ function BookPageContent() {
   // Show mobile fallback if page doesn't load
   if (showMobileFallback) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-foreground">Having trouble loading?</h1>
-            <p className="text-muted-foreground">
-              The booking page seems to be taking longer than expected. Try one of these options:
+            <h1 className="text-2xl font-bold text-white">Having trouble loading?</h1>
+            <p className="text-gray-400">
+              The profile page seems to be taking longer than expected. Try one of these options:
             </p>
           </div>
           
           <div className="space-y-3">
             <Button 
               onClick={() => window.location.reload()} 
-              className="w-full"
+              className="w-full bg-saffron text-black"
             >
               Try Again
             </Button>
@@ -532,7 +580,7 @@ function BookPageContent() {
               Open in New Tab
             </Button>
             
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-gray-400">
               <p>If the problem persists, try:</p>
               <ul className="mt-2 space-y-1 text-left">
                 <li>• Refreshing the page</li>
@@ -547,7 +595,7 @@ function BookPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black overflow-x-hidden">
+    <div className="bg-black">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center justify-between px-4 py-3">
@@ -559,249 +607,290 @@ function BookPageContent() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-bold text-white">Book Appointment</h1>
-          <div className="w-10" /> {/* Spacer for centering */}
+          <h1 className="text-lg font-bold text-white">@{barber.username || barber.name?.toLowerCase().replace(/\s+/g, '')}</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/10"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
-      <div className="container mx-auto max-w-4xl px-4 py-6">
-        <div className="flex flex-col space-y-6">
-          {/* Barber Profile Card */}
-          <div className="w-full">
-            <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
-              <div className="relative">
-                {/* Background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-saffron/20 via-transparent to-primary/20" />
-                
-                <CardHeader className="relative pb-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-20 w-20 flex-shrink-0 border-4 border-saffron/30 shadow-lg">
-                      <AvatarImage src={barber.avatar_url} alt={barber.name} />
-                      <AvatarFallback className="text-2xl bg-saffron text-primary font-bold">
-                        {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-2xl text-white font-bold mb-1">{barber.name || 'Unknown Barber'}</CardTitle>
-                      {barber.location && (
-                        <div className="flex items-center gap-2 text-white/80">
-                          <MapPin className="h-4 w-4" />
-                          <p className="text-sm">{barber.location}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-              </div>
-              <CardContent className="relative space-y-6">
-                {barber.bio && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-saffron" />
-                      About
-                    </h3>
-                    <p className="text-white/80 text-base leading-relaxed">{barber.bio}</p>
-                  </div>
-                )}
-                
-                {barber.specialties && barber.specialties.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                      <Star className="h-5 w-5 text-saffron" />
-                      Specialties
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {barber.specialties.map((specialty, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="bg-saffron/20 text-saffron border-saffron/30 px-3 py-1"
-                        >
-                          {specialty}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+      {/* Cover Photo */}
+      {barber.coverphoto && (
+        <div className="relative h-48 md:h-64 overflow-hidden">
+          <img
+            src={barber.coverphoto}
+            alt="Cover photo"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        </div>
+      )}
 
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-saffron" />
-                    Services & Pricing
-                  </h3>
-                  <div className="space-y-3">
-                    {barber.services && barber.services.length > 0 ? (
-                      barber.services.map((service) => (
-                        <div
-                          key={service.id}
-                          className="flex justify-between items-start p-4 bg-white/5 rounded-2xl border border-white/10"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-semibold text-white text-base mb-1">{service.name}</h4>
-                            {service.description && (
-                              <p className="text-white/60 text-sm mb-2">{service.description}</p>
-                            )}
-                            <div className="flex items-center gap-2 text-white/60 text-sm">
-                              <Clock className="h-4 w-4" />
-                              <span>{service.duration} minutes</span>
-                            </div>
-                          </div>
-                          <div className="text-right ml-4 flex-shrink-0">
-                            <p className="font-bold text-saffron text-xl">${service.price}</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 bg-white/5 rounded-2xl border border-white/10">
-                        <Calendar className="h-12 w-12 text-white/40 mx-auto mb-3" />
-                        <p className="text-white/60">No services available</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+      {/* Profile Section */}
+      <div className="relative px-4 pb-4">
+        {/* Avatar positioned over cover photo */}
+        <div className="relative -mt-16 mb-4">
+          <Avatar className="h-32 w-32 mx-auto border-4 border-black shadow-xl">
+            <AvatarImage src={barber.avatar_url} alt={barber.name} />
+            <AvatarFallback className="text-4xl bg-saffron text-black font-bold">
+              {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
+            </AvatarFallback>
+          </Avatar>
+        </div>
 
-                <Button
-                  onClick={() => setShowBookingForm(true)}
-                  className="w-full rounded-2xl bg-saffron text-primary font-bold py-4 text-lg shadow-lg hover:bg-saffron/90 transition-colors"
+        {/* Profile Info */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-white mb-1">{barber.name}</h1>
+          {barber.username && (
+            <p className="text-saffron text-lg font-mono mb-2">@{barber.username}</p>
+          )}
+          {barber.location && (
+            <div className="flex items-center justify-center gap-1 text-white/70 mb-3">
+              <MapPin className="h-4 w-4" />
+              <span className="text-sm">{formatLocation(barber.location)}</span>
+            </div>
+          )}
+          
+          {/* Stats */}
+          <div className="flex justify-center gap-8 mb-4">
+            <div className="text-center">
+              <div className="text-xl font-bold text-white">{featuredReels.length}</div>
+              <div className="text-xs text-white/60 uppercase tracking-wide">Cuts</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-white">{barber.services.length}</div>
+              <div className="text-xs text-white/60 uppercase tracking-wide">Services</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-white">{barber.portfolio.length}</div>
+              <div className="text-xs text-white/60 uppercase tracking-wide">Portfolio</div>
+            </div>
+          </div>
+
+          {/* Bio */}
+          {barber.bio && (
+            <p className="text-white/80 text-sm leading-relaxed mb-4 max-w-md mx-auto">
+              {barber.bio}
+            </p>
+          )}
+
+          {/* Specialties */}
+          {barber.specialties && barber.specialties.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              {barber.specialties.map((specialty, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="bg-saffron/20 text-saffron border-saffron/30 px-3 py-1 text-xs"
                 >
-                  Book Appointment
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Featured Reels Section */}
-          {featuredReels.length > 0 && (
-            <div className="w-full">
-              <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-white text-xl font-bold flex items-center gap-2">
-                    <Video className="h-6 w-6 text-saffron" />
-                    Featured Work
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {featuredReels.map((reel) => (
-                      <div
-                        key={reel.id}
-                        className="group relative aspect-video rounded-2xl overflow-hidden bg-white/5 border border-white/10 cursor-pointer hover:border-saffron/50 transition-all duration-300"
-                        onClick={() => {
-                          setSelectedVideo(reel)
-                          setShowVideoDialog(true)
-                        }}
-                      >
-                        <video
-                          src={reel.url}
-                          className="w-full h-full object-cover"
-                          muted
-                          loop
-                          onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
-                          onMouseLeave={(e) => (e.target as HTMLVideoElement).pause()}
-                        />
-                        
-                        {/* Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="absolute bottom-3 left-3 right-3">
-                            <h4 className="text-white font-semibold text-sm mb-1 truncate">{reel.title}</h4>
-                            <div className="flex items-center gap-3 text-white/80 text-xs">
-                              <div className="flex items-center gap-1">
-                                <Eye className="h-3 w-3" />
-                                <span>{formatViews(reel.views)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Heart className="h-3 w-3" />
-                                <span>{formatViews(reel.likes)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <MessageCircle className="h-3 w-3" />
-                                <span>{formatViews(reel.comments_count || 0)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Play button */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                            <Play className="h-6 w-6 text-white ml-1" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                  {specialty}
+                </Badge>
+              ))}
             </div>
           )}
 
-          {/* Portfolio Section */}
-          {barber.portfolio && barber.portfolio.length > 0 && (
-            <div className="w-full">
-              <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-white text-xl font-bold">Portfolio</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {barber.portfolio.map((item, index) => (
-                    <div
-                      key={index}
-                      className="group relative aspect-video rounded-2xl overflow-hidden bg-white/5 border border-white/10 cursor-pointer hover:border-saffron/50 transition-all duration-300"
-                      onClick={() => {
-                        setSelectedImage(item);
-                      }}
-                    >
-                      <img
-                        src={item}
-                        alt={`Portfolio item ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-center mb-6">
+            <Button
+              onClick={() => setShowBookingForm(true)}
+              className="flex-1 max-w-xs bg-saffron text-black font-semibold rounded-full hover:bg-saffron/90"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Book Now
+            </Button>
+            <Button
+              onClick={handleShare}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10 rounded-full"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Social Links */}
+          {(barber.instagram || barber.twitter || barber.facebook) && (
+            <div className="flex justify-center gap-4 mb-6">
+              {barber.instagram && (
+                <a
+                  href={`https://instagram.com/${barber.instagram.replace(/^@/, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform"
+                >
+                  <Instagram className="h-5 w-5" />
+                </a>
+              )}
+              {barber.twitter && (
+                <a
+                  href={`https://twitter.com/${barber.twitter.replace(/^@/, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform"
+                >
+                  <Twitter className="h-5 w-5" />
+                </a>
+              )}
+              {barber.facebook && (
+                <a
+                  href={`https://facebook.com/${barber.facebook.replace(/^@/, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform"
+                >
+                  <Facebook className="h-5 w-5" />
+                </a>
+              )}
             </div>
           )}
-
-          {/* Contact Info Card */}
-          <div className="w-full">
-            <Card className="rounded-3xl bg-darkpurple/90 backdrop-blur-xl border border-white/10 shadow-2xl">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-white text-xl font-bold">Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {barber.phone && (
-                  <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
-                    <div className="w-12 h-12 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Phone className="h-6 w-6 text-saffron" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white/60 text-sm">Phone</p>
-                      <p className="text-white font-medium">{barber.phone}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {barber.location && (
-                  <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
-                    <div className="w-12 h-12 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <MapPin className="h-6 w-6 text-saffron" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white/60 text-sm">Location</p>
-                      <p className="text-white font-medium">{barber.location}</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
         </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full bg-transparent border-b border-white/10 rounded-none p-0">
+            <TabsTrigger 
+              value="cuts" 
+              className="flex-1 data-[state=active]:text-saffron data-[state=active]:border-b-2 data-[state=active]:border-saffron bg-transparent text-white/60 hover:text-white"
+            >
+              <Grid3X3 className="h-4 w-4 mr-2" />
+              Cuts
+            </TabsTrigger>
+            <TabsTrigger 
+              value="services" 
+              className="flex-1 data-[state=active]:text-saffron data-[state=active]:border-b-2 data-[state=active]:border-saffron bg-transparent text-white/60 hover:text-white"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Services
+            </TabsTrigger>
+            <TabsTrigger 
+              value="portfolio" 
+              className="flex-1 data-[state=active]:text-saffron data-[state=active]:border-b-2 data-[state=active]:border-saffron bg-transparent text-white/60 hover:text-white"
+            >
+              <Award className="h-4 w-4 mr-2" />
+              Portfolio
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Cuts Tab */}
+          <TabsContent value="cuts" className="mt-6">
+            {loadingReels ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron"></div>
+              </div>
+            ) : featuredReels.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1">
+                {featuredReels.map((reel) => (
+                  <div
+                    key={reel.id}
+                    className="group relative aspect-square bg-white/5 cursor-pointer"
+                    onClick={() => {
+                      setSelectedVideo(reel)
+                      setShowVideoDialog(true)
+                    }}
+                  >
+                    <video
+                      src={reel.url}
+                      className="w-full h-full object-cover"
+                      muted
+                      loop
+                      onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                      onMouseLeave={(e) => (e.target as HTMLVideoElement).pause()}
+                    />
+                    
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Play className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Video className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                <p className="text-white/60">No cuts available yet</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Services Tab */}
+          <TabsContent value="services" className="mt-6">
+            {barber.services && barber.services.length > 0 ? (
+              <div className="space-y-3">
+                {barber.services.map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex justify-between items-start p-4 bg-white/5 rounded-2xl border border-white/10"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-white text-base mb-1">{service.name}</h4>
+                      {service.description && (
+                        <p className="text-white/60 text-sm mb-2">{service.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 text-white/60 text-sm">
+                        <Clock className="h-4 w-4" />
+                        <span>{service.duration} minutes</span>
+                      </div>
+                    </div>
+                    <div className="text-right ml-4 flex-shrink-0">
+                      <p className="font-bold text-saffron text-xl">${service.price}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Calendar className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                <p className="text-white/60">No services available</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Portfolio Tab */}
+          <TabsContent value="portfolio" className="mt-6">
+            {barber.portfolio && barber.portfolio.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1">
+                {barber.portfolio.map((item, index) => (
+                  <div
+                    key={index}
+                    className="group relative aspect-square bg-white/5 cursor-pointer"
+                    onClick={() => setSelectedImage(item)}
+                  >
+                    <img
+                      src={item}
+                      alt={`Portfolio item ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Eye className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Award className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                <p className="text-white/60">No portfolio items available</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Bottom spacing */}
+      <div className="h-20"></div>
 
       {/* Video Dialog */}
       <Dialog open={showVideoDialog} onOpenChange={setShowVideoDialog}>
-        <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
           {selectedVideo ? (
             <>
               <div className="aspect-video">
@@ -842,7 +931,7 @@ function BookPageContent() {
       {/* Image Dialog */}
       {selectedImage !== null && (
         <Dialog open={!!selectedImage} onOpenChange={open => !open && setSelectedImage(null)}>
-          <DialogContent className="max-w-2xl w-full bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
+          <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
             <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-saffron/20">
@@ -898,30 +987,6 @@ function BookPageContent() {
 export default function BookPage() {
   return (
     <ErrorBoundary>
-      <Head>
-        <title>Book Appointment</title>
-        <meta name="description" content="Book an appointment with your preferred barber" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
-        <meta name="format-detection" content="telephone=no" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#181A20" />
-        <link rel="icon" href="/icons/icon-192x192.png" />
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            html, body {
-              overflow-x: hidden;
-              width: 100%;
-              -webkit-text-size-adjust: 100%;
-              -ms-text-size-adjust: 100%;
-            }
-            * {
-              box-sizing: border-box;
-            }
-          `
-        }} />
-      </Head>
       <BookPageContent />
     </ErrorBoundary>
   )

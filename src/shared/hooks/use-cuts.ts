@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { useCustomToast } from '@/shared/hooks/use-custom-toast'
@@ -62,46 +62,7 @@ export function useCuts() {
   const [uploading, setUploading] = useState(false)
   const { user } = useAuth()
   const toast = useCustomToast()
-
-  // Fetch cuts for current barber
-  const fetchCuts = useCallback(async () => {
-    if (!user) return
-
-    try {
-      setLoading(true)
-      
-      // Get barber ID
-      const { data: barberData, error: barberError } = await supabase
-        .from('barbers')
-        .select('id')
-        .eq('user_id', user.id)
-        .single()
-
-      if (barberError) throw barberError
-
-      // Fetch cuts
-      const { data: cutsData, error: cutsError } = await supabase
-        .from('cuts')
-        .select('*')
-        .eq('barber_id', barberData.id)
-        .order('created_at', { ascending: false })
-
-      if (cutsError) throw cutsError
-
-      setCuts(cutsData || [])
-      
-      // Calculate analytics
-      if (cutsData && cutsData.length > 0) {
-        calculateAnalytics(cutsData)
-      }
-
-    } catch (error) {
-      console.error('Error fetching cuts:', error)
-      toast.error('Error', 'Failed to load your cuts.')
-    } finally {
-      setLoading(false)
-    }
-  }, [user, toast])
+  const hasInitialized = useRef(false) // Add ref to track initialization
 
   // Calculate analytics from cuts data
   const calculateAnalytics = useCallback((cutsData: VideoCut[]) => {
@@ -140,6 +101,57 @@ export function useCuts() {
       category_breakdown: categoryBreakdown
     })
   }, [])
+
+  // Fetch cuts for current barber
+  const fetchCuts = useCallback(async () => {
+    if (!user) return
+
+    try {
+      setLoading(true)
+      console.log('Fetching cuts for user:', user.id)
+      
+      // Get barber ID
+      const { data: barberData, error: barberError } = await supabase
+        .from('barbers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (barberError) {
+        console.error('Error fetching barber data:', barberError)
+        throw barberError
+      }
+
+      console.log('Found barber data:', barberData)
+
+      // Fetch cuts
+      const { data: cutsData, error: cutsError } = await supabase
+        .from('cuts')
+        .select('*')
+        .eq('barber_id', barberData.id)
+        .order('created_at', { ascending: false })
+
+      if (cutsError) {
+        console.error('Error fetching cuts data:', cutsError)
+        throw cutsError
+      }
+
+      console.log('Found cuts data:', cutsData)
+
+      setCuts(cutsData || [])
+      
+      // Calculate analytics
+      if (cutsData && cutsData.length > 0) {
+        calculateAnalytics(cutsData)
+      }
+
+    } catch (error) {
+      console.error('Error fetching cuts:', error)
+      toast.error('Error', 'Failed to load your cuts.')
+    } finally {
+      setLoading(false)
+    }
+  }, [user, toast, calculateAnalytics])
 
   // Create new cut
   const createCut = useCallback(async (cutData: CreateCutData) => {
@@ -379,8 +391,50 @@ export function useCuts() {
 
   // Load cuts on mount
   useEffect(() => {
+    if (hasInitialized.current) return // Prevent infinite loops
+    hasInitialized.current = true
     fetchCuts()
   }, [fetchCuts])
+
+  // Manual refresh function that doesn't trigger infinite loops
+  const refreshCuts = useCallback(async () => {
+    if (!user) return
+    
+    try {
+      setLoading(true)
+      
+      // Get barber ID
+      const { data: barberData, error: barberError } = await supabase
+        .from('barbers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (barberError) throw barberError
+
+      // Fetch cuts
+      const { data: cutsData, error: cutsError } = await supabase
+        .from('cuts')
+        .select('*')
+        .eq('barber_id', barberData.id)
+        .order('created_at', { ascending: false })
+
+      if (cutsError) throw cutsError
+
+      setCuts(cutsData || [])
+      
+      // Calculate analytics
+      if (cutsData && cutsData.length > 0) {
+        calculateAnalytics(cutsData)
+      }
+
+    } catch (error) {
+      console.error('Error refreshing cuts:', error)
+      toast.error('Error', 'Failed to refresh cuts.')
+    } finally {
+      setLoading(false)
+    }
+  }, [user, toast, calculateAnalytics])
 
   return {
     cuts,
@@ -398,6 +452,6 @@ export function useCuts() {
     getFeaturedCuts,
     toggleFeatured,
     togglePublic,
-    refreshCuts: fetchCuts
+    refreshCuts
   }
 } 

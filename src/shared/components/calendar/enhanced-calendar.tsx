@@ -20,7 +20,8 @@ import {
   Phone,
   Mail,
   Scissors,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/shared/lib/supabase'
@@ -64,6 +65,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
   const [gotoDate, setGotoDate] = useState('')
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [isMarkingMissed, setIsMarkingMissed] = useState(false)
   const { user } = useAuth()
 
   // Minimum swipe distance (in px)
@@ -239,6 +241,24 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
     return getEventsForDate(date).length > 0
   }
 
+  const hasPastEvents = (date: Date) => {
+    const eventsForDate = getEventsForDate(date)
+    const now = new Date()
+    return eventsForDate.some(event => {
+      const eventEnd = new Date(event.end)
+      return eventEnd < now
+    })
+  }
+
+  const hasUpcomingEvents = (date: Date) => {
+    const eventsForDate = getEventsForDate(date)
+    const now = new Date()
+    return eventsForDate.some(event => {
+      const eventStart = new Date(event.start)
+      return eventStart > now
+    })
+  }
+
   const prevMonth = () => {
     setCurrentDate(subMonths(currentDate, 1))
   }
@@ -263,6 +283,45 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
     onEventClick?.(event)
   }
 
+  const handleMarkAsMissed = async () => {
+    if (!selectedEvent) return
+    
+    setIsMarkingMissed(true)
+    try {
+      // Update the booking status in the database
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'cancelled', // Using 'cancelled' instead of 'missed' due to DB constraint
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedEvent.id)
+
+      if (error) {
+        console.error('Error marking booking as missed:', error)
+        throw error
+      }
+
+      // Update the local event state
+      setSelectedEvent(prev => prev ? {
+        ...prev,
+        extendedProps: {
+          ...prev.extendedProps,
+          status: 'cancelled'
+        }
+      } : null)
+
+      // Refresh the events to update the calendar
+      await fetchBookings()
+
+      console.log('Booking marked as missed successfully')
+    } catch (error) {
+      console.error('Failed to mark booking as missed:', error)
+    } finally {
+      setIsMarkingMissed(false)
+    }
+  }
+
   const formatTime = (date: Date) => {
     return format(date, 'h:mm a')
   }
@@ -279,76 +338,151 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
       <style dangerouslySetInnerHTML={{
         __html: `
           .calendar-container {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 24px;
+            backdrop-filter: blur(3xl);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           }
           
           .calendar-day {
-            transition: all 0.3s ease;
-            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 16px;
             position: relative;
             overflow: hidden;
-            min-height: 60px;
+            min-height: 64px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
           }
           
           .calendar-day:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.25);
+            background: rgba(255, 193, 7, 0.1);
+            border-color: rgba(255, 193, 7, 0.3);
           }
           
           .calendar-day:active {
-            transform: scale(0.95);
+            transform: scale(0.96);
           }
           
-          .calendar-day.has-events::after {
-            content: '';
-            position: absolute;
-            bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 6px;
-            height: 6px;
-            background: #ffc107;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+          .calendar-day.has-upcoming-events {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 140, 0, 0.2) 100%);
+            border: 2px solid rgba(255, 193, 7, 0.4);
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+            animation: pulse-orange 2s infinite;
+          }
+          
+          .calendar-day.has-upcoming-events:hover {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%);
+            box-shadow: 0 0 25px rgba(255, 193, 7, 0.4);
+          }
+          
+          .calendar-day.has-past-events {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.2) 100%);
+            border: 2px solid rgba(34, 197, 94, 0.4);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+            animation: pulse-green 2s infinite;
+          }
+          
+          .calendar-day.has-past-events:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.3) 100%);
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
+          }
+          
+          @keyframes pulse-orange {
+            0%, 100% { 
+              opacity: 1; 
+              box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+            }
+            50% { 
+              opacity: 0.8; 
+              box-shadow: 0 0 30px rgba(255, 193, 7, 0.5);
+            }
+          }
+          
+          @keyframes pulse-green {
+            0%, 100% { 
+              opacity: 1; 
+              box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+            }
+            50% { 
+              opacity: 0.8; 
+              box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
+            }
           }
           
           .calendar-day.selected {
             background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
             color: white;
-            transform: scale(1.05);
-            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.4);
-          }
-          
-          .calendar-day.today {
-            background: rgba(255, 193, 7, 0.2);
-            border: 2px solid #ffc107;
-            color: #ffc107;
+            transform: scale(1.08);
+            box-shadow: 0 16px 40px rgba(255, 193, 7, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             font-weight: bold;
           }
           
+          .calendar-day.today {
+            background: rgba(255, 193, 7, 0.15);
+            border: 2px solid #ffc107;
+            color: #ffc107;
+            font-weight: bold;
+            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+          }
+          
+          .calendar-day.today:hover {
+            background: rgba(255, 193, 7, 0.25);
+            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.4);
+          }
+          
           .event-item {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 140, 0, 0.1) 100%);
-            border: 1px solid rgba(255, 193, 7, 0.3);
-            border-radius: 12px;
-            transition: all 0.3s ease;
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            backdrop-filter: blur(10px);
           }
           
-          .event-item:hover {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 140, 0, 0.2) 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+          .event-item.upcoming {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 140, 0, 0.08) 100%);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+          }
+          
+          .event-item.upcoming:hover {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 140, 0, 0.15) 100%);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.25);
+            border-color: rgba(255, 193, 7, 0.4);
+          }
+          
+          .event-item.past {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(22, 163, 74, 0.08) 100%);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+          }
+          
+          .event-item.past:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.15) 100%);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 35px rgba(34, 197, 94, 0.25);
+            border-color: rgba(34, 197, 94, 0.4);
+          }
+          
+          .event-item.missed {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.08) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+          }
+          
+          .event-item.missed:hover {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 35px rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.4);
           }
           
           .event-item:active {
@@ -359,33 +493,38 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            margin-bottom: 1rem;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
           }
           
           .calendar-nav-button {
-            background: rgba(255, 193, 7, 0.2);
+            background: rgba(255, 193, 7, 0.15);
             border: 1px solid rgba(255, 193, 7, 0.3);
             color: #ffc107;
-            border-radius: 12px;
-            padding: 0.75rem;
+            border-radius: 16px;
+            padding: 0.875rem;
             cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 48px;
-            min-height: 48px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 52px;
+            min-height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            backdrop-filter: blur(10px);
           }
           
           .calendar-nav-button:hover {
-            background: rgba(255, 193, 7, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+            background: rgba(255, 193, 7, 0.25);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.3);
+            border-color: rgba(255, 193, 7, 0.5);
           }
           
           .calendar-nav-button:active {
@@ -393,62 +532,71 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .calendar-title {
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 1.75rem;
+            font-weight: 700;
             color: white;
             text-align: center;
             flex: 1;
-            margin: 0 1rem;
+            margin: 0 1.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            letter-spacing: -0.025em;
           }
           
           .weekdays-header {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            padding: 0 0.5rem;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding: 0 0.75rem;
           }
           
           .weekday {
             text-align: center;
-            font-weight: 600;
+            font-weight: 700;
             color: #ffc107;
             font-size: 0.875rem;
-            padding: 0.5rem 0;
+            padding: 0.75rem 0;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.75px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
           }
           
           .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 0.5rem;
-            padding: 0 0.5rem;
+            gap: 0.75rem;
+            padding: 0 0.75rem;
           }
           
           .calendar-day.other-month {
-            color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.01);
+            border-color: rgba(255, 255, 255, 0.02);
           }
           
           .today-button {
             background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
             color: white;
             border: none;
-            border-radius: 12px;
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
+            border-radius: 16px;
+            padding: 1rem 2rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 1.5rem;
             width: 100%;
-            min-height: 48px;
+            min-height: 56px;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            font-size: 1.1rem;
+            letter-spacing: 0.025em;
           }
           
           .today-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 16px 40px rgba(255, 193, 7, 0.4);
           }
           
           .today-button:active {
@@ -456,90 +604,121 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .events-panel {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 1rem;
-            margin-top: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
           }
           
           .event-list {
-            max-height: 300px;
+            max-height: 350px;
             overflow-y: auto;
-            padding-right: 0.5rem;
+            padding-right: 0.75rem;
           }
           
           .event-list::-webkit-scrollbar {
-            width: 4px;
+            width: 6px;
           }
           
           .event-list::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
           }
           
           .event-list::-webkit-scrollbar-thumb {
-            background: rgba(255, 193, 7, 0.5);
-            border-radius: 2px;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.6) 0%, rgba(255, 140, 0, 0.6) 100%);
+            border-radius: 3px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           }
           
           .event-list::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 193, 7, 0.7);
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.8) 0%, rgba(255, 140, 0, 0.8) 100%);
           }
           
           /* Mobile optimizations */
           @media (max-width: 768px) {
             .calendar-day {
-              min-height: 50px;
-              font-size: 0.875rem;
+              min-height: 56px;
+              font-size: 0.9rem;
+              border-radius: 14px;
             }
             
             .calendar-title {
-              font-size: 1.25rem;
+              font-size: 1.5rem;
             }
             
             .calendar-nav-button {
-              min-width: 44px;
-              min-height: 44px;
-              padding: 0.5rem;
+              min-width: 48px;
+              min-height: 48px;
+              padding: 0.75rem;
+              border-radius: 14px;
             }
             
             .weekday {
-              font-size: 0.75rem;
-              padding: 0.25rem 0;
+              font-size: 0.8rem;
+              padding: 0.5rem 0;
             }
             
             .calendar-grid {
-              gap: 0.25rem;
+              gap: 0.5rem;
             }
             
             .event-item {
-              padding: 0.75rem;
+              padding: 1rem;
+              border-radius: 14px;
+            }
+            
+            .calendar-header {
+              padding: 1.25rem;
+              border-radius: 18px;
+            }
+            
+            .events-panel {
+              padding: 1.25rem;
+              border-radius: 18px;
             }
           }
           
           @media (max-width: 480px) {
             .calendar-day {
-              min-height: 45px;
-              font-size: 0.8rem;
+              min-height: 52px;
+              font-size: 0.85rem;
+              border-radius: 12px;
             }
             
             .calendar-title {
-              font-size: 1.125rem;
+              font-size: 1.375rem;
             }
             
             .calendar-nav-button {
-              min-width: 40px;
-              min-height: 40px;
-              padding: 0.5rem;
+              min-width: 44px;
+              min-height: 44px;
+              padding: 0.625rem;
+              border-radius: 12px;
+            }
+            
+            .weekday {
+              font-size: 0.75rem;
+              padding: 0.375rem 0;
+            }
+            
+            .calendar-grid {
+              gap: 0.375rem;
+            }
+            
+            .event-item {
+              padding: 0.875rem;
+              border-radius: 12px;
             }
           }
         `
       }} />
 
       <div 
-        className="calendar-container p-4"
+        className="calendar-container p-6"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -551,7 +730,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             onClick={prevMonth}
             aria-label="Previous month"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
           
           <h2 className="calendar-title">
@@ -563,20 +742,20 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             onClick={nextMonth}
             aria-label="Next month"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-6 h-6" />
           </button>
         </div>
 
         {/* Weekdays Header + Calendar Grid aligned */}
         <div className="w-full">
-          <div className="weekdays-header" style={{ gap: 0, padding: 0 }}>
+          <div className="weekdays-header">
             {weekdays.map(day => (
               <div key={day} className="weekday">
                 {day}
               </div>
             ))}
           </div>
-          <div className="calendar-grid" style={{ gap: 0, padding: 0 }}>
+          <div className="calendar-grid">
             {calendarDays.map((day, index) => {
               const isCurrentMonth = isSameMonth(day, currentDate)
               const isTodayDate = isToday(day)
@@ -590,7 +769,8 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                     !isCurrentMonth && "other-month",
                     isTodayDate && "today",
                     isSelected && "selected",
-                    dayEvents.length > 0 && "has-events"
+                    hasPastEvents(day) && "has-past-events",
+                    hasUpcomingEvents(day) && "has-upcoming-events"
                   )}
                   onClick={() => handleDateClick(day)}
                   role="button"
@@ -622,52 +802,77 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         {/* Events Panel */}
         {selectedDate && (
           <div className="events-panel">
-            <h3 className="text-white font-semibold mb-3">
+            <h3 className="text-white font-bold text-lg mb-4 flex items-center">
+              <CalendarIcon className="w-5 h-5 mr-2 text-saffron" />
               {format(selectedDate, 'EEEE, MMMM d, yyyy')}
             </h3>
             
             <div className="event-list">
               {getEventsForDate(selectedDate).length > 0 ? (
-                getEventsForDate(selectedDate).map((event) => (
-                  <div
-                    key={event.id}
-                    className="event-item p-3 mb-2"
-                    onClick={() => handleEventClick(event)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        handleEventClick(event)
-                      }
-                    }}
-                    aria-label={`Event: ${event.title}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-white font-medium text-sm">
-                          {event.extendedProps.serviceName}
-                        </h4>
-                        <p className="text-white/80 text-xs">
-                          {event.extendedProps.clientName}
-                        </p>
-                        <div className="flex items-center text-xs text-saffron mt-1">
-                          <Clock className="w-3 h-3 mr-1" />
-                          <span>{formatTime(new Date(event.start))}</span>
+                getEventsForDate(selectedDate).map((event) => {
+                  const eventEnd = new Date(event.end)
+                  const now = new Date()
+                  const isPast = eventEnd < now
+                  const isUpcoming = new Date(event.start) > now
+                  const isMissed = event.extendedProps.status === 'cancelled'
+                  
+                  return (
+                    <div
+                      key={event.id}
+                      className={cn(
+                        "event-item p-4 mb-3",
+                        isMissed ? "missed" : isPast ? "past" : "upcoming"
+                      )}
+                      onClick={() => handleEventClick(event)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleEventClick(event)
+                        }
+                      }}
+                      aria-label={`Event: ${event.title}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold text-sm mb-1">
+                            {event.extendedProps.serviceName}
+                          </h4>
+                          <p className="text-white/80 text-xs mb-2">
+                            {event.extendedProps.clientName}
+                          </p>
+                          <div className={cn(
+                            "flex items-center text-xs",
+                            isMissed ? "text-red-400" : isPast ? "text-green-400" : "text-saffron"
+                          )}>
+                            <Clock className={cn("w-3 h-3 mr-1", isMissed ? "text-red-400" : isPast ? "text-green-400" : "text-saffron")} />
+                            <span className="font-medium">{formatTime(new Date(event.start))}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge 
+                            variant="secondary" 
+                            className={cn(
+                              "text-xs font-semibold",
+                              isMissed
+                                ? "bg-red-500/20 text-red-400 border-red-500/30"
+                                : isPast 
+                                  ? "bg-green-500/20 text-green-400 border-green-500/30" 
+                                  : "bg-saffron/20 text-saffron border-saffron/30"
+                            )}
+                          >
+                            ${event.extendedProps.basePrice}
+                          </Badge>
                         </div>
                       </div>
-                                             <div className="text-right">
-                         <Badge variant="secondary" className="text-xs">
-                           ${event.extendedProps.basePrice}
-                         </Badge>
-                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               ) : (
-                <div className="text-center py-6">
-                  <CalendarIcon className="w-8 h-8 mx-auto text-white/40 mb-2" />
-                  <p className="text-white/60 text-sm">No events for this day</p>
+                <div className="text-center py-8">
+                  <CalendarIcon className="w-12 h-12 mx-auto text-white/30 mb-3" />
+                  <p className="text-white/60 text-sm">No events scheduled for this date</p>
                 </div>
               )}
             </div>
@@ -677,38 +882,83 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
 
       {/* Event Detail Dialog */}
       <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="bg-darkpurple/95 backdrop-blur-xl border border-white/20 max-w-md mx-4">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Scissors className="w-5 h-5 text-saffron" />
-              Appointment Details
-            </DialogTitle>
-            <DialogDescription className="text-white/80">
-              {selectedEvent && formatDate(new Date(selectedEvent.start))}
-            </DialogDescription>
+        <DialogContent className="bg-black/90 backdrop-blur-3xl border border-white/20 max-w-md mx-4 rounded-2xl shadow-2xl">
+          <DialogHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-saffron/20 rounded-xl">
+                  <Scissors className="w-6 h-6 text-saffron" />
+                </div>
+                <div>
+                  <DialogTitle className="text-white text-xl font-bold">
+                    Appointment Details
+                  </DialogTitle>
+                  <DialogDescription className="text-white/70 text-sm">
+                    {selectedEvent && formatDate(new Date(selectedEvent.start))}
+                  </DialogDescription>
+                </div>
+              </div>
+            </div>
           </DialogHeader>
           
           {selectedEvent && (
-            <div className="space-y-4">
-              <div className="bg-white/10 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-2">
-                  {selectedEvent.extendedProps.serviceName}
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-white/80">
-                    <User className="w-4 h-4 text-saffron" />
-                    <span>{selectedEvent.extendedProps.clientName}</span>
+            <div className="space-y-6">
+              {/* Service Card */}
+              <div className={cn(
+                "rounded-2xl p-6 transition-all duration-300 border",
+                selectedEvent.extendedProps.status === 'cancelled' 
+                  ? "bg-red-500/10 border-red-500/30 shadow-lg shadow-red-500/20" 
+                  : "bg-white/5 border-white/10 shadow-lg"
+              )}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white font-bold text-lg">
+                    {selectedEvent.extendedProps.serviceName}
+                  </h3>
+                  <Badge 
+                    variant="secondary" 
+                    className={cn(
+                      "text-xs font-semibold",
+                      selectedEvent.extendedProps.status === 'cancelled' 
+                        ? "bg-red-500/20 text-red-400 border-red-500/30" 
+                        : "bg-saffron/20 text-saffron border-saffron/30"
+                    )}
+                  >
+                    ${selectedEvent.extendedProps.price}
+                  </Badge>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                    <div className="p-2 bg-saffron/20 rounded-lg">
+                      <User className="w-4 h-4 text-saffron" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-xs uppercase tracking-wide">Client</p>
+                      <p className="text-white font-semibold">{selectedEvent.extendedProps.clientName}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-white/80">
-                    <Clock className="w-4 h-4 text-saffron" />
-                    <span>
-                      {formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}
-                    </span>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                    <div className="p-2 bg-saffron/20 rounded-lg">
+                      <Clock className="w-4 h-4 text-saffron" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-xs uppercase tracking-wide">Time</p>
+                      <p className="text-white font-semibold">
+                        {formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}
+                      </p>
+                    </div>
                   </div>
-                                     <div className="flex items-center gap-2 text-white/80">
-                     <DollarSign className="w-4 h-4 text-saffron" />
-                     <span>${selectedEvent.extendedProps.price}</span>
-                   </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                    <div className="p-2 bg-saffron/20 rounded-lg">
+                      <DollarSign className="w-4 h-4 text-saffron" />
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-xs uppercase tracking-wide">Total</p>
+                      <p className="text-white font-semibold">${selectedEvent.extendedProps.price}</p>
+                    </div>
+                  </div>
                    
                    {/* Price breakdown */}
                    {selectedEvent.extendedProps.addonTotal > 0 && (
@@ -759,13 +1009,38 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between">
                 <Badge 
                   variant={selectedEvent.extendedProps.status === 'confirmed' ? 'default' : 'secondary'}
-                  className="text-xs"
+                  className={cn(
+                    "text-xs",
+                    selectedEvent.extendedProps.status === 'cancelled' && "bg-red-500/20 text-red-400 border-red-500/30"
+                  )}
                 >
                   {selectedEvent.extendedProps.status}
                 </Badge>
+                
+                {selectedEvent.extendedProps.status !== 'cancelled' && (
+                  <Button
+                    onClick={handleMarkAsMissed}
+                    disabled={isMarkingMissed}
+                    variant="destructive"
+                    size="sm"
+                    className="bg-red-500 hover:bg-red-600 text-white"
+                  >
+                    {isMarkingMissed ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Marking...
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-4 h-4 mr-2" />
+                        Mark as Missed
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           )}

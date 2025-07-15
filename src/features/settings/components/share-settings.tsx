@@ -174,7 +174,7 @@ export function ShareSettings() {
 
   if (isLoading) {
     return (
-      <Card className="mb-6 bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+      <Card className="mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
         <CardContent className="p-6">
           <div className="flex items-center justify-center min-h-[200px]">
             <div className="text-center space-y-4">
@@ -191,10 +191,8 @@ export function ShareSettings() {
   }
 
   return (
-    <Card className="mb-6 bg-gradient-to-br from-saffron/10 via-darkpurple/90 to-saffron/5 border border-saffron/20 shadow-2xl backdrop-blur-xl overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-saffron/5 to-transparent" />
-      
-      <CardHeader className="relative p-6 border-b border-saffron/20">
+    <Card className="mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl overflow-hidden">
+      <CardHeader className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-saffron/20 rounded-full">
             <Share2 className="h-6 w-6 text-saffron" />
@@ -210,10 +208,10 @@ export function ShareSettings() {
         </div>
       </CardHeader>
 
-      <CardContent className="relative p-6 space-y-6">
+      <CardContent className="p-6 space-y-6">
         {/* Profile Status */}
         {!profileData.is_public && (
-          <Alert className="border-yellow-500/20 bg-yellow-500/10">
+          <Alert className="border-yellow-500/20 bg-yellow-500/10 rounded-2xl">
             <AlertCircle className="h-4 w-4 text-yellow-500" />
             <AlertDescription className="text-yellow-800">
               Your profile is currently private. 
@@ -291,14 +289,14 @@ export function ShareSettings() {
 
         {/* QR Code Modal */}
         {showQR && isLinkValid && (
-          <div className="mt-6 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl">
+          <div className="mt-6 p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl">
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center gap-2 mb-4">
                 <QrCode className="h-5 w-5 text-saffron" />
                 <h3 className="text-lg font-semibold text-white">QR Code</h3>
               </div>
               <div className="flex justify-center">
-                <div className="p-4 bg-white rounded-2xl shadow-lg">
+                <div className="p-4 bg-white rounded-3xl shadow-lg">
                   <QRCode
                     value={bookingLink}
                     size={200}
@@ -334,7 +332,7 @@ export function ShareSettings() {
                 }}
                 variant="outline"
                 size="sm"
-                className="border-saffron/30 text-saffron hover:bg-saffron/10"
+                className="border-saffron/30 text-saffron hover:bg-saffron/10 rounded-2xl"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download QR Code
@@ -344,7 +342,7 @@ export function ShareSettings() {
         )}
 
         {/* Tips Section */}
-        <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+        <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-3xl">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-saffron/20 rounded-full">
               <Sparkles className="h-4 w-4 text-saffron" />

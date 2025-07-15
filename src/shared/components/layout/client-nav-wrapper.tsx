@@ -6,7 +6,9 @@ import React from "react";
 
 export default function ClientNavWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [pathname, setPathname] = React.useState('');
+  // Remove pathname state and useEffect, use window.location.pathname directly
+  // If using Next.js App Router, use: import { usePathname } from 'next/navigation'; const pathname = usePathname();
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -15,14 +17,14 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
     
     // Get pathname immediately if possible
     if (typeof window !== 'undefined') {
-      setPathname(window.location.pathname);
+      // setPathname(window.location.pathname); // This line is removed
       console.log('ClientNavWrapper - Current pathname:', window.location.pathname);
     }
 
     // Listen for route changes
     const handleRouteChange = () => {
       if (typeof window !== 'undefined') {
-        setPathname(window.location.pathname);
+        // setPathname(window.location.pathname); // This line is removed
         console.log('ClientNavWrapper - Route changed to:', window.location.pathname);
       }
     };
@@ -36,21 +38,14 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
   }, []);
 
   // Define pages where navigation should be hidden
-  const hiddenPages = ["/", "/landing", "/login", "/register", "/barber/onboarding"];
+  // Only hide nav on home and landing
+  const hiddenPages = ["/", "/landing"];
   
-  // Define pages where floating nav should be hidden
-  const hideFloatingNavPages = ["/", "/login", "/register", "/landing", "/profile"];
-  const hideFloatingNavPaths = ['/settings/barber-profile', '/profile'];
-
   // Determine what to show
   const showNavbar = !hiddenPages.includes(pathname);
-  const hideFloatingNav = hideFloatingNavPages.includes(pathname) || 
-                          hideFloatingNavPaths.some(path => pathname.startsWith(path));
-  const showMobileNav = !hiddenPages.includes(pathname);
-
-  // For settings page specifically, ensure navigation shows
   const isSettingsPage = pathname.startsWith('/settings');
-  const shouldShowNav = mounted && (showNavbar || isSettingsPage);
+  const shouldShowNav = showNavbar || isSettingsPage;
+  const showMobileNav = showNavbar || isSettingsPage;
 
   // Debug logging
   React.useEffect(() => {
@@ -61,14 +56,13 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
       isSettingsPage,
       shouldShowNav,
       showMobileNav,
-      hideFloatingNav
     });
-  }, [pathname, mounted, showNavbar, isSettingsPage, shouldShowNav, showMobileNav, hideFloatingNav]);
+  }, [pathname, mounted, showNavbar, isSettingsPage, shouldShowNav, showMobileNav]);
 
   return (
     <>
       {shouldShowNav && <Navbar />}
-      <div className={showMobileNav ? "pb-20 md:pb-0" : ""}>
+      <div>
         {children}
       </div>
       {showMobileNav && <MobileNav />}

@@ -220,10 +220,10 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
   }
 
   return (
-    <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-      <CardHeader>
+    <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
+      <CardHeader className="bg-white/5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-saffron/20 rounded-lg">
+          <div className="p-2 bg-saffron/20 rounded-full">
             <Package className="h-5 w-5 text-saffron" />
           </div>
           <div>
@@ -325,7 +325,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
           </h3>
           
           {addons.length === 0 ? (
-            <Alert className="bg-white/5 border-white/10">
+            <Alert className="bg-white/5 border-white/10 rounded-2xl">
               <Package className="h-4 w-4 text-white/60" />
               <AlertDescription className="text-white/70">
                 No add-ons created yet. Add your first add-on above to get started.
@@ -336,7 +336,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
               {addons.map((addon) => (
                 <div
                   key={addon.id}
-                  className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10"
+                  className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">

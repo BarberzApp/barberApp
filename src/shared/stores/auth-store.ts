@@ -10,6 +10,7 @@ export type User = {
   name: string
   email: string
   role?: "client" | "barber" // Make role optional to handle OAuth users without roles
+  username?: string
   phone?: string
   location?: string
   description?: string
@@ -177,6 +178,7 @@ export const useAuthStore = create<AuthStore>()(
           name: profile.name,
           email: profile.email,
           role: profile.role || undefined, // Handle null/empty role
+          username: profile.username,
           phone: profile.phone,
           location: profile.location,
           description: profile.bio,
@@ -288,6 +290,7 @@ export const useAuthStore = create<AuthStore>()(
           name: profile.name,
           email: profile.email,
           role: profile.role || undefined, // Handle null/empty role
+          username: profile.username,
           phone: profile.phone,
           location: profile.location,
           description: profile.bio,
@@ -407,6 +410,7 @@ export const useAuthStore = create<AuthStore>()(
             name: profile.name,
             email: profile.email,
             role: profile.role,
+            username: profile.username,
             phone: profile.phone,
             location: profile.location,
             description: profile.bio,

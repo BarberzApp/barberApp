@@ -109,31 +109,32 @@ export default function LandingPage() {
   const features = [
     {
       number: "01",
-      title: "Smart Booking System",
-      description: "Automated scheduling that reduces no-shows by 80% and fills your chair with premium clients.",
-      icon: Calendar,
+      title: "Social Media Integration",
+      description: "Connect your Instagram, Twitter, and Facebook to showcase your best cuts, share your portfolio, and attract new clients directly from your profile.",
+      icon: Star, // Use Star as a placeholder for social media
       color: "bg-saffron/20 text-saffron"
     },
     {
       number: "02", 
       title: "Revenue Optimization",
-      description: "AI-powered pricing suggestions and service bundling to maximize your earnings per client.",
+      description: "Boost your earnings with smart pricing, service add-ons, and analytics that help you maximize every booking.",
       icon: DollarSign,
       color: "bg-secondary/20 text-secondary"
     },
     {
       number: "03",
-      title: "Client Management",
-      description: "Complete client profiles, preferences, and history to deliver personalized experiences.",
-      icon: Users,
-      color: "bg-saffron/20 text-saffron"
+      title: "Reach System",
+      description: "Expand your client base with our upcoming Reach System—get discovered by more clients and grow your business faster.",
+      icon: Zap,
+      color: "bg-primary/20 text-primary",
+      beta: true // Custom property to flag Beta
     },
     {
       number: "04",
-      title: "Marketing Automation",
-      description: "Automated follow-ups, birthday wishes, and rebooking reminders to keep clients coming back.",
-      icon: Zap,
-      color: "bg-primary/20 text-primary"
+      title: "Client Management",
+      description: "Easily manage client profiles, preferences, and booking history to deliver a personalized experience every time.",
+      icon: Users,
+      color: "bg-saffron/20 text-saffron"
     }
   ];
 
@@ -159,7 +160,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Mobile: logo + hamburger only */}
           <div className="flex items-center w-full md:w-auto justify-between md:justify-start">
-            <Link href="/" className="text-xl sm:text-2xl font-bebas font-bold text-primary">
+            <Link href="/" className="text-xl sm:text-2xl font-bold text-primary">
               BOCM
             </Link>
             {/* Hamburger menu only on mobile */}
@@ -273,15 +274,15 @@ export default function LandingPage() {
               <div className="flex flex-wrap gap-4 sm:gap-6 pt-6 sm:pt-8">
                 <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-3 sm:py-4 min-w-[100px] sm:min-w-[120px]">
                   <span className="text-2xl sm:text-3xl font-bebas text-saffron">1000+</span>
-                  <span className="text-xs sm:text-sm text-white/80 font-medium">Stylists</span>
+                  <span className="text-xs sm:text-sm text-white/80 font-bold uppercase tracking-wide">Stylists</span>
                 </div>
                 <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-3 sm:py-4 min-w-[100px] sm:min-w-[120px]">
                   <span className="text-2xl sm:text-3xl font-bebas text-white">10,000+</span>
-                  <span className="text-xs sm:text-sm text-white/80 font-medium">Bookings</span>
+                  <span className="text-xs sm:text-sm text-white/80 font-bold uppercase tracking-wide">Bookings</span>
                 </div>
                 <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-3 sm:py-4 min-w-[100px] sm:min-w-[120px]">
                   <span className="text-2xl sm:text-3xl font-bebas text-saffron">4.9/5</span>
-                  <span className="text-xs sm:text-sm text-white/80 font-medium">Rating</span>
+                  <span className="text-xs sm:text-sm text-white/80 font-bold uppercase tracking-wide">Rating</span>
                 </div>
               </div>
             </div>
@@ -291,7 +292,7 @@ export default function LandingPage() {
               <div className="bg-darkpurple/90 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/10">
                 <div className="space-y-4 sm:space-y-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg sm:text-xl font-semibold text-white">Revenue Dashboard</h3>
+                    <h3 className="text-lg sm:text-xl font-extrabold text-white">Revenue Dashboard</h3>
                     <div className="flex items-center text-saffron">
                       <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       <span className="text-sm font-medium">+40%</span>
@@ -324,7 +325,7 @@ export default function LandingPage() {
       <section id="calculator" className="py-16 sm:py-20 bg-white/5 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bebas font-bold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
               The "Holy Sh*t" Moment
             </h2>
             <p className="text-lg sm:text-xl text-white/80 max-w-2xl mx-auto">
@@ -421,7 +422,7 @@ export default function LandingPage() {
       <section id="features" className="py-16 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bebas font-bold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
               Everything You Need to Scale
             </h2>
             <p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto">
@@ -433,17 +434,24 @@ export default function LandingPage() {
             {features.map((feature, index) => (
               <div 
                 key={index}
-                className="group bg-white/5 backdrop-blur-sm rounded-2xl p-5 sm:p-6 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2"
+                className="group bg-white/5 backdrop-blur-sm rounded-2xl p-5 sm:p-6 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2 relative"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${feature.color}`}>
                     <feature.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <span className="text-3xl sm:text-4xl font-bebas text-white/20 group-hover:text-white/30 transition-colors">
+                  <span className="text-3xl sm:text-4xl text-white/20 group-hover:text-white/30 transition-colors">
                     {feature.number}
                   </span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-3">{feature.title}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg sm:text-xl font-semibold text-white mb-0">{feature.title}</h3>
+                  {feature.beta && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-saffron/80 to-secondary/80 text-xs font-bold text-black shadow-sm border border-saffron/40 animate-pulse">
+                      Beta
+                    </span>
+                  )}
+                </div>
                 <p className="text-white/70 leading-relaxed text-sm sm:text-base">{feature.description}</p>
               </div>
             ))}
@@ -455,7 +463,7 @@ export default function LandingPage() {
       <section id="testimonials" className="py-16 sm:py-20 bg-white/5 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bebas font-bold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
               Real Results from Real Barbers
             </h2>
             <p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto">
@@ -505,7 +513,7 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <div className="bg-gradient-to-br from-saffron/20 to-secondary/20 backdrop-blur-sm rounded-3xl p-8 sm:p-12 border border-white/10">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bebas font-bold text-white mb-4 sm:mb-6">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4 sm:mb-6">
               Ready to Scale Your Business?
             </h2>
             <p className="text-lg sm:text-xl text-white/80 mb-6 sm:mb-8 max-w-2xl mx-auto">
@@ -535,7 +543,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             <div>
-              <h3 className="text-xl sm:text-2xl font-bebas font-bold text-white mb-4">BOCM</h3>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-white mb-4">BOCM</h3>
               <p className="text-white/60 text-sm sm:text-base">
                 The platform that transforms barber businesses into empires.
               </p>

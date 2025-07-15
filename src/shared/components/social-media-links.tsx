@@ -19,6 +19,28 @@ interface SocialMediaLinksProps {
   shareTitle?: string
 }
 
+// Utility function to convert handles to proper social media URLs
+function getSocialMediaUrl(handle: string, platform: string): string {
+  if (!handle) return '';
+  
+  // Remove @ if present and trim whitespace
+  const cleanHandle = handle.replace(/^@/, '').trim();
+  
+  switch (platform) {
+    case 'instagram':
+      return `https://instagram.com/${cleanHandle}`;
+    case 'twitter':
+      return `https://twitter.com/${cleanHandle}`;
+    case 'tiktok':
+      return `https://tiktok.com/@${cleanHandle}`;
+    case 'facebook':
+      // Facebook can be either a page name or username
+      return `https://facebook.com/${cleanHandle}`;
+    default:
+      return handle; // Return as-is if unknown platform
+  }
+}
+
 export function SocialMediaLinks({
   instagram,
   twitter,
@@ -90,21 +112,21 @@ export function SocialMediaLinks({
   const socialLinks = [
     {
       platform: 'instagram',
-      url: instagram,
+      url: getSocialMediaUrl(instagram || '', 'instagram'),
       icon: Instagram,
       color: 'hover:text-social-instagram',
       label: 'Instagram'
     },
     {
       platform: 'twitter',
-      url: twitter,
+      url: getSocialMediaUrl(twitter || '', 'twitter'),
       icon: Twitter,
       color: 'hover:text-social-twitter',
       label: 'Twitter'
     },
     {
       platform: 'facebook',
-      url: facebook,
+      url: getSocialMediaUrl(facebook || '', 'facebook'),
       icon: Facebook,
       color: 'hover:text-social-facebook',
       label: 'Facebook'
@@ -114,7 +136,7 @@ export function SocialMediaLinks({
   if (tiktok) {
     socialLinks.push({
       platform: 'tiktok',
-      url: tiktok,
+      url: getSocialMediaUrl(tiktok, 'tiktok'),
       icon: TikTokIcon as any, // Type assertion to avoid interface mismatch
       color: 'hover:text-social-tiktok',
       label: 'TikTok'

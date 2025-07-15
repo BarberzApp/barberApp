@@ -1,10 +1,10 @@
 "use client"
 
-import { Card, CardContent, CardFooter } from "@/shared/components/ui/card"
+import { Card, CardContent } from "@/shared/components/ui/card"
 import { Button } from "@/shared/components/ui/button"
 import { Badge } from "@/shared/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
-import { MapPin, Star, Clock, MessageSquare, Briefcase, Info, Calendar, DollarSign, Scissors, TrendingUp, Phone, Mail, Globe } from "lucide-react"
+import { MapPin, Star, Clock, MessageSquare, Briefcase, Info, Calendar, DollarSign, Scissors, TrendingUp, Phone, Mail, Globe, Heart } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip"
 import { motion } from "framer-motion"
 import Link from "next/link"
@@ -52,48 +52,19 @@ export function BarberCard({ barber, className }: BarberCardProps) {
       <motion.div 
         whileHover={{ y: -8 }} 
         transition={{ type: "spring", stiffness: 300 }}
-        className="group"
+        className="group h-full"
       >
-        <Card className={`overflow-hidden h-full border border-white/10 bg-darkpurple/90 shadow-2xl backdrop-blur-xl hover:border-saffron/30 transition-all duration-300 group-hover:shadow-saffron/20 ${className || ''}`}>
-          <CardContent className="p-0 pb-8 sm:pb-0">
-            <div className="relative">
-              {/* Hero Section with Avatar */}
-              <div className="relative h-48 bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 flex items-center justify-center overflow-hidden">
-                {/* Background Pattern */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="absolute top-4 left-4 w-20 h-20 border border-white/20 rounded-full"></div>
-                  <div className="absolute bottom-4 right-4 w-16 h-16 border border-white/20 rounded-full"></div>
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-white/20 rounded-full"></div>
-                </div>
-                
-                {/* Main Avatar */}
-                <Avatar className="h-24 w-24 aspect-square border-4 border-white/20 shadow-2xl relative z-10 overflow-hidden">
-                  {barber.image && barber.image !== "/placeholder.svg" ? (
-                    <AvatarImage src={barber.image} alt={barber.name} className="object-cover w-full h-full aspect-square" />
-                  ) : null}
-                  <AvatarFallback className="bg-saffron text-primary font-bold text-xl w-full h-full flex items-center justify-center aspect-square">
-                    {barber.name?.charAt(0) || "B"}
-                  </AvatarFallback>
-                </Avatar>
-
-                {/* Portfolio preview (if available) */}
-                {barber.portfolio && barber.portfolio.length > 0 && (
-                  <div className="absolute bottom-3 right-3 flex gap-1">
-                    {barber.portfolio.slice(0, 3).map((image, index) => (
-                      <div key={index} className="h-8 w-8 rounded-md overflow-hidden border-2 border-white/30 shadow-lg backdrop-blur-sm">
-                        <Image
-                          src={image || "/placeholder.svg"}
-                          alt={`${barber.name}'s work`}
-                          width={32}
-                          height={32}
-                          className="object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+        <Card className={`overflow-hidden h-full flex flex-col border border-white/10 bg-black shadow-2xl backdrop-blur-xl hover:border-saffron/30 transition-all duration-300 group-hover:shadow-saffron/20 ${className || ''}`}> 
+          <CardContent className="p-0 flex flex-col flex-grow h-full">
+            {/* Cover Photo Section */}
+            <div className="relative h-48 bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-4 left-4 w-20 h-20 border border-white/20 rounded-full"></div>
+                <div className="absolute bottom-4 right-4 w-16 h-16 border border-white/20 rounded-full"></div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-white/20 rounded-full"></div>
               </div>
-
+              
               {/* Status badges */}
               <div className="absolute top-3 left-3 flex gap-2">
                 {barber.trending && (
@@ -108,41 +79,72 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                   </Badge>
                 )}
               </div>
-              
-              {/* Favorite button removed */}
+
+              {/* Portfolio preview (if available) */}
+              {barber.portfolio && barber.portfolio.length > 0 && (
+                <div className="absolute bottom-3 right-3 flex gap-1">
+                  {barber.portfolio.slice(0, 3).map((image, index) => (
+                    <div key={index} className="h-8 w-8 rounded-md overflow-hidden border-2 border-white/30 shadow-lg backdrop-blur-sm">
+                      <Image
+                        src={image || "/placeholder.svg"}
+                        alt={`${barber.name}'s work`}
+                        width={32}
+                        height={32}
+                        className="object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="p-6 space-y-4 flex flex-col h-full">
+            {/* Avatar Section */}
+            <div className="relative -mt-16 px-6">
+              <div className="flex justify-center">
+                <Avatar className="h-32 w-32 border-4 border-black shadow-xl">
+                  {barber.image && barber.image !== "/placeholder.svg" ? (
+                    <AvatarImage src={barber.image} alt={barber.name} className="object-cover w-full h-full" />
+                  ) : null}
+                  <AvatarFallback className="bg-saffron text-primary font-bold text-3xl">
+                    {barber.name?.charAt(0) || "B"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </div>
+
+            {/* Content Section */}
+            <div className="px-6 pb-6 flex flex-col flex-grow space-y-4">
               {/* Header */}
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bebas text-xl text-white leading-tight truncate tracking-wide">{barber.name}</h3>
-                  {barber.businessName && (
-                    <p className="text-white/60 truncate text-sm font-medium">{barber.businessName}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 ml-3">
-                  <Star className="h-4 w-4 fill-saffron text-saffron" />
-                  <span className="text-sm font-semibold text-white">{barber.rating || 4.5}</span>
-                </div>
+              <div className="text-center space-y-2">
+                <h3 className="font-bold text-2xl text-white">{barber.name}</h3>
+                {barber.businessName && (
+                  <p className="text-white/60 text-base font-medium">{barber.businessName}</p>
+                )}
+                <div className="text-saffron text-lg font-semibold">@{barber.username || barber.name?.toLowerCase().replace(/\s+/g, '') || 'username'}</div>
               </div>
 
               {/* Location */}
               {barber.location && (
-                <div className="flex items-center gap-2 text-sm text-white/60">
+                <div className="flex items-center justify-center gap-2 text-sm text-white/70">
                   <MapPin className="h-4 w-4 flex-shrink-0 text-saffron" />
                   <span className="truncate">{barber.location}</span>
                   {barber.distance && (
-                    <Badge variant="outline" className="text-xs bg-saffron/20 text-saffron border-saffron/30 ml-auto">
+                    <Badge variant="outline" className="text-xs bg-saffron/20 text-saffron border-saffron/30 ml-2">
                       {barber.distance.toFixed(1)} mi
                     </Badge>
                   )}
                 </div>
               )}
 
+              {/* Rating */}
+              <div className="flex items-center justify-center gap-1">
+                <Star className="h-4 w-4 fill-saffron text-saffron" />
+                <span className="text-sm font-semibold text-white">{barber.rating || 4.5}</span>
+              </div>
+
               {/* Price Range */}
               {barber.priceRange && (
-                <div className="flex items-center gap-2">
+                <div className="flex justify-center">
                   <Badge 
                     variant="outline" 
                     className={`text-xs ${getPriceRangeColor(barber.priceRange)}`}
@@ -155,7 +157,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
 
               {/* Bio */}
               {barber.bio && (
-                <p className="text-sm text-white/70 line-clamp-2 leading-relaxed">
+                <p className="text-sm text-white/70 line-clamp-2 leading-relaxed text-center">
                   {barber.bio}
                 </p>
               )}
@@ -163,11 +165,11 @@ export function BarberCard({ barber, className }: BarberCardProps) {
               {/* Specialties */}
               {barber.specialties && barber.specialties.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     <Scissors className="h-4 w-4 text-saffron" />
                     <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Specialties</p>
                   </div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1 justify-center">
                     {barber.specialties.slice(0, 3).map((specialty, index) => (
                       <Badge key={index} variant="secondary" className="text-xs bg-white/10 text-white/80 border-white/20">
                         {specialty}
@@ -185,28 +187,33 @@ export function BarberCard({ barber, className }: BarberCardProps) {
               {/* Social Media Links */}
               {(barber.instagram || barber.twitter || barber.tiktok || barber.facebook) && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     <Globe className="h-4 w-4 text-saffron" />
                     <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Social Media</p>
                   </div>
-                  <SocialMediaLinks
-                    instagram={barber.instagram}
-                    twitter={barber.twitter}
-                    tiktok={barber.tiktok}
-                    facebook={barber.facebook}
-                    size="sm"
-                    className="justify-start"
-                  />
+                  <div className="flex justify-center">
+                    <SocialMediaLinks
+                      instagram={barber.instagram}
+                      twitter={barber.twitter}
+                      tiktok={barber.tiktok}
+                      facebook={barber.facebook}
+                      size="sm"
+                      className="justify-center"
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-2 mt-10 sm:mb-0 ">
+              {/* Action Button */}
+              <div className="mt-auto pt-4">
                 <Button
                   asChild
-                  className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"
+                  className="w-full bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl py-3"
                 >
-                  <Link href={`/book/${barber.username || barber.id}`} className="flex items-center justify-center w-full h-full">
+                  <Link 
+                    href={`/book/${barber.username}`} 
+                    className="flex items-center justify-center w-full h-full"
+                  >
                     Book Now
                   </Link>
                 </Button>

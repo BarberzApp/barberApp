@@ -4,9 +4,10 @@ import * as React from "react"
 import { useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut } from "lucide-react"
+import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut, Bell } from "lucide-react"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { cn } from "@/shared/lib/utils"
+import { UpdatesBadge } from "@/shared/components/updates/updates-badge"
 
 export function MobileNav() {
   const router = useRouter()
@@ -50,7 +51,7 @@ export function MobileNav() {
       case "barber":
         return [
           { name: "Calendar", href: "/calendar", icon: Calendar },
-          { name: "Reels", href: "/reels", icon: Video },
+          { name: "Cuts", href: "/reels", icon: Video },
         ]
       default:
         return []
@@ -69,22 +70,18 @@ export function MobileNav() {
     }
   }
 
-  // Custom nav order: Browse | Calendar | [center: Cuts/Reels] | Profile | Settings
+  // Custom nav order: Browse | Calendar | [center: Cuts] | Profile | Settings
   function getOrderedNavItems() {
-    // Find the nav items by their href
     const browse = allNavItems.find(item => item.href === '/browse');
     const calendar = allNavItems.find(item => item.href === '/calendar');
-    let cuts = allNavItems.find(item => item.href === '/reels' || item.href === '/cuts');
-    if (cuts) {
-      cuts = { ...cuts, name: 'Cuts' };
-    }
+    const cuts = allNavItems.find(item => item.href === '/reels');
     const profile = allNavItems.find(item => item.href === '/settings/barber-profile');
     const settings = allNavItems.find(item => item.href === '/settings');
-    // Build the array in the requested order, filtering out any undefined
+    
     return [browse, calendar, cuts, profile, settings].filter(Boolean);
   }
+  
   const orderedNavItems = getOrderedNavItems();
-  // Always center the Cuts/Reels nav item
   const centerIndex = 2;
   const leftItems = orderedNavItems.slice(0, centerIndex);
   const centerItem = orderedNavItems[centerIndex];
@@ -92,11 +89,15 @@ export function MobileNav() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      {/* Glassy background with more prominent saffron border and shadow */}
-      <div className="absolute inset-0 bg-white/20 backdrop-blur-2xl border-t-4 border-saffron/80 shadow-2xl" />
-      {/* Centered tab bar content with 2-1-2 layout */}
-      <div className="relative flex items-center justify-center gap-2 px-4 py-2">
-        {/* Left icons */}
+      {/* Enhanced glassy background with better blur and gradient */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-3xl border-t border-white/20 shadow-2xl" />
+      
+      {/* Subtle gradient overlay for depth */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+      
+      {/* Main navigation container */}
+      <div className="relative flex items-center justify-center gap-1 px-3 py-3 h-[85px] pb-safe">
+        {/* Left navigation items */}
         {leftItems.filter(Boolean).map((item) => {
           if (!item) return null;
           const isActive = pathname === item.href || 
@@ -104,56 +105,69 @@ export function MobileNav() {
             (item.href === "/settings" && pathname.startsWith("/settings")) ||
             (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
             (item.href === "/reels" && pathname.startsWith("/reels")) ||
-            (item.href === "/cuts" && pathname.startsWith("/cuts")) ||
             (item.href === "/browse" && pathname.startsWith("/browse"))
+          
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all duration-200 min-w-[60px]",
+                "relative flex flex-col items-center justify-center py-2 px-3 rounded-2xl transition-all duration-300 min-w-[56px] group",
                 isActive 
-                  ? "text-saffron bg-saffron/30 shadow-xl font-bold" 
-                  : "text-white/80 hover:text-saffron hover:bg-saffron/10"
+                  ? "text-saffron bg-saffron/20 shadow-lg shadow-saffron/20 border border-saffron/30" 
+                  : "text-white/70 hover:text-saffron hover:bg-saffron/10 hover:shadow-md"
               )}
-              style={{ zIndex: 2 }}
             >
+              {/* Active indicator */}
+              {isActive && (
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
+              )}
+              
               <item.icon 
                 className={cn(
-                  "h-5 w-5 mb-1 transition-colors",
-                  isActive ? "text-saffron" : "text-white/70"
+                  "h-5 w-5 mb-1 transition-all duration-300",
+                  isActive ? "text-saffron scale-110" : "text-white/70 group-hover:scale-105"
                 )} 
               />
               <span className={cn(
-                "text-xs font-semibold transition-colors",
-                isActive ? "text-saffron" : "text-white/70"
+                "text-xs font-medium transition-all duration-300",
+                isActive ? "text-saffron font-semibold" : "text-white/70 group-hover:text-saffron"
               )}>
                 {item.name}
               </span>
             </Link>
           )
         })}
-        {/* Center icon (highlighted) */}
+
+        {/* Center item (highlighted) - inspired by profile page design */}
         {centerItem && (
           <Link
             key={centerItem.href}
             href={centerItem.href}
             className={cn(
-              "relative flex flex-col items-center justify-center py-3 px-5 rounded-2xl transition-all duration-200 min-w-[70px] scale-110 bg-saffron/80 shadow-2xl ring-4 ring-saffron/60 font-bold animate-pulse-slow border-2 border-saffron",
-              pathname === centerItem.href ? "text-primary" : "text-white/90 hover:text-primary"
+              "relative flex flex-col items-center justify-center py-3 px-4 rounded-3xl transition-all duration-300 min-w-[72px] scale-110",
+              "bg-gradient-to-br from-saffron/90 to-saffron/70 shadow-2xl shadow-saffron/30",
+              "border-2 border-saffron/50 hover:border-saffron/70",
+              "hover:scale-115 hover:shadow-saffron/40",
+              pathname === centerItem.href ? "ring-2 ring-saffron/60" : ""
             )}
-            style={{ zIndex: 3 }}
           >
-            <centerItem.icon className="h-7 w-7 mb-1 text-primary drop-shadow-xl" />
-            <span className="text-sm font-bold text-primary drop-shadow flex items-center">
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-3xl bg-saffron/20 blur-xl" />
+            
+            <centerItem.icon className="h-6 w-6 mb-1 text-primary drop-shadow-lg relative z-10" />
+            <span className="text-sm font-bold text-primary drop-shadow flex items-center relative z-10">
               {centerItem.name}
               {centerItem.name === 'Cuts' && (
-                <span className="ml-1 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle">Beta</span>
+                <span className="ml-1 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle shadow-sm">
+                  Beta
+                </span>
               )}
             </span>
           </Link>
         )}
-        {/* Right icons */}
+
+        {/* Right navigation items */}
         {rightItems.filter(Boolean).map((item) => {
           if (!item) return null;
           const isActive = pathname === item.href || 
@@ -161,35 +175,46 @@ export function MobileNav() {
             (item.href === "/settings" && pathname.startsWith("/settings")) ||
             (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
             (item.href === "/reels" && pathname.startsWith("/reels")) ||
-            (item.href === "/cuts" && pathname.startsWith("/cuts")) ||
             (item.href === "/browse" && pathname.startsWith("/browse"))
+          
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all duration-200 min-w-[60px]",
+                "relative flex flex-col items-center justify-center py-2 px-3 rounded-2xl transition-all duration-300 min-w-[56px] group",
                 isActive 
-                  ? "text-saffron bg-saffron/30 shadow-xl font-bold" 
-                  : "text-white/80 hover:text-saffron hover:bg-saffron/10"
+                  ? "text-saffron bg-saffron/20 shadow-lg shadow-saffron/20 border border-saffron/30" 
+                  : "text-white/70 hover:text-saffron hover:bg-saffron/10 hover:shadow-md"
               )}
-              style={{ zIndex: 2 }}
             >
+              {/* Active indicator */}
+              {isActive && (
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
+              )}
+              
               <item.icon 
                 className={cn(
-                  "h-5 w-5 mb-1 transition-colors",
-                  isActive ? "text-saffron" : "text-white/70"
+                  "h-5 w-5 mb-1 transition-all duration-300",
+                  isActive ? "text-saffron scale-110" : "text-white/70 group-hover:scale-105"
                 )} 
               />
               <span className={cn(
-                "text-xs font-semibold transition-colors",
-                isActive ? "text-saffron" : "text-white/70"
+                "text-xs font-medium transition-all duration-300",
+                isActive ? "text-saffron font-semibold" : "text-white/70 group-hover:text-saffron"
               )}>
                 {item.name}
               </span>
             </Link>
           )
         })}
+
+        {/* Updates badge - positioned above the navbar */}
+        {user && (
+          <div className="absolute -top-2 right-4">
+            <UpdatesBadge />
+          </div>
+        )}
       </div>
     </div>
   )

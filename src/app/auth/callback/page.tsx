@@ -35,7 +35,7 @@ export default function AuthCallbackPage() {
         if (profile.email === 'primbocm@gmail.com') {
           router.replace('/super-admin')
         } else if (profile.role === 'barber') {
-          router.replace('/settings')
+          router.replace('/barber/onboarding')
         } else if (profile.location) {
           router.replace('/browse')
         } else {

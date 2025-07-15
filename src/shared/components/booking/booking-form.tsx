@@ -16,7 +16,7 @@ import { ServiceAddon } from '@/shared/types/addon'
 import { syncService } from '@/shared/lib/sync-service'
 import { supabase } from '@/shared/lib/supabase'
 import { Calendar } from '@/shared/components/ui/calendar'
-import { CalendarIcon, Clock, User, CreditCard, Loader2, MapPin, Scissors, Star, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarIcon, Clock, User, CreditCard, Loader2, MapPin, Scissors, Star, ChevronLeft, ChevronRight, X, CheckCircle, ArrowRight, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Badge } from '@/shared/components/ui/badge'
@@ -53,10 +53,15 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
   const [bookedTimes, setBookedTimes] = useState<Set<string>>(new Set())
   const [paymentType] = useState<'fee'>('fee')
   const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [currentStep, setCurrentStep] = useState(1)
+  const totalSteps = 4
+  const [isDeveloperAccount, setIsDeveloperAccount] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
       fetchServices()
+      fetchBarberStatus()
+      setCurrentStep(1)
     }
   }, [isOpen, barberId])
 
@@ -92,6 +97,22 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
         description: "Failed to load services. Please try again.",
         variant: "destructive",
       })
+    }
+  }
+
+  const fetchBarberStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('barbers')
+        .select('is_developer')
+        .eq('id', barberId)
+        .single()
+
+      if (error) throw error
+      setIsDeveloperAccount(data?.is_developer || false)
+    } catch (error) {
+      console.error('Error fetching barber status:', error)
+      setIsDeveloperAccount(false)
     }
   }
 
@@ -203,7 +224,16 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       return
     }
 
-    // If user is not authenticated, require guest information
+    if (!formData.time) {
+      toast({
+        title: "Error",
+        description: "Please select a time.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // If user is not authenticated, validate guest information
     if (!user && (!formData.guestName || !formData.guestEmail || !formData.guestPhone)) {
       toast({
         title: "Error",
@@ -214,93 +244,105 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
     }
 
     setLoading(true)
-    try {
-      // Combine date and time into a single timestamp
-      const [hours, minutes] = formData.time.split(':')
-      const bookingDate = new Date(date)
-      bookingDate.setHours(Number(hours), Number(minutes), 0, 0)
 
-      // Prepare booking and guest info
-      const bookingPayload = {
+    try {
+      const bookingDate = new Date(date)
+      bookingDate.setHours(parseInt(formData.time.split(':')[0]), parseInt(formData.time.split(':')[1]), 0, 0)
+
+      // Check if this is a developer account
+      if (isDeveloperAccount) {
+        // Use developer booking API for developer accounts
+        const response = await fetch('/api/create-developer-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
         barberId,
         serviceId: formData.serviceId,
         date: bookingDate.toISOString(),
         notes: formData.notes,
-        guestName: formData.guestName,
-        guestEmail: formData.guestEmail,
-        guestPhone: formData.guestPhone,
+            guestName: user ? undefined : formData.guestName,
+            guestEmail: user ? undefined : formData.guestEmail,
+            guestPhone: user ? undefined : formData.guestPhone,
         clientId: user?.id || null,
-        paymentType,
-        addonIds: selectedAddonIds,
-      }
-
-      // Check if barber is a developer
-      const { data: barber, error: barberError } = await supabase
-        .from('barbers')
-        .select('is_developer')
-        .eq('id', barberId)
-        .single()
-
-      if (barberError) {
-        throw new Error('Failed to check barber status')
-      }
-
-      let response
-      let data
-
-      if (barber.is_developer) {
-        // For developer accounts, bypass Stripe entirely
-        console.log('Creating developer booking (bypassing Stripe)...')
-        response = await fetch('/api/create-developer-booking', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bookingPayload),
+            paymentType: 'fee',
+            addonIds: selectedAddonIds
+          })
         })
-        
-        data = await response.json()
+
+        const data = await response.json()
         if (!response.ok) {
           throw new Error(data.error || 'Failed to create developer booking')
         }
 
-        // Developer booking created successfully
         toast({
-          title: "Booking Confirmed!",
-          description: "Your appointment has been scheduled successfully (developer mode - no payment required).",
+          title: "Success!",
+          description: "Your booking has been created successfully (developer mode - no payment required).",
         })
 
-        // Call the callback to update the UI
-        if (data.booking && onBookingCreated) {
           onBookingCreated(data.booking)
+      } else {
+        // For regular accounts, use direct database insertion (authenticated users only)
+        if (!user) {
+          toast({
+            title: "Error",
+            description: "Please sign in to book with this barber.",
+            variant: "destructive",
+          })
+          return
         }
 
-        // Close the form
-        onClose()
-      } else {
-        // For regular accounts, use Stripe checkout
-        console.log('Creating regular booking with Stripe...')
-        response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookingPayload),
-      })
-      
-        data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout session')
+        const bookingData = {
+          barber_id: barberId,
+          client_id: user.id,
+          service_id: formData.serviceId,
+          date: bookingDate.toISOString(),
+          notes: formData.notes,
+          status: 'pending',
+          payment_status: 'pending',
+          price: service.price,
+        }
+
+        const { data: booking, error } = await supabase
+          .from('bookings')
+          .insert(bookingData)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        // Add add-ons if any are selected
+        if (selectedAddonIds.length > 0) {
+          const addonBookings = selectedAddonIds.map(addonId => ({
+            booking_id: booking.id,
+            addon_id: addonId,
+          }))
+
+          const { error: addonError } = await supabase
+            .from('booking_addons')
+            .insert(addonBookings)
+
+          if (addonError) {
+            console.error('Error adding add-ons:', addonError)
+          }
       }
 
-      // Redirect to Stripe Checkout
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        throw new Error('No checkout URL received')
+        // Sync with external service
+        if (syncService) {
+          await syncService.saveBooking(booking)
         }
+
+        toast({
+          title: "Success!",
+          description: "Your booking has been created successfully.",
+        })
+
+        onBookingCreated(booking)
       }
     } catch (error) {
       console.error('Error creating booking:', error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create booking.",
+        description: "Failed to create booking. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -309,9 +351,9 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
   }
 
   const handleServiceChange = (serviceId: string) => {
-    setFormData({ ...formData, serviceId, time: '' })
-    const service = services.find(s => s.id === serviceId)
-    setSelectedService(service || null)
+    setFormData({ ...formData, serviceId })
+    setSelectedService(services.find(s => s.id === serviceId) || null)
+    setFormData({ ...formData, serviceId, time: '' }) // Reset time when service changes
   }
 
   const formatTime = (time: string) => {
@@ -322,79 +364,200 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
     return `${displayHour}:${minutes} ${ampm}`
   }
 
-  const getDayName = (date: Date) => {
-    return DAYS[date.getDay()]
+  const getDayName = (date: Date) => DAYS[date.getDay()]
+  const getMonthName = (date: Date) => date.toLocaleDateString('en-US', { month: 'long' })
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
   }
 
-  const getMonthName = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'long' })
+  const canProceed = () => {
+    switch (currentStep) {
+      case 1: return !!formData.serviceId
+      case 2: return !!formData.time
+      case 3: return user || (isDeveloperAccount && formData.guestName && formData.guestEmail && formData.guestPhone)
+      case 4: return true
+      default: return false
+    }
+  }
+
+  const handleNextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 1: return "Choose Your Service"
+      case 2: return "Pick Your Time"
+      case 3: return "Your Information"
+      case 4: return "Review & Book"
+      default: return ""
+    }
+  }
+
+  const getStepDescription = () => {
+    switch (currentStep) {
+      case 1: return "Select the service you'd like to book"
+      case 2: return "Choose your preferred appointment time"
+      case 3: return "Provide your contact information"
+      case 4: return "Review your booking details and confirm"
+      default: return ""
+    }
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-darkpurple/95 border border-white/10 backdrop-blur-xl">
-        <DialogHeader className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-saffron/20 rounded-full">
-              <CalendarIcon className="h-5 w-5 text-saffron" />
-            </div>
+      <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+        {/* Header */}
+        <div className="relative p-6 border-b border-white/10">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <DialogTitle className="text-xl font-bebas text-white tracking-wide">
-                Book Your Appointment
-              </DialogTitle>
-              <DialogDescription className="text-white/70">
-                Select your preferred date, time, and service
-              </DialogDescription>
+              <DialogTitle className="text-2xl font-bold text-white">{getStepTitle()}</DialogTitle>
+              <DialogDescription className="text-white/60 mt-1">{getStepDescription()}</DialogDescription>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-white hover:bg-white/10 rounded-full"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* Progress Bar */}
+          <div className="w-full bg-white/10 rounded-full h-2 mb-4">
+            <div 
+              className="bg-gradient-to-r from-saffron to-orange-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+            />
+          </div>
+
+          {/* Step Indicators */}
+          <div className="flex justify-between">
+            {[1, 2, 3, 4].map((step) => (
+              <div key={step} className="flex flex-col items-center">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300",
+                  step < currentStep 
+                    ? "bg-saffron text-black" 
+                    : step === currentStep 
+                    ? "bg-saffron/20 text-saffron border-2 border-saffron" 
+                    : "bg-white/10 text-white/40"
+                )}>
+                  {step < currentStep ? <CheckCircle className="h-4 w-4" /> : step}
+                </div>
+                <span className={cn(
+                  "text-xs mt-1 transition-colors",
+                  step <= currentStep ? "text-white" : "text-white/40"
+                )}>
+                  {step === 1 && "Service"}
+                  {step === 2 && "Time"}
+                  {step === 3 && "Info"}
+                  {step === 4 && "Book"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Step 1: Service Selection */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Scissors className="h-8 w-8 text-saffron" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">What service do you need?</h3>
+                <p className="text-white/60">Choose from our available services</p>
+              </div>
+
+              <div className="space-y-4">
+                {services.map((service) => (
+                  <div
+                    key={service.id}
+                    className={cn(
+                      "relative p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 group",
+                      formData.serviceId === service.id
+                        ? "border-saffron bg-saffron/10 shadow-lg shadow-saffron/20"
+                        : "border-white/10 bg-white/5 hover:border-saffron/30 hover:bg-white/10"
+                    )}
+                    onClick={() => handleServiceChange(service.id)}
+                  >
+                    {/* Selection indicator */}
+                    {formData.serviceId === service.id && (
+                      <div className="absolute top-4 right-4 w-6 h-6 bg-saffron rounded-full flex items-center justify-center">
+                        <CheckCircle className="h-4 w-4 text-black" />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-white mb-2">{service.name}</h4>
+                        {service.description && (
+                          <p className="text-white/60 text-sm mb-3">{service.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1 text-white/60">
+                            <Clock className="h-4 w-4" />
+                            <span>{service.duration} min</span>
+                          </div>
+                          <Badge className="bg-saffron/20 text-saffron border-saffron/30">
+                            Popular
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="text-3xl font-bold text-saffron">${service.price}</div>
+                        <div className="text-white/40 text-sm">per service</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Date & Time Selection */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CalendarIcon className="h-8 w-8 text-saffron" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">When works best for you?</h3>
+                <p className="text-white/60">Pick your preferred date and time</p>
+              </div>
+
           {/* Date Selection */}
-          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl max-w-xs mx-auto">
-            <CardContent className="p-4">
-              <div className="space-y-2">
-                {/* Calendar Only (no extra header/label) */}
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5 text-saffron" />
+                  Select Date
+                </h4>
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={(date) => date && setDate(date)}
-                  className="w-full"
-                  disabled={(date) => {
-                    // Disable past dates
-                    const today = new Date()
-                    today.setHours(0, 0, 0, 0)
-                    return date < today
-                  }}
-                  modifiers={{
-                    available: (date) => true,
-                    today: (date) => {
-                      const today = new Date()
-                      return date.toDateString() === today.toDateString()
-                    },
-                    weekend: (date) => date.getDay() === 0 || date.getDay() === 6
-                  }}
-                  modifiersStyles={{
-                    available: { fontWeight: 'bold' },
-                    today: {
-                      backgroundColor: 'hsl(var(--saffron) / 0.3)',
-                      color: 'hsl(var(--saffron))',
-                      border: '2px solid hsl(var(--saffron) / 0.5)',
-                    },
-                    weekend: { color: 'hsl(var(--saffron) / 0.8)' }
-                  }}
+                  onSelect={(newDate) => newDate && setDate(newDate)}
+                  disabled={(date) => date < new Date()}
+                  className="rounded-2xl"
                   classNames={{
-                    months: "flex flex-col",
-                    month: "space-y-2",
-                    caption: "flex justify-center pt-1 relative items-center h-10",
-                    caption_label: "text-white font-semibold text-lg",
+                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                    month: "space-y-4",
+                    caption: "flex justify-center pt-1 relative items-center text-white",
+                    caption_label: "text-sm font-medium",
                     nav: "space-x-1 flex items-center",
-                    nav_button: "h-8 w-8 bg-white/10 p-0 rounded-lg transition-all duration-200 sm:h-8 sm:w-8 !m-0 min-w-[36px] min-h-[36px] md:h-8 md:w-8 md:min-w-0 md:min-h-0",
+                    nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 text-white",
                     nav_button_previous: "absolute left-1",
                     nav_button_next: "absolute right-1",
                     table: "w-full border-collapse space-y-1",
                     head_row: "flex",
-                    head_cell: "text-white/70 font-medium rounded-md w-9 font-normal text-sm",
+                    head_cell: "text-white/60 rounded-md w-9 font-normal text-[0.8rem]",
                     row: "flex w-full mt-2",
                     cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
                     day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 text-white hover:bg-saffron/20 hover:text-saffron rounded-lg transition-all duration-200 focus:bg-saffron/20 focus:text-saffron",
@@ -407,218 +570,71 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                     day_hidden: "invisible",
                   }}
                 />
-                {/* Legend Row */}
-                <div className="flex items-center justify-between mt-2 px-1 text-xs text-white/60">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-saffron rounded-full inline-block"></span>Today</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gradient-to-r from-saffron to-orange-500 rounded-full inline-block"></span>Selected</span>
-                  </div>
-                  <span className="text-saffron font-medium">Available Slots {availableTimeSlots.length}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Service Selection */}
-          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-saffron/20 rounded-lg">
-                    <Scissors className="h-4 w-4 text-saffron" />
-                  </div>
-                  <Label className="text-lg font-semibold text-white">Select Service</Label>
-                </div>
-                
-                <Select
-                  value={formData.serviceId}
-                  onValueChange={handleServiceChange}
-                >
-                  <SelectTrigger className="w-full bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl">
-                    <SelectValue placeholder="Choose a service" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl">
-                    {services.map((service) => (
-                      <SelectItem key={service.id} value={service.id} className="text-white hover:bg-white/10">
-                        <div className="flex items-center justify-between w-full">
-                          <span>{service.name}</span>
-                          <span className="text-saffron font-semibold">${service.price}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                {selectedService && (
-                  <div className="relative bg-gradient-to-br from-saffron/10 to-white/5 border border-saffron/20 rounded-2xl p-6 overflow-hidden">
-                    {/* Background decoration */}
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-saffron/5 rounded-full -translate-y-8 translate-x-8"></div>
-                    <div className="absolute bottom-0 left-0 w-12 h-12 bg-orange-500/5 rounded-full translate-y-6 -translate-x-6"></div>
-                    
-                    <div className="relative">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-saffron rounded-full animate-pulse"></div>
-                        <div>
-                            <p className="text-saffron/80 text-sm font-medium uppercase tracking-wider">Selected Service</p>
-                            <p className="font-bold text-white text-xl">{selectedService.name}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-3xl font-bold text-saffron">${selectedService.price}</p>
-                          <Badge className="bg-gradient-to-r from-saffron to-orange-500 text-white border-0 text-xs font-semibold">
-                            {selectedService.duration} min
-                          </Badge>
-                        </div>
                       </div>
-                      
-                      {/* Service details */}
-                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-saffron/20">
-                        <div className="text-center">
-                          <div className="text-white/60 text-xs uppercase tracking-wider">Duration</div>
-                          <div className="text-white font-semibold">{selectedService.duration} minutes</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-white/60 text-xs uppercase tracking-wider">Price</div>
-                          <div className="text-saffron font-semibold">${selectedService.price}</div>
-                        </div>
-                      </div>
-                      
-                      {/* Quick info */}
-                      <div className="mt-4 p-3 bg-white/5 rounded-xl">
-                        <div className="flex items-center gap-2 text-xs text-white/70">
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                          <span>Service available for booking</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Add-ons Selection */}
-          <AddonSelector
-            barberId={barberId}
-            selectedAddonIds={selectedAddonIds}
-            onAddonChange={setSelectedAddonIds}
-          />
 
           {/* Time Selection */}
-          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-saffron/20 rounded-lg">
-                    <Clock className="h-4 w-4 text-saffron" />
-                  </div>
-                  <Label className="text-lg font-semibold text-white">Select Time</Label>
-                </div>
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-saffron" />
+                  Select Time
+                </h4>
                 
                 {availableTimeSlots.length > 0 ? (
-                  <div className="space-y-4">
-                    {/* Time slots grid with enhanced styling */}
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10">
+                  <div className="grid grid-cols-3 gap-3">
                     {availableTimeSlots.map((time) => (
                       <Button
                         key={time}
                         type="button"
                           variant="ghost"
                         className={cn(
-                            "h-14 text-sm font-medium transition-all duration-300 relative overflow-hidden group",
+                          "h-16 text-sm font-medium transition-all duration-300 relative overflow-hidden group",
                           formData.time === time 
                               ? "bg-gradient-to-br from-saffron to-orange-500 text-white border-2 border-saffron/50 shadow-lg scale-105 transform" 
                               : "bg-white/5 border border-white/20 text-white hover:bg-gradient-to-br hover:from-saffron/20 hover:to-orange-500/20 hover:border-saffron/50 hover:scale-105 hover:shadow-md"
                         )}
                         onClick={() => setFormData({ ...formData, time })}
                       >
-                          {/* Background glow effect for selected */}
-                          {formData.time === time && (
-                            <div className="absolute inset-0 bg-gradient-to-br from-saffron/20 to-orange-500/20 animate-pulse rounded-lg"></div>
-                          )}
-                          
-                          {/* Time display */}
-                          <div className="relative z-10">
                             <div className="font-semibold">{formatTime(time)}</div>
-                            <div className="text-xs opacity-80">
-                              {selectedService ? `${selectedService.duration} min` : 'Available'}
-                            </div>
-                          </div>
-                          
-                          {/* Selection indicator */}
-                          {formData.time === time && (
-                            <div className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full animate-ping"></div>
-                          )}
                       </Button>
                     ))}
-                    </div>
-                    
-                    {/* Time selection summary */}
-                    {formData.time && (
-                      <div className="bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-xl p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 bg-saffron rounded-full animate-pulse"></div>
-                            <div>
-                              <div className="text-white font-semibold">Selected Time</div>
-                              <div className="text-saffron font-bold text-lg">{formatTime(formData.time)}</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-white/60 text-sm">Duration</div>
-                            <div className="text-white font-medium">
-                              {selectedService ? `${selectedService.duration} minutes` : 'TBD'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : (
-                  <div className="text-center py-12 bg-gradient-to-br from-white/5 to-white/10 rounded-xl border border-white/10">
-                    <div className="relative">
+                  <div className="text-center py-12">
                       <Clock className="h-16 w-16 mx-auto text-white/30 mb-4" />
-                      <div className="absolute inset-0 bg-saffron/10 rounded-full blur-xl"></div>
-                    </div>
                     <p className="text-white/70 font-semibold text-lg mb-2">No Available Slots</p>
                     <p className="text-white/50 text-sm">This date appears to be fully booked</p>
-                    <div className="mt-4 flex items-center justify-center gap-2 text-xs text-white/40">
-                      <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                      <span>All slots booked</span>
-                    </div>
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          )}
 
-          {/* Guest Information */}
-          {!user && (
-            <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-saffron/20 rounded-lg">
-                      <User className="h-4 w-4 text-saffron" />
+                     {/* Step 3: Guest Information */}
+           {currentStep === 3 && (
+             <div className="space-y-6">
+               <div className="text-center mb-6">
+                 <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <User className="h-8 w-8 text-saffron" />
                     </div>
-                    <Label className="text-lg font-semibold text-white">Guest Information</Label>
+                 <h3 className="text-xl font-bold text-white mb-2">Tell us about yourself</h3>
+                 <p className="text-white/60">We'll use this to confirm your booking</p>
                   </div>
                   
+               {!user ? (
+                 isDeveloperAccount ? (
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="guestName" className="text-white font-medium">Full Name</Label>
+                       <Label htmlFor="guestName" className="text-white font-medium mb-2 block">Full Name *</Label>
                       <Input
                         id="guestName"
                         value={formData.guestName}
                         onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
                         placeholder="Enter your full name"
                         className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
-                        required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="guestEmail" className="text-white font-medium">Email</Label>
+                       <Label htmlFor="guestEmail" className="text-white font-medium mb-2 block">Email Address *</Label>
                       <Input
                         id="guestEmail"
                         type="email"
@@ -626,32 +642,41 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                         onChange={(e) => setFormData({ ...formData, guestEmail: e.target.value })}
                         placeholder="Enter your email"
                         className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
-                        required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="guestPhone" className="text-white font-medium">Phone</Label>
+                       <Label htmlFor="guestPhone" className="text-white font-medium mb-2 block">Phone Number *</Label>
                       <Input
                         id="guestPhone"
-                        type="tel"
                         value={formData.guestPhone}
                         onChange={(e) => setFormData({ ...formData, guestPhone: e.target.value })}
                         placeholder="Enter your phone number"
                         className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
-                        required
                       />
                     </div>
                   </div>
+                 ) : (
+                   <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center">
+                     <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                       <X className="h-6 w-6 text-red-400" />
+                     </div>
+                     <h4 className="text-lg font-semibold text-white mb-2">Sign In Required</h4>
+                     <p className="text-white/60">Please sign in to book with this barber</p>
+                   </div>
+                 )
+               ) : (
+                 <div className="bg-saffron/10 border border-saffron/20 rounded-2xl p-6 text-center">
+                   <div className="w-12 h-12 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                     <CheckCircle className="h-6 w-6 text-saffron" />
+                   </div>
+                   <h4 className="text-lg font-semibold text-white mb-2">Welcome back, {user.name}!</h4>
+                   <p className="text-white/60">We'll use your account information for this booking</p>
                 </div>
-              </CardContent>
-            </Card>
           )}
 
           {/* Notes */}
-          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <Label htmlFor="notes" className="text-lg font-semibold text-white">Additional Notes (Optional)</Label>
+               <div>
+                 <Label htmlFor="notes" className="text-white font-medium mb-2 block">Additional Notes (Optional)</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
@@ -659,187 +684,166 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                   placeholder="Any special requests or notes..."
                   className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl min-h-[100px]"
                 />
-              </div>
-            </CardContent>
-          </Card>
+                          </div>
+                        </div>
+                      )}
+                      
+                     {/* Step 4: Review & Payment */}
+           {currentStep === 4 && (
+             <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CreditCard className="h-8 w-8 text-saffron" />
+                          </div>
+                <h3 className="text-xl font-bold text-white mb-2">Review Your Booking</h3>
+                <p className="text-white/60">Confirm your details and complete payment</p>
+                      </div>
+                      
+              {/* Booking Summary */}
+              <div className="bg-white/5 rounded-2xl p-6 border border-white/10 space-y-4">
+                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-saffron" />
+                  Booking Summary
+                </h4>
 
-          {/* Payment Summary */}
-          <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-saffron/20 rounded-lg">
-                    <CreditCard className="h-4 w-4 text-saffron" />
-                  </div>
-                  <Label className="text-lg font-semibold text-white">Payment Summary</Label>
-                </div>
-                
-                <div className="space-y-3">
-                  {paymentType === 'fee' ? (
-                    // Fee-only payment summary
-                    <>
-                      {/* Service Cost (for reference) */}
                       {selectedService && (
-                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                           <div>
-                            <p className="text-white font-medium">{selectedService.name}</p>
-                            <p className="text-white/60 text-sm">Service cost (paid to barber)</p>
+                      <p className="text-white font-semibold">{selectedService.name}</p>
+                      <p className="text-white/60 text-sm">{formatTime(formData.time)} • {date.toLocaleDateString()}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-white">${selectedService.price}</p>
+                      <p className="text-xl font-bold text-saffron">${selectedService.price}</p>
                           </div>
                         </div>
                       )}
                       
-                      {/* Add-ons Cost (for reference) */}
+                {/* Add-ons */}
                       {selectedAddonIds.length > 0 && (
-                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <div className="space-y-2">
+                    {selectedAddonIds.map((addonId) => {
+                      const addon = addons.find(a => a.id === addonId)
+                      return addon ? (
+                        <div key={addonId} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                           <div>
-                            <p className="text-white font-medium">Add-ons ({selectedAddonIds.length})</p>
-                            <p className="text-white/60 text-sm">Additional services (paid to barber)</p>
+                            <p className="text-white font-medium">{addon.name}</p>
+                            <p className="text-white/60 text-sm">Add-on service</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-saffron">
-                              +${selectedAddonIds.reduce((total, addonId) => {
-                                const addon = addons.find(a => a.id === addonId)
-                                return total + (addon?.price || 0)
-                              }, 0).toFixed(2)}
-                            </p>
+                            <p className="text-saffron font-semibold">+${addon.price}</p>
                           </div>
+                        </div>
+                      ) : null
+                    })}
                         </div>
                       )}
                       
                       {/* Platform Fee */}
-                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                         <div>
                           <p className="text-white font-medium">Platform Fee</p>
-                          <p className="text-white/60 text-sm">Secure payment processing</p>
+                     <p className="text-white/60 text-sm">
+                       {isDeveloperAccount ? 'Developer account - no charge' : 'Secure payment processing'}
+                     </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-saffron">$3.38</p>
-                          <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
-                            Secure
+                     <p className="text-lg font-bold text-saffron">
+                       {isDeveloperAccount ? '$0.00' : '$3.38'}
+                     </p>
+                     <Badge className={cn(
+                       "text-xs",
+                       isDeveloperAccount 
+                         ? "bg-green-500/20 text-green-400 border-green-500/30"
+                         : "bg-green-500/20 text-green-400 border-green-500/30"
+                     )}>
+                       {isDeveloperAccount ? 'Developer' : 'Secure'}
                           </Badge>
                         </div>
                       </div>
                       
                       {/* Total */}
-                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-lg">
-                        <div>
-                          <p className="text-white font-bold text-lg">Total</p>
-                          <p className="text-white/60 text-sm">Amount to be charged</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-saffron">$3.38</p>
-                        </div>
-                      </div>
-                      
-                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <p className="text-blue-400 text-sm">
-                          💡 Service cost and any add-ons will be paid directly to the barber at your appointment.
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    // Full payment summary (including add-ons)
-                    <>
-                      {/* Service Cost */}
-                      {selectedService && (
-                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                          <div>
-                            <p className="text-white font-medium">{selectedService.name}</p>
-                            <p className="text-white/60 text-sm">Service cost</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-white">${selectedService.price}</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Add-ons Cost */}
-                      {selectedAddonIds.length > 0 && (
-                        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                          <div>
-                            <p className="text-white font-medium">Add-ons ({selectedAddonIds.length})</p>
-                            <p className="text-white/60 text-sm">Additional services</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-saffron">
-                              +${selectedAddonIds.reduce((total, addonId) => {
-                                const addon = addons.find(a => a.id === addonId)
-                                return total + (addon?.price || 0)
-                              }, 0).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Platform Fee */}
-                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                        <div>
-                          <p className="text-white font-medium">Platform Fee</p>
-                          <p className="text-white/60 text-sm">Secure payment processing</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-saffron">$3.38</p>
-                          <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
-                            Secure
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      {/* Total */}
-                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-lg">
+                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-xl">
                         <div>
                           <p className="text-white font-bold text-lg">Total</p>
                           <p className="text-white/60 text-sm">Amount to be charged</p>
                         </div>
                         <div className="text-right">
                           <p className="text-2xl font-bold text-saffron">
-                            ${((selectedService?.price || 0) + 
-                               selectedAddonIds.reduce((total, addonId) => {
-                                 const addon = addons.find(a => a.id === addonId)
-                                 return total + (addon?.price || 0)
-                               }, 0) + 3.38).toFixed(2)}
+                       {isDeveloperAccount ? '$0.00' : '$3.38'}
                           </p>
                         </div>
                       </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <DialogFooter className="gap-3">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onClose}
-              disabled={loading}
-              className="border-white/20 text-white hover:bg-white/10 rounded-xl"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={loading || !formData.serviceId || !formData.time}
-              className="min-w-[160px] bg-saffron text-primary font-semibold rounded-xl px-6 py-3 hover:bg-saffron/90 shadow-lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Continue to Payment
-                </>
+                                 <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                   <p className="text-blue-400 text-sm">
+                     {isDeveloperAccount 
+                       ? '💡 Developer account - no platform fees charged. Service cost and any add-ons will be paid directly to the barber at your appointment.'
+                       : '💡 Service cost and any add-ons will be paid directly to the barber at your appointment.'
+                     }
+                   </p>
+                                 </div>
+               </div>
+
+               {/* Navigation Buttons for Step 4 */}
+               <div className="flex gap-3 pt-6 border-t border-white/10">
+                 <Button 
+                   type="button" 
+                   variant="outline" 
+                   onClick={prevStep}
+                   className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl"
+                 >
+                   <ChevronLeft className="h-4 w-4 mr-2" />
+                   Back
+                 </Button>
+                 
+                 <Button 
+                   type="submit" 
+                   disabled={loading || !canProceed()}
+                   className="flex-1 bg-saffron text-black font-semibold rounded-xl hover:bg-saffron/90"
+                 >
+                   {loading ? (
+                     <>
+                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                       Processing...
+                     </>
+                   ) : (
+                     <>
+                       <CreditCard className="mr-2 h-4 w-4" />
+                       Complete Booking
+                     </>
+                   )}
+                 </Button>
+               </div>
+             </form>
+           )}
+
+          {/* Navigation Buttons for Steps 1-3 */}
+          {currentStep < 4 && (
+            <div className="flex gap-3 pt-6 border-t border-white/10">
+              {currentStep > 1 && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={prevStep}
+                  className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
               )}
-            </Button>
-          </DialogFooter>
-        </form>
+              
+              <Button 
+                type="button" 
+                onClick={handleNextStep}
+                disabled={!canProceed()}
+                className="flex-1 bg-saffron text-black font-semibold rounded-xl hover:bg-saffron/90"
+              >
+                Continue
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )

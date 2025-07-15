@@ -15,6 +15,7 @@ export type User = {
   name: string
   email: string
   role?: "client" | "barber" // Make role optional to handle OAuth users without roles
+  username?: string
   phone?: string
   location?: string
   description?: string
@@ -109,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: profile.name,
             email: profile.email,
             role: profile.role || undefined, // Handle null/empty role
+            username: profile.username,
             phone: profile.phone,
             location: profile.location,
             description: profile.bio,
@@ -287,6 +289,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: profile.name,
         email: profile.email,
         role: profile.role || undefined, // Handle null/empty role
+        username: profile.username,
         phone: profile.phone,
         location: profile.location,
         description: profile.bio,
@@ -431,6 +434,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: profile.name,
           email: profile.email,
           role: profile.role || undefined, // Handle null/empty role
+          username: profile.username,
           phone: profile.phone,
           location: profile.location,
           description: profile.bio,

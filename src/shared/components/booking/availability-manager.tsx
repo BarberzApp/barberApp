@@ -8,7 +8,7 @@ import { SpecialHoursManager } from './special-hours-manager'
 import { AvailabilityCalendar } from './availability-calendar'
 import { supabase } from '@/shared/lib/supabase'
 import { toast } from 'sonner'
-import { Loader2, Calendar, Clock, Umbrella, Eye } from 'lucide-react'
+import { Loader2, Calendar, Clock, Umbrella, Eye, Settings, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
 
 interface TimeOff {
@@ -192,9 +192,36 @@ export function AvailabilityManager({ barberId }: AvailabilityManagerProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bebas text-white">Schedule Management</h2>
-        <p className="text-white/70">Manage your availability, special hours, and time off</p>
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="p-3 bg-saffron/20 rounded-full">
+            <Settings className="h-6 w-6 text-saffron" />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bebas text-white tracking-wide">
+              Schedule Management
+            </h2>
+            <p className="text-white/70 text-sm sm:text-base">
+              Manage your availability, special hours, and time off
+            </p>
+          </div>
+        </div>
+        
+        {/* Stats Overview */}
+        <div className="flex justify-center gap-8 mt-6">
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-2xl text-white">{availability.length}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Days Available</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-2xl text-white">{specialHours.length}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Special Hours</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-2xl text-white">{timeOff.length}</span>
+            <span className="text-xs text-white/60 uppercase tracking-wide">Time Off</span>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}

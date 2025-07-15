@@ -5,13 +5,13 @@ import { MapPin, Clock, Car, Sparkles, CheckCircle, User } from 'lucide-react';
 
 const deliverySteps = [
   {
-    status: 'Searching for barber',
+    status: 'Searching for Stylist',
     time: 'Finding the perfect match...',
     icon: <User className="w-6 h-6" />,
     color: 'bg-saffron'
   },
   {
-    status: 'Barber confirmed',
+    status: 'Appointment confirmed',
     time: 'Preparing for your appointment',
     icon: <CheckCircle className="w-6 h-6" />,
     color: 'bg-green-500'
@@ -93,10 +93,10 @@ export default function ReachPage() {
       {/* Hero Section */}
       <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 bg-gradient-to-br from-saffron/30 to-background">
         <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 text-center font-bebas tracking-wide drop-shadow-lg">
-          Barbers delivered to your door
+          Style delivered to your door
         </h1>
         <p className="text-lg sm:text-xl text-saffron mb-8 text-center max-w-xl">
-          Professional barbers come to you. Book in seconds, get fresh in minutes.
+          Professional cosmetologists come to you. Book in seconds, get fresh in minutes.
         </p>
         {/* Animated Delivery Status */}
         <div className={`w-full max-w-md mx-auto bg-white/10 border border-white/10 rounded-2xl shadow-xl p-6 mb-8 backdrop-blur-lg transition-all duration-300 ${isAnimating ? 'scale-95 opacity-70' : 'scale-100 opacity-100'}`}>
@@ -132,7 +132,7 @@ export default function ReachPage() {
             </button>
           </form>
         </div>
-        {submitted && <div className="text-green-400 text-center mt-2">You’ve been added to the waitlist!</div>}
+        {submitted && <div className="text-green-400 text-center mt-2">You've been added to the waitlist!</div>}
         {error && <div className="text-red-400 text-center mt-2">{error}</div>}
         <div className="text-white/60 text-sm mt-4 text-center">
           Early access • Be part of the development • No spam, ever

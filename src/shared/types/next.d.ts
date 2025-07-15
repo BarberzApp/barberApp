@@ -9,6 +9,28 @@ declare module 'next' {
       userScalable?: boolean;
     };
     themeColor?: string;
+    openGraph?: {
+      title?: string;
+      description?: string;
+      type?: string;
+      url?: string;
+      images?: Array<{
+        url: string;
+        width?: number;
+        height?: number;
+        alt?: string;
+      }>;
+      siteName?: string;
+      locale?: string;
+    };
+    twitter?: {
+      card?: string;
+      title?: string;
+      description?: string;
+      images?: string[];
+      creator?: string;
+    };
+    other?: Record<string, string>;
   }
 
   export interface Viewport {

@@ -27,7 +27,10 @@ import {
   Facebook,
   Music,
   AlertCircle,
-  Loader2
+  Loader2,
+  User,
+  Sparkles,
+  Save
 } from 'lucide-react'
 // import { BrowseIntegrationGuide } from './browse-integration-guide' // Removed
 import { BARBER_SPECIALTIES } from '@/shared/constants/specialties'
@@ -45,15 +48,15 @@ const barberProfileSchema = z.object({
   
   // Professional Info
   specialties: z.array(z.string()).min(1, 'Select at least one specialty'),
-  priceRange: z.enum(['Budget', 'Mid-range', 'Premium'], {
+  priceRange: z.enum(['Budget ($15-$30)', 'Mid-range ($30-$60)', 'Premium ($60+)'], {
     required_error: 'Please select a price range'
   }),
   
   // Social Media
-  instagram: z.string().url().optional().or(z.literal('')),
-  twitter: z.string().url().optional().or(z.literal('')),
-  tiktok: z.string().url().optional().or(z.literal('')),
-  facebook: z.string().url().optional().or(z.literal('')),
+  instagram: z.string().optional().or(z.literal('')),
+  twitter: z.string().optional().or(z.literal('')),
+  tiktok: z.string().optional().or(z.literal('')),
+  facebook: z.string().optional().or(z.literal('')),
   
   // Visibility
   isPublic: z.boolean(),
@@ -62,15 +65,39 @@ const barberProfileSchema = z.object({
 type BarberProfileFormData = z.infer<typeof barberProfileSchema>
 
 const PRICE_RANGES = [
-  { value: 'Budget', label: 'Budget ($15-$30)', description: 'Affordable services for everyone' },
-  { value: 'Mid-range', label: 'Mid-range ($30-$60)', description: 'Quality services at fair prices' },
-  { value: 'Premium', label: 'Premium ($60+)', description: 'High-end services and expertise' }
+  { value: 'Budget ($15-$30)', label: 'Budget ($15-$30)', description: 'Budget ($15-$30) - Affordable services for everyone' },
+  { value: 'Mid-range ($30-$60)', label: 'Mid-range ($30-$60)', description: 'Mid-range ($30-$60) - Quality services at fair prices' },
+  { value: 'Premium ($60+)', label: 'Premium ($60+)', description: 'Premium ($60+) - High-end services and expertise' }
 ]
 
 interface EnhancedBarberProfileSettingsProps {
   onSave?: () => void;
   showPreview?: boolean;
   showIntegrationGuide?: boolean;
+}
+
+// Utility function to extract handle from URL or return as-is if already a handle
+function extractHandle(input: string): string {
+  if (!input) return '';
+  // Remove leading/trailing whitespace
+  input = input.trim();
+  // If input is a URL, extract the handle
+  try {
+    const url = new URL(input);
+    // Instagram/Twitter/TikTok: last path segment
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0) {
+      let handle = pathParts[pathParts.length - 1];
+      // For TikTok, handle may be prefixed with '@'
+      if (handle.startsWith('@')) handle = handle.slice(1);
+      return '@' + handle;
+    }
+  } catch {
+    // Not a URL, fall through
+  }
+  // If input starts with @, return as-is, else add @
+  if (input.startsWith('@')) return input;
+  return '@' + input;
 }
 
 export function EnhancedBarberProfileSettings({ onSave, showPreview = true, showIntegrationGuide = true }: EnhancedBarberProfileSettingsProps) {
@@ -93,7 +120,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       location: '',
       phone: '',
       specialties: [],
-      priceRange: 'Mid-range',
+      priceRange: 'Mid-range ($30-$60)',
       instagram: '',
       twitter: '',
       tiktok: '',
@@ -162,13 +189,20 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
 
   // Handle suggestion select
   const handleSuggestionSelect = (suggestion: any) => {
-    // Build a display string from Nominatim data
-    const display = suggestion.display_name || suggestion.name || '';
-    setLocationInput(display);
+    // Format: house_number road, city/town, state (e.g., '88 Doe Court, South Brunswick, NJ')
+    const address = suggestion.address || {};
+    const house = address.house_number ? address.house_number : '';
+    const road = address.road ? address.road : '';
+    const city = address.city || address.town || address.village || address.hamlet || '';
+    const state = address.state || address.state_code || '';
+    // Build the formatted string
+    let line1 = [house, road].filter(Boolean).join(' ');
+    let line2 = [city, state].filter(Boolean).join(', ');
+    let formatted = [line1, line2].filter(Boolean).join(', ');
+    setLocationInput(formatted);
     setShowSuggestions(false);
     setLocationSuggestions([]); // Clear suggestions immediately
-    form.setValue('location', display);
-    // Optionally, autofill city/state fields if you add them to your form schema
+    form.setValue('location', formatted);
   };
 
   // Validate location on blur
@@ -232,6 +266,8 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         isPublic: profile.is_public ?? true,
       })
 
+      setLocationInput(profile.location || '');
+
     } catch (error) {
       console.error('Error loading barber profile:', error)
       toast({
@@ -264,13 +300,25 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
     try {
       setLoading(true)
 
+      // If the location is not already formatted, reformat it from the geo suggestion
+      let formattedLocation = data.location;
+      if (geoSuggestions && geoSuggestions.length > 0) {
+        const address = geoSuggestions[0].address || {};
+        const house = address.house_number ? address.house_number : '';
+        const road = address.road ? address.road : '';
+        const city = address.city || address.town || address.village || address.hamlet || '';
+        const state = address.state || address.state_code || '';
+        let line1 = [house, road].filter(Boolean).join(' ');
+        let line2 = [city, state].filter(Boolean).join(', ');
+        formattedLocation = [line1, line2].filter(Boolean).join(', ');
+      }
       // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           name: data.name,
           username: data.username,
-          location: data.location,
+          location: formattedLocation,
           phone: data.phone,
           bio: data.bio,
           is_public: data.isPublic,
@@ -288,10 +336,10 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
           bio: data.bio,
           specialties: data.specialties,
           price_range: data.priceRange,
-          instagram: data.instagram || null,
-          twitter: data.twitter || null,
-          tiktok: data.tiktok || null,
-          facebook: data.facebook || null,
+          instagram: extractHandle(data.instagram || ''),
+          twitter: extractHandle(data.twitter || ''),
+          tiktok: extractHandle(data.tiktok || ''),
+          facebook: extractHandle(data.facebook || ''),
           latitude: lat,
           longitude: lon,
           updated_at: new Date().toISOString(),
@@ -329,26 +377,48 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
 
   return (
     <div className="space-y-6">
-      <Card className="bg-darkpurple/90 border border-transparent backdrop-blur-xl rounded-3xl shadow-2xl">
-        <CardHeader className="bg-white/5 rounded-t-3xl border-b border-white/10 p-6">
+      {/* Header */}
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="p-3 bg-saffron/20 rounded-full">
+            <User className="h-6 w-6 text-saffron" />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bebas text-white tracking-wide">
+              Barber Profile Settings
+            </h2>
+            <p className="text-white/70 text-sm sm:text-base">
+              Manage your profile information that appears in search results and booking pages
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Card className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl">
+        <CardHeader className="bg-white/5 rounded-t-2xl border-b border-white/10 p-6">
           <CardTitle className="flex items-center gap-2 text-white text-2xl font-bebas">
             <Building2 className="h-5 w-5 text-saffron" />
-            Barber Profile Settings
+            Profile Information
           </CardTitle>
           <CardDescription className="text-white/80">
-            Manage your profile information that appears in search results and booking pages.
+            Update your basic information and business details
           </CardDescription>
         </CardHeader>
         <CardContent className="p-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               
               {/* Basic Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Basic Information</h3>
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-saffron/20 rounded-lg flex items-center justify-center">
+                    <User className="h-4 w-4 text-saffron" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Basic Information</h3>
+                </div>
                 <Separator className="my-2 bg-saffron/40" />
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="name"
@@ -416,7 +486,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="location"
@@ -437,7 +507,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                             />
                             {/* Suggestions dropdown */}
                             {showSuggestions && (locationSuggestions.length > 0 || suggestionsLoading) && (
-                              <div className="absolute z-50 left-0 right-0 mt-1 bg-darkpurple border border-white/20 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                              <div className="absolute z-50 left-0 right-0 mt-1 bg-black border border-white/20 rounded-xl shadow-xl max-h-48 overflow-y-auto">
                                 {suggestionsLoading && (
                                   <div className="px-4 py-2 text-white/60 text-sm">
                                     <div className="flex items-center gap-2">
@@ -481,11 +551,16 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                 </div>
               </div>
 
-              <Separator />
+              <Separator className="bg-white/20" />
 
               {/* Professional Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Professional Information</h3>
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-saffron/20 rounded-lg flex items-center justify-center">
+                    <Scissors className="h-4 w-4 text-saffron" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Professional Information</h3>
+                </div>
                 <Separator className="my-2 bg-saffron/40" />
                 
                 <FormField
@@ -522,12 +597,12 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                             <SelectValue placeholder="Select your price range" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="bg-darkpurple/90 border border-white/10 backdrop-blur-xl rounded-2xl text-white">
+                        <SelectContent className="bg-black/90 border border-white/10 backdrop-blur-xl rounded-2xl text-white">
                           {PRICE_RANGES.map((range) => (
                             <SelectItem key={range.value} value={range.value}>
                               <div className="flex flex-col">
                                 <span className="font-medium">{range.label}</span>
-                                <span className="text-sm text-muted-foreground">{range.description}</span>
+                                
                               </div>
                             </SelectItem>
                           ))}
@@ -542,17 +617,22 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                 />
               </div>
 
-              <Separator />
+              <Separator className="bg-white/20" />
 
               {/* Social Media */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Social Media</h3>
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-saffron/20 rounded-lg flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-saffron" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Social Media</h3>
+                </div>
                 <Separator className="my-2 bg-saffron/40" />
                 <p className="text-sm text-white/80">
-                  Add your social media profiles to help clients discover your work and connect with you.
+                  Add your social media handles (just your @ or username, not the full link).
                 </p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="instagram"
@@ -563,8 +643,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                           Instagram
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="https://instagram.com/yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
+                          <Input placeholder="@yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
                         </FormControl>
+                        <FormDescription className="text-white/60">
+                          Only your handle (e.g., @yourusername)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -580,8 +663,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                           Twitter/X
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="https://twitter.com/yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
+                          <Input placeholder="@yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
                         </FormControl>
+                        <FormDescription className="text-white/60">
+                          Only your handle (e.g., @yourusername)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -597,8 +683,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                           TikTok
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="https://tiktok.com/@yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
+                          <Input placeholder="@yourusername" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
                         </FormControl>
+                        <FormDescription className="text-white/60">
+                          Only your handle (e.g., @yourusername)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -614,8 +703,11 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                           Facebook
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="https://facebook.com/yourpage" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
+                          <Input placeholder="yourpagename" {...field} className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl" />
                         </FormControl>
+                        <FormDescription className="text-white/60">
+                          Only your page name (e.g., yourpagename)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -623,18 +715,23 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                 </div>
               </div>
 
-              <Separator />
+              <Separator className="bg-white/20" />
 
               {/* Visibility Settings */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Visibility Settings</h3>
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-saffron/20 rounded-lg flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-saffron" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Visibility Settings</h3>
+                </div>
                 <Separator className="my-2 bg-saffron/40" />
                 
                 <FormField
                   control={form.control}
                   name="isPublic"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-white/10 border-white/20">
+                    <FormItem className="flex flex-row items-center justify-between rounded-xl border p-6 bg-white/10 border-white/20">
                       <div className="space-y-0.5">
                         <FormLabel className="text-base text-white font-semibold">Public Profile</FormLabel>
                         <FormDescription>
@@ -662,9 +759,23 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
               </div>
 
               {/* Save Button */}
-              <div className="flex justify-end">
-                <Button type="submit" disabled={loading} className="min-w-[120px] bg-saffron text-primary font-semibold rounded-xl px-8 py-2 hover:bg-saffron/90 shadow-lg text-lg">
-                  {loading ? 'Saving...' : 'Save Changes'}
+              <div className="flex justify-end pt-6">
+                <Button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="min-w-[140px] bg-saffron text-primary font-semibold rounded-xl px-8 py-3 hover:bg-saffron/90 shadow-lg text-lg transition-all duration-200 hover:scale-105 active:scale-100 focus:ring-2 focus:ring-saffron focus:ring-offset-2 focus:ring-offset-darkpurple"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

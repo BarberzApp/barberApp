@@ -47,6 +47,25 @@ interface ProfileSettingsProps {
   onUpdate?: () => void
 }
 
+// Utility function to extract handle from URL or return as-is if already a handle
+function extractHandle(input: string): string {
+  if (!input) return '';
+  input = input.trim();
+  try {
+    const url = new URL(input);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0) {
+      let handle = pathParts[pathParts.length - 1];
+      if (handle.startsWith('@')) handle = handle.slice(1);
+      return '@' + handle;
+    }
+  } catch {
+    // Not a URL
+  }
+  if (input.startsWith('@')) return input;
+  return '@' + input;
+}
+
 export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isBarber, setIsBarber] = useState(false)
@@ -314,10 +333,10 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             business_name: data.businessName,
             bio: data.bio,
             specialties: data.specialties,
-            instagram: data.socialMedia.instagram,
-            twitter: data.socialMedia.twitter,
-            tiktok: data.socialMedia.tiktok,
-            facebook: data.socialMedia.facebook,
+            instagram: extractHandle(data.socialMedia.instagram),
+            twitter: extractHandle(data.socialMedia.twitter),
+            tiktok: extractHandle(data.socialMedia.tiktok),
+            facebook: extractHandle(data.socialMedia.facebook),
           })
           .eq('id', barberId)
 
@@ -404,7 +423,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Avatar Section */}
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white flex items-center gap-2">
               <Camera className="h-5 w-5 text-saffron" />
@@ -460,7 +479,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         </Card>
 
         {/* Basic Information */}
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white flex items-center gap-2">
               <User className="h-5 w-5 text-saffron" />
@@ -605,7 +624,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         </Card>
 
         {/* Bio and Description */}
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white">About</CardTitle>
             <CardDescription className="text-white/70">
@@ -661,7 +680,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         </Card>
 
         {/* Social Media */}
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white flex items-center gap-2">
               <Globe className="h-5 w-5 text-saffron" />
@@ -683,8 +702,9 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   type="text"
                   className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
                   {...register('socialMedia.instagram')}
-                  placeholder="Enter your Instagram URL"
+                  placeholder="@yourusername"
                 />
+                <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
               </div>
 
               <div className="space-y-2">
@@ -697,8 +717,9 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   type="text"
                   className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
                   {...register('socialMedia.twitter')}
-                  placeholder="Enter your Twitter URL"
+                  placeholder="@yourusername"
                 />
+                <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
               </div>
 
               <div className="space-y-2">
@@ -711,8 +732,9 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   type="text"
                   className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
                   {...register('socialMedia.tiktok')}
-                  placeholder="Enter your TikTok URL"
+                  placeholder="@yourusername"
                 />
+                <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
               </div>
 
               <div className="space-y-2">
@@ -725,15 +747,16 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   type="text"
                   className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
                   {...register('socialMedia.facebook')}
-                  placeholder="Enter your Facebook URL"
+                  placeholder="yourpagename"
                 />
+                <p className="text-xs text-white/60">Only your page name (e.g., yourpagename)</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Privacy & Notifications */}
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl backdrop-blur-xl">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white">Privacy & Notifications</CardTitle>
             <CardDescription className="text-white/70">

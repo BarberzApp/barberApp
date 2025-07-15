@@ -16,7 +16,7 @@ interface QuickFiltersProps {
 
 const QUICK_FILTERS = [
   {
-    label: 'Budget Cuts',
+    label: 'Budget Service',
     icon: DollarSign,
     filters: { priceRange: 'Budget' },
     color: 'bg-green-100 text-green-800 hover:bg-green-200'
@@ -28,28 +28,40 @@ const QUICK_FILTERS = [
     color: 'bg-purple-100 text-purple-800 hover:bg-purple-200'
   },
   {
-    label: 'Fade Specialists',
+    label: 'Barbers',
     icon: Scissors,
-    filters: { specialties: ['Fade'] },
+    filters: { specialties: ['Barber'] },
     color: 'bg-blue-100 text-blue-800 hover:bg-blue-200'
   },
   {
-    label: 'Beard Experts',
+    label: 'Stylists',
     icon: Scissors,
-    filters: { specialties: ['Beard Trim', 'Beard Styling'] },
+    filters: { specialties: ['Stylist'] },
     color: 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+  },
+  {
+    label: 'Nail Techs',
+    icon: Scissors,
+    filters: { specialties: ['Nail Tech'] },
+    color: 'bg-pink-100 text-pink-800 hover:bg-pink-200'
+  },
+  {
+    label: 'Braids',
+    icon: Scissors,
+    filters: { specialties: ['Braids'] },
+    color: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+  },
+  {
+    label: 'Tattoos',
+    icon: Scissors,
+    filters: { specialties: ['Tattoos'] },
+    color: 'bg-red-100 text-red-800 hover:bg-red-200'
   },
   {
     label: 'Downtown',
     icon: MapPin,
     filters: { location: 'Downtown' },
-    color: 'bg-red-100 text-red-800 hover:bg-red-200'
-  },
-  {
-    label: 'Kids Friendly',
-    icon: Scissors,
-    filters: { specialties: ['Kids Haircut'] },
-    color: 'bg-pink-100 text-pink-800 hover:bg-pink-200'
+    color: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
   }
 ]
 
