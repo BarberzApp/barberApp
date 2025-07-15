@@ -64,6 +64,14 @@ export default function CompleteRegistrationPage() {
       <Card className="max-w-md w-full bg-darkpurple/90 border border-white/10 shadow-2xl rounded-3xl">
         <CardContent className="p-8">
           <h2 className="text-2xl font-bold text-white mb-4">Complete Your Registration</h2>
+          {/* Debug section: show current profile data */}
+          {profile && (
+            <div className="mb-4 p-3 rounded-lg bg-black/30 border border-white/10 text-white text-sm">
+              <div className="font-semibold mb-1">Debug: Current Profile Data</div>
+              <div><span className="font-medium">Role:</span> {profile.role || <span className="text-red-400">(not set)</span>}</div>
+              <div><span className="font-medium">Username:</span> {profile.username || <span className="text-red-400">(not set)</span>}</div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-white mb-1">Role</label>

@@ -107,7 +107,7 @@ export default function RegisterPage() {
       })
       return
     }
-    sessionStorage.setItem('pendingRole', role); // Store selected role
+    // No longer store pendingRole in sessionStorage
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -124,61 +124,7 @@ export default function RegisterPage() {
     }
   }
 
-  // Assign role after Google OAuth if needed
-  const { user } = useAuth();
-  React.useEffect(() => {
-    const assignRoleAndCreateBusiness = async () => {
-      const pendingRole = sessionStorage.getItem('pendingRole');
-      if (pendingRole && user) {
-        try {
-          // Update role in profiles table
-          const { error: roleError } = await supabase
-            .from('profiles')
-            .update({ role: pendingRole })
-            .eq('id', user.id);
-          if (roleError) {
-            toast({
-              title: 'Error',
-              description: 'Failed to set user role after Google sign up.',
-              variant: 'destructive',
-            });
-            console.error('Role update error:', roleError);
-          }
-          // If barber, create business profile immediately
-          if (pendingRole === 'barber') {
-            const { error: businessError } = await supabase
-              .from('barbers')
-              .insert({
-                id: user.id,
-                user_id: user.id,
-                business_name: '', // You may want to prompt for this later
-                status: 'pending',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              });
-            if (businessError) {
-              toast({
-                title: 'Error',
-                description: 'Failed to create business profile after Google sign up.',
-                variant: 'destructive',
-              });
-              console.error('Business profile creation error:', businessError);
-            }
-          }
-        } catch (err) {
-          toast({
-            title: 'Error',
-            description: 'An error occurred after Google sign up.',
-            variant: 'destructive',
-          });
-          console.error('Post-Google sign up error:', err);
-        } finally {
-          sessionStorage.removeItem('pendingRole');
-        }
-      }
-    };
-    assignRoleAndCreateBusiness();
-  }, [user]);
+  // Remove the React.useEffect that assigns role and creates business profile after Google OAuth
 
   // Add Google SVG icon inline (copied from login page)
   const GoogleIcon = () => (
