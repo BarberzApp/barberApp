@@ -1,1151 +1,781 @@
-****script.js****
-const calendar = document.querySelector(".calendar"),
-  date = document.querySelector(".date"),
-  daysContainer = document.querySelector(".days"),
-  prev = document.querySelector(".prev"),
-  next = document.querySelector(".next"),
-  todayBtn = document.querySelector(".today-btn"),
-  gotoBtn = document.querySelector(".goto-btn"),
-  dateInput = document.querySelector(".date-input"),
-  eventDay = document.querySelector(".event-day"),
-  eventDate = document.querySelector(".event-date"),
-  eventsContainer = document.querySelector(".events"),
-  addEventBtn = document.querySelector(".add-event"),
-  addEventWrapper = document.querySelector(".add-event-wrapper "),
-  addEventCloseBtn = document.querySelector(".close "),
-  addEventTitle = document.querySelector(".event-name "),
-  addEventFrom = document.querySelector(".event-time-from "),
-  addEventTo = document.querySelector(".event-time-to "),
-  addEventSubmit = document.querySelector(".add-event-btn ");
+"use client"
 
-let today = new Date();
-let activeDay;
-let month = today.getMonth();
-let year = today.getFullYear();
+import type React from "react"
 
-const months = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+import { useState, useRef } from "react"
+import { useRouter, useParams } from "next/navigation"
+import { ArrowLeft, Camera, Plus, Heart, MessageCircle, MapPin, Star, Edit, Upload, Play, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
-// const eventsArr = [
-//   {
-//     day: 13,
-//     month: 11,
-//     year: 2022,
-//     events: [
-//       {
-//         title: "Event 1 lorem ipsun dolar sit genfa tersd dsad ",
-//         time: "10:00 AM",
-//       },
-//       {
-//         title: "Event 2",
-//         time: "11:00 AM",
-//       },
-//     ],
-//   },
-// ];
+interface ProfileData {
+  id: string
+  name: string
+  username: string
+  avatar: string
+  coverPhoto: string
+  bio: string
+  location: string
+  verified: boolean
+  stats: {
+    followers: number
+    following: number
+    likes: number
+    videos: number
+  }
+  services: Array<{
+    id: string
+    name: string
+    price: number
+    duration: string
+    description: string
+  }>
+  portfolio: Array<{
+    id: string
+    url: string
+    type: "image" | "video"
+    title?: string
+    likes: number
+    comments: number
+  }>
+  reels: Array<{
+    id: string
+    url: string
+    thumbnail: string
+    title: string
+    views: number
+    likes: number
+    duration: number
+  }>
+  reviews: Array<{
+    id: string
+    user: string
+    avatar: string
+    rating: number
+    comment: string
+    date: string
+  }>
+}
 
-const eventsArr = [];
-getEvents();
-console.log(eventsArr);
+export default function ProfilePage() {
+  const router = useRouter()
+  const params = useParams()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
-//function to add days in days with class day and prev-date next-date on previous month and next month days and active on today
-function initCalendar() {
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const prevLastDay = new Date(year, month, 0);
-  const prevDays = prevLastDay.getDate();
-  const lastDate = lastDay.getDate();
-  const day = firstDay.getDay();
-  const nextDays = 7 - lastDay.getDay() - 1;
+  // State
+  const [isOwnProfile, setIsOwnProfile] = useState(true) // In real app, check if current user owns this profile
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [showBookingDialog, setShowBookingDialog] = useState(false)
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [showEditProfile, setShowEditProfile] = useState(false)
+  const [uploadType, setUploadType] = useState<"photo" | "reel">("photo")
+  const [selectedDate, setSelectedDate] = useState("")
+  const [selectedTime, setSelectedTime] = useState("")
+  const [selectedService, setSelectedService] = useState("")
 
-  date.innerHTML = months[month] + " " + year;
+  // Upload states
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadTitle, setUploadTitle] = useState("")
+  const [uploadDescription, setUploadDescription] = useState("")
+  const [uploadPrice, setUploadPrice] = useState("")
+  const [isUploading, setIsUploading] = useState(false)
 
-  let days = "";
+  // Edit profile states
+  const [editName, setEditName] = useState("")
+  const [editBio, setEditBio] = useState("")
+  const [editLocation, setEditLocation] = useState("")
 
-  for (let x = day; x > 0; x--) {
-    days += `<div class="day prev-date">${prevDays - x + 1}</div>`;
+  // Mock profile data
+  const [profileData, setProfileData] = useState<ProfileData>({
+    id: "p1",
+    name: "Alex Johnson",
+    username: "alexthecutmaster",
+    avatar: "/placeholder.svg?height=200&width=200",
+    coverPhoto: "/placeholder.svg?height=400&width=800",
+    bio: "Professional barber & stylist ✂️ 10+ years experience | Modern cuts & classic styles | Book your appointment below 📅",
+    location: "Los Angeles, CA",
+    verified: true,
+    stats: {
+      followers: 12500,
+      following: 890,
+      likes: 245000,
+      videos: 156,
+    },
+    services: [
+      {
+        id: "s1",
+        name: "Classic Haircut",
+        price: 45,
+        duration: "45 min",
+        description: "Traditional haircut with styling",
+      },
+      {
+        id: "s2",
+        name: "Fade Cut",
+        price: 55,
+        duration: "60 min",
+        description: "Modern fade with precision styling",
+      },
+      {
+        id: "s3",
+        name: "Beard Trim",
+        price: 25,
+        duration: "30 min",
+        description: "Professional beard shaping and trim",
+      },
+    ],
+    portfolio: [
+      {
+        id: "i1",
+        url: "/placeholder.svg?height=300&width=300",
+        type: "image",
+        title: "Classic Fade",
+        likes: 234,
+        comments: 12,
+      },
+      {
+        id: "i2",
+        url: "/placeholder.svg?height=300&width=300",
+        type: "image",
+        title: "Textured Cut",
+        likes: 189,
+        comments: 8,
+      },
+      {
+        id: "i3",
+        url: "/placeholder.svg?height=300&width=300",
+        type: "image",
+        title: "Beard Style",
+        likes: 156,
+        comments: 15,
+      },
+    ],
+    reels: [
+      {
+        id: "r1",
+        url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+        thumbnail: "/placeholder.svg?height=400&width=300",
+        title: "Perfect Fade Tutorial",
+        views: 12500,
+        likes: 890,
+        duration: 45,
+      },
+      {
+        id: "r2",
+        url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        thumbnail: "/placeholder.svg?height=400&width=300",
+        title: "Quick Styling Tips",
+        views: 8900,
+        likes: 567,
+        duration: 30,
+      },
+    ],
+    reviews: [
+      {
+        id: "rev1",
+        user: "John Smith",
+        avatar: "/placeholder.svg?height=100&width=100",
+        rating: 5,
+        comment: "Amazing cut! Alex really knows what he's doing. Highly recommend!",
+        date: "2 days ago",
+      },
+      {
+        id: "rev2",
+        user: "Mike Johnson",
+        avatar: "/placeholder.svg?height=100&width=100",
+        rating: 5,
+        comment: "Best barber in LA! Always consistent quality.",
+        date: "1 week ago",
+      },
+    ],
+  })
+
+  const availableTimes = ["9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"]
+  const availableDates = ["Today", "Tomorrow", "Jul 15", "Jul 16", "Jul 17", "Jul 18"]
+
+  // Format numbers
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M"
+    if (num >= 1000) return (num / 1000).toFixed(1) + "K"
+    return num.toString()
   }
 
-  for (let i = 1; i <= lastDate; i++) {
-    //check if event is present on that day
-    let event = false;
-    eventsArr.forEach((eventObj) => {
-      if (
-        eventObj.day === i &&
-        eventObj.month === month + 1 &&
-        eventObj.year === year
-      ) {
-        event = true;
+  // Handle file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setUploadFile(file)
+    }
+  }
+
+  // Handle upload submission
+  const handleUploadSubmit = async () => {
+    if (!uploadFile) return
+
+    setIsUploading(true)
+
+    // Simulate upload process
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    if (uploadType === "photo") {
+      // Add to portfolio
+      const newPortfolioItem = {
+        id: `i${profileData.portfolio.length + 1}`,
+        url: URL.createObjectURL(uploadFile),
+        type: "image" as const,
+        title: uploadTitle || "New Photo",
+        likes: 0,
+        comments: 0,
       }
-    });
-    if (
-      i === new Date().getDate() &&
-      year === new Date().getFullYear() &&
-      month === new Date().getMonth()
-    ) {
-      activeDay = i;
-      getActiveDay(i);
-      updateEvents(i);
-      if (event) {
-        days += `<div class="day today active event">${i}</div>`;
-      } else {
-        days += `<div class="day today active">${i}</div>`;
-      }
+      setProfileData((prev) => ({
+        ...prev,
+        portfolio: [newPortfolioItem, ...prev.portfolio],
+      }))
     } else {
-      if (event) {
-        days += `<div class="day event">${i}</div>`;
-      } else {
-        days += `<div class="day ">${i}</div>`;
+      // Add to reels
+      const newReel = {
+        id: `r${profileData.reels.length + 1}`,
+        url: URL.createObjectURL(uploadFile),
+        thumbnail: "/placeholder.svg?height=400&width=300",
+        title: uploadTitle || "New Reel",
+        views: 0,
+        likes: 0,
+        duration: 30,
       }
+      setProfileData((prev) => ({
+        ...prev,
+        reels: [newReel, ...prev.reels],
+      }))
     }
+
+    // Reset form
+    setUploadFile(null)
+    setUploadTitle("")
+    setUploadDescription("")
+    setUploadPrice("")
+    setIsUploading(false)
+    setShowUploadDialog(false)
   }
 
-  for (let j = 1; j <= nextDays; j++) {
-    days += `<div class="day next-date">${j}</div>`;
-  }
-  daysContainer.innerHTML = days;
-  addListner();
-}
+  // Handle booking
+  const handleBooking = () => {
+    if (!selectedDate || !selectedTime || !selectedService) return
 
-//function to add month and year on prev and next button
-function prevMonth() {
-  month--;
-  if (month < 0) {
-    month = 11;
-    year--;
-  }
-  initCalendar();
-}
-
-function nextMonth() {
-  month++;
-  if (month > 11) {
-    month = 0;
-    year++;
-  }
-  initCalendar();
-}
-
-prev.addEventListener("click", prevMonth);
-next.addEventListener("click", nextMonth);
-
-initCalendar();
-
-//function to add active on day
-function addListner() {
-  const days = document.querySelectorAll(".day");
-  days.forEach((day) => {
-    day.addEventListener("click", (e) => {
-      getActiveDay(e.target.innerHTML);
-      updateEvents(Number(e.target.innerHTML));
-      activeDay = Number(e.target.innerHTML);
-      //remove active
-      days.forEach((day) => {
-        day.classList.remove("active");
-      });
-      //if clicked prev-date or next-date switch to that month
-      if (e.target.classList.contains("prev-date")) {
-        prevMonth();
-        //add active to clicked day afte month is change
-        setTimeout(() => {
-          //add active where no prev-date or next-date
-          const days = document.querySelectorAll(".day");
-          days.forEach((day) => {
-            if (
-              !day.classList.contains("prev-date") &&
-              day.innerHTML === e.target.innerHTML
-            ) {
-              day.classList.add("active");
-            }
-          });
-        }, 100);
-      } else if (e.target.classList.contains("next-date")) {
-        nextMonth();
-        //add active to clicked day afte month is changed
-        setTimeout(() => {
-          const days = document.querySelectorAll(".day");
-          days.forEach((day) => {
-            if (
-              !day.classList.contains("next-date") &&
-              day.innerHTML === e.target.innerHTML
-            ) {
-              day.classList.add("active");
-            }
-          });
-        }, 100);
-      } else {
-        e.target.classList.add("active");
-      }
-    });
-  });
-}
-
-todayBtn.addEventListener("click", () => {
-  today = new Date();
-  month = today.getMonth();
-  year = today.getFullYear();
-  initCalendar();
-});
-
-dateInput.addEventListener("input", (e) => {
-  dateInput.value = dateInput.value.replace(/[^0-9/]/g, "");
-  if (dateInput.value.length === 2) {
-    dateInput.value += "/";
-  }
-  if (dateInput.value.length > 7) {
-    dateInput.value = dateInput.value.slice(0, 7);
-  }
-  if (e.inputType === "deleteContentBackward") {
-    if (dateInput.value.length === 3) {
-      dateInput.value = dateInput.value.slice(0, 2);
-    }
-  }
-});
-
-gotoBtn.addEventListener("click", gotoDate);
-
-function gotoDate() {
-  console.log("here");
-  const dateArr = dateInput.value.split("/");
-  if (dateArr.length === 2) {
-    if (dateArr[0] > 0 && dateArr[0] < 13 && dateArr[1].length === 4) {
-      month = dateArr[0] - 1;
-      year = dateArr[1];
-      initCalendar();
-      return;
-    }
-  }
-  alert("Invalid Date");
-}
-
-//function get active day day name and date and update eventday eventdate
-function getActiveDay(date) {
-  const day = new Date(year, month, date);
-  const dayName = day.toString().split(" ")[0];
-  eventDay.innerHTML = dayName;
-  eventDate.innerHTML = date + " " + months[month] + " " + year;
-}
-
-//function update events when a day is active
-function updateEvents(date) {
-  let events = "";
-  eventsArr.forEach((event) => {
-    if (
-      date === event.day &&
-      month + 1 === event.month &&
-      year === event.year
-    ) {
-      event.events.forEach((event) => {
-        events += `<div class="event">
-            <div class="title">
-              <i class="fas fa-circle"></i>
-              <h3 class="event-title">${event.title}</h3>
-            </div>
-            <div class="event-time">
-              <span class="event-time">${event.time}</span>
-            </div>
-        </div>`;
-      });
-    }
-  });
-  if (events === "") {
-    events = `<div class="no-event">
-            <h3>No Events</h3>
-        </div>`;
-  }
-  eventsContainer.innerHTML = events;
-  saveEvents();
-}
-
-//function to add event
-addEventBtn.addEventListener("click", () => {
-  addEventWrapper.classList.toggle("active");
-});
-
-addEventCloseBtn.addEventListener("click", () => {
-  addEventWrapper.classList.remove("active");
-});
-
-document.addEventListener("click", (e) => {
-  if (e.target !== addEventBtn && !addEventWrapper.contains(e.target)) {
-    addEventWrapper.classList.remove("active");
-  }
-});
-
-//allow 50 chars in eventtitle
-addEventTitle.addEventListener("input", (e) => {
-  addEventTitle.value = addEventTitle.value.slice(0, 60);
-});
-
-function defineProperty() {
-  var osccred = document.createElement("div");
-  osccred.innerHTML =
-    "A Project By <a href='https://www.youtube.com/channel/UCiUtBDVaSmMGKxg1HYeK-BQ' target=_blank>Open Source Coding</a>";
-  osccred.style.position = "absolute";
-  osccred.style.bottom = "0";
-  osccred.style.right = "0";
-  osccred.style.fontSize = "10px";
-  osccred.style.color = "#ccc";
-  osccred.style.fontFamily = "sans-serif";
-  osccred.style.padding = "5px";
-  osccred.style.background = "#fff";
-  osccred.style.borderTopLeftRadius = "5px";
-  osccred.style.borderBottomRightRadius = "5px";
-  osccred.style.boxShadow = "0 0 5px #ccc";
-  document.body.appendChild(osccred);
-}
-
-defineProperty();
-
-//allow only time in eventtime from and to
-addEventFrom.addEventListener("input", (e) => {
-  addEventFrom.value = addEventFrom.value.replace(/[^0-9:]/g, "");
-  if (addEventFrom.value.length === 2) {
-    addEventFrom.value += ":";
-  }
-  if (addEventFrom.value.length > 5) {
-    addEventFrom.value = addEventFrom.value.slice(0, 5);
-  }
-});
-
-addEventTo.addEventListener("input", (e) => {
-  addEventTo.value = addEventTo.value.replace(/[^0-9:]/g, "");
-  if (addEventTo.value.length === 2) {
-    addEventTo.value += ":";
-  }
-  if (addEventTo.value.length > 5) {
-    addEventTo.value = addEventTo.value.slice(0, 5);
-  }
-});
-
-//function to add event to eventsArr
-addEventSubmit.addEventListener("click", () => {
-  const eventTitle = addEventTitle.value;
-  const eventTimeFrom = addEventFrom.value;
-  const eventTimeTo = addEventTo.value;
-  if (eventTitle === "" || eventTimeFrom === "" || eventTimeTo === "") {
-    alert("Please fill all the fields");
-    return;
+    console.log("Booking:", { selectedDate, selectedTime, selectedService })
+    setShowBookingDialog(false)
+    alert("Booking confirmed!")
   }
 
-  //check correct time format 24 hour
-  const timeFromArr = eventTimeFrom.split(":");
-  const timeToArr = eventTimeTo.split(":");
-  if (
-    timeFromArr.length !== 2 ||
-    timeToArr.length !== 2 ||
-    timeFromArr[0] > 23 ||
-    timeFromArr[1] > 59 ||
-    timeToArr[0] > 23 ||
-    timeToArr[1] > 59
-  ) {
-    alert("Invalid Time Format");
-    return;
+  // Handle profile edit
+  const handleEditProfile = () => {
+    setProfileData((prev) => ({
+      ...prev,
+      name: editName || prev.name,
+      bio: editBio || prev.bio,
+      location: editLocation || prev.location,
+    }))
+    setShowEditProfile(false)
   }
 
-  const timeFrom = convertTime(eventTimeFrom);
-  const timeTo = convertTime(eventTimeTo);
-
-  //check if event is already added
-  let eventExist = false;
-  eventsArr.forEach((event) => {
-    if (
-      event.day === activeDay &&
-      event.month === month + 1 &&
-      event.year === year
-    ) {
-      event.events.forEach((event) => {
-        if (event.title === eventTitle) {
-          eventExist = true;
-        }
-      });
-    }
-  });
-  if (eventExist) {
-    alert("Event already added");
-    return;
-  }
-  const newEvent = {
-    title: eventTitle,
-    time: timeFrom + " - " + timeTo,
-  };
-  console.log(newEvent);
-  console.log(activeDay);
-  let eventAdded = false;
-  if (eventsArr.length > 0) {
-    eventsArr.forEach((item) => {
-      if (
-        item.day === activeDay &&
-        item.month === month + 1 &&
-        item.year === year
-      ) {
-        item.events.push(newEvent);
-        eventAdded = true;
-      }
-    });
-  }
-
-  if (!eventAdded) {
-    eventsArr.push({
-      day: activeDay,
-      month: month + 1,
-      year: year,
-      events: [newEvent],
-    });
-  }
-
-  console.log(eventsArr);
-  addEventWrapper.classList.remove("active");
-  addEventTitle.value = "";
-  addEventFrom.value = "";
-  addEventTo.value = "";
-  updateEvents(activeDay);
-  //select active day and add event class if not added
-  const activeDayEl = document.querySelector(".day.active");
-  if (!activeDayEl.classList.contains("event")) {
-    activeDayEl.classList.add("event");
-  }
-});
-
-//function to delete event when clicked on event
-eventsContainer.addEventListener("click", (e) => {
-  if (e.target.classList.contains("event")) {
-    if (confirm("Are you sure you want to delete this event?")) {
-      const eventTitle = e.target.children[0].children[1].innerHTML;
-      eventsArr.forEach((event) => {
-        if (
-          event.day === activeDay &&
-          event.month === month + 1 &&
-          event.year === year
-        ) {
-          event.events.forEach((item, index) => {
-            if (item.title === eventTitle) {
-              event.events.splice(index, 1);
-            }
-          });
-          //if no events left in a day then remove that day from eventsArr
-          if (event.events.length === 0) {
-            eventsArr.splice(eventsArr.indexOf(event), 1);
-            //remove event class from day
-            const activeDayEl = document.querySelector(".day.active");
-            if (activeDayEl.classList.contains("event")) {
-              activeDayEl.classList.remove("event");
-            }
-          }
-        }
-      });
-      updateEvents(activeDay);
-    }
-  }
-});
-
-//function to save events in local storage
-function saveEvents() {
-  localStorage.setItem("events", JSON.stringify(eventsArr));
-}
-
-//function to get events from local storage
-function getEvents() {
-  //check if events are already saved in local storage then return event else nothing
-  if (localStorage.getItem("events") === null) {
-    return;
-  }
-  eventsArr.push(...JSON.parse(localStorage.getItem("events")));
-}
-
-function convertTime(time) {
-  //convert time to 24 hour format
-  let timeArr = time.split(":");
-  let timeHour = timeArr[0];
-  let timeMin = timeArr[1];
-  let timeFormat = timeHour >= 12 ? "PM" : "AM";
-  timeHour = timeHour % 12 || 12;
-  time = timeHour + ":" + timeMin + " " + timeFormat;
-  return time;
-}
-
-
-
--------
-
-
-****index.html****
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Stay organized with our user-friendly Calendar featuring events, reminders, and a customizable interface. Built with HTML, CSS, and JavaScript. Start scheduling today!"
-    />
-    <meta
-      name="keywords"
-      content="calendar, events, reminders, javascript, html, css, open source coding"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
-      integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
-    <link rel="stylesheet" href="style.css" />
-    <title>Calendar with Events</title>
-  </head>
-  <body>
-    <div class="container">
-      <div class="left">
-        <div class="calendar">
-          <div class="month">
-            <i class="fas fa-angle-left prev"></i>
-            <div class="date">december 2015</div>
-            <i class="fas fa-angle-right next"></i>
-          </div>
-          <div class="weekdays">
-            <div>Sun</div>
-            <div>Mon</div>
-            <div>Tue</div>
-            <div>Wed</div>
-            <div>Thu</div>
-            <div>Fri</div>
-            <div>Sat</div>
-          </div>
-          <div class="days"></div>
-          <div class="goto-today">
-            <div class="goto">
-              <input type="text" placeholder="mm/yyyy" class="date-input" />
-              <button class="goto-btn">Go</button>
-            </div>
-            <button class="today-btn">Today</button>
-          </div>
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm pt-safe">
+        <div className="flex items-center justify-between p-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
+          <h1 className="text-lg font-semibold">@{profileData.username}</h1>
+          {isOwnProfile ? (
+            <Button variant="ghost" size="icon" onClick={() => setShowEditProfile(true)}>
+              <Edit className="h-6 w-6" />
+            </Button>
+          ) : (
+            <div className="w-6"></div>
+          )}
         </div>
       </div>
-      <div class="right">
-        <div class="today-date">
-          <div class="event-day">wed</div>
-          <div class="event-date">12th december 2022</div>
+
+      {/* Main Content */}
+      <div className="pt-[72px] pb-safe">
+        {/* Cover Photo */}
+        <div className="relative h-48 bg-gray-800">
+          <img src={profileData.coverPhoto || "/placeholder.svg"} alt="Cover" className="w-full h-full object-cover" />
+          {isOwnProfile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 bg-black/50 text-white hover:bg-black/70"
+            >
+              <Camera className="h-5 w-5" />
+            </Button>
+          )}
         </div>
-        <div class="events"></div>
-        <div class="add-event-wrapper">
-          <div class="add-event-header">
-            <div class="title">Add Event</div>
-            <i class="fas fa-times close"></i>
-          </div>
-          <div class="add-event-body">
-            <div class="add-event-input">
-              <input type="text" placeholder="Event Name" class="event-name" />
+
+        {/* Profile Info */}
+        <div className="px-4 -mt-16 relative z-10">
+          <div className="flex items-end justify-between mb-4">
+            <div className="relative">
+              <Avatar className="h-24 w-24 border-4 border-black">
+                <AvatarImage src={profileData.avatar || "/placeholder.svg"} alt={profileData.name} />
+                <AvatarFallback>{profileData.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              {isOwnProfile && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute -bottom-1 -right-1 h-8 w-8 bg-white text-black hover:bg-white/90 rounded-full"
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-            <div class="add-event-input">
-              <input
-                type="text"
-                placeholder="Event Time From"
-                class="event-time-from"
-              />
+
+            {!isOwnProfile ? (
+              <div className="flex gap-2">
+                <Button
+                  variant={isFollowing ? "outline" : "default"}
+                  className={cn(
+                    "rounded-full px-6",
+                    isFollowing ? "border-white/20 text-white" : "bg-white text-black",
+                  )}
+                  onClick={() => setIsFollowing(!isFollowing)}
+                >
+                  {isFollowing ? "Following" : "Follow"}
+                </Button>
+                <Button
+                  className="bg-white text-black hover:bg-white/90 rounded-full px-6"
+                  onClick={() => setShowBookingDialog(true)}
+                >
+                  Book Now
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="bg-white text-black hover:bg-white/90 rounded-full px-6"
+                onClick={() => setShowUploadDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Upload
+              </Button>
+            )}
+          </div>
+
+          {/* Name and Bio */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-xl font-bold">{profileData.name}</h1>
+              {profileData.verified && <Badge className="bg-blue-500 text-white text-xs px-1 py-0">✓</Badge>}
             </div>
-            <div class="add-event-input">
-              <input
-                type="text"
-                placeholder="Event Time To"
-                class="event-time-to"
-              />
+            <p className="text-white/70 mb-2">@{profileData.username}</p>
+            <p className="text-white/90 mb-2">{profileData.bio}</p>
+            <div className="flex items-center text-white/70 text-sm">
+              <MapPin className="h-4 w-4 mr-1" />
+              {profileData.location}
             </div>
           </div>
-          <div class="add-event-footer">
-            <button class="add-event-btn">Add Event</button>
+
+          {/* Stats */}
+          <div className="flex justify-around py-4 border-y border-white/10 mb-6">
+            <div className="text-center">
+              <div className="font-bold text-lg">{formatNumber(profileData.stats.videos)}</div>
+              <div className="text-white/70 text-sm">Videos</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">{formatNumber(profileData.stats.followers)}</div>
+              <div className="text-white/70 text-sm">Followers</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">{formatNumber(profileData.stats.following)}</div>
+              <div className="text-white/70 text-sm">Following</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">{formatNumber(profileData.stats.likes)}</div>
+              <div className="text-white/70 text-sm">Likes</div>
+            </div>
           </div>
+
+          {/* Tabs */}
+          <Tabs defaultValue="reels" className="w-full">
+            <TabsList className="w-full bg-black border border-white/20 p-1 rounded-lg mb-6">
+              <TabsTrigger
+                value="reels"
+                className="rounded-md text-sm data-[state=active]:bg-white data-[state=active]:text-black"
+              >
+                Reels
+              </TabsTrigger>
+              <TabsTrigger
+                value="portfolio"
+                className="rounded-md text-sm data-[state=active]:bg-white data-[state=active]:text-black"
+              >
+                Portfolio
+              </TabsTrigger>
+              <TabsTrigger
+                value="services"
+                className="rounded-md text-sm data-[state=active]:bg-white data-[state=active]:text-black"
+              >
+                Services
+              </TabsTrigger>
+              <TabsTrigger
+                value="reviews"
+                className="rounded-md text-sm data-[state=active]:bg-white data-[state=active]:text-black"
+              >
+                Reviews
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Reels Tab */}
+            <TabsContent value="reels">
+              <div className="grid grid-cols-3 gap-1">
+                {profileData.reels.map((reel) => (
+                  <div key={reel.id} className="relative aspect-[3/4] bg-gray-800 rounded-lg overflow-hidden">
+                    <img
+                      src={reel.thumbnail || "/placeholder.svg"}
+                      alt={reel.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <Play className="h-8 w-8 text-white" />
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <p className="text-white text-xs font-medium truncate">{reel.title}</p>
+                      <div className="flex items-center justify-between text-white/70 text-xs mt-1">
+                        <span>{formatNumber(reel.views)} views</span>
+                        <span>{reel.duration}s</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* Portfolio Tab */}
+            <TabsContent value="portfolio">
+              <div className="grid grid-cols-3 gap-1">
+                {profileData.portfolio.map((item) => (
+                  <div key={item.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden">
+                    <img src={item.url || "/placeholder.svg"} alt={item.title} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <div className="flex items-center justify-between text-white text-xs">
+                        <div className="flex items-center gap-2">
+                          <Heart className="h-3 w-3" />
+                          <span>{item.likes}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MessageCircle className="h-3 w-3" />
+                          <span>{item.comments}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* Services Tab */}
+            <TabsContent value="services">
+              <div className="space-y-4">
+                {profileData.services.map((service) => (
+                  <Card key={service.id} className="bg-white/5 border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold">{service.name}</h3>
+                        <div className="text-right">
+                          <div className="font-bold">${service.price}</div>
+                          <div className="text-white/70 text-sm">{service.duration}</div>
+                        </div>
+                      </div>
+                      <p className="text-white/80 text-sm mb-3">{service.description}</p>
+                      <Button
+                        className="w-full bg-white text-black hover:bg-white/90"
+                        onClick={() => {
+                          setSelectedService(service.id)
+                          setShowBookingDialog(true)
+                        }}
+                      >
+                        Book This Service
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* Reviews Tab */}
+            <TabsContent value="reviews">
+              <div className="space-y-4">
+                {profileData.reviews.map((review) => (
+                  <Card key={review.id} className="bg-white/5 border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={review.avatar || "/placeholder.svg"} alt={review.user} />
+                          <AvatarFallback>{review.user.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold">{review.user}</h4>
+                            <span className="text-white/70 text-sm">{review.date}</span>
+                          </div>
+                          <div className="flex items-center mt-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={cn(
+                                  "h-4 w-4",
+                                  i < review.rating ? "text-yellow-400 fill-yellow-400" : "text-white/30",
+                                )}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-white/90">{review.comment}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-      <button class="add-event">
-        <i class="fas fa-plus"></i>
-      </button>
+
+      {/* Upload Dialog */}
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent className="bg-black border border-white/10 text-white max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Upload Content</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Upload Type Selection */}
+            <div className="flex gap-2">
+              <Button
+                variant={uploadType === "photo" ? "default" : "outline"}
+                className={cn("flex-1", uploadType === "photo" ? "bg-white text-black" : "border-white/20 text-white")}
+                onClick={() => setUploadType("photo")}
+              >
+                Photo
+              </Button>
+              <Button
+                variant={uploadType === "reel" ? "default" : "outline"}
+                className={cn("flex-1", uploadType === "reel" ? "bg-white text-black" : "border-white/20 text-white")}
+                onClick={() => setUploadType("reel")}
+              >
+                Reel
+              </Button>
+            </div>
+
+            {/* File Upload */}
+            <div className="space-y-2">
+              <Label>Select {uploadType === "photo" ? "Photo" : "Video"}</Label>
+              <div
+                className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center cursor-pointer hover:border-white/40 transition-colors"
+                onClick={() => {
+                  if (uploadType === "photo") {
+                    fileInputRef.current?.click()
+                  } else {
+                    videoInputRef.current?.click()
+                  }
+                }}
+              >
+                {uploadFile ? (
+                  <div className="space-y-2">
+                    <Check className="h-8 w-8 text-green-500 mx-auto" />
+                    <p className="text-sm">{uploadFile.name}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Upload className="h-8 w-8 text-white/50 mx-auto" />
+                    <p className="text-white/70">Click to upload {uploadType === "photo" ? "photo" : "video"}</p>
+                  </div>
+                )}
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+              <input ref={videoInputRef} type="file" accept="video/*" onChange={handleFileUpload} className="hidden" />
+            </div>
+
+            {/* Title */}
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                placeholder={`Enter ${uploadType} title`}
+                value={uploadTitle}
+                onChange={(e) => setUploadTitle(e.target.value)}
+                className="bg-white/10 border-white/20"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                placeholder="Describe your work..."
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+                className="bg-white/10 border-white/20 min-h-[80px]"
+              />
+            </div>
+
+            {/* Price (for reels) */}
+            {uploadType === "reel" && (
+              <div className="space-y-2">
+                <Label>Service Price (Optional)</Label>
+                <Input
+                  placeholder="Enter price for this service"
+                  value={uploadPrice}
+                  onChange={(e) => setUploadPrice(e.target.value)}
+                  className="bg-white/10 border-white/20"
+                />
+              </div>
+            )}
+
+            <Button
+              className="w-full bg-white text-black hover:bg-white/90"
+              onClick={handleUploadSubmit}
+              disabled={!uploadFile || isUploading}
+            >
+              {isUploading ? "Uploading..." : `Upload ${uploadType === "photo" ? "Photo" : "Reel"}`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Booking Dialog */}
+      <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
+        <DialogContent className="bg-black border border-white/10 text-white max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Book Appointment</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Service Selection */}
+            <div className="space-y-2">
+              <Label>Select Service</Label>
+              <div className="space-y-2">
+                {profileData.services.map((service) => (
+                  <div
+                    key={service.id}
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-all",
+                      selectedService === service.id
+                        ? "border-white bg-white/10"
+                        : "border-white/20 hover:border-white/40",
+                    )}
+                    onClick={() => setSelectedService(service.id)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-medium">{service.name}</h4>
+                        <p className="text-white/70 text-sm">{service.duration}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold">${service.price}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Date Selection */}
+            <div className="space-y-2">
+              <Label>Select Date</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {availableDates.map((date) => (
+                  <Button
+                    key={date}
+                    variant={selectedDate === date ? "default" : "outline"}
+                    className={cn("border-white/20", selectedDate === date && "bg-white text-black border-white")}
+                    onClick={() => setSelectedDate(date)}
+                  >
+                    {date}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time Selection */}
+            <div className="space-y-2">
+              <Label>Select Time</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {availableTimes.map((time) => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? "default" : "outline"}
+                    className={cn("border-white/20", selectedTime === time && "bg-white text-black border-white")}
+                    onClick={() => setSelectedTime(time)}
+                  >
+                    {time}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              className="w-full bg-white text-black hover:bg-white/90 font-bold py-3"
+              onClick={handleBooking}
+              disabled={!selectedDate || !selectedTime || !selectedService}
+            >
+              Confirm Booking
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
+        <DialogContent className="bg-black border border-white/10 text-white max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                placeholder={profileData.name}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="bg-white/10 border-white/20"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Bio</Label>
+              <Textarea
+                placeholder={profileData.bio}
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                className="bg-white/10 border-white/20 min-h-[100px]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Input
+                placeholder={profileData.location}
+                value={editLocation}
+                onChange={(e) => setEditLocation(e.target.value)}
+                className="bg-white/10 border-white/20"
+              />
+            </div>
+
+            <Button className="w-full bg-white text-black hover:bg-white/90" onClick={handleEditProfile}>
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-
-    <div class="credits">
-      <p>
-        Crafted with ❤️ by
-        <a href="https://youtu.be/6EVgmpm4z5U" target="_blank">Open Source Coding</a>
-      </p>
-    </div>
-
-    <script src="script.js"></script>
-  </body>
-</html>
-
-
-______
-
-
-*****style.css******
-
-:root {
-  --primary-clr: #b38add;
-}
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Poppins", sans-serif;
-}
-/* nice scroll bar */
-::-webkit-scrollbar {
-  width: 5px;
-}
-::-webkit-scrollbar-track {
-  background: #f5f5f5;
-  border-radius: 50px;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--primary-clr);
-  border-radius: 50px;
-}
-
-body {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-bottom: 30px;
-  background-color: #e2e1dc;
-}
-.container {
-  position: relative;
-  width: 1200px;
-  min-height: 850px;
-  margin: 0 auto;
-  padding: 5px;
-  color: #fff;
-  display: flex;
-
-  border-radius: 10px;
-  background-color: #373c4f;
-}
-.left {
-  width: 60%;
-  padding: 20px;
-}
-.calendar {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  color: #878895;
-  border-radius: 5px;
-  background-color: #fff;
-}
-/* set after behind the main element */
-.calendar::before,
-.calendar::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 100%;
-  width: 12px;
-  height: 97%;
-  border-radius: 0 5px 5px 0;
-  background-color: #d3d4d6d7;
-  transform: translateY(-50%);
-}
-.calendar::before {
-  height: 94%;
-  left: calc(100% + 12px);
-  background-color: rgb(153, 153, 153);
-}
-.calendar .month {
-  width: 100%;
-  height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 50px;
-  font-size: 1.2rem;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-.calendar .month .prev,
-.calendar .month .next {
-  cursor: pointer;
-}
-.calendar .month .prev:hover,
-.calendar .month .next:hover {
-  color: var(--primary-clr);
-}
-.calendar .weekdays {
-  width: 100%;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  font-size: 1rem;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-.weekdays div {
-  width: 14.28%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.calendar .days {
-  width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  padding: 0 20px;
-  font-size: 1rem;
-  font-weight: 500;
-  margin-bottom: 20px;
-}
-.calendar .days .day {
-  width: 14.28%;
-  height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--primary-clr);
-  border: 1px solid #f5f5f5;
-}
-.calendar .days .day:nth-child(7n + 1) {
-  border-left: 2px solid #f5f5f5;
-}
-.calendar .days .day:nth-child(7n) {
-  border-right: 2px solid #f5f5f5;
-}
-.calendar .days .day:nth-child(-n + 7) {
-  border-top: 2px solid #f5f5f5;
-}
-.calendar .days .day:nth-child(n + 29) {
-  border-bottom: 2px solid #f5f5f5;
-}
-
-.calendar .days .day:not(.prev-date, .next-date):hover {
-  color: #fff;
-  background-color: var(--primary-clr);
-}
-.calendar .days .prev-date,
-.calendar .days .next-date {
-  color: #b3b3b3;
-}
-.calendar .days .active {
-  position: relative;
-  font-size: 2rem;
-  color: #fff;
-  background-color: var(--primary-clr);
-}
-.calendar .days .active::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  box-shadow: 0 0 10px 2px var(--primary-clr);
-}
-.calendar .days .today {
-  font-size: 2rem;
-}
-.calendar .days .event {
-  position: relative;
-}
-.calendar .days .event::after {
-  content: "";
-  position: absolute;
-  bottom: 10%;
-  left: 50%;
-  width: 75%;
-  height: 6px;
-  border-radius: 30px;
-  transform: translateX(-50%);
-  background-color: var(--primary-clr);
-}
-.calendar .days .day:hover.event::after {
-  background-color: #fff;
-}
-.calendar .days .active.event::after {
-  background-color: #fff;
-  bottom: 20%;
-}
-.calendar .days .active.event {
-  padding-bottom: 10px;
-}
-.calendar .goto-today {
-  width: 100%;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 5px;
-  padding: 0 20px;
-  margin-bottom: 20px;
-  color: var(--primary-clr);
-}
-.calendar .goto-today .goto {
-  display: flex;
-  align-items: center;
-  border-radius: 5px;
-  overflow: hidden;
-  border: 1px solid var(--primary-clr);
-}
-.calendar .goto-today .goto input {
-  width: 100%;
-  height: 30px;
-  outline: none;
-  border: none;
-  border-radius: 5px;
-  padding: 0 20px;
-  color: var(--primary-clr);
-  border-radius: 5px;
-}
-.calendar .goto-today button {
-  padding: 5px 10px;
-  border: 1px solid var(--primary-clr);
-  border-radius: 5px;
-  background-color: transparent;
-  cursor: pointer;
-  color: var(--primary-clr);
-}
-.calendar .goto-today button:hover {
-  color: #fff;
-  background-color: var(--primary-clr);
-}
-.calendar .goto-today .goto button {
-  border: none;
-  border-left: 1px solid var(--primary-clr);
-  border-radius: 0;
-}
-.container .right {
-  position: relative;
-  width: 40%;
-  min-height: 100%;
-  padding: 20px 0;
-}
-
-.right .today-date {
-  width: 100%;
-  height: 50px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 40px;
-  padding-left: 70px;
-  margin-top: 50px;
-  margin-bottom: 20px;
-  text-transform: capitalize;
-}
-.right .today-date .event-day {
-  font-size: 2rem;
-  font-weight: 500;
-}
-.right .today-date .event-date {
-  font-size: 1rem;
-  font-weight: 400;
-  color: #878895;
-}
-.events {
-  width: 100%;
-  height: 100%;
-  max-height: 600px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  padding-left: 4px;
-}
-.events .event {
-  position: relative;
-  width: 95%;
-  min-height: 70px;
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
-  gap: 5px;
-  padding: 0 20px;
-  padding-left: 50px;
-  color: #fff;
-  background: linear-gradient(90deg, #3f4458, transparent);
-  cursor: pointer;
-}
-/* even event */
-.events .event:nth-child(even) {
-  background: transparent;
-}
-.events .event:hover {
-  background: linear-gradient(90deg, var(--primary-clr), transparent);
-}
-.events .event .title {
-  display: flex;
-  align-items: center;
-  pointer-events: none;
-}
-.events .event .title .event-title {
-  font-size: 1rem;
-  font-weight: 400;
-  margin-left: 20px;
-}
-.events .event i {
-  color: var(--primary-clr);
-  font-size: 0.5rem;
-}
-.events .event:hover i {
-  color: #fff;
-}
-.events .event .event-time {
-  font-size: 0.8rem;
-  font-weight: 400;
-  color: #878895;
-  margin-left: 15px;
-  pointer-events: none;
-}
-.events .event:hover .event-time {
-  color: #fff;
-}
-/* add tick in event after */
-.events .event::after {
-  content: "✓";
-  position: absolute;
-  top: 50%;
-  right: 0;
-  font-size: 3rem;
-  line-height: 1;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.3;
-  color: var(--primary-clr);
-  transform: translateY(-50%);
-}
-.events .event:hover::after {
-  display: flex;
-}
-.add-event {
-  position: absolute;
-  bottom: 30px;
-  right: 30px;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  color: #878895;
-  border: 2px solid #878895;
-  opacity: 0.5;
-  border-radius: 50%;
-  background-color: transparent;
-  cursor: pointer;
-}
-.add-event:hover {
-  opacity: 1;
-}
-.add-event i {
-  pointer-events: none;
-}
-.events .no-event {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: #878895;
-}
-.add-event-wrapper {
-  position: absolute;
-  bottom: 100px;
-  left: 50%;
-  width: 90%;
-  max-height: 0;
-  overflow: hidden;
-  border-radius: 5px;
-  background-color: #fff;
-  transform: translateX(-50%);
-  transition: max-height 0.5s ease;
-}
-.add-event-wrapper.active {
-  max-height: 300px;
-}
-.add-event-header {
-  width: 100%;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  color: #373c4f;
-  border-bottom: 1px solid #f5f5f5;
-}
-.add-event-header .close {
-  font-size: 1.5rem;
-  cursor: pointer;
-}
-.add-event-header .close:hover {
-  color: var(--primary-clr);
-}
-.add-event-header .title {
-  font-size: 1.2rem;
-  font-weight: 500;
-}
-.add-event-body {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 20px;
-}
-.add-event-body .add-event-input {
-  width: 100%;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.add-event-body .add-event-input input {
-  width: 100%;
-  height: 100%;
-  outline: none;
-  border: none;
-  border-bottom: 1px solid #f5f5f5;
-  padding: 0 10px;
-  font-size: 1rem;
-  font-weight: 400;
-  color: #373c4f;
-}
-.add-event-body .add-event-input input::placeholder {
-  color: #a5a5a5;
-}
-.add-event-body .add-event-input input:focus {
-  border-bottom: 1px solid var(--primary-clr);
-}
-.add-event-body .add-event-input input:focus::placeholder {
-  color: var(--primary-clr);
-}
-.add-event-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-.add-event-footer .add-event-btn {
-  height: 40px;
-  font-size: 1rem;
-  font-weight: 500;
-  outline: none;
-  border: none;
-  color: #fff;
-  background-color: var(--primary-clr);
-  border-radius: 5px;
-  cursor: pointer;
-  padding: 5px 10px;
-  border: 1px solid var(--primary-clr);
-}
-.add-event-footer .add-event-btn:hover {
-  background-color: transparent;
-  color: var(--primary-clr);
-}
-
-/* media queries */
-
-@media screen and (max-width: 1000px) {
-  body {
-    align-items: flex-start;
-    justify-content: flex-start;
-  }
-  .container {
-    min-height: 100vh;
-    flex-direction: column;
-    border-radius: 0;
-  }
-  .container .left {
-    width: 100%;
-    height: 100%;
-    padding: 20px 0;
-  }
-  .container .right {
-    width: 100%;
-    height: 100%;
-    padding: 20px 0;
-  }
-  .calendar::before,
-  .calendar::after {
-    top: 100%;
-    left: 50%;
-    width: 97%;
-    height: 12px;
-    border-radius: 0 0 5px 5px;
-    transform: translateX(-50%);
-  }
-  .calendar::before {
-    width: 94%;
-    top: calc(100% + 12px);
-  }
-  .events {
-    padding-bottom: 340px;
-  }
-  .add-event-wrapper {
-    bottom: 100px;
-  }
-}
-@media screen and (max-width: 500px) {
-  .calendar .month {
-    height: 75px;
-  }
-  .calendar .weekdays {
-    height: 50px;
-  }
-  .calendar .days .day {
-    height: 40px;
-    font-size: 0.8rem;
-  }
-  .calendar .days .day.active,
-  .calendar .days .day.today {
-    font-size: 1rem;
-  }
-  .right .today-date {
-    padding: 20px;
-  }
-}
-
-.credits {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  text-align: center;
-  padding: 10px;
-  font-size: 12px;
-  color: #fff;
-  background-color: #b38add;
-}
-.credits a {
-  color: #fff;
-  text-decoration: none;
-  font-weight: 600;
-}
-.credits a:hover {
-  text-decoration: underline;
+  )
 }
