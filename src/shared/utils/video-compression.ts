@@ -259,7 +259,7 @@ export function validateVideoFile(file: File): {
   errors: string[]
 } {
   const errors: string[] = []
-  const maxSize = 100 * 1024 * 1024 // 100MB
+  const maxSize = 270 * 1024 * 1024 // 270MB
   const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
 
   if (!allowedTypes.includes(file.type)) {
@@ -267,7 +267,7 @@ export function validateVideoFile(file: File): {
   }
 
   if (file.size > maxSize) {
-    errors.push('Video file is too large. Maximum size is 100MB.')
+    errors.push('Video file is too large. Maximum size is 270MB.')
   }
 
   return {

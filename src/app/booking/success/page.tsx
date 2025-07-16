@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/shared/components/ui/use-toast"
 import { useSync } from "@/shared/hooks/use-sync"
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { supabaseAdmin } from "@/shared/lib/supabase"
@@ -18,6 +19,7 @@ export default function BookingSuccessPage({
   const { toast } = useToast()
   const { syncService } = useSync()
   const sessionId = searchParams.session_id
+  const { push: safePush } = useSafeNavigation();
 
   useEffect(() => {
     const createBooking = async () => {
@@ -27,7 +29,7 @@ export default function BookingSuccessPage({
           description: "No session ID provided",
           variant: "destructive",
         })
-        router.push('/')
+        safePush('/')
         return
       }
 
@@ -168,7 +170,7 @@ export default function BookingSuccessPage({
           description: `Failed to create booking: ${errorMessage}. Please contact support.`,
           variant: "destructive",
         })
-        router.push('/')
+        safePush('/')
       }
     }
 
@@ -189,7 +191,7 @@ export default function BookingSuccessPage({
             Thank you for your booking. We've sent a confirmation email with all the details.
             You can also view your booking in your account dashboard.
           </p>
-          <Button onClick={() => router.push('/')}>
+          <Button onClick={() => safePush('/')}>
             Return to Home
           </Button>
         </CardContent>

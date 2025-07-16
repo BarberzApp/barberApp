@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { Switch } from '@/shared/components/ui/switch'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 import { Badge } from '@/shared/components/ui/badge'
-import { Separator } from '@/shared/components/ui/separator'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 interface ProfileFormData {
   name: string
@@ -35,11 +35,6 @@ interface ProfileFormData {
     twitter: string
     tiktok: string
     facebook: string
-  }
-  notifications: {
-    email: boolean
-    sms: boolean
-    marketing: boolean
   }
 }
 
@@ -66,6 +61,14 @@ function extractHandle(input: string): string {
   return '@' + input;
 }
 
+// Timeout helper
+async function withTimeout(promise: Promise<any>, ms = 10000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+  ])
+}
+
 export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isBarber, setIsBarber] = useState(false)
@@ -76,6 +79,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const { toast } = useToast()
   const { user, status } = useAuth()
   const router = useRouter()
+  const { push: safePush } = useSafeNavigation();
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<ProfileFormData>()
   const [isDeveloper, setIsDeveloper] = useState(false)
 
@@ -129,7 +133,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
 
         if (barberError) {
           console.error('Error fetching barber profile:', barberError);
-          router.push('/barber/onboarding');
+          safePush('/barber/onboarding');
           return;
         }
         if (barber) {
@@ -151,11 +155,6 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               twitter: barber.twitter || '',
               tiktok: barber.tiktok || '',
               facebook: barber.facebook || ''
-            },
-            notifications: {
-              email: profile.email_notifications || false,
-              sms: profile.sms_notifications || false,
-              marketing: profile.marketing_emails || false
             }
           })
         }
@@ -177,11 +176,6 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             twitter: '',
             tiktok: '',
             facebook: ''
-          },
-          notifications: {
-            email: profile.email_notifications || false,
-            sms: profile.sms_notifications || false,
-            marketing: profile.marketing_emails || false
           }
         })
       }
@@ -213,19 +207,19 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
     } finally {
       setIsInitialLoad(false)
     }
-  }, [user, reset, toast, router])
+  }, [user, reset, toast, safePush])
 
   useEffect(() => {
     // Redirect if not authenticated
     if (status === 'unauthenticated') {
-      router.push('/login')
+      safePush('/login')
       return
     }
 
     if (user && isInitialLoad) {
       fetchProfile()
     }
-  }, [status, user, isInitialLoad])
+  }, [status, user, isInitialLoad, safePush])
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -252,41 +246,41 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       }
 
       setIsLoading(true)
-
-      // Upload to Supabase Storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user?.id}-${Date.now()}.${fileExt}`
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file)
-
-      if (error) throw error
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName)
-
-      // Update profile with new avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user?.id)
-
-      if (updateError) throw updateError
-
-      setAvatarUrl(publicUrl)
-      toast({
-        title: 'Success',
-        description: 'Avatar updated successfully!',
-      })
-    } catch (error) {
-      console.error('Error uploading avatar:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to upload avatar. Please try again.',
-        variant: 'destructive',
-      })
+      // Upload to Supabase Storage with timeout
+      await withTimeout((async () => {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${user?.id}-${Date.now()}.${fileExt}`
+        const { data, error } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file)
+        if (error) throw error
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName)
+        // Update profile with new avatar URL
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('id', user?.id)
+        if (updateError) throw updateError
+        setAvatarUrl(publicUrl)
+        toast({
+          title: 'Success',
+          description: 'Avatar updated successfully!',
+        })
+      })(), 10000)
+    } catch (error: any) {
+      if (error.message === 'timeout') {
+        toast({ title: 'Timeout', description: 'Avatar upload took too long. Please try again.', variant: 'destructive' })
+      } else {
+        console.error('Error uploading avatar:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to upload avatar. Please try again.',
+          variant: 'destructive',
+        })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -304,58 +298,55 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
 
     try {
       setIsLoading(true)
-
-      // Update profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          name: data.name,
-          username: data.username,
-          email: data.email,
-          phone: data.phone,
-          bio: data.bio,
-          location: data.location,
-          description: data.description,
-          is_public: data.isPublic,
-          email_notifications: data.notifications.email,
-          sms_notifications: data.notifications.sms,
-          marketing_emails: data.notifications.marketing,
-        })
-        .eq('id', user?.id)
-
-      if (profileError) throw profileError
-
-      // Update barber data if user is a barber
-      if (isBarber && barberId) {
-        const { error: barberError } = await supabase
-          .from('barbers')
+      await withTimeout((async () => {
+        // Update profile
+        const { error: profileError } = await supabase
+          .from('profiles')
           .update({
-            business_name: data.businessName,
+            name: data.name,
+            username: data.username,
+            email: data.email,
+            phone: data.phone,
             bio: data.bio,
-            specialties: data.specialties,
-            instagram: extractHandle(data.socialMedia.instagram),
-            twitter: extractHandle(data.socialMedia.twitter),
-            tiktok: extractHandle(data.socialMedia.tiktok),
-            facebook: extractHandle(data.socialMedia.facebook),
+            location: data.location,
+            description: data.description,
+            is_public: data.isPublic,
           })
-          .eq('id', barberId)
-
-        if (barberError) throw barberError
+          .eq('id', user?.id)
+        if (profileError) throw profileError
+        // Update barber data if user is a barber
+        if (isBarber && barberId) {
+          const { error: barberError } = await supabase
+            .from('barbers')
+            .update({
+              business_name: data.businessName,
+              bio: data.bio,
+              specialties: data.specialties,
+              instagram: extractHandle(data.socialMedia.instagram),
+              twitter: extractHandle(data.socialMedia.twitter),
+              tiktok: extractHandle(data.socialMedia.tiktok),
+              facebook: extractHandle(data.socialMedia.facebook),
+            })
+            .eq('id', barberId)
+          if (barberError) throw barberError
+        }
+        toast({
+          title: 'Success',
+          description: 'Profile updated successfully!',
+        })
+        onUpdate?.()
+      })(), 10000)
+    } catch (error: any) {
+      if (error.message === 'timeout') {
+        toast({ title: 'Timeout', description: 'Profile update took too long. Please try again.', variant: 'destructive' })
+      } else {
+        console.error('Error updating profile:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to update profile. Please try again.',
+          variant: 'destructive',
+        })
       }
-
-      toast({
-        title: 'Success',
-        description: 'Profile updated successfully!',
-      })
-
-      onUpdate?.()
-    } catch (error) {
-      console.error('Error updating profile:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      })
     } finally {
       setIsLoading(false)
     }
@@ -370,6 +361,15 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         .eq('user_id', user.id)
     }
   }
+
+  // Only show quick stats for clients
+  const isClient = user?.role !== 'barber';
+  // Example stats (replace with real data if available)
+  const quickStats = [
+    { label: 'Total Bookings', value: 0, icon: <CheckCircle className="h-6 w-6 text-saffron" /> },
+    { label: 'Favorite Barbers', value: 0, icon: <Sparkles className="h-6 w-6 text-saffron" /> },
+    { label: 'Member Since', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Recently', icon: <User className="h-6 w-6 text-saffron" /> },
+  ];
 
   if (isInitialLoad) {
     return (
@@ -407,61 +407,38 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 bg-saffron/20 rounded-full">
-            <User className="h-6 w-6 text-saffron" />
-          </div>
-          <div>
-            <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
-              Profile Settings
-            </h3>
-            <p className="text-white/80 mt-1">Manage your personal information</p>
-          </div>
-        </div>
+      {/* Header Section */}
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold text-white">Profile Settings</h2>
+        <p className="text-white/60">Manage your personal information and preferences</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Avatar Section */}
-        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white flex items-center gap-2">
               <Camera className="h-5 w-5 text-saffron" />
-              Profile Photo
+              Personal Information
             </CardTitle>
             <CardDescription className="text-white/70">
-              Upload a professional photo for your profile
+              Update your profile details and contact information
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-6">
+          <CardContent className="p-4 sm:p-6 space-y-6">
+            {/* Avatar Section */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
               <div className="relative">
-                <Avatar className="h-20 w-20 border-2 border-saffron/30">
+                <Avatar className="h-24 w-24 border-4 border-saffron/20">
                   <AvatarImage src={avatarUrl || ''} alt="Profile" />
-                  <AvatarFallback className="bg-saffron/20 text-saffron text-lg font-semibold">
+                  <AvatarFallback className="bg-saffron/20 text-saffron text-2xl font-semibold">
                     {watch('name')?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 {isLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-                    <Loader2 className="h-6 w-6 animate-spin text-saffron" />
+                    <Loader2 className="h-8 w-8 animate-spin text-saffron" />
                   </div>
                 )}
-              </div>
-              <div className="flex-1">
-                <Label htmlFor="avatar-upload" className="cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-saffron/30 text-saffron hover:bg-saffron/10"
-                      disabled={isLoading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {avatarUrl ? 'Change Photo' : 'Upload Photo'}
-                    </Button>
-                  </div>
-                </Label>
                 <input
                   id="avatar-upload"
                   type="file"
@@ -470,409 +447,184 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   className="hidden"
                   disabled={isLoading}
                 />
-                <p className="text-xs text-white/60 mt-2">
-                  JPG, PNG or GIF. Max 5MB.
-                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="absolute -bottom-4 left-1/2 -translate-x-1/2 border-saffron/30 text-saffron hover:bg-saffron/10 px-4 py-2 text-sm"
+                  onClick={() => document.getElementById('avatar-upload')?.click()}
+                  disabled={isLoading}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {avatarUrl ? 'Change Photo' : 'Upload Photo'}
+                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Basic Information */}
-        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-          <CardHeader className="bg-white/5 border-b border-white/10">
-            <CardTitle className="text-white flex items-center gap-2">
-              <User className="h-5 w-5 text-saffron" />
-              Basic Information
-            </CardTitle>
-            <CardDescription className="text-white/70">
-              Your personal details and contact information
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-white font-medium flex items-center gap-2">
-                  <User className="h-4 w-4 text-saffron" />
-                  Full Name *
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
-                    validationErrors.name ? 'border-red-400' : ''
-                  }`}
-                  {...register('name', { required: 'Name is required' })}
-                  placeholder="Enter your full name"
-                />
-                {validationErrors.name && (
-                  <p className="text-sm text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.name}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-white font-medium flex items-center gap-2">
-                  <User className="h-4 w-4 text-saffron" />
-                  Username *
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
-                    validationErrors.username ? 'border-red-400' : ''
-                  }`}
-                  {...register('username', { required: 'Username is required' })}
-                  placeholder="your_username"
-                />
-                {validationErrors.username && (
-                  <p className="text-sm text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.username}
-                  </p>
-                )}
-                <p className="text-xs text-white/60">
-                  Used in your booking link: bocmstyle.com/book/{watch('username') || 'your_username'}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-white font-medium flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-saffron" />
-                  Email Address *
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
-                    validationErrors.email ? 'border-red-400' : ''
-                  }`}
-                  {...register('email', { required: 'Email is required' })}
-                  placeholder="Enter your email address"
-                />
-                {validationErrors.email && (
-                  <p className="text-sm text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.email}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-saffron" />
-                  Phone Number
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
-                    validationErrors.phone ? 'border-red-400' : ''
-                  }`}
-                  {...register('phone')}
-                  placeholder="(555) 123-4567"
-                />
-                {validationErrors.phone && (
-                  <p className="text-sm text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.phone}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-saffron" />
-                  Location
-                </Label>
-                <Input
-                  id="location"
-                  type="text"
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
-                  {...register('location')}
-                  placeholder="City, State"
-                />
-              </div>
-            </div>
-
-            {isBarber && (
-              <div className="space-y-2">
-                <Label htmlFor="businessName" className="text-white font-medium flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-saffron" />
-                  Business Name *
-                </Label>
-                <Input
-                  id="businessName"
-                  type="text"
-                  className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${
-                    validationErrors.businessName ? 'border-red-400' : ''
-                  }`}
-                  {...register('businessName')}
-                  placeholder="Enter your business name"
-                />
-                {validationErrors.businessName && (
-                  <p className="text-sm text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {validationErrors.businessName}
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Bio and Description */}
-        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-          <CardHeader className="bg-white/5 border-b border-white/10">
-            <CardTitle className="text-white">About</CardTitle>
-            <CardDescription className="text-white/70">
-              Tell clients about yourself and your services
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="bio" className="text-white font-medium">
-                Bio {isBarber && '*'}
-              </Label>
-              <Textarea
-                id="bio"
-                rows={4}
-                className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron resize-none ${
-                  validationErrors.bio ? 'border-red-400' : ''
-                }`}
-                {...register('bio')}
-                placeholder={isBarber ? "Tell clients about your experience and what makes you unique..." : "Tell us about yourself..."}
-              />
-              {validationErrors.bio && (
-                <p className="text-sm text-red-400 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.bio}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-white font-medium">Description</Label>
-              <Textarea
-                id="description"
-                rows={4}
-                className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron resize-none"
-                {...register('description')}
-                placeholder="Additional information about yourself or your business..."
-              />
-            </div>
-
-            {isBarber && (
-              <div className="space-y-2">
-                <Label htmlFor="specialties" className="text-white font-medium">Specialties</Label>
-                <SpecialtyAutocomplete
-                  value={watch('specialties')}
-                  onChange={(value) => setValue('specialties', value)}
-                  placeholder="Search and select your specialties..."
-                  maxSelections={15}
-                />
-                <p className="text-sm text-white/60">Select the services you specialize in</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Social Media */}
-        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-          <CardHeader className="bg-white/5 border-b border-white/10">
-            <CardTitle className="text-white flex items-center gap-2">
-              <Globe className="h-5 w-5 text-saffron" />
-              Social Media
-            </CardTitle>
-            <CardDescription className="text-white/70">
-              Connect your social media profiles
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.instagram" className="text-white font-medium flex items-center gap-2">
-                  <Instagram className="h-4 w-4 text-saffron" />
-                  Instagram
-                </Label>
-                <Input
-                  id="socialMedia.instagram"
-                  type="text"
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
-                  {...register('socialMedia.instagram')}
-                  placeholder="@yourusername"
-                />
-                <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.twitter" className="text-white font-medium flex items-center gap-2">
-                  <Twitter className="h-4 w-4 text-saffron" />
-                  Twitter
-                </Label>
-                <Input
-                  id="socialMedia.twitter"
-                  type="text"
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
-                  {...register('socialMedia.twitter')}
-                  placeholder="@yourusername"
-                />
-                <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.tiktok" className="text-white font-medium flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-saffron" />
-                  TikTok
-                </Label>
-                <Input
-                  id="socialMedia.tiktok"
-                  type="text"
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
-                  {...register('socialMedia.tiktok')}
-                  placeholder="@yourusername"
-                />
-                <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="socialMedia.facebook" className="text-white font-medium flex items-center gap-2">
-                  <Facebook className="h-4 w-4 text-saffron" />
-                  Facebook
-                </Label>
-                <Input
-                  id="socialMedia.facebook"
-                  type="text"
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
-                  {...register('socialMedia.facebook')}
-                  placeholder="yourpagename"
-                />
-                <p className="text-xs text-white/60">Only your page name (e.g., yourpagename)</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Privacy & Notifications */}
-        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-          <CardHeader className="bg-white/5 border-b border-white/10">
-            <CardTitle className="text-white">Privacy & Notifications</CardTitle>
-            <CardDescription className="text-white/70">
-              Control your profile visibility and notification preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            {/* Privacy Settings */}
-            <div className="space-y-4">
-              <h4 className="text-white font-semibold">Privacy Settings</h4>
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
-                <div className="space-y-1">
-                  <Label className="text-white font-medium">Public Profile</Label>
-                  <p className="text-sm text-white/60">
-                    Allow others to view your profile
-                  </p>
-                </div>
-                <Switch
-                  checked={watch('isPublic')}
-                  onCheckedChange={(checked) => setValue('isPublic', checked)}
-                />
-              </div>
-            </div>
-
-            <Separator className="bg-white/10" />
-
-            {/* Notification Settings */}
-            <div className="space-y-4">
-              <h4 className="text-white font-semibold">Notification Preferences</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div className="space-y-1">
-                    <Label className="text-white font-medium">Email Notifications</Label>
-                    <p className="text-sm text-white/60">
-                      Receive notifications via email
+              
+              {/* Form Fields */}
+              <div className="flex-1 w-full space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-white font-medium flex items-center gap-2">
+                      <User className="h-4 w-4 text-saffron" />
+                      Full Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.name ? 'border-red-400' : ''}`}
+                      {...register('name', { required: 'Name is required' })}
+                      placeholder="Enter your full name"
+                    />
+                    {validationErrors.name && (
+                      <p className="text-sm text-red-400 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.name}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-white font-medium flex items-center gap-2">
+                      <User className="h-4 w-4 text-saffron" />
+                      Username *
+                    </Label>
+                    <Input
+                      id="username"
+                      type="text"
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.username ? 'border-red-400' : ''}`}
+                      {...register('username', { required: 'Username is required' })}
+                      placeholder="your_username"
+                    />
+                    {validationErrors.username && (
+                      <p className="text-sm text-red-400 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.username}
+                      </p>
+                    )}
+                    <p className="text-xs text-white/60">
+                      Used in your booking link: bocmstyle.com/book/{watch('username') || 'your_username'}
                     </p>
                   </div>
-                  <Switch
-                    checked={watch('notifications.email')}
-                    onCheckedChange={(checked) => setValue('notifications.email', checked)}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-saffron" />
+                      Email Address *
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.email ? 'border-red-400' : ''}`}
+                      {...register('email', { required: 'Email is required' })}
+                      placeholder="Enter your email address"
+                    />
+                    {validationErrors.email && (
+                      <p className="text-sm text-red-400 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.email}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-saffron" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.phone ? 'border-red-400' : ''}`}
+                      {...register('phone')}
+                      placeholder="(555) 123-4567"
+                    />
+                    {validationErrors.phone && (
+                      <p className="text-sm text-red-400 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-saffron" />
+                    Location
+                  </Label>
+                  <Input
+                    id="location"
+                    type="text"
+                    className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                    {...register('location')}
+                    placeholder="City, State"
                   />
                 </div>
-                
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div className="space-y-1">
-                    <Label className="text-white font-medium">SMS Notifications</Label>
-                    <p className="text-sm text-white/60">
-                      Receive notifications via SMS
-                    </p>
-                  </div>
-                  <Switch
-                    checked={watch('notifications.sms')}
-                    onCheckedChange={(checked) => setValue('notifications.sms', checked)}
+                <div className="space-y-2">
+                  <Label htmlFor="bio" className="text-white font-medium">
+                    Bio
+                  </Label>
+                  <Textarea
+                    id="bio"
+                    rows={4}
+                    className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron resize-none ${validationErrors.bio ? 'border-red-400' : ''}`}
+                    {...register('bio')}
+                    placeholder="Tell us about yourself..."
                   />
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div className="space-y-1">
-                    <Label className="text-white font-medium">Marketing Emails</Label>
-                    <p className="text-sm text-white/60">
-                      Receive marketing and promotional emails
+                  {validationErrors.bio && (
+                    <p className="text-sm text-red-400 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {validationErrors.bio}
                     </p>
-                  </div>
-                  <Switch
-                    checked={watch('notifications.marketing')}
-                    onCheckedChange={(checked) => setValue('notifications.marketing', checked)}
-                  />
+                  )}
                 </div>
               </div>
             </div>
+            
+            {/* Save Button */}
+            <div className="flex justify-end pt-6">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg px-8 py-3"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Save Changes
+              </Button>
+            </div>
           </CardContent>
         </Card>
-
-        {/* Developer Mode */}
-        {user?.role === 'barber' && (
-          <Card className="bg-white/10 border border-saffron/40 shadow-2xl backdrop-blur-2xl rounded-2xl my-6">
-            <CardHeader className="bg-white/5 border-b border-saffron/30 rounded-t-2xl">
-              <CardTitle className="flex items-center gap-2 text-saffron text-lg font-bebas">
-                <Sparkles className="h-5 w-5 text-saffron" />
-                Developer Mode
-                {isDeveloper && <Badge className="ml-2 bg-saffron/80 text-primary font-bold">Enabled</Badge>}
-              </CardTitle>
-              <CardDescription className="text-white/80">
-                When enabled, this account will bypass all Stripe platform fees. <span className="text-saffron font-semibold">For development/testing only.</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-white font-medium">Enable Developer Mode</Label>
-                <p className="text-sm text-white/60">Bypass all Stripe fees for this barber account.</p>
-              </div>
-              <Switch
-                checked={isDeveloper}
-                onCheckedChange={handleDeveloperToggle}
-                className="scale-125 border-saffron/60 shadow-lg"
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg px-8 py-3"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Save Changes
-          </Button>
-        </div>
       </form>
+
+      {/* Quick Stats Card */}
+      {isClient && (
+        <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
+          <CardHeader className="bg-white/5 border-b border-white/10">
+            <CardTitle className="text-white flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-saffron" />
+              Quick Stats
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {quickStats.map((stat) => (
+                <div key={stat.label} className="flex items-center gap-3 bg-white/10 rounded-xl p-4">
+                  <div className="bg-saffron/20 rounded-full p-2 flex items-center justify-center">
+                    {stat.icon}
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-white">{stat.value}</div>
+                    <div className="text-white/60 text-sm">{stat.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
     </div>
   )
 } 

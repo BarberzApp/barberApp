@@ -1,49 +1,40 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Navbar } from "@/shared/components/layout/navbar";
 import { MobileNav } from "@/shared/components/layout/mobile-nav";
 import React from "react";
 
 export default function ClientNavWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  // Remove pathname state and useEffect, use window.location.pathname directly
-  // If using Next.js App Router, use: import { usePathname } from 'next/navigation'; const pathname = usePathname();
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const pathname = usePathname();
   const [mounted, setMounted] = React.useState(false);
+  const [isNavigating, setIsNavigating] = React.useState(false);
 
   React.useEffect(() => {
-    // Set mounted immediately for better UX
     setMounted(true);
-    
-    // Get pathname immediately if possible
-    if (typeof window !== 'undefined') {
-      // setPathname(window.location.pathname); // This line is removed
-      console.log('ClientNavWrapper - Current pathname:', window.location.pathname);
-    }
+  }, []);
+
+  // Handle navigation state
+  React.useEffect(() => {
+    const handleStart = () => setIsNavigating(true);
+    const handleComplete = () => setIsNavigating(false);
 
     // Listen for route changes
-    const handleRouteChange = () => {
-      if (typeof window !== 'undefined') {
-        // setPathname(window.location.pathname); // This line is removed
-        console.log('ClientNavWrapper - Route changed to:', window.location.pathname);
-      }
-    };
+    window.addEventListener('beforeunload', handleStart);
+    window.addEventListener('load', handleComplete);
 
-    // Add event listener for popstate (back/forward navigation)
-    window.addEventListener('popstate', handleRouteChange);
-    
     return () => {
-      window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('beforeunload', handleStart);
+      window.removeEventListener('load', handleComplete);
     };
   }, []);
 
   // Define pages where navigation should be hidden
-  // Only hide nav on home and landing
   const hiddenPages = ["/", "/landing"];
   
   // Determine what to show
-  const showNavbar = !hiddenPages.includes(pathname);
-  const isSettingsPage = pathname.startsWith('/settings');
+  const showNavbar = pathname ? !hiddenPages.includes(pathname) : true;
+  const isSettingsPage = pathname?.startsWith('/settings') || false;
   const shouldShowNav = showNavbar || isSettingsPage;
   const showMobileNav = showNavbar || isSettingsPage;
 
@@ -56,8 +47,21 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
       isSettingsPage,
       shouldShowNav,
       showMobileNav,
+      isNavigating,
     });
-  }, [pathname, mounted, showNavbar, isSettingsPage, shouldShowNav, showMobileNav]);
+  }, [pathname, mounted, showNavbar, isSettingsPage, shouldShowNav, showMobileNav, isNavigating]);
+
+  // Show loading state during navigation
+  if (isNavigating) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron mx-auto mb-4"></div>
+          <p className="text-white">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -66,7 +70,6 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
         {children}
       </div>
       {showMobileNav && <MobileNav />}
-      {/* FloatingNav removed */}
     </>
   );
 } 

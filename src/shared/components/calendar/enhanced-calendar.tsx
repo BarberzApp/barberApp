@@ -21,12 +21,17 @@ import {
   Mail,
   Scissors,
   Star,
-  Loader2
+  Loader2,
+  ExternalLink,
+  Download,
+  Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/shared/lib/supabase'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, startOfWeek, endOfWeek } from 'date-fns'
+import { addToGoogleCalendar, addMultipleToGoogleCalendar, downloadICalFile } from '@/shared/lib/google-calendar-utils'
+import { ManualAppointmentForm } from './manual-appointment-form'
 
 interface CalendarEvent {
   id: string
@@ -66,6 +71,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [isMarkingMissed, setIsMarkingMissed] = useState(false)
+  const [showManualAppointmentForm, setShowManualAppointmentForm] = useState(false)
   const { user } = useAuth()
 
   // Minimum swipe distance (in px)
@@ -799,6 +805,21 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           Today
         </button>
 
+        {/* Manual Appointment Button */}
+        <div className="mt-4 p-4 bg-gradient-to-r from-saffron/10 to-secondary/10 border border-saffron/20 rounded-xl">
+          <div className="text-center mb-3">
+            <h4 className="text-white font-semibold text-sm mb-1">Quick Add Appointment</h4>
+            <p className="text-white/60 text-xs">For walk-ins, phone bookings, or admin purposes</p>
+          </div>
+          <Button
+            onClick={() => setShowManualAppointmentForm(true)}
+            className="w-full bg-saffron text-black hover:bg-saffron/90 font-semibold rounded-lg py-2.5 shadow-lg shadow-saffron/25 transition-all duration-200 hover:scale-[1.02]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Manual Appointment
+          </Button>
+        </div>
+
         {/* Events Panel */}
         {selectedDate && (
           <div className="events-panel">
@@ -1042,6 +1063,69 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                   </Button>
                 )}
               </div>
+              
+              {/* Google Calendar Sync Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-white/60 text-sm">
+                  <CalendarIcon className="w-4 h-4 text-saffron" />
+                  <span>Add to Calendar</span>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (selectedEvent) {
+                        try {
+                          addToGoogleCalendar(
+                            selectedEvent,
+                            'barber',
+                            {
+                              name: (user as any)?.user_metadata?.full_name || 'Barber',
+                              email: user?.email || '',
+                              location: ''
+                            }
+                          )
+                        } catch (error) {
+                          console.error('Error adding to Google Calendar:', error)
+                        }
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Google Calendar
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      if (selectedEvent) {
+                        try {
+                          downloadICalFile(
+                            [selectedEvent],
+                            'barber',
+                            {
+                              name: (user as any)?.user_metadata?.full_name || 'Barber',
+                              email: user?.email || '',
+                              location: ''
+                            },
+                            `appointment-${selectedEvent.id}.ics`
+                          )
+                        } catch (error) {
+                          console.error('Error downloading iCal file:', error)
+                        }
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download iCal
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
           
@@ -1055,6 +1139,18 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Manual Appointment Form */}
+      <ManualAppointmentForm
+        isOpen={showManualAppointmentForm}
+        onClose={() => setShowManualAppointmentForm(false)}
+        selectedDate={selectedDate || undefined}
+        onAppointmentCreated={(appointment) => {
+          setShowManualAppointmentForm(false)
+          // Refresh the calendar to show the new appointment
+          fetchBookings()
+        }}
+      />
     </div>
   )
 } 

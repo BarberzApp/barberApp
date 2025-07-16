@@ -82,7 +82,12 @@ export function Navbar() {
       {
         href: "/calendar",
         icon: Calendar,
-        label: "Book",
+        label: "Bookings",
+      },
+      {
+        href: "/reels",
+        icon: Video,
+        label: "Cuts",
       },
     ]
   }
@@ -136,7 +141,7 @@ export function Navbar() {
                 >
                   <item.icon className={cn("h-5 w-5 mr-1 inline", isActive ? "text-saffron" : "text-foreground/60")} /> {item.label}
                   {item.label === 'Cuts' && (
-                    <span className="ml-1 bg-purple-600 text-white text-xs font-bold px-2 py-0.5 rounded-full align-middle">Beta</span>
+                    <span className="ml-1 bg-saffron/80 text-primary text-xs font-bold px-2 py-0.5 rounded-full align-middle shadow">Beta</span>
                   )}
                 </Link>
               )
@@ -157,35 +162,35 @@ export function Navbar() {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="mt-2 rounded-2xl border border-saffron/30 bg-darkpurple/90 backdrop-blur-xl shadow-2xl p-4 min-w-[260px]">
+              <DropdownMenuContent align="end" className="mt-2 rounded-3xl border border-white/20 bg-white/10 backdrop-blur-2xl shadow-2xl p-6 min-w-[280px] glassy-card">
                 <DropdownMenuLabel>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-lg font-bold text-white">{user.name}</span>
-                    <span className="text-xs text-white/70">{user.email}</span>
+                  <div className="flex flex-col gap-0.5 mb-2">
+                    <span className="text-xl font-bebas font-bold text-white tracking-wide">{user.name}</span>
+                    <span className="text-xs text-white/70 font-mono">{user.email}</span>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-saffron/30" />
+                <DropdownMenuSeparator className="bg-saffron/30 mb-2" />
                 <DropdownMenuItem asChild className={cn(
-                  "group rounded-xl px-3 py-2 text-base flex items-center w-full cursor-pointer gap-3 transition-colors",
+                  "group rounded-2xl px-4 py-3 text-base flex items-center w-full cursor-pointer gap-3 transition-all duration-200 font-semibold",
                   pathname.startsWith("/settings/barber-profile") ? "bg-saffron/20 text-saffron" : "text-white hover:bg-saffron/20 hover:text-saffron"
                 )}>
                   <Link href="/settings/barber-profile" className="flex items-center w-full">
-                    <UserCircle className={cn("mr-2 h-5 w-5 transition-colors", pathname.startsWith("/settings/barber-profile") ? "text-saffron" : "group-hover:text-saffron")}/>
+                    <UserCircle className={cn("mr-2 h-5 w-5 transition-colors", pathname.startsWith("/settings/barber-profile") ? "text-saffron" : "group-hover:text-saffron")} />
                     Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className={cn(
-                  "group rounded-xl px-3 py-2 text-base flex items-center w-full cursor-pointer gap-3 transition-colors",
+                  "group rounded-2xl px-4 py-3 text-base flex items-center w-full cursor-pointer gap-3 transition-all duration-200 font-semibold",
                   pathname === "/settings" ? "bg-saffron/20 text-saffron" : "text-white hover:bg-saffron/20 hover:text-saffron"
                 )}>
                   <Link href="/settings" className="flex items-center w-full">
-                    <Settings className={cn("mr-2 h-5 w-5 transition-colors", pathname === "/settings" ? "text-saffron" : "group-hover:text-saffron")}/>
+                    <Settings className={cn("mr-2 h-5 w-5 transition-colors", pathname === "/settings" ? "text-saffron" : "group-hover:text-saffron")} />
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-saffron/30" />
-                <DropdownMenuItem onClick={handleLogout} className="group rounded-xl px-3 py-2 text-base text-white hover:bg-saffron/20 hover:text-saffron transition-colors cursor-pointer gap-3">
-                  <LogOut className="mr-2 h-5 w-5 group-hover:text-saffron transition-colors" />
+                <DropdownMenuSeparator className="bg-saffron/30 my-2" />
+                <DropdownMenuItem onClick={handleLogout} className="group rounded-2xl px-4 py-3 text-base font-bold text-white hover:bg-red-500/20 hover:text-red-400 transition-all duration-200 cursor-pointer gap-3 mt-1 border border-transparent hover:border-red-400/30 shadow hover:shadow-red-400/10">
+                  <LogOut className="mr-2 h-5 w-5 group-hover:text-red-400 transition-colors" />
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -113,99 +113,100 @@ export function BarberCard({ barber, className }: BarberCardProps) {
             </div>
 
             {/* Content Section */}
-            <div className="px-6 pb-6 flex flex-col flex-grow space-y-4">
-              {/* Header */}
-              <div className="text-center space-y-2">
-                <h3 className="font-bold text-2xl text-white">{barber.name}</h3>
-                {barber.businessName && (
-                  <p className="text-white/60 text-base font-medium">{barber.businessName}</p>
-                )}
-                <div className="text-saffron text-lg font-semibold">@{barber.username || barber.name?.toLowerCase().replace(/\s+/g, '') || 'username'}</div>
-              </div>
-
-              {/* Location */}
-              {barber.location && (
-                <div className="flex items-center justify-center gap-2 text-sm text-white/70">
-                  <MapPin className="h-4 w-4 flex-shrink-0 text-saffron" />
-                  <span className="truncate">{barber.location}</span>
-                  {barber.distance && (
-                    <Badge variant="outline" className="text-xs bg-saffron/20 text-saffron border-saffron/30 ml-2">
-                      {barber.distance.toFixed(1)} mi
-                    </Badge>
+            <div className="px-6 pb-6 flex flex-col flex-grow">
+              <div className="flex-grow flex flex-col space-y-4">
+                {/* Header */}
+                <div className="text-center space-y-2">
+                  <h3 className="font-bold text-2xl text-white">{barber.name}</h3>
+                  {barber.businessName && (
+                    <p className="text-white/60 text-base font-medium">{barber.businessName}</p>
                   )}
+                  <div className="text-saffron text-lg font-semibold">@{barber.username || barber.name?.toLowerCase().replace(/\s+/g, '') || 'username'}</div>
                 </div>
-              )}
 
-              {/* Rating */}
-              <div className="flex items-center justify-center gap-1">
-                <Star className="h-4 w-4 fill-saffron text-saffron" />
-                <span className="text-sm font-semibold text-white">{barber.rating || 4.5}</span>
-              </div>
-
-              {/* Price Range */}
-              {barber.priceRange && (
-                <div className="flex justify-center">
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs ${getPriceRangeColor(barber.priceRange)}`}
-                  >
-                    {getPriceRangeIcon(barber.priceRange)}
-                    <span className="ml-1">{barber.priceRange} Pricing</span>
-                  </Badge>
-                </div>
-              )}
-
-              {/* Bio */}
-              {barber.bio && (
-                <p className="text-sm text-white/70 line-clamp-2 leading-relaxed text-center">
-                  {barber.bio}
-                </p>
-              )}
-
-              {/* Specialties */}
-              {barber.specialties && barber.specialties.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-center gap-2">
-                    <Scissors className="h-4 w-4 text-saffron" />
-                    <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Specialties</p>
-                  </div>
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {barber.specialties.slice(0, 3).map((specialty, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs bg-white/10 text-white/80 border-white/20">
-                        {specialty}
-                      </Badge>
-                    ))}
-                    {barber.specialties.length > 3 && (
-                      <Badge variant="outline" className="text-xs border-white/20 text-white/60">
-                        +{barber.specialties.length - 3} more
+                {/* Location */}
+                {barber.location && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-white/70">
+                    <MapPin className="h-4 w-4 flex-shrink-0 text-saffron" />
+                    <span className="truncate">{barber.location}</span>
+                    {barber.distance && (
+                      <Badge variant="outline" className="text-xs bg-saffron/20 text-saffron border-saffron/30 ml-2">
+                        {barber.distance.toFixed(1)} mi
                       </Badge>
                     )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Social Media Links */}
-              {(barber.instagram || barber.twitter || barber.tiktok || barber.facebook) && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-center gap-2">
-                    <Globe className="h-4 w-4 text-saffron" />
-                    <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Social Media</p>
-                  </div>
+                {/* Rating */}
+                <div className="flex items-center justify-center gap-1">
+                  <Star className="h-4 w-4 fill-saffron text-saffron" />
+                  <span className="text-sm font-semibold text-white">{barber.rating || 4.5}</span>
+                </div>
+
+                {/* Price Range */}
+                {barber.priceRange && (
                   <div className="flex justify-center">
-                    <SocialMediaLinks
-                      instagram={barber.instagram}
-                      twitter={barber.twitter}
-                      tiktok={barber.tiktok}
-                      facebook={barber.facebook}
-                      size="sm"
-                      className="justify-center"
-                    />
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${getPriceRangeColor(barber.priceRange)}`}
+                    >
+                      {getPriceRangeIcon(barber.priceRange)}
+                      <span className="ml-1">{barber.priceRange} Pricing</span>
+                    </Badge>
                   </div>
-                </div>
-              )}
+                )}
 
+                {/* Bio */}
+                {barber.bio && (
+                  <p className="text-sm text-white/70 line-clamp-2 leading-relaxed text-center">
+                    {barber.bio}
+                  </p>
+                )}
+
+                {/* Specialties */}
+                {barber.specialties && barber.specialties.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <Scissors className="h-4 w-4 text-saffron" />
+                      <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Specialties</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {barber.specialties.slice(0, 3).map((specialty, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs bg-white/10 text-white/80 border-white/20">
+                          {specialty}
+                        </Badge>
+                      ))}
+                      {barber.specialties.length > 3 && (
+                        <Badge variant="outline" className="text-xs border-white/20 text-white/60">
+                          +{barber.specialties.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Social Media Links */}
+                {(barber.instagram || barber.twitter || barber.tiktok || barber.facebook) && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <Globe className="h-4 w-4 text-saffron" />
+                      <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Social Media</p>
+                    </div>
+                    <div className="flex justify-center">
+                      <SocialMediaLinks
+                        instagram={barber.instagram}
+                        twitter={barber.twitter}
+                        tiktok={barber.tiktok}
+                        facebook={barber.facebook}
+                        size="sm"
+                        className="justify-center"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
               {/* Action Button */}
-              <div className="mt-auto pt-4">
+              <div className="pt-4">
                 <Button
                   asChild
                   className="w-full bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl py-3"

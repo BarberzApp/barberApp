@@ -6,7 +6,8 @@ import { ThemeProvider } from "@/shared/components/theme/theme-provider"
 import { TooltipProvider } from "@/shared/components/ui/tooltip"
 
 import { Navbar } from "@/shared/components/layout/navbar"
-import { ErrorBoundary } from "@/shared/components/error-boundary"
+import { EnhancedErrorBoundary } from "@/shared/components/ui/enhanced-error-boundary"
+import { LoadingProvider } from "@/shared/components/ui/loading-provider"
 import { PWARegistration } from "@/shared/components/pwa/pwa-registration"
 import { LoadingSpinner } from "@/shared/components/ui/loading-spinner"
 import { cn } from "@/shared/lib/utils"
@@ -77,13 +78,15 @@ export default function RootLayout({
       <body className={cn(inter.className, "bg-background min-h-screen")}> 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem={false}>
           <TooltipProvider>
-          <ErrorBoundary>
+          <EnhancedErrorBoundary>
+            <LoadingProvider>
             <React.Suspense fallback={null}>
               <ClientNavWrapper>{children}</ClientNavWrapper>
             </React.Suspense>
             <Toaster />
             <PWARegistration />
-          </ErrorBoundary>
+            </LoadingProvider>
+          </EnhancedErrorBoundary>
           </TooltipProvider>
         </ThemeProvider>
       </body>

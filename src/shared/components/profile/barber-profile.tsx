@@ -3,7 +3,7 @@
 import React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useSafeNavigation } from "@/shared/hooks/use-safe-navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar"
 import { Button } from "@/shared/components/ui/button"
@@ -32,11 +32,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover"
-
+import { Progress } from "@/shared/components/ui/progress"
 
 
 export function BarberProfile() {
-  const router = useRouter()
+  const { push } = useSafeNavigation()
   const { user } = useAuth()
   const { updateBarber, loading: dataLoading } = useData()
   const { toast } = useToast()
@@ -111,48 +111,57 @@ export function BarberProfile() {
     }
   }
 
+  // Timeout helper
+  async function withTimeout(promise: Promise<any>, ms = 10000) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ])
+  }
+
   if (!user) {
-    router.push('/login')
+    push('/login')
     return null
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
-
     try {
-      const formData = new FormData(e.currentTarget)
-      const barberData = {
-        bio: formData.get('bio') as string,
-        specialties: selectedSpecialties,
-        location: formData.get('location') as string,
-      }
-
-      // Update barber profile
-      await updateBarber(user.id, barberData)
-
-      // Update phone in profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          phone: formData.get('phone') as string,
-          updated_at: new Date().toISOString()
+      await withTimeout((async () => {
+        const formData = new FormData(e.currentTarget)
+        const barberData = {
+          bio: formData.get('bio') as string,
+          specialties: selectedSpecialties,
+          location: formData.get('location') as string,
+        }
+        // Update barber profile
+        await updateBarber(user.id, barberData)
+        // Update phone in profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            phone: formData.get('phone') as string,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+        if (profileError) throw profileError
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully",
         })
-        .eq('id', user.id)
-
-      if (profileError) throw profileError
-
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
-      })
-    } catch (error) {
-      console.error('Error updating profile:', error)
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      })
+      })(), 10000)
+    } catch (error: any) {
+      if (error.message === 'timeout') {
+        toast({ title: 'Timeout', description: 'Profile update took too long. Please try again.', variant: 'destructive' })
+      } else {
+        console.error('Error updating profile:', error)
+        toast({
+          title: "Error",
+          description: "Failed to update profile",
+          variant: "destructive",
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -171,26 +180,39 @@ export function BarberProfile() {
         return
       }
       setAvatarLoading(true)
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user?.id}-${Date.now()}.${fileExt}`
-      const { data, error } = await supabase.storage.from('avatars').upload(fileName, file)
-      if (error) throw error
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName)
-      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id)
-      // Optionally update the user object in zustand if needed
-      if (updateError) throw updateError
-      setAvatarUrl(publicUrl)
-      toast({ title: 'Success', description: 'Avatar updated successfully!' })
-    } catch (error) {
-      console.error('Error uploading avatar:', error)
-      toast({ title: 'Error', description: 'Failed to upload avatar. Please try again.', variant: 'destructive' })
+      await withTimeout((async () => {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${user?.id}-${Date.now()}.${fileExt}`
+        const { data, error } = await supabase.storage.from('avatars').upload(fileName, file)
+        if (error) throw error
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName)
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id)
+        // Optionally update the user object in zustand if needed
+        if (updateError) throw updateError
+        setAvatarUrl(publicUrl)
+        toast({ title: 'Success', description: 'Avatar updated successfully!' })
+      })(), 10000)
+    } catch (error: any) {
+      if (error.message === 'timeout') {
+        toast({ title: 'Timeout', description: 'Avatar upload took too long. Please try again.', variant: 'destructive' })
+      } else {
+        console.error('Error uploading avatar:', error)
+        toast({ title: 'Error', description: 'Failed to upload avatar. Please try again.', variant: 'destructive' })
+      }
     } finally {
       setAvatarLoading(false)
     }
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Indeterminate Progress Bar for Avatar Upload */}
+      {avatarLoading && (
+        <div className="w-full mb-4">
+          <Progress value={100} className="h-2 animate-pulse bg-white/10" />
+          <div className="text-xs text-white/60 text-center mt-1">Uploading avatar...</div>
+        </div>
+      )}
       {/* Hero Section */}
       <div className="text-center mb-12">
         <h1 className="text-4xl lg:text-6xl font-bebas font-bold text-white mb-4">

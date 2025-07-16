@@ -75,16 +75,18 @@ export const useAuthStore = create<AuthStore>()(
     // Initialize auth state
     initialize: async () => {
       try {
+        console.log('[AUTH] initialize: starting');
         set({ isLoading: true, status: "loading" })
         
         // Check current session from Supabase
         const { data: { session } } = await supabase.auth.getSession()
+        console.log('[AUTH] initialize: session', session);
         
         if (session?.user) {
-          console.log('Found existing session for user:', session.user.email)
+          console.log('[AUTH] initialize: found session for user', session.user.email)
           await get().fetchUserProfile(session.user.id)
         } else {
-          console.log('No active session found')
+          console.log('[AUTH] initialize: no active session found')
           set({ 
             user: null, 
             isLoading: false, 
@@ -95,33 +97,34 @@ export const useAuthStore = create<AuthStore>()(
 
         // Listen for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth state change:', event, session?.user?.email)
+          console.log('[AUTH] onAuthStateChange:', event, session?.user?.email)
 
           if (event === 'SIGNED_IN' && session?.user) {
-            console.log('User signed in:', session.user.email)
+            console.log('[AUTH] onAuthStateChange: user signed in', session.user.email)
             await get().fetchUserProfile(session.user.id)
           } else if (event === 'SIGNED_OUT') {
-            console.log('User signed out')
+            console.log('[AUTH] onAuthStateChange: user signed out')
             set({ 
               user: null, 
               isLoading: false, 
               status: "unauthenticated" 
             })
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-            console.log('Token refreshed for user:', session.user.email)
+            console.log('[AUTH] onAuthStateChange: token refreshed for user', session.user.email)
             if (!get().user) {
               await get().fetchUserProfile(session.user.id)
             }
           } else if (event === 'USER_UPDATED' && session?.user) {
-            console.log('User updated:', session.user.email)
+            console.log('[AUTH] onAuthStateChange: user updated', session.user.email)
             await get().fetchUserProfile(session.user.id)
           }
         })
 
         // Note: Supabase handles subscription cleanup automatically
+        console.log('[AUTH] initialize: complete');
         
       } catch (error) {
-        console.error('Auth initialization error:', error)
+        console.error('[AUTH] initialize: error', error)
         set({ 
           user: null, 
           isLoading: false, 
@@ -134,6 +137,7 @@ export const useAuthStore = create<AuthStore>()(
     // Fetch user profile
     fetchUserProfile: async (userId: string) => {
       try {
+        console.log(`[AUTH] fetchUserProfile: start for userId`, userId);
         let profile = null;
         let profileError = null;
         const maxRetries = 3;
@@ -145,6 +149,8 @@ export const useAuthStore = create<AuthStore>()(
             .select('*')
             .eq('id', userId)
             .single();
+
+          console.log(`[AUTH] fetchUserProfile: attempt ${i+1}, data:`, data, 'error:', error);
 
           if (data) {
             profile = data;
@@ -159,12 +165,13 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           if (i < maxRetries - 1) {
+            console.log(`[AUTH] fetchUserProfile: retrying in ${retryDelay}ms`);
             await new Promise(resolve => setTimeout(resolve, retryDelay));
           }
         }
 
         if (!profile) {
-          console.error('Error fetching user profile:', profileError);
+          console.error('[AUTH] fetchUserProfile: failed after retries, error:', profileError);
           set({ 
             user: null, 
             isLoading: false, 
@@ -195,6 +202,7 @@ export const useAuthStore = create<AuthStore>()(
           status: "authenticated",
           isInitialized: true 
         });
+        console.log('[AUTH] fetchUserProfile: success, user:', user);
 
         // Ensure barber row exists after confirmation
         if (profile.role === 'barber') {
@@ -235,30 +243,35 @@ export const useAuthStore = create<AuthStore>()(
     login: async (email: string, password: string): Promise<boolean> => {
       try {
         set({ isLoading: true, status: "loading" })
+        console.log('🔐 Starting login process for:', email)
         
+        // Step 1: Authenticate with Supabase
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
           email, 
           password 
         });
 
         if (authError) {
-          console.error('Auth error:', authError);
+          console.error('❌ Auth error:', authError);
           set({ isLoading: false, status: "unauthenticated" })
           return false;
         }
 
         if (!authData.user) {
+          console.error('❌ No user data returned from auth');
           set({ isLoading: false, status: "unauthenticated" })
           return false;
         }
 
-        // Fetch profile with retry mechanism
+        console.log('✅ Authentication successful for user:', authData.user.id)
+
+        // Step 2: Fetch profile with retry mechanism
         let profile = null;
         let profileError = null;
         let retries = 3;
         
         while (retries > 0) {
-          console.log(`Fetching profile - Attempt ${4 - retries}/3...`);
+          console.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
           const result = await supabase
             .from('profiles')
             .select('*')
@@ -267,12 +280,12 @@ export const useAuthStore = create<AuthStore>()(
             
           if (result.data) {
             profile = result.data;
-            console.log('Profile fetched successfully:', profile);
+            console.log('✅ Profile fetched successfully:', profile);
             break;
           }
           
           profileError = result.error;
-          console.log('Profile fetch attempt failed:', profileError);
+          console.log('❌ Profile fetch attempt failed:', profileError);
           retries--;
           if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -280,16 +293,61 @@ export const useAuthStore = create<AuthStore>()(
         }
 
         if (profileError || !profile) {
-          console.error('Profile fetch error:', profileError);
+          console.error('❌ Profile fetch error after all retries:', profileError);
           set({ isLoading: false, status: "unauthenticated" })
           return false;
         }
 
+        // Step 3: Check if profile is complete
+        if (!profile.role || !profile.username) {
+          console.log('⚠️ Profile incomplete, user needs to complete registration');
+          set({ isLoading: false, status: "unauthenticated" })
+          return false;
+        }
+
+        // Step 4: Ensure barber row exists if user is a barber
+        if (profile.role === 'barber') {
+          console.log('💈 Checking for barber row...');
+          const { data: existingBarber, error: barberCheckError } = await supabase
+            .from('barbers')
+            .select('id')
+            .eq('user_id', authData.user.id)
+            .maybeSingle();
+
+          if (barberCheckError) {
+            console.error('❌ Error checking barber row:', barberCheckError);
+            // Continue anyway, don't fail login for this
+          }
+
+          if (!existingBarber) {
+            console.log('💈 Creating barber row...');
+            const { error: insertError } = await supabase
+              .from('barbers')
+              .insert({
+                user_id: authData.user.id,
+                business_name: profile.business_name || '',
+                status: 'pending',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+
+            if (insertError) {
+              console.error('❌ Failed to create barber row:', insertError);
+              // Continue anyway, don't fail login for this
+            } else {
+              console.log('✅ Barber row created successfully');
+            }
+          } else {
+            console.log('✅ Barber row already exists');
+          }
+        }
+
+        // Step 5: Set user state
         const user: User = {
           id: authData.user.id,
           name: profile.name,
           email: profile.email,
-          role: profile.role || undefined, // Handle null/empty role
+          role: profile.role || undefined,
           username: profile.username,
           phone: profile.phone,
           location: profile.location,
@@ -308,10 +366,10 @@ export const useAuthStore = create<AuthStore>()(
           isInitialized: true
         });
 
-        console.log('Login successful for user:', profile.email);
+        console.log('✅ Login successful for user:', profile.email);
         return true;
       } catch (error) {
-        console.error('Login process failed:', error);
+        console.error('❌ Login process failed:', error);
         set({ isLoading: false, status: "unauthenticated" })
         return false;
       }

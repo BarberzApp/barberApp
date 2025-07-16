@@ -77,13 +77,37 @@ export default function RegisterCompletePage() {
 
     // If barber, ensure a barbers row exists
     if (form.role === 'barber') {
-      const { data: existingBarber } = await supabase
+      console.log('💈 Checking for existing barber row...')
+      const { data: existingBarber, error: barberCheckError } = await supabase
         .from('barbers')
         .select('id')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
+      
+      if (barberCheckError) {
+        console.error('❌ Error checking barber row:', barberCheckError)
+        throw barberCheckError
+      }
+      
       if (!existingBarber) {
-        await supabase.from('barbers').insert({ user_id: user.id })
+        console.log('💈 Creating new barber row...')
+        const { error: insertError } = await supabase
+          .from('barbers')
+          .insert({
+            user_id: user.id,
+            business_name: '',
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        
+        if (insertError) {
+          console.error('❌ Failed to create barber row:', insertError)
+          throw insertError
+        }
+        console.log('✅ Barber row created successfully')
+      } else {
+        console.log('✅ Barber row already exists')
       }
     }
 

@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from "@/shared/components/ui/checkbox"
 import { Scissors, User, Building2 } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -88,7 +89,8 @@ export default function RegisterPage() {
             ? "Welcome to BarberHub! Please complete your business profile setup."
             : "Welcome to BarberHub!",
         })
-        router.push(role === "barber" ? "/barber/onboarding" : "/")
+        const { push: safePush } = useSafeNavigation();
+        safePush(role === "barber" ? "/barber/onboarding" : "/");
       }
     } catch (err) {
       setError('Failed to create account')

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/router"
+import { useSafeNavigation } from "@/shared/hooks/use-safe-navigation"
 import { Home, Search, Calendar, MessageSquare, User, Menu } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import { ScrollArea } from "@/shared/components/ui/scroll-area"
@@ -11,7 +11,6 @@ import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { MobileLink } from "./mobile-link"
 
 export function MobileNav() {
-  const router = useRouter()
   const { user } = useAuth()
   const [isOpen, setIsOpen] = React.useState(false)
 

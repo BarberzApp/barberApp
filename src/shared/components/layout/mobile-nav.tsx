@@ -47,6 +47,7 @@ export function MobileNav() {
       case "client":
         return [
           { name: "Bookings", href: "/calendar", icon: Calendar },
+          { name: "Cuts", href: "/reels", icon: Video },
         ]
       case "barber":
         return [
@@ -78,11 +79,17 @@ export function MobileNav() {
     const profile = allNavItems.find(item => item.href === '/settings/barber-profile');
     const settings = allNavItems.find(item => item.href === '/settings');
     
-    return [browse, calendar, cuts, profile, settings].filter(Boolean);
+    // For both clients and barbers, center Cuts if available
+    if (cuts) {
+      return [browse, calendar, cuts, profile, settings].filter(Boolean);
+    } else {
+      // Fallback if Cuts is not available
+      return [browse, calendar, profile, settings].filter(Boolean);
+    }
   }
   
   const orderedNavItems = getOrderedNavItems();
-  const centerIndex = 2;
+  const centerIndex = orderedNavItems.findIndex(item => item?.href === '/reels') !== -1 ? 2 : 1;
   const leftItems = orderedNavItems.slice(0, centerIndex);
   const centerItem = orderedNavItems[centerIndex];
   const rightItems = orderedNavItems.slice(centerIndex + 1, centerIndex + 3);

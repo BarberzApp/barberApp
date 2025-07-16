@@ -9,7 +9,7 @@ import { Badge } from "@/shared/components/ui/badge"
 import { Calendar, Clock, MapPin, Scissors, X } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
-import { useRouter } from "next/navigation"
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,18 +26,18 @@ import { useToast } from '@/shared/components/ui/use-toast'
 
 export default function BookingsPage() {
   const { user } = useAuth()
-  const router = useRouter()
   const { toast } = useToast()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showBookingForm, setShowBookingForm] = useState(false)
+  const { push: safePush } = useSafeNavigation();
 
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!user) {
-      router.push("/login")
+      safePush("/login")
       return
     }
 
@@ -102,7 +102,7 @@ export default function BookingsPage() {
     }
 
     fetchBookings()
-  }, [user, router, toast])
+  }, [user, toast])
 
   const upcomingBookings = bookings.filter((booking) => booking.status === "pending" || booking.status === "confirmed")
   const pastBookings = bookings.filter((booking) => booking.status === "completed")

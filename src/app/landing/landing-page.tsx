@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/shared/components/ui/sheet';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Badge } from '@/shared/components/ui/badge';
 import { 
   Scissors, 
   Calendar, 
@@ -18,7 +20,17 @@ import {
   Award,
   Zap,
   Menu,
-  X
+  X,
+  Heart,
+  MessageCircle,
+  Share2,
+  Eye,
+  MapPin,
+  Sparkles,
+  Video,
+  Instagram,
+  Clock,
+  User
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -92,7 +104,7 @@ export default function LandingPage() {
       location: "Princeton, NJ",
       revenue: "$50K/year",
       image: "/api/placeholder/60/60",
-      quote: "BOCM made running my business so much easier. My clients love the booking experience, and I’ve seen my revenue grow every month.",
+      quote: "BOCM made running my business so much easier. My clients love the booking experience, and I've seen my revenue grow every month.",
       rating: 5
     },
     {
@@ -111,7 +123,7 @@ export default function LandingPage() {
       number: "01",
       title: "Social Media Integration",
       description: "Connect your Instagram, Twitter, and Facebook to showcase your best cuts, share your portfolio, and attract new clients directly from your profile.",
-      icon: Star, // Use Star as a placeholder for social media
+      icon: Star,
       color: "bg-saffron/20 text-saffron"
     },
     {
@@ -127,7 +139,7 @@ export default function LandingPage() {
       description: "Expand your client base with our upcoming Reach System—get discovered by more clients and grow your business faster.",
       icon: Zap,
       color: "bg-primary/20 text-primary",
-      beta: true // Custom property to flag Beta
+      beta: true
     },
     {
       number: "04",
@@ -147,23 +159,43 @@ export default function LandingPage() {
     { href: "/register", label: "Get Started" },
   ];
 
+  // Mock data for reels showcase
+  const showcaseCuts = [
+    {
+      id: "1",
+      title: "Fade Masterpiece",
+      barber: "Chance Robenson",
+      views: "2.4K",
+      likes: "156",
+      comments: "23",
+      category: "Fade",
+      price: "$45",
+      location: "Princeton, NJ"
+    }
+  ];
+
   return (
-    <div className="landing-root min-h-screen bg-primary">
+    <div className="landing-root min-h-screen bg-black">
+      {/* Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-saffron/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
       {/* Header with Mobile Menu */}
       <header
-        className={`w-full py-3 sm:py-6 px-4 sm:px-6 bg-transparent transition-transform duration-300 ease-in-out z-50
+        className={`w-full py-3 sm:py-6 px-4 sm:px-6 bg-black/80 backdrop-blur-xl border-b border-white/10 transition-transform duration-300 ease-in-out z-50 fixed top-0
           ${headerState === 'default' ? 'translate-y-0' : ''}
           ${headerState === 'scrolled' ? 'translate-y-2 shadow-lg' : ''}
           ${headerState === 'hidden' ? '-translate-y-full' : ''}
         `}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Mobile: logo + hamburger only */}
           <div className="flex items-center w-full md:w-auto justify-between md:justify-start">
-            <Link href="/" className="text-xl sm:text-2xl font-bold text-primary">
+            <Link href="/" className="text-xl sm:text-2xl font-bold text-saffron">
               BOCM
             </Link>
-            {/* Hamburger menu only on mobile */}
             <div className="md:hidden flex items-center">
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
@@ -176,10 +208,10 @@ export default function LandingPage() {
                     <span className="sr-only">Toggle Menu</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[300px] bg-darkpurple/95 backdrop-blur-xl border-white/10">
+                <SheetContent side="right" className="w-[300px] bg-black/95 backdrop-blur-xl border-white/10">
                   <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between mb-8">
-                      <span className="text-2xl font-bebas font-bold text-saffron">BOCM</span>
+                      <span className="text-2xl font-bold text-saffron">BOCM</span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -204,101 +236,104 @@ export default function LandingPage() {
                         ))}
                       </ul>
                     </nav>
-                    <div className="pt-8 border-t border-white/10">
-                      <Link
-                        href="/register"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="block w-full px-6 py-3 bg-saffron text-primary rounded-full font-semibold text-center hover:bg-saffron/90 transition-colors"
-                      >
-                        Get Started
-                      </Link>
-                    </div>
                   </div>
                 </SheetContent>
               </Sheet>
             </div>
           </div>
-          {/* Desktop: nav links + CTAs */}
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-white hover:text-saffron transition-colors">Features</a>
-            <a href="#testimonials" className="text-white hover:text-saffron transition-colors">Success Stories</a>
-            <a href="#calculator" className="text-white hover:text-saffron transition-colors">Calculator</a>
-            <Link href="/browse" className="text-white hover:text-saffron transition-colors">Browse</Link>
-            <Link href="/login" className="text-white hover:text-saffron transition-colors">Login</Link>
-            <Link 
-              href="/register" 
-              className="px-6 py-2 bg-saffron text-primary rounded-full font-semibold hover:bg-saffron/90 transition-colors"
-            >
+          
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link href="#features" className="text-white hover:text-saffron transition-colors font-medium">
+              Features
+            </Link>
+            <Link href="#testimonials" className="text-white hover:text-saffron transition-colors font-medium">
+              Success Stories
+            </Link>
+            <Link href="#calculator" className="text-white hover:text-saffron transition-colors font-medium">
+              Calculator
+            </Link>
+            <Link href="/browse" className="text-white hover:text-saffron transition-colors font-medium">
+              Browse
+            </Link>
+            <Link href="/login" className="text-white hover:text-saffron transition-colors font-medium">
+              Login
+            </Link>
+            <Link href="/register" className="bg-saffron text-black px-6 py-2 rounded-xl font-semibold hover:bg-saffron/90 transition-colors">
               Get Started
             </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-8 sm:pt-32 pb-16 sm:pb-20 overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-secondary/20 rounded-full blur-3xl -z-10" />
-        <div className="absolute bottom-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-saffron/20 rounded-full blur-3xl -z-10" />
-        
+      <section className="pt-24 sm:pt-32 pb-16 sm:pb-24 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left Column - Content */}
-            <div className="space-y-6 sm:space-y-8">
-              <div className="space-y-4 sm:space-y-6">
-                <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bebas font-extrabold text-white leading-tight">
-                  Turn Your Practice Into a <span className="text-saffron">$200K+</span> Business
+            <div className="space-y-8">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-saffron/20 text-saffron border-saffron/30 px-3 py-1">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Social Booking Platform
+                  </Badge>
+                </div>
+                
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                  The Future of
+                  <span className="text-saffron block">Barber Booking</span>
                 </h1>
-                <p className="text-lg sm:text-xl text-white/90 max-w-xl">
-                  The only platform that actually grows your revenue. Book more clients, charge premium rates, build your empire.
-                </p>
-                <p className="text-base sm:text-lg text-saffron font-semibold">
-                  No setup fees. No subscription. 100% free for barbers and clients.
+                
+                <p className="text-lg sm:text-xl text-white/80 leading-relaxed max-w-2xl">
+                  Connect, showcase, and grow. BOCM is the first social booking platform that lets barbers share their work, build their brand, and book clients seamlessly.
                 </p>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link 
-                  href="/register" 
-                  className="px-6 sm:px-8 py-3 sm:py-4 bg-saffron text-primary rounded-full font-semibold text-base sm:text-lg shadow-lg hover:bg-saffron/90 transition-colors text-center"
-                >
-                  Start Growing Today
+                <Link href="/register" className="bg-saffron text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-saffron/90 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-saffron/25">
+                  Start Your Journey
+                  <ArrowRight className="inline ml-2 h-5 w-5" />
                 </Link>
-                <button className="px-6 sm:px-8 py-3 sm:py-4 border-2 border-white text-white rounded-full font-semibold text-base sm:text-lg bg-transparent hover:bg-white/10 transition-colors">
-                  <Play className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <Link href="/reels" className="flex items-center justify-center px-8 py-4 border border-white/20 text-white rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-300">
+                  <Play className="inline w-5 h-5 mr-2" />
                   Watch Real Results
-                </button>
+                </Link>
               </div>
 
-              {/* Stats */}
-              <div className="flex flex-wrap gap-4 sm:gap-6 pt-6 sm:pt-8">
-                <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-3 sm:py-4 min-w-[100px] sm:min-w-[120px]">
-                  <span className="text-2xl sm:text-3xl font-bebas text-saffron">1000+</span>
-                  <span className="text-xs sm:text-sm text-white/80 font-bold uppercase tracking-wide">Stylists</span>
+              {/* Why Choose BOCM */}
+              <div className="space-y-4 pt-6 sm:pt-8">
+                <h3 className="text-lg sm:text-xl font-bold text-white text-center mb-4">Why Choose BOCM?</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-3">
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-saffron mr-2 sm:mr-3 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-white/90 font-medium">Zero Setup Fees</span>
+                  </div>
+                  <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-3">
+                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-saffron mr-2 sm:mr-3 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-white/90 font-medium">Instant Payments</span>
                 </div>
-                <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-3 sm:py-4 min-w-[100px] sm:min-w-[120px]">
-                  <span className="text-2xl sm:text-3xl font-bebas text-white">10,000+</span>
-                  <span className="text-xs sm:text-sm text-white/80 font-bold uppercase tracking-wide">Bookings</span>
+                  <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-3">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-saffron mr-2 sm:mr-3 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-white/90 font-medium">Social Growth</span>
                 </div>
-                <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-3 sm:py-4 min-w-[100px] sm:min-w-[120px]">
-                  <span className="text-2xl sm:text-3xl font-bebas text-saffron">4.9/5</span>
-                  <span className="text-xs sm:text-sm text-white/80 font-bold uppercase tracking-wide">Rating</span>
                 </div>
               </div>
             </div>
 
             {/* Right Column - Dashboard Demo */}
             <div className="relative mt-8 lg:mt-0">
-              <div className="bg-darkpurple/90 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/10">
-                <div className="space-y-4 sm:space-y-6">
+              <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl p-6 sm:p-8">
+                <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg sm:text-xl font-extrabold text-white">Revenue Dashboard</h3>
+                    <CardTitle className="text-lg sm:text-xl font-bold text-white">Revenue Dashboard</CardTitle>
                     <div className="flex items-center text-saffron">
                       <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       <span className="text-sm font-medium">+40%</span>
                     </div>
                   </div>
-                  
+                </CardHeader>
+                <CardContent className="space-y-4 sm:space-y-6">
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div className="bg-white/10 rounded-xl p-3 sm:p-4">
                       <p className="text-white/60 text-xs sm:text-sm">Monthly Revenue</p>
@@ -314,9 +349,116 @@ export default function LandingPage() {
                     <p className="text-saffron text-xs sm:text-sm font-medium">This Month's Growth</p>
                     <p className="text-lg sm:text-xl font-bold text-saffron">+$3,200</p>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Reels Showcase Section */}
+      <section className="py-16 sm:py-20 bg-white/5 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+              Showcase Your Work
+            </h2>
+            <p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto">
+              Share your best cuts, build your brand, and attract new clients with our social-first video platform.
+            </p>
+          </div>
+
+          {/* Reels Grid */}
+          <div className={
+            showcaseCuts.length === 1
+              ? 'grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8'
+              : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8'
+          }>
+            {showcaseCuts.map((cut, index) => (
+              <Card
+                key={cut.id}
+                className={
+                  showcaseCuts.length === 1
+                    ? 'md:col-start-2 group bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl overflow-hidden hover:shadow-2xl hover:border-saffron/30 transition-all duration-300 hover:-translate-y-2'
+                    : 'group bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl overflow-hidden hover:shadow-2xl hover:border-saffron/30 transition-all duration-300 hover:-translate-y-2'
+                }
+              >
+                <CardContent className="p-0">
+                  {/* Video Placeholder */}
+                  <div className="relative aspect-[9/16] bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 overflow-hidden">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-black/30 rounded-full p-4 backdrop-blur-sm">
+                        <Play className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="absolute right-3 bottom-20 flex flex-col gap-4">
+                      <button className="flex flex-col items-center">
+                        <div className="bg-black/30 rounded-full p-2 mb-1 backdrop-blur-sm">
+                          <Heart className="h-5 w-5 text-white" />
+                        </div>
+                        <span className="text-white text-xs font-medium">{cut.likes}</span>
+                      </button>
+                      <button className="flex flex-col items-center">
+                        <div className="bg-black/30 rounded-full p-2 mb-1 backdrop-blur-sm">
+                          <MessageCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <span className="text-white text-xs font-medium">{cut.comments}</span>
+                      </button>
+                      <button className="flex flex-col items-center">
+                        <div className="bg-black/30 rounded-full p-2 mb-1 backdrop-blur-sm">
+                          <Share2 className="h-5 w-5 text-white" />
+                        </div>
+                        <span className="text-white text-xs font-medium">Share</span>
+                      </button>
+                    </div>
+
+                    {/* Bottom Info */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent">
+                      <div className="flex items-center mb-2">
+                        <div className="h-8 w-8 border-2 border-white rounded-full mr-3 bg-saffron/20 flex items-center justify-center">
+                          <User className="h-4 w-4 text-saffron" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-white text-sm truncate">@{cut.barber.toLowerCase().replace(/\s+/g, '')}</p>
+                          <p className="text-white/70 text-xs truncate">{cut.barber}</p>
+                        </div>
+                      </div>
+                      <p className="text-white text-sm mb-2 line-clamp-2">{cut.title}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-white/10 text-white border-0 text-xs">
+                            {cut.category}
+                          </Badge>
+                          <div className="flex items-center text-white/70 text-xs">
+                            <Eye className="h-3 w-3 mr-1" />
+                            {cut.views}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-saffron/20 text-saffron border-saffron/30 text-xs">
+                            {cut.price}
+                          </Badge>
+                          <div className="flex items-center text-white/70 text-xs">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {cut.location}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link href="/reels" className="inline-flex items-center bg-saffron text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-saffron/90 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-saffron/25">
+              <Video className="mr-2 h-5 w-5" />
+              Explore All Cuts
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
           </div>
         </div>
       </section>
@@ -325,7 +467,7 @@ export default function LandingPage() {
       <section id="calculator" className="py-16 sm:py-20 bg-white/5 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
               The "Holy Sh*t" Moment
             </h2>
             <p className="text-lg sm:text-xl text-white/80 max-w-2xl mx-auto">
@@ -333,8 +475,8 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="bg-darkpurple/90 backdrop-blur-sm rounded-3xl p-6 sm:p-8 lg:p-12 shadow-2xl border border-white/10">
-            <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 items-start">
+          <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl p-6 sm:p-8 lg:p-12">
+            <CardContent className="grid lg:grid-cols-2 gap-6 sm:gap-8 items-start">
               {/* Calculator Input */}
               <div className="space-y-4 sm:space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
@@ -409,12 +551,12 @@ export default function LandingPage() {
                   </div>
                 </div>
                 
-                <button className="w-full px-6 sm:px-8 py-3 sm:py-4 bg-saffron text-primary rounded-xl font-semibold text-base sm:text-lg hover:bg-saffron/90 transition-colors">
+                <button className="w-full px-6 sm:px-8 py-3 sm:py-4 bg-saffron text-black rounded-xl font-semibold text-base sm:text-lg hover:bg-saffron/90 transition-colors">
                   Start Earning More Today
                 </button>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -422,7 +564,7 @@ export default function LandingPage() {
       <section id="features" className="py-16 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
               Everything You Need to Scale
             </h2>
             <p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto">
@@ -432,10 +574,11 @@ export default function LandingPage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {features.map((feature, index) => (
-              <div 
+              <Card 
                 key={index}
-                className="group bg-white/5 backdrop-blur-sm rounded-2xl p-5 sm:p-6 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2 relative"
+                className="group bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl p-5 sm:p-6 hover:shadow-2xl hover:border-saffron/30 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden"
               >
+                <CardContent className="p-0">
                 <div className="flex items-center justify-between mb-4">
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${feature.color}`}>
                     <feature.icon className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -447,13 +590,14 @@ export default function LandingPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-lg sm:text-xl font-semibold text-white mb-0">{feature.title}</h3>
                   {feature.beta && (
-                    <span className="ml-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-saffron/80 to-secondary/80 text-xs font-bold text-black shadow-sm border border-saffron/40 animate-pulse">
+                      <Badge className="bg-gradient-to-r from-saffron/80 to-secondary/80 text-white border-saffron/40 animate-pulse">
                       Beta
-                    </span>
+                      </Badge>
                   )}
                 </div>
                 <p className="text-white/70 leading-relaxed text-sm sm:text-base">{feature.description}</p>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -463,47 +607,40 @@ export default function LandingPage() {
       <section id="testimonials" className="py-16 sm:py-20 bg-white/5 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
-              Real Results from Real Barbers
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+              Success Stories
             </h2>
             <p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto">
-              See how barbers across the country are scaling their businesses with BOCM.
+              See how barbers are transforming their businesses with BOCM.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div className="grid md:grid-cols-2 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div 
-                key={index}
-                className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 sm:p-6 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2"
-              >
-                <div className="flex items-center mb-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-saffron/20 rounded-full flex items-center justify-center mr-3 sm:mr-4">
-                    <span className="text-saffron font-semibold text-sm sm:text-base">
-                      {testimonial.name.charAt(0)}
-                    </span>
+              <Card key={index} className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl p-6 sm:p-8">
+                <CardContent className="p-0">
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="h-12 w-12 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="h-6 w-6 text-saffron" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-white">{testimonial.name}</h3>
+                      <p className="text-white/70 text-sm">{testimonial.role} • {testimonial.location}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-saffron font-semibold">{testimonial.revenue}</span>
+                        <div className="flex items-center">
+                          {[...Array(testimonial.rating)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-saffron fill-current" />
+                          ))}
+                        </div>
+                      </div>
                   </div>
-                  <div>
-                    <h4 className="text-white font-semibold text-sm sm:text-base">{testimonial.name}</h4>
-                    <p className="text-white/60 text-xs sm:text-sm">{testimonial.role}</p>
                   </div>
-                </div>
-                
-                <div className="flex items-center mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 text-saffron fill-current" />
-                  ))}
-                </div>
-                
-                <blockquote className="text-white/80 mb-4 italic text-sm sm:text-base">
+                  <blockquote className="text-white/80 text-base leading-relaxed italic">
                   "{testimonial.quote}"
                 </blockquote>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-saffron font-semibold text-sm sm:text-base">{testimonial.revenue}</span>
-                  <span className="text-white/60 text-xs sm:text-sm">{testimonial.location}</span>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -512,106 +649,77 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-16 sm:py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <div className="bg-gradient-to-br from-saffron/20 to-secondary/20 backdrop-blur-sm rounded-3xl p-8 sm:p-12 border border-white/10">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4 sm:mb-6">
-              Ready to Scale Your Business?
+          <Card className="bg-gradient-to-br from-saffron/20 via-saffron/10 to-transparent border border-saffron/30 shadow-2xl backdrop-blur-xl rounded-3xl p-8 sm:p-12">
+            <CardContent className="p-0">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+                Ready to Transform Your Business?
             </h2>
-            <p className="text-lg sm:text-xl text-white/80 mb-6 sm:mb-8 max-w-2xl mx-auto">
-              Join thousands of barbers who are already earning more with BOCM. 
-              Start your free trial today and see the difference.
+              <p className="text-lg sm:text-xl text-white/80 mb-8 max-w-2xl mx-auto">
+                Join thousands of barbers who are already growing their business with BOCM. Start your journey today.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
-                href="/register" 
-                className="px-6 sm:px-8 py-3 sm:py-4 bg-saffron text-primary rounded-full font-semibold text-base sm:text-lg shadow-lg hover:bg-saffron/90 transition-colors"
-              >
-                Start Free Trial
+                <Link href="/register" className="bg-saffron text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-saffron/90 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-saffron/25">
+                  Get Started Free
+                  <ArrowRight className="inline ml-2 h-5 w-5" />
+                </Link>
+                <Link href="/browse" className="flex items-center justify-center px-8 py-4 border border-white/20 text-white rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-300">
+                  Browse Barbers
               </Link>
-              <button 
-                onClick={() => setModalOpen(true)}
-                className="px-6 sm:px-8 py-3 sm:py-4 border-2 border-white text-white rounded-full font-semibold text-base sm:text-lg bg-transparent hover:bg-white/10 transition-colors"
-              >
-                Book a Demo
-              </button>
             </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 sm:py-12 border-t border-white/10">
+      <footer className="py-12 bg-white/5 backdrop-blur-sm border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            <div>
-              <h3 className="text-xl sm:text-2xl font-extrabold text-white mb-4">BOCM</h3>
-              <p className="text-white/60 text-sm sm:text-base">
-                The platform that transforms barber businesses into empires.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4 text-sm sm:text-base">Product</h4>
-              <ul className="space-y-2 text-white/60 text-sm sm:text-base">
-                <li><a href="#" className="hover:text-saffron transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-saffron transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-saffron transition-colors">API</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4 text-sm sm:text-base">Company</h4>
-              <ul className="space-y-2 text-white/60 text-sm sm:text-base">
-                <li><a href="#" className="hover:text-saffron transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-saffron transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-saffron transition-colors">Careers</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4 text-sm sm:text-base">Support</h4>
-              <ul className="space-y-2 text-white/60 text-sm sm:text-base">
-                <li><a href="#" className="hover:text-saffron transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-saffron transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-saffron transition-colors">Status</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-white/10 mt-6 sm:mt-8 pt-6 sm:pt-8 text-center text-white/60 text-sm sm:text-base">
-            <p>&copy; 2024 BOCM. All rights reserved.</p>
+          <div className="text-center">
+            <Link href="/" className="text-2xl font-bold text-saffron mb-4 inline-block">
+              BOCM
+            </Link>
+            <p className="text-white/60 text-sm">
+              © 2024 BOCM. All rights reserved. The future of barber booking.
+            </p>
           </div>
         </div>
       </footer>
 
-      {/* Book Appointment Modal */}
+      {/* Email Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md w-full rounded-3xl border-none shadow-2xl p-0">
-          <DialogDescription className="sr-only">
-            Book a demo appointment form
-          </DialogDescription>
-          <div className="relative flex flex-col items-center justify-center px-6 py-8 sm:px-10 sm:py-12 bg-black/80 rounded-3xl">
-            <h2 className="relative z-10 text-2xl font-extrabold mb-2 text-saffron drop-shadow-lg">Book a Demo</h2>
-            <p className="relative z-10 text-base text-white mb-6">Enter your email to schedule a personalized demo!</p>
+        <DialogContent className="bg-black/95 border border-white/20 backdrop-blur-xl rounded-2xl">
+          <DialogDescription className="text-white/80">
             {submitted ? (
-              <div className="relative z-10 text-green-400 text-center py-6 text-lg font-semibold">
-                Thank you! Check your email for a Calendly link to book your demo.
+              <div className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-saffron mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">Thank you!</h3>
+                <p className="text-white/70">We'll be in touch soon with exclusive early access.</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="relative z-10 w-full space-y-4 flex flex-col items-center">
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-white">Get Early Access</h3>
+                <p className="text-white/70">Be among the first to experience the future of barber booking.</p>
+                <form onSubmit={handleSubmit} className="space-y-4">
                 <input
                   type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-saffron"
                   required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full max-w-xs p-3 rounded-full border-2 border-saffron focus:border-saffron outline-none text-center text-base bg-white/10 text-white placeholder:text-gray-300"
-                  placeholder="you@email.com"
                 />
-                {error && <div className="text-red-400 text-sm text-center w-full">{error}</div>}
-                <div className="flex gap-2 pt-2 w-full">
-                  <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1 rounded-full border-white text-white bg-transparent hover:bg-white/10">Cancel</Button>
-                  <Button type="submit" className="flex-1 rounded-full bg-saffron text-primary hover:bg-saffron/90 text-base font-semibold shadow-lg" disabled={loading}>
-                    {loading ? 'Sending...' : 'Send Link'}
-                  </Button>
+                  {error && <p className="text-red-400 text-sm">{error}</p>}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-saffron text-black py-3 rounded-xl font-semibold hover:bg-saffron/90 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? "Sending..." : "Get Early Access"}
+                  </button>
+                </form>
                 </div>
-              </form>
             )}
-          </div>
+          </DialogDescription>
         </DialogContent>
       </Dialog>
     </div>

@@ -619,24 +619,27 @@ function BookPageContent() {
       </div>
 
       {/* Cover Photo */}
-      {barber.coverphoto && (
-        <div className="relative h-48 md:h-64 overflow-hidden">
+      <div className="relative h-48 md:h-64 overflow-hidden">
+        {barber.coverphoto ? (
           <img
             src={barber.coverphoto}
             alt="Cover photo"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-        </div>
-      )}
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 relative">
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+      </div>
 
       {/* Profile Section */}
       <div className="relative px-4 pb-4">
         {/* Avatar positioned over cover photo */}
         <div className="relative -mt-16 mb-4">
           <Avatar className="h-32 w-32 mx-auto border-4 border-black shadow-xl">
-            <AvatarImage src={barber.avatar_url} alt={barber.name} />
-            <AvatarFallback className="text-4xl bg-saffron text-black font-bold">
+            <AvatarImage src={barber.avatar_url} alt={barber.name} className="object-cover w-full h-full" />
+            <AvatarFallback className="text-4xl bg-saffron text-black font-bold w-full h-full flex items-center justify-center">
               {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
             </AvatarFallback>
           </Avatar>

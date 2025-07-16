@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
@@ -291,6 +290,20 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           return
         }
 
+        // Calculate add-on total and get add-on prices
+        let addonTotal = 0;
+        let addonPriceMap: Record<string, number> = {};
+        if (selectedAddonIds.length > 0) {
+          const { data: selectedAddons, error: addonsError } = await supabase
+            .from('service_addons')
+            .select('id, price')
+            .in('id', selectedAddonIds);
+          if (!addonsError && selectedAddons) {
+            addonTotal = selectedAddons.reduce((sum, addon) => sum + (addon.price || 0), 0);
+            addonPriceMap = Object.fromEntries(selectedAddons.map(a => [a.id, a.price]));
+          }
+        }
+
         const bookingData = {
           barber_id: barberId,
           client_id: user.id,
@@ -299,7 +312,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           notes: formData.notes,
           status: 'pending',
           payment_status: 'pending',
-          price: service.price,
+          price: service.price + addonTotal,
+          addon_total: addonTotal,
         }
 
         const { data: booking, error } = await supabase
@@ -315,6 +329,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           const addonBookings = selectedAddonIds.map(addonId => ({
             booking_id: booking.id,
             addon_id: addonId,
+            price: addonPriceMap[addonId] || 0,
           }))
 
           const { error: addonError } = await supabase
@@ -324,7 +339,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           if (addonError) {
             console.error('Error adding add-ons:', addonError)
           }
-      }
+        }
 
         // Sync with external service
         if (syncService) {
@@ -520,6 +535,21 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                   </div>
                 ))}
               </div>
+
+              {/* Add-on Selector */}
+              {addons.length > 0 && (
+                <div className="pt-6">
+                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-saffron" />
+                    Enhance Your Service (Optional)
+                  </h4>
+                  <AddonSelector
+                    barberId={barberId}
+                    selectedAddonIds={selectedAddonIds}
+                    onAddonChange={setSelectedAddonIds}
+                  />
+                </div>
+              )}
             </div>
           )}
 

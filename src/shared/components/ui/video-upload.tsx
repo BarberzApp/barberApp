@@ -65,7 +65,7 @@ const categories = [
 
 export function VideoUpload({ 
   onUpload, 
-  maxFileSize = 100 * 1024 * 1024, // 100MB
+  maxFileSize = 270 * 1024 * 1024, // 270MB
   allowedFormats = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'],
   className 
 }: VideoUploadProps) {
@@ -279,7 +279,7 @@ export function VideoUpload({
   }
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn('space-y-8', className)}>
       {/* File Upload Section */}
       <Card className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl">
         <CardHeader>
@@ -447,6 +447,14 @@ export function VideoUpload({
           )}
         </CardContent>
       </Card>
+
+      {/* Indeterminate Progress Bar for Upload */}
+      {uploading && (
+        <div className="w-full mb-4">
+          <Progress value={100} className="h-2 animate-pulse bg-white/10" />
+          <div className="text-xs text-white/60 text-center mt-1">Uploading...</div>
+        </div>
+      )}
 
       {/* Video Details Section */}
       {file && (

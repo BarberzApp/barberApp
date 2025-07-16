@@ -230,6 +230,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
 
     try {
       setLoading(true)
+      console.log('Loading barber profile for user:', user.id)
 
       // Fetch profile data
       const { data: profile, error: profileError } = await supabase
@@ -238,7 +239,12 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         .eq('id', user.id)
         .single()
 
-      if (profileError) throw profileError
+      if (profileError) {
+        console.error('Profile fetch error:', profileError)
+        throw profileError
+      }
+
+      console.log('Profile data loaded:', profile)
 
       // Fetch barber data
       const { data: barber, error: barberError } = await supabase
@@ -247,10 +253,15 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         .eq('user_id', user.id)
         .single()
 
-      if (barberError) throw barberError
+      if (barberError) {
+        console.error('Barber fetch error:', barberError)
+        throw barberError
+      }
+
+      console.log('Barber data loaded:', barber)
 
       // Update form with fetched data
-      form.reset({
+      const formData = {
         name: profile.name || '',
         username: profile.username || '',
         businessName: barber.business_name || '',
@@ -258,21 +269,23 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         location: profile.location || '',
         phone: profile.phone || '',
         specialties: barber.specialties || [],
-        priceRange: barber.price_range || 'Mid-range',
+        priceRange: barber.price_range || 'Mid-range ($30-$60)',
         instagram: barber.instagram || '',
         twitter: barber.twitter || '',
         tiktok: barber.tiktok || '',
         facebook: barber.facebook || '',
         isPublic: profile.is_public ?? true,
-      })
+      }
 
+      console.log('Setting form data:', formData)
+      form.reset(formData)
       setLocationInput(profile.location || '');
 
     } catch (error) {
       console.error('Error loading barber profile:', error)
       toast({
         title: 'Error',
-        description: 'Failed to load profile data',
+        description: 'Failed to load profile data. Please refresh the page.',
         variant: 'destructive',
       })
     } finally {

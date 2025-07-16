@@ -9,7 +9,7 @@ import { EnhancedBarberProfileSettings } from './enhanced-barber-profile-setting
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
-import { User, Scissors, Share2, Calendar, DollarSign, Lock, Settings as SettingsIcon, AlertCircle, Sparkles, Package } from 'lucide-react'
+import { User, Scissors, Share2, Calendar, DollarSign, Lock, Settings as SettingsIcon, AlertCircle, Sparkles, Package, RefreshCw } from 'lucide-react'
 import { AvailabilityManager } from '@/shared/components/booking/availability-manager'
 import { EarningsDashboard } from '@/shared/components/payment/earnings-dashboard'
 import { PaymentHistory } from '@/shared/components/payment/payment-history'
@@ -21,6 +21,8 @@ import { Button } from '@/shared/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/shared/components/ui/badge'
 import { Switch } from '@/shared/components/ui/switch'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
+
 
 type Tab = 'profile' | 'services' | 'addons' | 'availability' | 'earnings'
 
@@ -48,6 +50,7 @@ export function SettingsPage() {
   const { user, status, logout } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const { push: safePush } = useSafeNavigation();
 
   // Fetch latest user on mount and after resend
   const fetchLatestUser = async () => {
@@ -68,7 +71,7 @@ export function SettingsPage() {
         description: 'Please log in to access settings.',
         variant: 'destructive',
       })
-      router.push('/login')
+      safePush('/login')
       return
     }
 
@@ -355,7 +358,7 @@ export function SettingsPage() {
                   {user?.role === 'barber' && (
                     <div className="flex justify-center">
                       <Button 
-                        onClick={() => router.push('/barber/onboarding')}
+                        onClick={() => safePush('/barber/onboarding')}
                         className="bg-saffron hover:bg-saffron/90 text-primary font-semibold rounded-xl px-6 py-3"
                         size="sm"
                       >
@@ -374,7 +377,7 @@ export function SettingsPage() {
               {/* Modern Tab Navigation */}
               <div className="p-6 border-b border-white/10">
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl p-2">
-                  <TabsList className="flex w-full overflow-x-auto gap-2 bg-transparent snap-x snap-mandatory sm:grid sm:grid-cols-5">
+                  <TabsList className="flex w-full gap-2 bg-transparent">
                     <TabsTrigger 
                       value="profile" 
                       className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
@@ -440,6 +443,8 @@ export function SettingsPage() {
                     )}
                     
 
+                    
+
                   </TabsList>
                 </div>
               </div>
@@ -447,20 +452,20 @@ export function SettingsPage() {
               <div className="p-6">
                 <TabsContent value="profile" className="mt-0">
                   {user?.role === 'barber' ? (
-                    <EnhancedBarberProfileSettings />
+                    <EnhancedBarberProfileSettings onSave={loadSettingsData} />
                   ) : (
-                    <ProfileSettings />
+                    <ProfileSettings onUpdate={loadSettingsData} />
                   )}
                 </TabsContent>
 
                 {user?.role === 'barber' && (
                   <>
                     <TabsContent value="services" className="mt-0">
-                      <ServicesSettings />
+                      <ServicesSettings onUpdate={loadSettingsData} />
                     </TabsContent>
                     
                     <TabsContent value="addons" className="mt-0">
-                      <AddonsSettings />
+                      <AddonsSettings onUpdate={loadSettingsData} />
                     </TabsContent>
                     
                     <TabsContent value="availability" className="mt-0">
@@ -469,7 +474,7 @@ export function SettingsPage() {
                           <h2 className="text-2xl font-bold text-white">Schedule Management</h2>
                           <p className="text-white/60">Manage your availability and working hours</p>
                         </div>
-                        <AvailabilityManager barberId={barberId} />
+                        <AvailabilityManager barberId={barberId} onUpdate={loadSettingsData} />
                       </div>
                     </TabsContent>
                     
@@ -489,6 +494,8 @@ export function SettingsPage() {
                 )}
                 
 
+                
+
               </div>
             </Tabs>
           </Card>
@@ -505,7 +512,7 @@ export function SettingsPage() {
                 description: 'You have been logged out successfully.',
                 variant: 'success',
               });
-              router.push('/login');
+              safePush('/login');
             } catch (error) {
               toast({
                 title: 'Logout failed',

@@ -22,6 +22,7 @@ import { useData } from '@/shared/hooks/use-data';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { BookingForm } from '@/shared/components/booking/booking-form';
+import { Progress } from '@/shared/components/ui/progress';
 
 interface UserProfile {
   id: string;
@@ -594,11 +595,11 @@ export default function ProfilePortfolio() {
       return
     }
 
-    // Validate file size (50MB limit for videos)
-    if (file.size > 50 * 1024 * 1024) {
+    // Validate file size (270MB limit for videos)
+    if (file.size > 270 * 1024 * 1024) {
       toast({
         title: 'File too large',
-        description: 'Please select a video smaller than 50MB.',
+        description: 'Please select a video smaller than 270MB.',
         variant: 'destructive',
       })
       return
@@ -946,12 +947,17 @@ export default function ProfilePortfolio() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Cover Photo */}
-      <div className="relative h-48 sm:h-64 md:h-80 w-full bg-gray-800">
-        <img
-          src={profile?.coverphoto || '/placeholder.svg'}
-          alt="Cover"
-          className="w-full h-full object-cover"
-        />
+      <div className="relative h-48 sm:h-64 md:h-80 w-full">
+        {profile?.coverphoto ? (
+          <img
+            src={profile.coverphoto}
+            alt="Cover"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 relative">
+          </div>
+        )}
         {/* Glassy overlay */}
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
         {/* Cover photo upload button */}
@@ -1174,11 +1180,11 @@ export default function ProfilePortfolio() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                 {cuts.map((cut) => (
                   <div 
                     key={cut.id} 
-                    className="relative aspect-[3/4] bg-gray-800 rounded-lg overflow-hidden group cursor-pointer"
+                    className="relative aspect-[4/5] bg-gray-800 rounded-lg overflow-hidden group cursor-pointer"
                     onMouseEnter={(e) => {
                       const video = e.currentTarget.querySelector('video') as HTMLVideoElement;
                       if (video) {
@@ -1209,7 +1215,7 @@ export default function ProfilePortfolio() {
                   >
                     <video
                       src={cut.url}
-                      poster={cut.thumbnail || '/placeholder.svg'}
+                      poster={cut.thumbnail || ''}
                       className="w-full h-full object-cover"
                       controls={false}
                       muted
@@ -1217,12 +1223,9 @@ export default function ProfilePortfolio() {
                       preload="metadata"
                       loop
                     />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/30 transition-colors pointer-events-none">
-                      <Play className="h-8 w-8 text-white group-hover:opacity-0 transition-opacity" />
-                    </div>
-                    <div className="absolute bottom-2 left-2 right-2">
+                    <div className="absolute bottom-1 left-1 right-1">
                       <p className="text-white text-xs font-medium truncate">{cut.title}</p>
-                      <div className="flex items-center justify-between text-white/70 text-xs mt-1">
+                      <div className="flex items-center justify-between text-white/70 text-xs mt-0.5">
                         <span>{cut.views || 0} views</span>
                         <span>{cut.duration || 0}s</span>
                       </div>
@@ -1264,7 +1267,7 @@ export default function ProfilePortfolio() {
 
           {/* Portfolio Tab */}
           <TabsContent value="portfolio">
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
               {portfolio.map((item) => (
                 <div key={item.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden group">
                   {item.type === 'image' ? (
@@ -1530,7 +1533,7 @@ export default function ProfilePortfolio() {
                   )}
                 </Button>
                 <p className="text-white/60 text-sm">
-                  MP4, MOV, or AVI up to 50MB
+                  MP4, MOV, or AVI up to 270MB
                 </p>
               </div>
             </div>
@@ -2205,7 +2208,7 @@ export default function ProfilePortfolio() {
                   Choose File
                 </Button>
                 <p className="text-white/60 text-sm">
-                  Images or videos up to 50MB
+                  Images or videos up to 270MB
                 </p>
               </div>
             </div>
@@ -2224,6 +2227,13 @@ export default function ProfilePortfolio() {
         />
       )}
       
+      {/* Indeterminate Progress Bar for Portfolio Upload */}
+      {uploading && (
+        <div className="w-full mb-4">
+          <Progress value={100} className="h-2 animate-pulse bg-white/10" />
+          <div className="text-xs text-white/60 text-center mt-1">Uploading to portfolio...</div>
+        </div>
+      )}
     </div>
   );
 }

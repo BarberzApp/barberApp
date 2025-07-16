@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/router"
+import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 interface MobileLinkProps extends React.ComponentPropsWithoutRef<typeof Link> {
@@ -17,8 +17,8 @@ export function MobileLink({
   children,
   ...props
 }: MobileLinkProps) {
-  const router = useRouter()
-  const isActive = router.pathname === href
+  const pathname = usePathname()
+  const isActive = pathname === href
 
   return (
     <Link

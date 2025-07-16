@@ -22,7 +22,7 @@
     "pop3_port": 54326
   },
   "storage": {
-    "file_size_limit": "50MiB"
+    "file_size_limit": "270MiB"
   },
   "auth": {
     "enabled": true,

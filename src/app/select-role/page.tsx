@@ -7,6 +7,7 @@ import { useAuth } from "@/shared/hooks/use-auth-zustand";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 export default function SelectRolePage() {
   const { user, status } = useAuth();
@@ -14,28 +15,29 @@ export default function SelectRolePage() {
   const [role, setRole] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { replace: safeReplace } = useSafeNavigation();
 
   useEffect(() => {
     // If user already has a role, redirect them
     if (user && user.role) {
       if (user.role === "barber") {
-        router.replace("/barber/onboarding");
+        safeReplace("/barber/onboarding");
       } else if (user.role === "client") {
         if (user.location) {
-          router.replace("/browse");
+          safeReplace("/browse");
         } else {
-          router.replace("/client/onboarding");
+          safeReplace("/client/onboarding");
         }
       } else if (user.email === "primbocm@gmail.com") {
-        router.replace("/super-admin");
+        safeReplace("/super-admin");
       } else {
-        router.replace("/");
+        safeReplace("/");
       }
     }
     // If user exists but has no role, stay on this page to let them select one
     // If no user, redirect to login
     else if (status === "unauthenticated") {
-      router.replace("/login");
+      safeReplace("/login");
     }
   }, [user, status, router]);
 

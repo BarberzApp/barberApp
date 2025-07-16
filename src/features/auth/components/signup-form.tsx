@@ -8,11 +8,13 @@ import { Label } from "@/shared/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group"
 import { useToast } from "@/shared/components/ui/use-toast"
 import { useRouter } from "next/navigation"
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 export function SignupForm() {
   const { register } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const { push: safePush } = useSafeNavigation();
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -49,7 +51,7 @@ export function SignupForm() {
           We've sent you a confirmation email. Please check your inbox and follow the instructions to complete your
           registration.
         </p>
-        <Button variant="outline" onClick={() => router.push("/login")}>
+        <Button variant="outline" onClick={() => safePush("/login")}>
           Return to login
         </Button>
       </div>

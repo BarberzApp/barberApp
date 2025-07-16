@@ -4,7 +4,7 @@ import * as React from "react"
 import dynamic from 'next/dynamic'
 import { Button } from "@/shared/components/ui/button"
 import { format } from "date-fns"
-import { useRouter } from "next/navigation"
+import { useSafeNavigation } from "@/shared/hooks/use-safe-navigation"
 import { Loader2 } from "lucide-react"
 
 const Calendar = dynamic(
@@ -30,11 +30,11 @@ interface CalendarViewProps {
 
 export function CalendarView({ events = [] }: CalendarViewProps) {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
-  const router = useRouter()
+  const { push } = useSafeNavigation()
 
   const handleEventClick = (bookingId?: string) => {
     if (bookingId) {
-      router.push(`/bookings/${bookingId}`)
+      push(`/bookings/${bookingId}`)
     }
   }
 

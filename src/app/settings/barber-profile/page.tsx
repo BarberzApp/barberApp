@@ -16,6 +16,7 @@ import { useToast } from '@/shared/components/ui/use-toast'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Camera, MapPin, Phone, Mail, Instagram, Twitter, Facebook, Globe, Edit3, Save, X, Loader2 } from 'lucide-react'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 interface ProfileFormData {
   name: string
@@ -33,10 +34,10 @@ interface ProfileFormData {
   isPublic: boolean
 }
 
-export default function BarberProfileSetup() {
-  const router = useRouter()
+export default function BarberProfileSettingsPage() {
+  const { replace: safeReplace } = useSafeNavigation();
   useEffect(() => {
-    router.replace('/profile')
-  }, [router])
+    safeReplace('/profile');
+  }, [safeReplace])
   return null
 } 

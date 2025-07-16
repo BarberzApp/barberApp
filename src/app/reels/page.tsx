@@ -38,6 +38,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { BookingForm } from '@/shared/components/booking/booking-form';
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 interface VideoCut {
   id: string
@@ -91,6 +92,7 @@ export default function CutsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const { push: safePush } = useSafeNavigation();
   const [cuts, setCuts] = useState<VideoCut[]>([])
   const [analytics, setAnalytics] = useState<VideoAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -526,20 +528,36 @@ export default function CutsPage() {
           throw deleteError
         }
       } else {
-        // Like - add to analytics
-        const { error: insertError } = await supabase
+        // Check if user already liked this cut
+        const { data: existingLike, error: checkError } = await supabase
           .from('cut_analytics')
-          .insert({
-            cut_id: cutId,
-            user_id: user.id,
-            action_type: 'like',
-            ip_address: null,
-            user_agent: navigator.userAgent
-          })
-        
-        if (insertError) {
-          console.error('Error adding like:', insertError)
-          throw insertError
+          .select('id')
+          .eq('cut_id', cutId)
+          .eq('user_id', user.id)
+          .eq('action_type', 'like')
+          .single()
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('Error checking existing like:', checkError)
+          throw checkError
+        }
+
+        // If no existing like, add new one
+        if (!existingLike) {
+          const { error: insertError } = await supabase
+            .from('cut_analytics')
+            .insert({
+              cut_id: cutId,
+              user_id: user.id,
+              action_type: 'like',
+              ip_address: null,
+              user_agent: navigator.userAgent
+            })
+          
+          if (insertError) {
+            console.error('Error adding like:', insertError)
+            throw insertError
+          }
         }
       }
       
@@ -919,7 +937,7 @@ export default function CutsPage() {
             <Button
               variant="outline"
               className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 mr-2 bg-transparent"
-              onClick={() => router.push("/reach")}
+              onClick={() => safePush("/reach")}
             >
               <Car className="h-5 w-5 mr-2" />
               <span>Reach</span>
@@ -930,7 +948,7 @@ export default function CutsPage() {
               onClick={() => {
                 const username = currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '')
                 if (username) {
-                  router.push(`/book/${username}`)
+                  safePush(`/book/${username}`)
                 } else {
                   setShowInfoOverlay(true)
                 }
@@ -946,7 +964,7 @@ export default function CutsPage() {
         <Button
           variant="outline"
           className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 mr-2 bg-transparent"
-          onClick={() => router.push("/reach")}
+          onClick={() => safePush("/reach")}
         >
           <Car className="h-5 w-5 mr-2" />
           <span>Reach</span>
@@ -957,7 +975,7 @@ export default function CutsPage() {
           onClick={() => {
             const username = currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '')
             if (username) {
-              router.push(`/book/${username}`)
+              safePush(`/book/${username}`)
             } else {
               setShowInfoOverlay(true)
             }

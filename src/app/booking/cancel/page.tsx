@@ -3,9 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 export default function BookingCancelPage() {
   const router = useRouter()
+  const { push: safePush } = useSafeNavigation();
 
   return (
     <div className="container max-w-2xl py-10">
@@ -21,9 +23,7 @@ export default function BookingCancelPage() {
             Your booking was not completed because the payment was cancelled.
             You can try booking again or contact us if you need assistance.
           </p>
-          <Button onClick={() => router.push('/')}>
-            Return to Home
-          </Button>
+          <Button onClick={() => safePush('/')}>Go Home</Button>
         </CardContent>
       </Card>
     </div>

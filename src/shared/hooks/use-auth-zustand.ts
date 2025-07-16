@@ -63,26 +63,21 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('🔐 Login hook called for:', email)
       const success = await loginAction(email, password)
+      
       if (success) {
-        toast({
-          title: "Login successful",
-          description: `Welcome back!`,
-        })
+        console.log('✅ Login hook: Success')
+        // Don't show toast here, let the page handle it
+        return true
       } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password",
-          variant: "destructive",
-        })
+        console.log('❌ Login hook: Failed')
+        // Don't show toast here, let the page handle it
+        return false
       }
-      return success
     } catch (error) {
-      toast({
-        title: "Login failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      })
+      console.error('❌ Login hook error:', error)
+      // Don't show toast here, let the page handle it
       return false
     }
   }

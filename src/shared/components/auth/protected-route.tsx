@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
-import { useRouter } from 'next/navigation'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import { storeCurrentPageAsRedirect } from '@/shared/lib/redirect-utils'
 import { Loader2 } from 'lucide-react'
 
@@ -18,15 +18,15 @@ export function ProtectedRoute({
   redirectTo = '/login'
 }: ProtectedRouteProps) {
   const { status, isInitialized } = useAuth()
-  const router = useRouter()
+  const { push } = useSafeNavigation()
 
   useEffect(() => {
     if (isInitialized && status === 'unauthenticated') {
       // Store current page as redirect target before redirecting to login
       storeCurrentPageAsRedirect()
-      router.push(redirectTo)
+      push(redirectTo)
     }
-  }, [status, isInitialized, router, redirectTo])
+  }, [status, isInitialized, push, redirectTo])
 
   // Show loading while checking authentication
   if (!isInitialized || status === 'loading') {

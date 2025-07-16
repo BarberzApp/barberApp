@@ -6,15 +6,18 @@ import { useEffect } from 'react'
 import { ClientProfile } from '@/shared/components/profile/client-profile'
 import { Loader2 } from 'lucide-react'
 import ProfilePortfolio from '@/features/settings/components/profile-portfolio'
+import ClientPortfolio from '@/shared/components/profile/client-portfolio'
 import Link from 'next/link'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
 export default function ProfilePage() {
   const { user, status } = useAuth()
   const router = useRouter()
+  const { push: safePush } = useSafeNavigation();
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login')
+      safePush('/login')
     }
   }, [status, router])
 
@@ -44,7 +47,7 @@ export default function ProfilePage() {
         {user.role === 'barber' ? (
           <ProfilePortfolio />
         ) : (
-          <ClientProfile user={user} />
+          <ClientPortfolio />
         )}
       </div>
     </div>

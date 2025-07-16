@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import Link from 'next/link'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { useToast } from '@/shared/components/ui/use-toast'
@@ -9,7 +9,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Scissors, Loader2 } from 'lucide-react'
+import { Scissors, Loader2, AlertCircle } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { getAndClearRedirectUrl } from '@/shared/lib/redirect-utils'
@@ -21,48 +21,38 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
   const [redirecting, setRedirecting] = useState(false)
-  const [redirectCountdown, setRedirectCountdown] = useState(0)
-  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
+  const { push } = useSafeNavigation()
   const { login, user } = useAuth()
   const { toast } = useToast()
 
-  // Function to handle redirect with fallback
+  // Function to handle redirect with proper error handling
   const handleRedirect = async (userId: string) => {
     setRedirecting(true)
+    setError(null)
     
     try {
+      console.log('🎯 Starting redirect process for user:', userId)
+      
       // Check for stored redirect URL first
       const redirectUrl = getAndClearRedirectUrl()
       if (redirectUrl) {
-        router.push(redirectUrl)
+        console.log('📍 Using stored redirect URL:', redirectUrl)
+        push(redirectUrl)
         return
       }
 
       // Determine redirect path based on user profile
       const redirectPath = await getRedirectPath(userId)
+      console.log('📍 Determined redirect path:', redirectPath)
       
       // Attempt to redirect
-      router.push(redirectPath)
-      
-      // Set up auto-reload fallback after 3 seconds
-      let countdown = 3
-      setRedirectCountdown(countdown)
-      
-      const countdownInterval = setInterval(() => {
-        countdown--
-        setRedirectCountdown(countdown)
-        
-        if (countdown <= 0) {
-          clearInterval(countdownInterval)
-          // Force reload if still on login page
-          if (window.location.pathname === '/login') {
-            window.location.reload()
-          }
-        }
-      }, 1000)
+      push(redirectPath)
       
     } catch (error) {
-      console.error('Redirect error:', error)
+      console.error('❌ Redirect error:', error)
+      setError('Failed to redirect. Please try again.')
+      
       // Fallback to reload after 3 seconds
       setTimeout(() => {
         window.location.reload()
@@ -75,72 +65,59 @@ export default function LoginPage() {
     const checkSession = async () => {
       setCheckingSession(true)
       try {
+        console.log('🔍 Checking existing session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         if (session?.user) {
+          console.log('✅ Found existing session for user:', session.user.id)
           await handleRedirect(session.user.id)
         } else {
+          console.log('ℹ️ No existing session found')
           setCheckingSession(false)
         }
       } catch (error) {
-        console.error('Session check error:', error)
+        console.error('❌ Session check error:', error)
         setCheckingSession(false)
       }
     }
     checkSession()
-  }, [router])
+  }, [push])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
     try {
+      console.log('🔐 Attempting login for:', email)
       const success = await login(email, password)
+      
       if (success) {
+        console.log('✅ Login successful, getting session...')
         // Get the current user from Supabase session
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
+          console.log('✅ Session confirmed, redirecting...')
           await handleRedirect(session.user.id)
         } else {
-          // Fallback: wait a bit and try again
-          setTimeout(async () => {
-            const { data: { session: retrySession } } = await supabase.auth.getSession()
-            if (retrySession?.user) {
-              await handleRedirect(retrySession.user.id)
-            } else {
-              // Final fallback: reload after 3 seconds
-              setRedirectCountdown(3)
-              const countdownInterval = setInterval(() => {
-                setRedirectCountdown(prev => {
-                  if (prev <= 1) {
-                    clearInterval(countdownInterval)
-                    window.location.reload()
-                    return 0
-                  }
-                  return prev - 1
-                })
-              }, 1000)
-            }
-          }, 1000)
+          console.error('❌ No session after successful login')
+          setError('Login successful but session not found. Please try again.')
         }
       } else {
-        toast({
-          title: 'Error',
-          description: 'Invalid email or password',
-          variant: 'destructive',
-        })
+        console.log('❌ Login failed')
+        setError('Invalid email or password')
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Invalid email or password',
-        variant: 'destructive',
-      })
+      console.error('❌ Login error:', error)
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleGoogleLogin = async () => {
+    setError(null)
+    try {
+      console.log('🔐 Starting Google OAuth login...')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -148,12 +125,12 @@ export default function LoginPage() {
       }
     })
     if (error) {
-      console.error('Google login error:', error.message)
-      toast({
-        title: 'Error',
-        description: 'Could not sign in with Google',
-        variant: 'destructive',
-      })
+        console.error('❌ Google login error:', error.message)
+        setError('Could not sign in with Google. Please try again.')
+      }
+    } catch (error) {
+      console.error('❌ Google login exception:', error)
+      setError('An error occurred during Google sign-in.')
     }
   }
 
@@ -191,9 +168,9 @@ export default function LoginPage() {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-saffron" />
           <div className="text-white text-xl font-semibold mb-2">Redirecting...</div>
-          {redirectCountdown > 0 && (
-            <div className="text-saffron text-sm">
-              Auto-reloading in {redirectCountdown} seconds...
+          {error && (
+            <div className="text-red-400 text-sm mt-2">
+              {error}
             </div>
           )}
         </div>
@@ -218,6 +195,14 @@ export default function LoginPage() {
             <CardDescription className="text-white/80">Sign in to your account</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Error Display */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-white">Email</Label>

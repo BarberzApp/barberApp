@@ -14,6 +14,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { useAuth } from '@/shared/hooks/use-auth-zustand';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
 import { EnhancedCalendar } from '@/shared/components/calendar/enhanced-calendar';
+import { CalendarSyncSettings } from '@/shared/components/calendar-sync-settings';
 
 interface CalendarEvent {
   id: string;
@@ -28,6 +29,8 @@ interface CalendarEvent {
     serviceName: string;
     clientName: string;
     price: number;
+    basePrice: number;
+    addons: { name: string; price: number }[];
     isGuest: boolean;
     guestEmail: string;
     guestPhone: string;
@@ -87,6 +90,24 @@ export default function BarberCalendar() {
             .single();
           client = clientData;
         }
+        // Fetch add-ons for this booking
+        let addonTotal = 0;
+        let addonList: { name: string; price: number }[] = [];
+        const { data: bookingAddons, error: bookingAddonsError } = await supabase
+          .from('booking_addons')
+          .select('addon_id')
+          .eq('booking_id', booking.id);
+        if (!bookingAddonsError && bookingAddons && bookingAddons.length > 0) {
+          const addonIds = bookingAddons.map((ba) => ba.addon_id);
+          const { data: addons, error: addonsError } = await supabase
+            .from('service_addons')
+            .select('id, name, price')
+            .in('id', addonIds);
+          if (!addonsError && addons) {
+            addonTotal = addons.reduce((sum, addon) => sum + (addon.price || 0), 0);
+            addonList = addons.map(a => ({ name: a.name, price: a.price }));
+          }
+        }
         const startDate = new Date(booking.date);
         const endDate = new Date(startDate.getTime() + (service?.duration || 60) * 60000);
         return {
@@ -101,7 +122,9 @@ export default function BarberCalendar() {
             status: booking.status,
             serviceName: service?.name || '',
             clientName: client?.name || booking.guest_name || 'Guest',
-            price: service?.price || booking.price,
+            price: (service?.price || booking.price || 0) + addonTotal,
+            basePrice: service?.price || booking.price || 0,
+            addons: addonList,
             isGuest: !client,
             guestEmail: booking.guest_email,
             guestPhone: booking.guest_phone
@@ -479,6 +502,11 @@ export default function BarberCalendar() {
           </div>
         </div>
 
+        {/* Calendar Sync Section */}
+        <div className="w-full max-w-4xl mx-auto mb-8">
+          <CalendarSyncSettings />
+        </div>
+
         {/* Centered EnhancedCalendar */}
         <div className="w-full flex justify-center">
           <div className="max-w-2xl w-full mx-auto p-0 overflow-visible" style={{ maxWidth: '700px' }}>
@@ -486,6 +514,63 @@ export default function BarberCalendar() {
           </div>
         </div>
       </div>
+
+      {showEventDialog && selectedEvent && (
+        <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
+          <DialogContent className="max-w-md w-full bg-black/90 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-white">Booking Details</DialogTitle>
+              <DialogDescription className="text-white/80">
+                {selectedEvent.title}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Service</span>
+                <span className="text-white font-semibold">{selectedEvent.extendedProps.serviceName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Client</span>
+                <span className="text-white font-semibold">{selectedEvent.extendedProps.clientName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Status</span>
+                <span className="text-white font-semibold capitalize">{selectedEvent.extendedProps.status}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Date</span>
+                <span className="text-white font-semibold">{formatDate(new Date(selectedEvent.start))}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Time</span>
+                <span className="text-white font-semibold">{formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}</span>
+              </div>
+              <div className="border-t border-white/10 my-2" />
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Base Price</span>
+                <span className="text-white font-semibold">${selectedEvent.extendedProps.basePrice?.toFixed(2)}</span>
+              </div>
+              {selectedEvent.extendedProps.addons && selectedEvent.extendedProps.addons.length > 0 && (
+                <div>
+                  <div className="text-white/70 mb-1">Add-ons</div>
+                  <ul className="space-y-1">
+                    {selectedEvent.extendedProps.addons.map((addon, idx) => (
+                      <li key={idx} className="flex items-center justify-between">
+                        <span className="text-white/80">{addon.name}</span>
+                        <span className="text-saffron font-semibold">+${addon.price?.toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-white/10 pt-2 mt-2">
+                <span className="text-white font-bold text-lg">Total</span>
+                <span className="text-saffron font-bold text-lg">${selectedEvent.extendedProps.price?.toFixed(2)}</span>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <style dangerouslySetInnerHTML={{ __html: customStyles }} />
     </div>

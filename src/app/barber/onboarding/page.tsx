@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
@@ -102,6 +103,7 @@ function extractHandle(input: string): string {
 export default function BarberOnboardingPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { push: safePush, replace: safeReplace } = useSafeNavigation()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -128,6 +130,8 @@ export default function BarberOnboardingPage() {
       if (!user) return;
       
       try {
+        console.log('Fetching profile data for user:', user.id);
+        
         // Fetch barber profile data
         const { data: barberData, error: barberError } = await supabase
           .from('barbers')
@@ -135,7 +139,10 @@ export default function BarberOnboardingPage() {
           .eq('user_id', user.id)
           .single()
 
+        console.log('Barber data fetched:', barberData, 'Error:', barberError);
+
         if (barberData) {
+          console.log('Setting barber data in form');
           setFormData(prev => ({
             ...prev,
             businessName: barberData.business_name || '',
@@ -262,7 +269,7 @@ export default function BarberOnboardingPage() {
       
       if (user.role !== 'barber') {
         console.log('Onboarding page: User is not a barber, redirecting to home');
-        router.push('/')
+        safePush('/')
         return;
       }
 
@@ -509,7 +516,7 @@ export default function BarberOnboardingPage() {
       console.log('Starting business profile update...');
       console.log('Form data:', formData);
 
-      // Upsert barber profile
+      // Single upsert operation for barber profile
       if (user?.role === 'barber') {
         const { data: sessionData } = await supabase.auth.getSession();
         console.log('Current session user id:', sessionData?.session?.user?.id);
@@ -546,26 +553,6 @@ export default function BarberOnboardingPage() {
           console.error('Failed to upsert barber profile during onboarding:', upsertError);
           throw upsertError;
         }
-      }
-
-      // Update business profile
-      const { error: barberError } = await supabase
-        .from('barbers')
-        .update({
-          business_name: formData.businessName,
-          bio: formData.bio,
-          specialties: formData.specialties,
-          instagram: extractHandle(formData.socialMedia.instagram),
-          twitter: extractHandle(formData.socialMedia.twitter),
-          tiktok: extractHandle(formData.socialMedia.tiktok),
-          facebook: extractHandle(formData.socialMedia.facebook),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user?.id)
-
-      if (barberError) {
-        console.error('Business profile update error:', barberError);
-        throw barberError;
       }
 
       // Update phone and location in profiles table
@@ -641,7 +628,7 @@ export default function BarberOnboardingPage() {
         setCurrentStep(currentStep + 1)
       } else {
         console.log('Onboarding completed, redirecting to settings...');
-        router.push('/settings');
+        safePush('/settings');
       }
     } catch (error) {
       console.error('Error updating profile:', error)
@@ -770,7 +757,7 @@ export default function BarberOnboardingPage() {
         setCurrentStep(currentStep + 1);
       } else {
         console.log('Onboarding completed, redirecting to settings...');
-        router.push('/settings');
+        safePush('/settings');
       }
     } catch (error) {
       console.error('Error skipping step:', error);
@@ -1243,7 +1230,7 @@ export default function BarberOnboardingPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 pb-24">
         <div className="w-full max-w-2xl">
           {/* Onboarding Complete Banner */}
           {onboardingComplete && showCompleteBanner && (
@@ -1292,7 +1279,7 @@ export default function BarberOnboardingPage() {
           </Card>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between items-center mt-8 gap-4">
+          <div className="flex justify-between items-center mt-8 mb-4 gap-4">
             <Button
               type="button"
               variant="outline"

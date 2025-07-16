@@ -8,7 +8,7 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Loader2, Plus, Edit, Trash2, Scissors, AlertCircle, CheckCircle, Sparkles, Clock, DollarSign } from 'lucide-react'
+import { Loader2, Plus, Edit, Trash2, Scissors, AlertCircle, CheckCircle, Sparkles, Clock, DollarSign, Package } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 
 interface Service {
@@ -288,112 +288,139 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 bg-saffron/20 rounded-full">
-            <Scissors className="h-6 w-6 text-saffron" />
+    <div className="space-y-8 bg-black">
+      {/* Enhanced Header */}
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <div className="p-4 bg-gradient-to-br from-saffron/20 to-saffron/10 rounded-2xl shadow-lg">
+            <Scissors className="h-8 w-8 text-saffron" />
           </div>
           <div>
-            <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
-              Services
-            </h3>
-            <p className="text-white/80 mt-1">Manage your service offerings</p>
+            <h2 className="text-3xl sm:text-4xl font-bebas text-white tracking-wide">
+              Services Management
+            </h2>
+            <p className="text-white/70 text-lg mt-2">Create and manage your service offerings</p>
           </div>
         </div>
       </div>
 
-      {/* Add Service Form */}
-      <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-        <CardHeader className="bg-white/5 border-b border-white/10">
-          <CardTitle className="text-white flex items-center gap-2">
+      {/* Enhanced Add Service Form */}
+      <Card className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-saffron/10 to-transparent border-b border-white/10 p-6">
+          <CardTitle className="text-white flex items-center gap-3 text-2xl">
             {editingService ? (
               <>
-                <Edit className="h-5 w-5 text-saffron" />
+                <div className="p-2 bg-saffron/20 rounded-xl">
+                  <Edit className="h-6 w-6 text-saffron" />
+                </div>
                 Edit Service
               </>
             ) : (
               <>
-                <Plus className="h-5 w-5 text-saffron" />
+                <div className="p-2 bg-saffron/20 rounded-xl">
+                  <Plus className="h-6 w-6 text-saffron" />
+                </div>
                 Add New Service
               </>
             )}
           </CardTitle>
-          <CardDescription className="text-white/70">
-            {editingService ? 'Update your service details' : 'Add a new service to your offerings'}
+          <CardDescription className="text-white/70 text-base">
+            {editingService ? 'Update your service details and pricing' : 'Add a new service to your offerings and set competitive pricing'}
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-white font-medium">Service Name *</Label>
+        <CardContent className="p-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label htmlFor="name" className="text-white font-semibold text-lg flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-saffron" />
+                  Service Name *
+                </Label>
                 <Input
                   id="name"
                   {...register('name')}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl h-12 text-lg"
                   placeholder="e.g., Haircut, Beard Trim"
                 />
                 {validationErrors.name && (
-                  <p className="text-sm text-red-400">{validationErrors.name}</p>
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.name}
+                  </p>
                 )}
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="price" className="text-white font-medium">Price ($) *</Label>
+              <div className="space-y-3">
+                <Label htmlFor="price" className="text-white font-semibold text-lg flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-saffron" />
+                  Price ($) *
+                </Label>
                 <Input
                   id="price"
                   type="number"
                   step="0.01"
                   min="0"
                   {...register('price', { valueAsNumber: true })}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl h-12 text-lg"
                   placeholder="25.00"
                 />
                 {validationErrors.price && (
-                  <p className="text-sm text-red-400">{validationErrors.price}</p>
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.price}
+                  </p>
                 )}
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="duration" className="text-white font-medium">Duration (minutes) *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label htmlFor="duration" className="text-white font-semibold text-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-saffron" />
+                  Duration (minutes) *
+                </Label>
                 <Input
                   id="duration"
                   type="number"
                   min="1"
                   {...register('duration', { valueAsNumber: true })}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl h-12 text-lg"
                   placeholder="30"
                 />
                 {validationErrors.duration && (
-                  <p className="text-sm text-red-400">{validationErrors.duration}</p>
+                  <p className="text-sm text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {validationErrors.duration}
+                  </p>
                 )}
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-white font-medium">Description</Label>
-                <Input
+              <div className="space-y-3">
+                <Label htmlFor="description" className="text-white font-semibold text-lg flex items-center gap-2">
+                  <Package className="h-4 w-4 text-saffron" />
+                  Description
+                </Label>
+                <textarea
                   id="description"
                   {...register('description')}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl text-lg min-h-[80px] p-3 resize-y"
                   placeholder="Brief description of the service"
+                  rows={3}
                 />
               </div>
             </div>
             
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-4 pt-6">
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg"
+                className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl px-8 py-3 text-lg"
               >
                 {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <CheckCircle className="h-5 w-5 mr-2" />
                 )}
                 {editingService ? 'Update Service' : 'Add Service'}
               </Button>
@@ -403,7 +430,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                   type="button"
                   onClick={cancelEdit}
                   variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10"
+                  className="border-white/20 text-white hover:bg-white/10 rounded-xl px-8 py-3 text-lg"
                 >
                   Cancel
                 </Button>
@@ -413,68 +440,80 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Services List */}
-      <div className="space-y-4">
+      {/* Enhanced Services List */}
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h4 className="text-lg font-semibold text-white">Your Services</h4>
-          <Badge variant="glassy-saffron" className="text-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-saffron/20 rounded-xl">
+              <Scissors className="h-5 w-5 text-saffron" />
+            </div>
+            <h3 className="text-2xl font-bebas text-white tracking-wide">Your Services</h3>
+          </div>
+          <Badge variant="glassy-saffron" className="text-sm px-4 py-2">
             {services.length} {services.length === 1 ? 'Service' : 'Services'}
           </Badge>
         </div>
         
         {services.length === 0 ? (
-          <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-3xl">
-            <CardContent className="p-8 text-center">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="p-3 bg-saffron/20 rounded-full">
-                  <Sparkles className="h-6 w-6 text-saffron" />
+          <Card className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-xl backdrop-blur-xl rounded-3xl">
+            <CardContent className="p-12 text-center">
+              <div className="flex flex-col items-center gap-6">
+                <div className="p-6 bg-gradient-to-br from-saffron/20 to-saffron/10 rounded-3xl">
+                  <Sparkles className="h-12 w-12 text-saffron" />
                 </div>
-                <div>
-                  <h5 className="text-lg font-semibold text-white">No Services Yet</h5>
-                  <p className="text-white/60 text-sm">Add your first service to start accepting bookings</p>
+                <div className="space-y-3">
+                  <h4 className="text-2xl font-bebas text-white tracking-wide">No Services Yet</h4>
+                  <p className="text-white/60 text-lg">Add your first service to start accepting bookings</p>
                 </div>
+                <Button
+                  onClick={() => document.getElementById('name')?.focus()}
+                  className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl px-8 py-3 text-lg"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add Your First Service
+                </Button>
               </div>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {services.map((service) => (
-              <Card key={service.id} className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl hover:shadow-2xl transition-all duration-200 rounded-3xl">
-                <CardContent className="p-4">
+              <Card key={service.id} className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-xl backdrop-blur-xl hover:shadow-2xl hover:border-saffron/20 transition-all duration-300 rounded-3xl group">
+                <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h5 className="font-semibold text-white">{service.name}</h5>
-                        <Badge variant="glassy-saffron" className="text-xs">
+                      <div className="flex items-center gap-4 mb-3">
+                        <h4 className="text-xl font-bebas text-white tracking-wide">{service.name}</h4>
+                        <Badge variant="glassy-saffron" className="text-sm px-3 py-1">
                           ${service.price}
                         </Badge>
-                        <div className="flex items-center gap-1 text-white/60 text-sm">
-                          <Clock className="h-3 w-3" />
+                        <div className="flex items-center gap-2 text-white/60 text-sm bg-white/5 px-3 py-1 rounded-full">
+                          <Clock className="h-4 w-4" />
                           {formatDuration(service.duration)}
                         </div>
                       </div>
                       {service.description && (
-                        <p className="text-sm text-white/70">{service.description}</p>
+                        <p className="text-white/70 text-base leading-relaxed" style={{ whiteSpace: 'pre-line' }}>{service.description}</p>
                       )}
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => editService(service)}
-                        className="text-white/70 hover:text-white hover:bg-white/10"
+                        className="text-white/70 hover:text-white hover:bg-white/10 rounded-xl p-3"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-5 w-5" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => deleteService(service.id!)}
                         disabled={isLoading}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl p-3"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
                   </div>
@@ -485,20 +524,32 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
         )}
       </div>
 
-      {/* Tips Section */}
-      <Card className="bg-gradient-to-br from-saffron/10 to-transparent border border-saffron/20 shadow-xl backdrop-blur-xl">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-saffron/20 rounded-full">
-              <Sparkles className="h-4 w-4 text-saffron" />
+      {/* Enhanced Tips Section */}
+      <Card className="bg-gradient-to-br from-saffron/10 via-saffron/5 to-transparent border border-saffron/20 shadow-xl backdrop-blur-xl rounded-3xl">
+        <CardContent className="p-8">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-gradient-to-br from-saffron/20 to-saffron/10 rounded-2xl">
+              <Sparkles className="h-6 w-6 text-saffron" />
             </div>
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-white">Pro Tips</h4>
-              <ul className="text-xs text-white/70 space-y-1">
-                <li>• Set competitive prices based on your location and experience</li>
-                <li>• Be accurate with duration estimates to avoid scheduling conflicts</li>
-                <li>• Add detailed descriptions to help clients understand your services</li>
-                <li>• Consider offering package deals for multiple services</li>
+            <div className="space-y-4">
+              <h4 className="text-xl font-bebas text-white tracking-wide">Pro Tips for Success</h4>
+              <ul className="text-white/70 space-y-3">
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-base">Set competitive prices based on your location and experience level</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-base">Be accurate with duration estimates to avoid scheduling conflicts</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-base">Add detailed descriptions to help clients understand your services</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-base">Consider offering package deals for multiple services</span>
+                </li>
               </ul>
             </div>
           </div>
