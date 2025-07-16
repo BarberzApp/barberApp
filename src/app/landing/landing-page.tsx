@@ -679,7 +679,7 @@ export default function LandingPage() {
               BOCM
             </Link>
             <p className="text-white/60 text-sm">
-              © 2024 BOCM. All rights reserved. The future of barber booking.
+              © 2025 BOCM. All rights reserved. The future of booking.
             </p>
           </div>
         </div>
