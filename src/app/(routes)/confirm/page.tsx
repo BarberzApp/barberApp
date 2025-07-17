@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/shared/lib/supabase";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent } from "@/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/components/ui/card";
 import { Loader2, Mail } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/shared/components/ui/use-toast";
 
 export default function ConfirmPageWrapper() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-primary text-white">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background text-white">Loading...</div>}>
       <ConfirmPage />
     </Suspense>
   );
@@ -79,16 +79,18 @@ function ConfirmPage() {
   };
 
   return (
-    <div className="min-h-screen bg-primary flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md mx-auto">
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl rounded-3xl backdrop-blur-xl">
-          <CardContent className="py-10 px-8 flex flex-col items-center">
-            <div className="w-20 h-20 bg-saffron rounded-full flex items-center justify-center mb-4">
-              <Mail className="h-10 w-10 text-white" />
+        <Card className="bg-white/5 border border-white/10 shadow-2xl rounded-3xl">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bebas text-white mb-2 text-center">Check Your Email</h2>
-            <p className="text-white/80 text-center mb-1">We've sent a confirmation link to</p>
-            <p className="text-saffron font-semibold text-center mb-6">{email || "your email"}</p>
+            <CardTitle className="text-3xl font-bebas text-white mb-2">Check Your Email</CardTitle>
+            <CardDescription className="text-white/80 font-pacifico mb-2">We've sent a confirmation link to your email</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center">
+            <p className="text-secondary font-semibold text-center mb-4">{email || "your email"}</p>
             <p className="text-white/70 text-center mb-8">
               Please click the link in the email to verify your account.<br />
               This screen will automatically redirect once confirmed.
@@ -96,7 +98,7 @@ function ConfirmPage() {
             <div className="w-full flex flex-col gap-4">
               <Button
                 onClick={handleCheck}
-                className="w-full bg-saffron hover:bg-saffron/90 text-primary font-semibold rounded-xl"
+                className="w-full bg-secondary hover:bg-secondary/90 text-black font-bold rounded-xl h-12 text-lg font-bebas"
                 disabled={checking}
               >
                 {checking ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "I've Confirmed My Email"}

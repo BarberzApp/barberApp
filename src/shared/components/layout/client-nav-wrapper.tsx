@@ -1,17 +1,18 @@
 "use client";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/shared/components/layout/navbar";
 import { MobileNav } from "@/shared/components/layout/mobile-nav";
 import React from "react";
 
 export default function ClientNavWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const [pathname, setPathname] = React.useState("");
   const [mounted, setMounted] = React.useState(false);
   const [isNavigating, setIsNavigating] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
+    setPathname(window.location.pathname);
   }, []);
 
   // Handle navigation state

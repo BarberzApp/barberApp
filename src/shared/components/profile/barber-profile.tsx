@@ -11,7 +11,7 @@ import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Textarea } from "@/shared/components/ui/textarea"
 import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, Star, Scissors, Camera } from "lucide-react"
+import { Calendar, Star, Scissors, Camera, Search, Info, X } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useData } from "../../hooks/use-data"
@@ -272,33 +272,55 @@ export function BarberProfile() {
                         name="bio"
                         placeholder="Tell us about yourself..."
                         defaultValue={user.bio || ''}
-                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-white/50"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="specialties" className="text-white font-semibold">Specialties</Label>
+                    <div className="space-y-3">
+                      <Label htmlFor="specialties" className="text-white font-semibold flex items-center gap-2">
+                        <Scissors className="h-4 w-4 text-white" />
+                        Specialties
+                      </Label>
                       <Popover open={specialtiesOpen} onOpenChange={setSpecialtiesOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             role="combobox"
                             aria-expanded={specialtiesOpen}
-                            className="w-full justify-between bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            className="w-full justify-between bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/50 transition-all duration-30 rounded-xl h-12"
                           >
-                            {selectedSpecialties.length > 0 
-                              ? `${selectedSpecialties.length} specialty(ies) selected`
-                              : "Search and select specialties..."
-                            }
+                            <div className="flex items-center gap-2">
+                              {selectedSpecialties.length > 0 ? (
+                                <>
+                                  <div className="w-2 h-2 white rounded-full"></div>
+                                  <span className="font-medium">
+                                    {selectedSpecialties.length} specialty{selectedSpecialties.length !== 1 ? 'ies' : ''} selected
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <Scissors className="h-4 w-4 text-white/60" />
+                                  <span className="text-white/60">Search and select specialties...</span>
+                                </>
+                              )}
+                            </div>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-full p-0 bg-darkpurple border border-white/10" align="start">
-                          <Command>
-                            <CommandInput placeholder="Search specialties..." className="text-white" />
-                            <CommandList>
-                              <CommandEmpty>No specialty found.</CommandEmpty>
-                              <CommandGroup>
+                        <PopoverContent className="w-full p-0rkpurple/95 border border-white/10op-blur-xl rounded-xl shadow-2l" align="start">
+                          <Command className="bg-transparent">
+                            <div className="flex items-center border-b border-white/10 px-3 py-2">
+                              <Search className="h-4 w-4 text-white/60 mr-2" />
+                              <CommandInput 
+                                placeholder="Search specialties..." 
+                                className="text-white placeholder:text-white/60 border-none bg-transparent focus:ring-0 focus:border-white/50"
+                              />
+                            </div>
+                            <CommandList className="max-h-64overflow-y-auto">
+                              <CommandEmpty className="text-white/60y-4 text-center">
+                                No specialty found.
+                              </CommandEmpty>
+                              <CommandGroup className="p-2">
                                 {BARBER_SPECIALTIES.map((specialty) => (
                                   <CommandItem
                                     key={specialty}
@@ -310,15 +332,32 @@ export function BarberProfile() {
                                           : [...prev, specialty]
                                       )
                                     }}
-                                    className="text-white hover:bg-white/10"
+                                    className="text-white hover:bg-white/10 rounded-lg transition-all duration-200cursor-pointer group"
                                   >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        selectedSpecialties.includes(specialty) ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    {specialty}
+                                    <div className="flex items-center justify-between w-full">
+                                      <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200",
+                                          selectedSpecialties.includes(specialty) 
+                                            ? "bg-white/20 border border-white/30" 
+                                            : "bg-white/10 border border-white/20 group-hover:bg-white/20"
+                                        )}>
+                                          <Scissors className={cn(
+                                  "h-4 w-4 transition-all duration-200",
+                                            selectedSpecialties.includes(specialty) ? "text-white": "text-white/60"
+                                          )} />
+                                        </div>
+                                        <span className="font-medium">{specialty}</span>
+                                      </div>
+                                      <Check
+                                        className={cn(
+                                "h-4 w-4 transition-all duration-200",
+                                          selectedSpecialties.includes(specialty) 
+                                            ? "opacity-100" 
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                    </div>
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -326,14 +365,21 @@ export function BarberProfile() {
                           </Command>
                         </PopoverContent>
                       </Popover>
-                      <p className="text-sm text-white/60">
-                        Select the services you specialize in
+                      <p className="text-sm text-white/60 flex items-center gap-2">
+                        <Info className="h-3 w-3" />
+                        Select the services you specialize in to help clients find you
                       </p>
                       {selectedSpecialties.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
+                        <div className="flex flex-wrap gap-2 mt-3">
                           {selectedSpecialties.map((specialty) => (
-                            <Badge key={specialty} className="text-xs bg-saffron/20 text-saffron border-saffron/30">
+                            <Badge 
+                              key={specialty} 
+                              className="text-xs bg-white/20 text-white border-white/30 hover:bg-white/30 transition-all duration-200 cursor-pointer group"
+                              onClick={() => setSelectedSpecialties(prev => prev.filter(s => s !== specialty))}
+                            >
+                              <Scissors className="h-3 mr-1 group-hover:scale-110 transition-transform text-white" />
                               {specialty}
+                              <X className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity" />
                             </Badge>
                           ))}
                         </div>
@@ -347,7 +393,7 @@ export function BarberProfile() {
                         name="location"
                         placeholder="Your location"
                         defaultValue={user.location || ''}
-                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-white/50"
                       />
                     </div>
 
@@ -359,14 +405,14 @@ export function BarberProfile() {
                         type="tel"
                         placeholder="Your phone number"
                         defaultValue={user.phone || ''}
-                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-white/50"
                       />
                     </div>
 
                     <Button 
                       type="submit" 
                       disabled={loading || dataLoading}
-                      className="w-full bg-saffron text-primary font-semibold hover:bg-saffron/90"
+                      className="w-full bg-white text-black font-bold hover:bg-white/90"
                     >
                       {loading ? 'Saving...' : 'Save Changes'}
                     </Button>
@@ -385,8 +431,8 @@ export function BarberProfile() {
               <div className="space-y-6">
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-saffron/20 rounded-lg flex items-center justify-center">
-                      <Calendar className="h-5 w-5 text-saffron" />
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <p className="text-white/60 text-sm">Total Appointments</p>
@@ -397,8 +443,8 @@ export function BarberProfile() {
                 
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-saffron/20 rounded-lg flex items-center justify-center">
-                      <Star className="h-5 w-5 text-saffron" />
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                      <Star className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <p className="text-white/60 text-sm">Average Rating</p>
@@ -409,8 +455,8 @@ export function BarberProfile() {
                 
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-saffron/20 rounded-lg flex items-center justify-center">
-                      <Scissors className="h-5 w-5 text-saffron" />
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                      <Scissors className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <p className="text-white/60 text-sm">Services Offered</p>

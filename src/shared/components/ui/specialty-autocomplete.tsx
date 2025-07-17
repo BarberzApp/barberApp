@@ -69,7 +69,7 @@ export function SpecialtyAutocomplete({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-auto min-h-[40px] p-2 bg-white/10 border border-white/20 text-white backdrop-blur-xl rounded-xl focus:border-saffron focus:ring-2 focus:ring-saffron/40"
+            className="w-full justify-between h-auto min-h-[40px] p-2 bg-white/10 border border-white/20 text-white backdrop-blur-xl rounded-xl focus:border-white/50 focus:ring-2 focus:ring-white/20"
             disabled={disabled}
           >
             <div className="flex flex-wrap gap-1 flex-1">
@@ -80,11 +80,11 @@ export function SpecialtyAutocomplete({
                   <Badge
                     key={specialty}
                     variant="glassy-saffron"
-                    className="text-xs bg-saffron/20 text-saffron border-saffron/40 backdrop-blur-xl rounded-lg"
+                    className="text-xs bg-white/20 text-white border-white/30 backdrop-blur-xl rounded-lg"
                   >
                     {specialty}
                     <span
-                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-2 cursor-pointer"
+                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 cursor-pointer"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           handleRemove(specialty)
@@ -98,7 +98,7 @@ export function SpecialtyAutocomplete({
                       role="button"
                       tabIndex={0}
                     >
-                      <X className="h-3 w-3 text-saffron/80 hover:text-saffron" />
+                      <X className="h-3 w-3 text-white/80 hover:text-white" />
                     </span>
                   </Badge>
                 ))
@@ -107,13 +107,13 @@ export function SpecialtyAutocomplete({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-white" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0 bg-darkpurple/80 border border-white/20 shadow-2xl backdrop-blur-xl rounded-2xl" align="start">
+        <PopoverContent className="w-full p-0 bg-white/5 border border-white/20 shadow-2l backdrop-blur-xl rounded-2l" align="start">
           <Command className="bg-transparent border-0 shadow-none">
             <CommandInput
               placeholder={placeholder}
               value={searchQuery}
               onValueChange={setSearchQuery}
-              className="h-9 bg-white/10 text-white placeholder:text-white/40 rounded-xl border border-white/10 focus:border-saffron focus:ring-2 focus:ring-saffron/40"
+              className="h-9 bg-white/10 text-white placeholder:text-white/40 rounded-xl border border-white/10 focus:border-white/50 focus:ring-2 focus:ring-white/20"
             />
             <CommandList>
               <CommandEmpty className="text-white/60">No specialty found.</CommandEmpty>
@@ -126,14 +126,14 @@ export function SpecialtyAutocomplete({
                     className={cn(
                       "cursor-pointer text-white rounded-xl transition-all px-3 py-2 my-1",
                       value.includes(specialty)
-                        ? "bg-saffron/30 text-saffron font-semibold border border-saffron/40"
-                        : "hover:bg-saffron/10 hover:text-saffron border border-transparent"
+                        ? "bg-white/20 text-white font-semibold border border-white/30"
+                        : "hover:bg-white/10 hover:text-white border border-transparent"
                     )}
                   >
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        value.includes(specialty) ? "opacity-100 text-saffron" : "opacity-0"
+                        value.includes(specialty) ? "opacity-100 text-white" : "opacity-0"
                       )}
                     />
                     {specialty}
@@ -154,7 +154,7 @@ export function SpecialtyAutocomplete({
             variant="ghost"
             size="sm"
             onClick={handleClearAll}
-            className="h-auto p-1 text-xs text-white/60 hover:text-saffron"
+            className="h-auto p-1 text-xs text-white/60 hover:text-white"
           >
             Clear all
           </Button>
