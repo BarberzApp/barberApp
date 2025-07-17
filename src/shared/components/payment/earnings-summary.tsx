@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 
-// Use a purple color similar to the image
-const PURPLE = "#9B5DE5"
+// Use secondary color from design system
+const SECONDARY = "hsl(var(--secondary))"
 
 interface MonthlyEarnings {
   current: number
@@ -35,7 +35,7 @@ export function EarningsSummary() {
 
   return (
     <div style={{ textAlign: "center", padding: 32 }}>
-      <div style={{ color: PURPLE, fontWeight: 600, fontSize: 28, letterSpacing: 2, marginBottom: 24 }}>
+      <div style={{ color: SECONDARY, fontWeight: 600, fontSize: 28, letterSpacing: 2, marginBottom: 24 }}>
         EARNINGS
       </div>
       <div style={{ position: "relative", display: "inline-block" }}>
@@ -45,7 +45,7 @@ export function EarningsSummary() {
             cx={110}
             cy={110}
             r={100}
-            stroke={PURPLE}
+            stroke={SECONDARY}
             strokeWidth={7}
             fill="none"
           />
@@ -53,14 +53,14 @@ export function EarningsSummary() {
           {arrowUp ? (
             // Up arrow
             <g>
-              <line x1={40} y1={180} x2={180} y2={40} stroke={PURPLE} strokeWidth={7} />
-              <polygon points="180,40 170,60 190,60" fill={PURPLE} />
+              <line x1={40} y1={180} x2={180} y2={40} stroke={SECONDARY} strokeWidth={7} />
+              <polygon points="180,40 170,60 190,60" fill={SECONDARY} />
             </g>
           ) : (
             // Down arrow
             <g>
-              <line x1={40} y1={40} x2={180} y2={180} stroke={PURPLE} strokeWidth={7} />
-              <polygon points="180,180 170,160 190,160" fill={PURPLE} />
+              <line x1={40} y1={40} x2={180} y2={180} stroke={SECONDARY} strokeWidth={7} />
+              <polygon points="180,180 170,160 190,160" fill={SECONDARY} />
             </g>
           )}
         </svg>

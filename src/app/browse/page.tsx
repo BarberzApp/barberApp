@@ -513,39 +513,45 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+      </div>
       {/* Main Content */}
-      <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="space-y-8">
+      <div className="container mx-auto max-w-7xl px-4 pt-24 sm:pt-32 pb-32 sm:pb-24">
+        <div className="space-y-12">
           {/* Hero Section */}
-          <div className="text-center space-y-6">
-            <div className="flex flex-col items-center text-center gap-4 mb-6 sm:flex-row sm:text-left sm:items-center sm:justify-center">
-              <div className="p-4 bg-saffron/20 rounded-full flex-shrink-0">
-                <Scissors className="h-10 w-10 text-saffron" />
-              </div>
+          <div className="relative">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/10 rounded-full blur-3xl -z-10" />
+            <div className="flex flex-col items-center text-center gap-4 mb-6">
               <div>
-                <h1 className="text-3xl sm:text-5xl font-bold text-white tracking-wide">Find Your Perfect Barber</h1>
-                <p className="text-white/80 mt-2 text-base sm:text-lg">Discover skilled professionals in your area</p>
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bebas font-bold text-white tracking-wide">
+                  Find Your Perfect Stylist
+                </h1>
+                <p className="text-white/80 mt-2 text-base sm:text-lg font-medium">
+                  Discover skilled cosmetologists and stylists in your area
+                </p>
               </div>
             </div>
-            
-            <p className="text-white/60 text-lg max-w-2xl mx-auto">
-              Connect with talented barbers who match your style and preferences. Book appointments with confidence.
+            <p className="text-white/60 text-lg sm:text-xl max-w-2xl mx-auto font-medium text-center">
+              Connect with talented stylists and cosmetologists who match your style and preferences. Book appointments with confidence.
             </p>
-
             {/* Cuts Button */}
             <div className="flex justify-center pt-6">
               <Link href="/reels">
-                <Button className="bg-saffron text-primary font-bold rounded-xl px-8 py-4 shadow-lg hover:bg-saffron/90 transition-all duration-200 flex items-center justify-center gap-2">
+                <Button className="bg-secondary text-white font-bebas font-bold px-8 py-4 rounded-xl shadow-md shadow-secondary/15 hover:bg-secondary/90 transition-all text-lg flex items-center justify-center gap-2">
                   <Sparkles className="h-5 w-5" />
-                  Watch Barber Cuts
+                  Watch Stylist Cuts
                 </Button>
               </Link>
             </div>
           </div>
 
           {/* Search and Filters Section */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Search Bar */}
             <div className="max-w-2xl mx-auto">
               <div className="relative">
@@ -553,7 +559,7 @@ export default function BrowsePage() {
                   <Search className="h-5 w-5" />
                 </div>
                 <Input
-                  placeholder="Search by name, business, location, or specialty..."
+                  placeholder="Search by name, business, location, specialty, stylist, or cosmetologist..."
                   value={searchQuery}
                   onChange={handleSearch}
                   onKeyDown={handleKeyDown}
@@ -602,7 +608,7 @@ export default function BrowsePage() {
             )}
 
             {/* Filters and Sort Controls */}
-            <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
+            <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -620,7 +626,7 @@ export default function BrowsePage() {
                       </SheetTrigger>
                       <SheetContent side="left" className="w-[300px] sm:w-[400px] bg-black/95 border-r border-white/10">
                         <SheetHeader className="border-b border-white/10 pb-4">
-                          <SheetTitle className="text-white text-xl font-bold">Filters</SheetTitle>
+                          <SheetTitle className="text-white text-xl font-bebas font-bold">Filters</SheetTitle>
                         </SheetHeader>
                         <div className="space-y-6 mt-6 overflow-y-auto max-h-[calc(100vh-200px)]">
                           {/* Specialties Filter */}
@@ -773,23 +779,23 @@ export default function BrowsePage() {
 
           {/* No Results */}
           {!error && filteredBarbers.length === 0 && !loading && (
-            <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
+            <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
               <CardContent className="p-16 text-center">
                 <div className="space-y-6">
                   <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto">
                     <AlertCircle className="h-10 w-10 text-white/60" />
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-2xl font-bold text-white">No barbers found</h3>
-                    <p className="text-white/60 text-lg max-w-md mx-auto">
+                    <h3 className="text-2xl font-bebas font-bold text-white">No stylists found</h3>
+                    <p className="text-white/60 text-lg sm:text-xl max-w-md mx-auto font-medium">
                       {activeFiltersCount > 0
-                        ? "Try adjusting your filters or search terms to find more barbers."
-                        : "No barbers are currently available. Please check back later."
+                        ? "Try adjusting your filters or search terms to find more stylists or cosmetologists."
+                        : "No stylists or cosmetologists are currently available. Please check back later."
                       }
                     </p>
                   </div>
                   {activeFiltersCount > 0 && (
-                    <Button variant="outline" onClick={clearAllFilters} className="border-white/20 text-white hover:bg-white/10 rounded-xl px-8 py-3">
+                    <Button variant="outline" onClick={clearAllFilters} className="border-secondary text-secondary font-bebas font-bold hover:bg-secondary/10 rounded-xl px-8 py-4 transition-all text-lg">
                       Clear all filters
                     </Button>
                   )}
@@ -807,9 +813,9 @@ export default function BrowsePage() {
                     <Users className="h-10 w-10 text-white/60" />
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-2xl font-bold text-white">No barbers available</h3>
+                    <h3 className="text-2xl font-bold text-white">No stylists available</h3>
                     <p className="text-white/60 text-lg max-w-md mx-auto">
-                      No barbers have set up their profiles yet. Check back soon!
+                      No stylists or cosmetologists have set up their profiles yet. Check back soon!
                     </p>
                   </div>
                 </div>
@@ -937,7 +943,7 @@ export default function BrowsePage() {
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleLocationFilter}
-                className="flex-1 bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl"
+                className="flex-1 bg-secondary text-black font-bebas font-bold hover:bg-secondary/90 rounded-xl shadow-lg shadow-secondary/25 px-8 py-4 transition-all text-lg"
               >
                 Apply Filter
               </Button>

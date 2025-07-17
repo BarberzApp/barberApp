@@ -153,7 +153,7 @@ export default function LoginPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-saffron" />
           <div className="text-white text-xl font-semibold">Checking session...</div>
@@ -164,7 +164,7 @@ export default function LoginPage() {
 
   if (redirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-saffron" />
           <div className="text-white text-xl font-semibold mb-2">Redirecting...</div>
@@ -179,20 +179,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="w-full py-6 px-6 bg-transparent">
+      <header className="w-full py-6 px-6 bg-background">
         <div className="max-w-7xl mx-auto flex items-center">
-          <Link href="/" className="text-2xl font-bebas font-bold text-saffron">BOCM</Link>
+          {/* Logo removed as requested */}
         </div>
       </header>
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center">
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl rounded-3xl w-full max-w-md">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl rounded-3xl p-8 w-full max-w-md">
           <CardHeader className="text-center">
             <Scissors className="mx-auto h-10 w-10 text-saffron mb-2" />
-            <CardTitle className="text-3xl font-bebas text-white">Welcome Back</CardTitle>
-            <CardDescription className="text-white/80">Sign in to your account</CardDescription>
+            <CardTitle className="text-3xl sm:text-4xl font-bebas font-bold text-secondary mb-2">Welcome Back</CardTitle>
+            <CardDescription className="text-white/80 font-pacifico mb-6">Sign in to your account</CardDescription>
           </CardHeader>
           <CardContent>
             {/* Error Display */}
@@ -213,7 +213,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-11 bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
+                  className="h-12 bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl px-4 py-3"
                 />
               </div>
               <div className="space-y-2">
@@ -221,7 +221,7 @@ export default function LoginPage() {
                   <Label htmlFor="password" className="text-sm font-medium text-white">Password</Label>
                   <Link 
                     href="/forgot-password" 
-                    className="text-sm text-saffron hover:underline"
+                    className="text-sm text-secondary hover:underline font-pacifico"
                   >
                     Forgot password?
                   </Link>
@@ -232,16 +232,16 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-11 bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron"
+                  className="h-12 bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl px-4 py-3"
                 />
               </div>
               <Button 
                 type="submit" 
-                className="w-full h-11 bg-saffron text-primary font-semibold rounded-full hover:bg-saffron/90 transition-colors" 
+                className="w-full bg-secondary text-black font-bold px-8 py-4 rounded-xl shadow-lg shadow-secondary/25 hover:bg-secondary/90 transition-all text-lg font-bebas" 
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 font-bebas">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Signing in...
                   </div>
@@ -261,12 +261,12 @@ export default function LoginPage() {
               <TooltipTrigger asChild>
                 <Button
                   onClick={handleGoogleLogin}
-                  className="flex items-center justify-center w-full h-11 rounded-full bg-white border border-gray-300 shadow hover:bg-gray-100 transition gap-2"
+                  className="flex items-center justify-center w-full border border-white/20 text-white rounded-xl px-8 py-4 font-bold hover:bg-white/10 transition-all gap-2 mt-2"
                   aria-label="Sign in with Google"
                   type="button"
                 >
                   <GoogleIcon />
-                  <span className="text-black font-medium">Sign in with Google</span>
+                  <span className="font-pacifico">Sign in with Google</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Sign in with Google</TooltipContent>
@@ -275,7 +275,7 @@ export default function LoginPage() {
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-sm text-center text-white/80">
               Don't have an account?{' '}
-              <Link href="/register" className="text-saffron hover:underline font-semibold">
+              <Link href="/register" className="text-secondary hover:underline font-pacifico">
                 Sign up
               </Link>
             </div>

@@ -31,7 +31,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
         return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
       case 'Mid-range':
       default:
-        return 'bg-saffron/20 text-saffron border-saffron/30'
+        return 'bg-secondary/20 text-secondary border-secondary/30'
     }
   }
 
@@ -54,10 +54,10 @@ export function BarberCard({ barber, className }: BarberCardProps) {
         transition={{ type: "spring", stiffness: 300 }}
         className="group h-full"
       >
-        <Card className={`overflow-hidden h-full flex flex-col border border-white/10 bg-black shadow-2xl backdrop-blur-xl hover:border-saffron/30 transition-all duration-300 group-hover:shadow-saffron/20 ${className || ''}`}> 
+        <Card className={`overflow-hidden h-full flex flex-col border border-white/10 bg-black shadow-2xl backdrop-blur-xl hover:border-secondary/30 transition-all duration-300 group-hover:shadow-secondary/20 ${className || ''}`}> 
           <CardContent className="p-0 flex flex-col flex-grow h-full">
             {/* Cover Photo Section */}
-            <div className="relative h-48 bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20">
+            <div className="relative h-48 bg-gradient-to-br from-secondary/20 via-purple-500/20 to-secondary/20">
               {/* Background Pattern */}
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute top-4 left-4 w-20 h-20 border border-white/20 rounded-full"></div>
@@ -105,7 +105,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                   {barber.image && barber.image !== "/placeholder.svg" ? (
                     <AvatarImage src={barber.image} alt={barber.name} className="object-cover w-full h-full" />
                   ) : null}
-                  <AvatarFallback className="bg-saffron text-primary font-bold text-3xl">
+                  <AvatarFallback className="bg-secondary text-primary font-bold text-3xl">
                     {barber.name?.charAt(0) || "B"}
                   </AvatarFallback>
                 </Avatar>
@@ -121,16 +121,16 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                   {barber.businessName && (
                     <p className="text-white/60 text-base font-medium">{barber.businessName}</p>
                   )}
-                  <div className="text-saffron text-lg font-semibold">@{barber.username || barber.name?.toLowerCase().replace(/\s+/g, '') || 'username'}</div>
+                  <div className="text-secondary text-lg font-semibold">@{barber.username || barber.name?.toLowerCase().replace(/\s+/g, '') || 'username'}</div>
                 </div>
 
                 {/* Location */}
                 {barber.location && (
                   <div className="flex items-center justify-center gap-2 text-sm text-white/70">
-                    <MapPin className="h-4 w-4 flex-shrink-0 text-saffron" />
+                    <MapPin className="h-4 w-4 flex-shrink-0 text-secondary" />
                     <span className="truncate">{barber.location}</span>
                     {barber.distance && (
-                      <Badge variant="outline" className="text-xs bg-saffron/20 text-saffron border-saffron/30 ml-2">
+                      <Badge variant="outline" className="text-xs bg-secondary/20 text-secondary border-secondary/30 ml-2">
                         {barber.distance.toFixed(1)} mi
                       </Badge>
                     )}
@@ -139,7 +139,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
 
                 {/* Rating */}
                 <div className="flex items-center justify-center gap-1">
-                  <Star className="h-4 w-4 fill-saffron text-saffron" />
+                  <Star className="h-4 w-4 fill-secondary text-secondary" />
                   <span className="text-sm font-semibold text-white">{barber.rating || 4.5}</span>
                 </div>
 
@@ -167,7 +167,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                 {barber.specialties && barber.specialties.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-center gap-2">
-                      <Scissors className="h-4 w-4 text-saffron" />
+                      <Scissors className="h-4 w-4 text-secondary" />
                       <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Specialties</p>
                     </div>
                     <div className="flex flex-wrap gap-1 justify-center">
@@ -189,7 +189,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                 {(barber.instagram || barber.twitter || barber.tiktok || barber.facebook) && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-center gap-2">
-                      <Globe className="h-4 w-4 text-saffron" />
+                      <Globe className="h-4 w-4 text-secondary" />
                       <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Social Media</p>
                     </div>
                     <div className="flex justify-center">
@@ -209,7 +209,7 @@ export function BarberCard({ barber, className }: BarberCardProps) {
               <div className="pt-4">
                 <Button
                   asChild
-                  className="w-full bg-saffron text-primary font-semibold hover:bg-saffron/90 rounded-xl py-3"
+                  className="w-full bg-secondary text-primary font-semibold hover:bg-secondary/90 rounded-xl py-3"
                 >
                   <Link 
                     href={`/book/${barber.username}`} 

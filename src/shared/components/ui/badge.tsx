@@ -17,6 +17,8 @@ const badgeVariants = cva(
         outline: "text-foreground",
         'glassy-saffron':
           "border border-saffron bg-white/10 text-saffron shadow-lg backdrop-blur-md hover:bg-saffron/10 hover:text-saffron focus:ring-saffron",
+        'glassy-secondary':
+          "border border-secondary bg-white/10 text-secondary shadow-lg backdrop-blur-md hover:bg-secondary/10 hover:text-secondary focus:ring-secondary",
       },
     },
     defaultVariants: {

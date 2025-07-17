@@ -122,7 +122,7 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="mb-6">
               <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -137,7 +137,7 @@ class ErrorBoundary extends React.Component<
             <div className="space-y-3">
               <Button 
                 onClick={() => window.location.reload()} 
-                className="w-full rounded-full bg-saffron text-black px-6 py-3"
+                className="w-full rounded-full bg-secondary text-primary px-6 py-3"
               >
                 Reload Page
               </Button>
@@ -220,7 +220,7 @@ function BookPageContent() {
   // Add guard for params in BookPageContent
   if (!identifier) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -233,7 +233,7 @@ function BookPageContent() {
           </div>
           
           <div className="space-y-3">
-            <Button asChild className="w-full rounded-full bg-saffron text-black px-6 py-3 text-sm sm:text-base">
+            <Button asChild className="w-full rounded-full bg-secondary text-primary px-6 py-3 text-sm sm:text-base">
               <Link href="/browse">Browse Available Barbers</Link>
             </Button>
             <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
@@ -479,7 +479,7 @@ function BookPageContent() {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -494,7 +494,7 @@ function BookPageContent() {
           <div className="space-y-3">
             <Button 
               onClick={() => window.location.reload()} 
-              className="w-full rounded-full bg-saffron text-black px-6 py-3 text-sm sm:text-base"
+              className="w-full rounded-full bg-secondary text-primary px-6 py-3 text-sm sm:text-base"
             >
               Try Again
             </Button>
@@ -509,9 +509,9 @@ function BookPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary mx-auto mb-4"></div>
           <p className="text-white text-sm sm:text-base">Loading profile...</p>
           {isMobile && (
             <p className="text-sm text-gray-400 mt-2">If this takes too long, try refreshing the page</p>
@@ -523,7 +523,7 @@ function BookPageContent() {
 
   if (!barber) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
           <div className="mb-6">
             <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -536,7 +536,7 @@ function BookPageContent() {
           </div>
           
           <div className="space-y-3">
-            <Button asChild className="w-full rounded-full bg-saffron text-black px-6 py-3 text-sm sm:text-base">
+            <Button asChild className="w-full rounded-full bg-secondary text-primary px-6 py-3 text-sm sm:text-base">
               <Link href="/browse">Browse Available Barbers</Link>
             </Button>
             <Button asChild variant="outline" className="w-full rounded-full text-sm sm:text-base">
@@ -555,7 +555,7 @@ function BookPageContent() {
   // Show mobile fallback if page doesn't load
   if (showMobileFallback) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="space-y-4">
             <h1 className="text-2xl font-bold text-white">Having trouble loading?</h1>
@@ -567,7 +567,7 @@ function BookPageContent() {
           <div className="space-y-3">
             <Button 
               onClick={() => window.location.reload()} 
-              className="w-full bg-saffron text-black"
+              className="w-full bg-secondary text-primary"
             >
               Try Again
             </Button>
@@ -595,9 +595,9 @@ function BookPageContent() {
   }
 
   return (
-    <div className="bg-black">
+    <div className="bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
+      <div className="sticky top-0 z-50 bg-white/5 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center justify-between px-4 py-3">
           <Button
             variant="ghost"
@@ -627,7 +627,7 @@ function BookPageContent() {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 relative">
+          <div className="w-full h-full bg-gradient-to-br from-secondary/20 via-purple-500/20 to-secondary/20 relative">
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
@@ -639,7 +639,7 @@ function BookPageContent() {
         <div className="relative -mt-16 mb-4">
           <Avatar className="h-32 w-32 mx-auto border-4 border-black shadow-xl">
             <AvatarImage src={barber.avatar_url} alt={barber.name} className="object-cover w-full h-full" />
-            <AvatarFallback className="text-4xl bg-saffron text-black font-bold w-full h-full flex items-center justify-center">
+            <AvatarFallback className="text-4xl bg-secondary text-primary font-bold w-full h-full flex items-center justify-center">
               {barber.name && barber.name.length > 0 ? barber.name.charAt(0) : '?'}
             </AvatarFallback>
           </Avatar>
@@ -649,7 +649,7 @@ function BookPageContent() {
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-white mb-1">{barber.name}</h1>
           {barber.username && (
-            <p className="text-saffron text-lg font-mono mb-2">@{barber.username}</p>
+            <p className="text-secondary text-lg font-mono mb-2">@{barber.username}</p>
           )}
           {barber.location && (
             <div className="flex items-center justify-center gap-1 text-white/70 mb-3">
@@ -688,7 +688,7 @@ function BookPageContent() {
                 <Badge
                   key={index}
                   variant="secondary"
-                  className="bg-saffron/20 text-saffron border-saffron/30 px-3 py-1 text-xs"
+                  className="bg-secondary/20 text-secondary border-secondary/30 px-3 py-1 text-xs"
                 >
                   {specialty}
                 </Badge>
@@ -700,7 +700,7 @@ function BookPageContent() {
           <div className="flex gap-3 justify-center mb-6">
             <Button
               onClick={() => setShowBookingForm(true)}
-              className="flex-1 max-w-xs bg-saffron text-black font-semibold rounded-full hover:bg-saffron/90"
+              className="flex-1 max-w-xs bg-secondary text-primary font-semibold rounded-full hover:bg-secondary/90"
             >
               <Calendar className="h-4 w-4 mr-2" />
               Book Now
@@ -756,21 +756,21 @@ function BookPageContent() {
           <TabsList className="w-full bg-transparent border-b border-white/10 rounded-none p-0">
             <TabsTrigger 
               value="cuts" 
-              className="flex-1 data-[state=active]:text-saffron data-[state=active]:border-b-2 data-[state=active]:border-saffron bg-transparent text-white/60 hover:text-white"
+              className="flex-1 data-[state=active]:text-secondary data-[state=active]:border-b-2 data-[state=active]:border-secondary bg-transparent text-white/60 hover:text-white"
             >
               <Grid3X3 className="h-4 w-4 mr-2" />
               Cuts
             </TabsTrigger>
             <TabsTrigger 
               value="services" 
-              className="flex-1 data-[state=active]:text-saffron data-[state=active]:border-b-2 data-[state=active]:border-saffron bg-transparent text-white/60 hover:text-white"
+              className="flex-1 data-[state=active]:text-secondary data-[state=active]:border-b-2 data-[state=active]:border-secondary bg-transparent text-white/60 hover:text-white"
             >
               <BookOpen className="h-4 w-4 mr-2" />
               Services
             </TabsTrigger>
             <TabsTrigger 
               value="portfolio" 
-              className="flex-1 data-[state=active]:text-saffron data-[state=active]:border-b-2 data-[state=active]:border-saffron bg-transparent text-white/60 hover:text-white"
+              className="flex-1 data-[state=active]:text-secondary data-[state=active]:border-b-2 data-[state=active]:border-secondary bg-transparent text-white/60 hover:text-white"
             >
               <Award className="h-4 w-4 mr-2" />
               Portfolio
@@ -781,7 +781,7 @@ function BookPageContent() {
           <TabsContent value="cuts" className="mt-6">
             {loadingReels ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
               </div>
             ) : featuredReels.length > 0 ? (
               <div className="grid grid-cols-3 gap-1">
@@ -840,7 +840,7 @@ function BookPageContent() {
                       </div>
                     </div>
                     <div className="text-right ml-4 flex-shrink-0">
-                      <p className="font-bold text-saffron text-xl">${service.price}</p>
+                      <p className="font-bold text-secondary text-xl">${service.price}</p>
                     </div>
                   </div>
                 ))}
@@ -893,7 +893,7 @@ function BookPageContent() {
 
       {/* Video Dialog */}
       <Dialog open={showVideoDialog} onOpenChange={setShowVideoDialog}>
-        <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="max-w-2xl w-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-0 overflow-hidden">
           {selectedVideo ? (
             <>
               <div className="aspect-video">
@@ -934,11 +934,11 @@ function BookPageContent() {
       {/* Image Dialog */}
       {selectedImage !== null && (
         <Dialog open={!!selectedImage} onOpenChange={open => !open && setSelectedImage(null)}>
-          <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 flex flex-col items-center justify-center">
+          <DialogContent className="max-w-2xl w-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-0 flex flex-col items-center justify-center">
             <div className="w-full flex items-center justify-between px-6 py-4 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-saffron/20">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-saffron">
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-secondary/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-secondary">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v10.5A2.25 2.25 0 0118.75 19.5H5.25A2.25 2.25 0 013 17.25v-.75zm0 0l5.25-5.25a2.25 2.25 0 013.18 0l5.32 5.32M3 16.5l5.25-5.25a2.25 2.25 0 013.18 0l5.32 5.32" />
                   </svg>
                 </span>
@@ -947,7 +947,7 @@ function BookPageContent() {
               <button
                 onClick={() => setSelectedImage(null)}
                 aria-label="Close"
-                className="text-white hover:text-saffron focus:outline-none focus:ring-2 focus:ring-saffron rounded-full p-1 transition-colors"
+                className="text-white hover:text-secondary focus:outline-none focus:ring-2 focus:ring-secondary rounded-full p-1 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

@@ -33,7 +33,9 @@ import {
   X,
   Car,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Home,
+  Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -67,6 +69,7 @@ interface VideoCut {
   is_liked?: boolean
   price?: number // Added for the new UI
   specialties?: string[]
+  aspect_ratio?: '9:16' | '16:9' | '1:1' // Added for aspect ratio support
 }
 
 interface CutComment {
@@ -121,6 +124,19 @@ export default function CutsPage() {
   const [isFilterAnimating, setIsFilterAnimating] = useState(false)
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
+  const [expandedDescriptions, setExpandedDescriptions] = useState<{[key: string]: boolean}>({})
+  const [mutedVideos, setMutedVideos] = useState<{[key: string]: boolean}>({})
+
+  // Prevent body scrolling when component mounts
+  useEffect(() => {
+    // Disable body scroll
+    document.body.style.overflow = 'hidden'
+    
+    // Re-enable body scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [])
 
   const categories = [
     { id: 'all', label: 'For You' },
@@ -131,6 +147,62 @@ export default function CutsPage() {
   ]
 
   const [currentCategory, setCurrentCategory] = useState('all')
+
+  // Toggle description expansion
+  const toggleDescription = (cutId: string) => {
+    setExpandedDescriptions(prev => ({
+      ...prev,
+      [cutId]: !prev[cutId]
+    }))
+  }
+
+  // Get aspect ratio classes for video container
+  const getAspectRatioClasses = (aspectRatio?: string) => {
+    switch (aspectRatio) {
+      case '9:16':
+        return 'w-full h-full' // Portrait - fill height, maintain aspect ratio
+      case '16:9':
+        return 'w-full h-auto max-h-full' // Landscape - fill width, maintain aspect ratio
+      case '1:1':
+        return 'w-full h-full' // Square - fill container
+      default:
+        return 'w-full h-full' // Default - fill container
+    }
+  }
+
+  // Get proper video sizing based on aspect ratio
+  const getVideoSizing = (aspectRatio?: string) => {
+    switch (aspectRatio) {
+      case '16:9':
+        return {
+          containerClass: 'w-full h-full flex items-center justify-center',
+          videoClass: 'w-full h-auto max-h-full object-contain'
+        }
+      case '9:16':
+        return {
+          containerClass: 'w-full h-full flex items-center justify-center',
+          videoClass: 'w-auto h-full max-w-full object-contain'
+        }
+      case '1:1':
+        return {
+          containerClass: 'w-full h-full flex items-center justify-center',
+          videoClass: 'w-full h-full object-contain'
+        }
+      default:
+        return {
+          containerClass: 'w-full h-full flex items-center justify-center',
+          videoClass: 'w-full h-full object-contain'
+        }
+    }
+  }
+
+  // Toggle mute for a specific video
+  const toggleMute = (cutId: string) => {
+    setMutedVideos(prev => ({
+      ...prev,
+      [cutId]: !prev[cutId]
+    }))
+  }
 
   // Auto-scroll to center selected filter
   const scrollToSelectedFilter = useCallback((categoryId: string) => {
@@ -702,9 +774,9 @@ export default function CutsPage() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="mb-6">
-            <Sparkles className="h-16 w-16 text-saffron mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">No cuts found</h2>
-            <p className="text-white/60 mb-6">
+            <Sparkles className="h-16 w-16 text-secondary mx-auto mb-4" />
+            <h2 className="text-2xl font-bebas text-white mb-2 tracking-wide">No cuts found</h2>
+            <p className="text-white/60 mb-6 font-pacifico">
               {locationFilter.city || locationFilter.state || locationFilter.useCurrentLocation 
                 ? 'No cuts found in your selected location. Try adjusting your filters.'
                 : 'No cuts available yet. Be the first to upload!'
@@ -714,7 +786,7 @@ export default function CutsPage() {
           <div className="flex gap-3 justify-center">
             <Button
               onClick={() => window.location.href = '/settings/barber-profile'}
-              className="bg-saffron text-primary font-bold rounded-xl px-6 py-3"
+              className="bg-secondary text-primary font-bold rounded-xl px-6 py-3 hover:bg-secondary/90"
             >
               Upload Cut
             </Button>
@@ -735,32 +807,32 @@ export default function CutsPage() {
 
   // Responsive height calculation for card
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
-  const cardHeight = isDesktop ? 'calc(100dvh - 72px)' : 'calc(100dvh - 80px)';
+  const cardHeight = isDesktop ? 'calc(100dvh - 128px)' : 'calc(100dvh - 136px)';
 
   return (
-    <div className="relative h-screen bg-black">
-      {/* Enhanced filter bar with ring-like scrolling */}
-      <div className="fixed top-0 md:top-[64px] left-0 w-full z-50 h-[56px] bg-black/90 backdrop-blur-xl border-b border-white/10">
+    <div className="relative h-screen bg-black overflow-hidden">
+      {/* Enhanced filter bar with glass morphism */}
+      <div className="fixed top-0 md:top-16 left-0 w-full z-40 h-[64px] bg-transparent backdrop-blur-sm border-b border-white/5">
         <div className="relative h-full flex items-center justify-center">
           {/* Left gradient overlay */}
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/90 to-transparent z-10 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white/5 to-transparent z-10 pointer-events-none" />
           
           {/* Scrollable filter container */}
           <div className="flex-1 overflow-hidden" ref={filterScrollRef}>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide px-4 py-2 snap-x snap-mandatory filter-scroll-container">
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide px-6 py-3 snap-x snap-mandatory filter-scroll-container">
               {categories.map((category, index) => (
                 <button
                   key={category.id}
                   onClick={() => handleCategorySelect(category.id)}
                   className={cn(
                     "flex-shrink-0 snap-center transition-all duration-300 ease-out transform",
-                    "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap",
+                    "px-6 py-3 rounded-2xl text-sm font-medium whitespace-nowrap",
                     "border-2 shadow-lg backdrop-blur-sm",
                     "hover:scale-105 active:scale-95 touch-manipulation",
-                    "focus:outline-none focus:ring-2 focus:ring-white/50",
+                    "focus:outline-none focus:ring-2 focus:ring-secondary/50",
                     currentCategory === category.id 
-                      ? "bg-white text-black border-white shadow-xl scale-110 ring-4 ring-white/20 filter-item-active" 
-                      : "bg-black/40 text-white border-white/20 hover:bg-white/10 hover:border-white/40 filter-item-hover",
+                      ? "bg-white/20 text-white border-white/30 shadow-lg scale-105 filter-item-active" 
+                      : "bg-transparent text-white/80 border-transparent hover:bg-white/10 hover:text-white filter-item-hover",
                     currentCategory === category.id && isFilterAnimating && "animate-bounce-in"
                   )}
                   style={{ 
@@ -769,10 +841,10 @@ export default function CutsPage() {
                   }}
                   data-category={category.id}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 font-semibold">
                     {category.label}
                     {currentCategory === category.id && (
-                      <div className="w-2 h-2 bg-black rounded-full animate-pulse-slow" />
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse-slow" />
                     )}
                   </span>
                 </button>
@@ -781,209 +853,251 @@ export default function CutsPage() {
           </div>
           
           {/* Right gradient overlay */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/90 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white/5 to-transparent z-10 pointer-events-none" />
           
           {/* Scroll indicators */}
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-20">
-            <div className="w-1 h-1 bg-white/30 rounded-full animate-pulse-slow" />
-            <div className="w-1 h-1 bg-white/20 rounded-full animate-pulse-slow delay-75" />
-            <div className="w-1 h-1 bg-white/10 rounded-full animate-pulse-slow delay-150" />
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-20">
+            <div className="w-1.5 h-1.5 bg-secondary/60 rounded-full animate-pulse-slow" />
+            <div className="w-1.5 h-1.5 bg-secondary/40 rounded-full animate-pulse-slow delay-75" />
+            <div className="w-1.5 h-1.5 bg-secondary/20 rounded-full animate-pulse-slow delay-150" />
           </div>
         </div>
       </div>
-      {/* Snap container fills space between filter bar, action bar, and navbar */}
-      <div className="h-[calc(100dvh-80px-56px-56px)] md:h-[calc(100dvh-80px-56px-56px-64px)] w-full overflow-y-scroll snap-y snap-mandatory relative">
+      {/* Video container with safe zones */}
+      <div className="h-[calc(100dvh-184px)] md:h-[calc(100vh-184px)] w-full overflow-y-auto snap-y snap-mandatory relative" style={{ marginTop: '64px' }}>
         {cuts.map((cut, index) => (
           <div key={cut.id} className="relative h-full min-h-[inherit] w-full snap-start overflow-hidden">
-            <video
-              src={cut.url}
-              className="h-full w-full object-contain bg-black"
-              autoPlay={index === currentCutIndex}
-              loop
-              muted
-              playsInline
-            />
-            {/* Side action buttons, anchored to snap container */}
-            {index === currentCutIndex && (
-              <div className="absolute right-4 z-30 flex flex-col gap-8 md:bottom-[120px]" style={{ bottom: '80px' }}>
-                {/* Like button */}
-                <button className="flex flex-col items-center" onClick={() => handleLike(currentCut.id, currentCut.is_liked || false)} aria-label="Like video">
-                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
-                    <Heart className={cn("h-6 w-6", currentCut.is_liked ? "fill-red-500 text-red-500" : "text-white")} />
-                  </div>
-                  <span className="text-white text-xs font-medium">{currentCut.likes || 0}</span>
-                </button>
+            <div className={cn("relative bg-black", getVideoSizing(cut.aspect_ratio).containerClass)}>
+                            <video
+                src={cut.url}
+                className={cn("cursor-pointer", getVideoSizing(cut.aspect_ratio).videoClass)}
+                autoPlay={index === currentCutIndex}
+                loop
+                muted={mutedVideos[cut.id] !== false} // Default to muted, can be toggled
+                playsInline
+                onClick={() => toggleMute(cut.id)}
+                onLoadStart={() => {
+                  // Pause all other videos when this one starts
+                  if (index === currentCutIndex) {
+                    videoRefs.current.forEach((video, i) => {
+                      if (i !== index && video) {
+                        video.pause()
+                      }
+                    })
+                  }
+                }}
+              />
+              
+              {/* Mute indicator */}
+              <div className="absolute top-4 right-4 z-40">
+                <div className="bg-black/50 backdrop-blur-sm rounded-full p-2">
+                  {mutedVideos[cut.id] !== false ? (
+                    <VolumeX className="h-5 w-5 text-white" />
+                  ) : (
+                    <Volume2 className="h-5 w-5 text-white" />
+                  )}
+                </div>
+              </div>
+            
+            {/* Side action buttons for each video */}
+            <div className="absolute right-4 z-30 flex flex-col gap-6" style={{ bottom: '140px' }}>
+              {/* Like button */}
+              <button className="flex flex-col items-center group" onClick={() => handleLike(cut.id, cut.is_liked || false)} aria-label="Like video">
+                <div className="bg-white/10 backdrop-blur-xl rounded-full p-3 mb-1.5 border border-white/20 group-hover:bg-white/20 group-hover:border-secondary/50 transition-all duration-300">
+                  <Heart className={cn("h-6 w-6 transition-all duration-300", cut.is_liked ? "fill-red-500 text-red-500 scale-110" : "text-white group-hover:text-secondary")} />
+                </div>
+                <span key={`likes-${cut.id}-${cut.likes}`} className="text-white text-xs font-semibold bg-black/20 backdrop-blur-sm px-2 py-1 rounded-full transition-all duration-300 hover:scale-105">
+                  {cut.likes || 0}
+                </span>
+              </button>
 
-                {/* Comments button */}
-                <button
-                  className="flex flex-col items-center"
-                  onClick={() => {
-                    setCommentingCutId(currentCut.id)
-                    setShowCommentsDialog(true)
-                    fetchComments(currentCut.id)
-                  }}
-                  aria-label="Show comments"
+              {/* Comments button */}
+              <button
+                className="flex flex-col items-center group"
+                onClick={() => {
+                  setCommentingCutId(cut.id)
+                  setShowCommentsDialog(true)
+                  fetchComments(cut.id)
+                }}
+                aria-label="Show comments"
+              >
+                <div className="bg-white/10 backdrop-blur-xl rounded-full p-3 mb-1.5 border border-white/20 group-hover:bg-white/20 group-hover:border-secondary/50 transition-all duration-300">
+                  <MessageCircle className="h-6 w-6 text-white group-hover:text-secondary transition-all duration-300" />
+                </div>
+                <span key={`comments-${cut.id}-${cut.comments_count}`} className="text-white text-xs font-semibold bg-black/20 backdrop-blur-sm px-2 py-1 rounded-full transition-all duration-300 hover:scale-105">
+                  {cut.comments_count || 0}
+                </span>
+              </button>
+
+              {/* Share button */}
+              <button className="flex flex-col items-center group" onClick={() => {
+                setSelectedCut(cut)
+                setShowShareDialog(true)
+              }} aria-label="Share video">
+                <div className="bg-white/10 backdrop-blur-xl rounded-full p-3 mb-1.5 border border-white/20 group-hover:bg-white/20 group-hover:border-secondary/50 transition-all duration-300">
+                  <Share2 className="h-6 w-6 text-white group-hover:text-secondary transition-all duration-300" />
+                </div>
+                <span className="text-white text-xs font-semibold bg-black/20 backdrop-blur-sm px-2 py-1 rounded-full">{cut.shares || 0}</span>
+              </button>
+
+              {/* Booking button - now consistent with other buttons */}
+              <button
+                className="flex flex-col items-center group"
+                onClick={() => {
+                  if (cut.barber_id) {
+                    setSelectedBarberId(cut.barber_id);
+                    setShowBookingForm(true);
+                  }
+                }}
+                aria-label="Book appointment"
+              >
+                <div className="bg-white/10 backdrop-blur-xl rounded-full p-3 mb-1.5 border border-white/20 group-hover:bg-white/20 group-hover:border-secondary/50 transition-all duration-300">
+                  <Calendar className="h-6 w-6 text-white group-hover:text-secondary transition-all duration-300" />
+                </div>
+                <span className="text-white text-xs font-semibold bg-black/20 backdrop-blur-sm px-2 py-1 rounded-full">Book</span>
+              </button>
+            </div>
+
+            {/* Video info overlay for each video */}
+            <div className="absolute left-0 right-0 p-6 z-50 pb-safe flex flex-col justify-end min-h-[200px]" style={{ bottom: '0px' }}>
+              {/* Top row: Profile icon and Username together */}
+              <div className="flex items-center mb-4">
+                <div className="h-12 w-12 border-2 border-white/30 rounded-full mr-4 bg-secondary/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                  {cut.barber_avatar ? (
+                    <img src={cut.barber_avatar} alt={cut.barber_name} className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    <User className="h-6 w-6 text-secondary" />
+                  )}
+                </div>
+                <p className="font-bebas text-white text-lg tracking-wide">{cut.barber_username || cut.barber_name?.toLowerCase().replace(/\s+/g, '') || 'barber'}</p>
+              </div>
+
+              {/* Middle: Description */}
+              <div className="mb-4 max-w-[80%]">
+                <p className={cn(
+                  "text-white font-pacifico text-sm leading-relaxed transition-all duration-300",
+                  expandedDescriptions[cut.id] ? "" : "line-clamp-1"
+                )}>
+                  {cut.description || cut.title}
+                </p>
+                {(cut.description || cut.title) && (cut.description || cut.title).split(' ').length > 5 && (
+                  <button
+                    onClick={() => toggleDescription(cut.id)}
+                    className="flex items-center gap-1 text-white text-xs font-medium mt-1 hover:text-white/80 transition-colors"
+                  >
+                    {expandedDescriptions[cut.id] ? (
+                      <>
+                        <ChevronUp className="h-3 w-3" />
+                        Show less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-3 w-3" />
+                        Show more
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Bottom row: Tags (left) and Location (right) */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {cut.tags?.map((tag) => (
+                    <span key={tag} className="text-white text-sm font-medium bg-white/10 backdrop-blur-sm px-2 py-1 rounded-full border border-white/20">
+                      #{tag}
+                  </span>
+                  ))}
+                </div>
+                <Badge className="bg-white/10 text-white border-white/20 backdrop-blur-sm">
+                  {(() => {
+                    if (!cut.location_name) return 'Barber Shop';
+                    const parts = cut.location_name.split(',').map(s => s.trim());
+                    
+                    if (parts.length >= 8) {
+                      const street = parts[0];
+                      const city = parts[1];
+                      const state = parts[6];
+                      return `${street}, ${city}, ${state}`;
+                    } else if (parts.length >= 4) {
+                      const city = parts[parts.length - 2];
+                      const state = parts[parts.length - 1];
+                      return `${city}, ${state}`;
+                    } else if (parts.length >= 3) {
+                      const city = parts[1];
+                      const state = parts[2];
+                      return `${city}, ${state}`;
+                    } else if (parts.length >= 2) {
+                      const city = parts[0];
+                      const state = parts[1];
+                      return `${city}, ${state}`;
+                    } else {
+                      return cut.location_name;
+                    }
+                  })()}
+                </Badge>
+              </div>
+
+              {/* Action buttons (desktop only) */}
+              <div className="hidden md:flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  className="text-white border-white/20 hover:bg-white/20 hover:border-secondary/50 rounded-full px-6 py-3 flex-1 mr-3 bg-white/10 backdrop-blur-xl font-semibold transition-all duration-300"
+                  onClick={() => safePush("/reach")}
                 >
-                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
-                    <MessageCircle className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-white text-xs font-medium">{currentCut.comments_count || 0}</span>
-                </button>
-
-                {/* Share button */}
-                <button className="flex flex-col items-center" onClick={() => {
-                  setSelectedCut(currentCut)
-                  setShowShareDialog(true)
-                }} aria-label="Share video">
-                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
-                    <Share2 className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-white text-xs font-medium">{currentCut.shares || 0}</span>
-                </button>
-
-                {/* Booking button */}
-                <button
-                  className="flex flex-col items-center"
+                  <Car className="h-5 w-5 mr-2" />
+                  <span>Reach</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-white border-white/20 hover:bg-white/20 hover:border-secondary/50 rounded-full px-6 py-3 flex-1 bg-white/10 backdrop-blur-xl font-semibold transition-all duration-300"
                   onClick={() => {
-                    if (cut.barber_id) {
-                      setSelectedBarberId(cut.barber_id);
-                      setShowBookingForm(true);
+                    const username = cut.barber_username || cut.barber_name?.toLowerCase().replace(/\s+/g, '')
+                    if (username) {
+                      safePush(`/book/${username}`)
+                    } else {
+                      setShowInfoOverlay(true)
                     }
                   }}
-                  aria-label="Book appointment"
                 >
-                  <div className="bg-black/30 rounded-full p-3 mb-1.5 backdrop-blur-sm">
-                    <Calendar className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-white text-xs font-medium">Book</span>
-                </button>
+                  <span>More Info</span>
+                </Button>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-      {/* Overlay for profile/location, anchored to the screen just above the action bar */}
-      {currentCut && (
-        <div className="absolute left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent z-50 pb-safe flex flex-col justify-end min-h-[180px]" style={{ bottom: '136px' }}>
-          {/* Creator info */}
-          <div className="flex items-center mb-3">
-            <div className="h-10 w-10 border-2 border-white rounded-full mr-3 bg-saffron/20 flex items-center justify-center">
-              {currentCut.barber_avatar ? (
-                <img src={currentCut.barber_avatar} alt={currentCut.barber_name} className="h-full w-full rounded-full object-cover" />
-              ) : (
-                <User className="h-5 w-5 text-saffron" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center">
-                <p className="font-semibold text-white mr-1 truncate">@{currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '') || 'barber'}</p>
+
+              {/* Action buttons (mobile only) */}
+              <div className="flex md:hidden justify-between items-center">
+                <Button
+                  variant="outline"
+                  className="text-white border-white/20 hover:bg-white/20 hover:border-secondary/50 rounded-full px-4 py-3 flex-1 mr-2 bg-white/10 backdrop-blur-xl font-semibold transition-all duration-300"
+                  onClick={() => safePush("/reach")}
+                >
+                  <Car className="h-5 w-5 mr-2" />
+                  <span>Reach</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-white border-white/20 hover:bg-white/20 hover:border-secondary/50 rounded-full px-4 py-3 flex-1 bg-white/10 backdrop-blur-xl font-semibold transition-all duration-300"
+                  onClick={() => {
+                    const username = cut.barber_username || cut.barber_name?.toLowerCase().replace(/\s+/g, '')
+                    if (username) {
+                      safePush(`/book/${username}`)
+                    } else {
+                      setShowInfoOverlay(true)
+                    }
+                  }}
+                >
+                  <span>More Info</span>
+                </Button>
               </div>
-              <p className="text-white/70 text-sm truncate">{currentCut.barber_name}</p>
             </div>
-          </div>
-
-          {/* Video description */}
-          <p className="text-white mb-2 line-clamp-2">{currentCut.description || currentCut.title}</p>
-
-          {/* Tags */}
-          <div className="flex flex-wrap gap-1 mb-3">
-            {currentCut.tags?.map((tag) => (
-              <span key={tag} className="text-white/90 text-sm">
-                #{tag}
-              </span>
-            ))}
-          </div>
-
-          {/* Location and price */}
-          <div className="flex items-center mb-4">
-            <Badge className="bg-white/10 text-white border-0">
-              {(() => {
-                if (!currentCut.location_name) return 'Barber Shop';
-                const parts = currentCut.location_name.split(',').map(s => s.trim());
-                console.log('Location parts:', parts); // Debug log
-                
-                if (parts.length >= 8) {
-                  // For old Nominatim format: pull parts 0, 1, and 6 (0-indexed)
-                  const street = parts[0];
-                  const city = parts[1];
-                  const state = parts[6];
-                  return `${street}, ${city}, ${state}`;
-                } else if (parts.length >= 4) {
-                  // For format: "88 Doe Court, Wynwood Drive, South Brunswick, NJ"
-                  // Show: "South Brunswick, NJ" (second-to-last and last parts)
-                  const city = parts[parts.length - 2];
-                  const state = parts[parts.length - 1];
-                  return `${city}, ${state}`;
-                } else if (parts.length >= 3) {
-                  // For format: "88 Doe Court, South Brunswick, NJ"
-                  // Show: "South Brunswick, NJ" (city and state)
-                  const city = parts[1];
-                  const state = parts[2];
-                  return `${city}, ${state}`;
-                } else if (parts.length >= 2) {
-                  // Fallback for shorter formats
-                  const city = parts[0];
-                  const state = parts[1];
-                  return `${city}, ${state}`;
-                } else {
-                  return currentCut.location_name;
-                }
-              })()}
-            </Badge>
-          </div>
-
-          {/* Action buttons (desktop only) */}
-          <div className="hidden md:flex justify-between items-center">
-            <Button
-              variant="outline"
-              className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 mr-2 bg-transparent"
-              onClick={() => safePush("/reach")}
-            >
-              <Car className="h-5 w-5 mr-2" />
-              <span>Reach</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 bg-transparent"
-              onClick={() => {
-                const username = currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '')
-                if (username) {
-                  safePush(`/book/${username}`)
-                } else {
-                  setShowInfoOverlay(true)
-                }
-              }}
-            >
-              <span>More Info</span>
-            </Button>
           </div>
         </div>
-      )}
-      {/* Fixed action bar above the navbar */}
-      <div className="fixed bottom-[80px] left-0 right-0 z-50 flex md:hidden justify-between items-center px-4">
-        <Button
-          variant="outline"
-          className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 mr-2 bg-transparent"
-          onClick={() => safePush("/reach")}
-        >
-          <Car className="h-5 w-5 mr-2" />
-          <span>Reach</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="text-white border-white/20 hover:bg-white/10 rounded-full px-4 flex-1 bg-transparent"
-          onClick={() => {
-            const username = currentCut.barber_username || currentCut.barber_name?.toLowerCase().replace(/\s+/g, '')
-            if (username) {
-              safePush(`/book/${username}`)
-            } else {
-              setShowInfoOverlay(true)
-            }
-          }}
-        >
-          <span>More Info</span>
-        </Button>
+        ))}
       </div>
+
+
+
+
 
       {/* Comments Dialog */}
       <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
@@ -1000,8 +1114,8 @@ export default function CutsPage() {
             ) : (
               comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3 px-4">
-                  <div className="w-9 h-9 bg-saffron/20 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User className="h-4 w-4 text-saffron" />
+                  <div className="w-9 h-9 bg-secondary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="h-4 w-4 text-secondary" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
@@ -1028,8 +1142,8 @@ export default function CutsPage() {
           
           <div className="border-t border-white/10 pt-3 px-4 mt-auto">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-saffron/20 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 text-saffron" />
+              <div className="w-8 h-8 bg-secondary/20 rounded-full flex items-center justify-center">
+                <User className="h-4 w-4 text-secondary" />
               </div>
               <Input
                 placeholder="Add a comment..."
@@ -1040,7 +1154,7 @@ export default function CutsPage() {
               />
               <Button
                 size="sm"
-                className="bg-white text-black hover:bg-white/90 rounded-full"
+                className="bg-secondary text-primary hover:bg-secondary/90 rounded-full font-semibold"
                 onClick={handleAddComment}
                 disabled={!newComment.trim()}
               >

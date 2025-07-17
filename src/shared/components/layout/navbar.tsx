@@ -25,9 +25,12 @@ import {
   Search,
   UserCircle,
   Video,
+  Compass,
+  Bell,
 } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 import { UpdatesBadge } from "@/shared/components/updates/updates-badge"
+import { NotificationBell } from "@/shared/notifications/notification-bell"
 
 export function Navbar() {
   const router = useRouter();
@@ -106,101 +109,139 @@ export function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/10 backdrop-blur-2xl shadow-2xl supports-[backdrop-filter]:bg-white/5">
-      <div className="container flex h-16 items-center">
-        <div className="mr-4 flex">
-          <div className="mr-8 flex items-center space-x-3 relative">
-            <div className="relative flex items-center justify-center" style={{ width: 44, height: 44 }}>
-              <div className="absolute inset-0 rounded-full bocm-glow z-0" style={{ filter: 'blur(16px)', background: 'radial-gradient(circle at 60% 40%, #c98f42 0%, #fff9f0 40%, #262b2e 100%)', opacity: 0.8 }} />
-              <img src="/BocmLogo.png" alt="BOCM Logo" className="h-11 w-11 relative z-10 drop-shadow-xl" style={{ borderRadius: '20%' }} />
+    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/20 backdrop-blur-xl shadow-2xl">
+      <div className="container mx-auto flex h-16 items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center group">
+            <div className="relative">
+              <img src="/BocmLogo.png" alt="BOCM Logo" className="h-8 w-8 sm:h-10 sm:w-10 transition-transform duration-300 group-hover:scale-110" />
+              <div className="absolute inset-0 bg-saffron/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
-            <span className="hidden font-bebas text-2xl font-bold sm:inline-block text-saffron tracking-wide select-none drop-shadow-md">BOCM</span>
-          </div>
-          <nav className="flex items-center space-x-8 text-base font-semibold">
-            <Link
-              href="/browse"
-              className={cn(
-                "transition-colors hover:text-saffron/90 hover:underline underline-offset-8 decoration-2 px-2 py-1 rounded-lg hover:bg-saffron/10",
-                pathname === "/browse" ? "text-saffron underline bg-saffron/10 shadow-md" : "text-foreground/70"
-              )}
-            >
-              <Search className={cn("h-5 w-5 mr-1 inline", pathname === "/browse" ? "text-saffron" : "text-foreground/60")} /> Browse
-            </Link>
+            <span className="font-bebas text-2xl font-bold text-saffron ml-3 group-hover:text-saffron/90 transition-colors duration-300">BOCM</span>
+          </Link>
+        </div>
+        
+        {user ? (
+          // Authenticated user navigation
+          <nav className="hidden md:flex items-center space-x-6">
+            {/* Role-specific navigation items */}
             {roleSpecificNavItems().map((item) => {
-              const isActive = item.href === "/browse"
-                ? pathname === "/browse"
-                : pathname.startsWith(item.href)
+              const isActive = pathname === item.href || 
+                (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
+                (item.href === "/reels" && pathname.startsWith("/reels"))
+              
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "transition-colors hover:text-saffron/90 hover:underline underline-offset-8 decoration-2 px-2 py-1 rounded-lg hover:bg-saffron/10",
-                    isActive ? "text-saffron underline bg-saffron/10 shadow-md" : "text-foreground/70"
+                    "text-white/80 hover:text-saffron transition-all duration-300 font-medium px-4 py-2 rounded-xl flex items-center gap-2 group relative",
+                    isActive 
+                      ? "text-saffron bg-saffron/10 shadow-lg shadow-saffron/20 border border-saffron/30" 
+                      : "hover:bg-white/5 hover:shadow-md"
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5 mr-1 inline", isActive ? "text-saffron" : "text-foreground/60")} /> {item.label}
-                  {item.label === 'Cuts' && (
-                    <span className="ml-1 bg-saffron/80 text-primary text-xs font-bold px-2 py-0.5 rounded-full align-middle shadow">Beta</span>
+                  <item.icon className={cn(
+                    "h-4 w-4 transition-all duration-300",
+                    isActive ? "text-saffron scale-110" : "group-hover:scale-105"
+                  )} />
+                  {item.label}
+                  {isActive && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
                   )}
                 </Link>
               )
             })}
-          </nav>
-        </div>
-        <div className="flex items-center gap-3 ml-auto">
-          {user && <UpdatesBadge />}
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full p-0 border-2 border-saffron/60 shadow-lg hover:scale-110 focus:scale-105 transition-transform duration-200 bg-saffron/20 backdrop-blur-md">
-                  <Avatar className="h-12 w-12 shadow-lg border-4 border-saffron/40 bg-primary">
-                    {((user as any)?.avatar_url || (user as any)?.avatarUrl) && (
-                      <AvatarImage src={(user as any)?.avatar_url || (user as any)?.avatarUrl} alt={user.name || 'Avatar'} />
+            
+            {/* Browse link for all users */}
+            <Link 
+              href="/browse" 
+              className={cn(
+                "text-white/80 hover:text-saffron transition-all duration-300 font-medium px-4 py-2 rounded-xl flex items-center gap-2 group relative",
+                pathname === "/browse" || pathname.startsWith("/browse")
+                  ? "text-saffron bg-saffron/10 shadow-lg shadow-saffron/20 border border-saffron/30" 
+                  : "hover:bg-white/5 hover:shadow-md"
+              )}
+            >
+              <Compass className={cn(
+                "h-4 w-4 transition-all duration-300",
+                pathname === "/browse" || pathname.startsWith("/browse") ? "text-saffron scale-110" : "group-hover:scale-105"
+              )} />
+              Browse
+              {(pathname === "/browse" || pathname.startsWith("/browse")) && (
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
+              )}
+            </Link>
+            
+            {/* Notification Bell */}
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              
+              {/* User dropdown menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-0 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-300 hover:border-saffron/30 hover:shadow-lg hover:shadow-saffron/20"
+                  >
+                    {user?.avatar_url ? (
+                      <img 
+                        src={user.avatar_url} 
+                        alt="Profile" 
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-5 w-5 text-white" />
                     )}
-                    <AvatarFallback className="bg-saffron text-primary font-bold text-xl">{user.name?.charAt(0) || "U"}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="mt-2 rounded-3xl border border-white/20 bg-white/10 backdrop-blur-2xl shadow-2xl p-6 min-w-[280px] glassy-card">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col gap-0.5 mb-2">
-                    <span className="text-xl font-bebas font-bold text-white tracking-wide">{user.name}</span>
-                    <span className="text-xs text-white/70 font-mono">{user.email}</span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-saffron/30 mb-2" />
-                <DropdownMenuItem asChild className={cn(
-                  "group rounded-2xl px-4 py-3 text-base flex items-center w-full cursor-pointer gap-3 transition-all duration-200 font-semibold",
-                  pathname.startsWith("/settings/barber-profile") ? "bg-saffron/20 text-saffron" : "text-white hover:bg-saffron/20 hover:text-saffron"
-                )}>
-                  <Link href="/settings/barber-profile" className="flex items-center w-full">
-                    <UserCircle className={cn("mr-2 h-5 w-5 transition-colors", pathname.startsWith("/settings/barber-profile") ? "text-saffron" : "group-hover:text-saffron")} />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className={cn(
-                  "group rounded-2xl px-4 py-3 text-base flex items-center w-full cursor-pointer gap-3 transition-all duration-200 font-semibold",
-                  pathname === "/settings" ? "bg-saffron/20 text-saffron" : "text-white hover:bg-saffron/20 hover:text-saffron"
-                )}>
-                  <Link href="/settings" className="flex items-center w-full">
-                    <Settings className={cn("mr-2 h-5 w-5 transition-colors", pathname === "/settings" ? "text-saffron" : "group-hover:text-saffron")} />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-saffron/30 my-2" />
-                <DropdownMenuItem onClick={handleLogout} className="group rounded-2xl px-4 py-3 text-base font-bold text-white hover:bg-red-500/20 hover:text-red-400 transition-all duration-200 cursor-pointer gap-3 mt-1 border border-transparent hover:border-red-400/30 shadow hover:shadow-red-400/10">
-                  <LogOut className="mr-2 h-5 w-5 group-hover:text-red-400 transition-colors" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button asChild variant="default" size="sm" className="rounded-full px-6 font-semibold bg-saffron text-primary hover:bg-saffron/90 shadow-lg">
-              <Link href="/login">Login</Link>
-            </Button>
-          )}
-        </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-black/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl">
+                  <DropdownMenuLabel className="text-white/80 font-medium px-3 py-2">
+                    {user.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem asChild className="p-3 hover:bg-white/10 focus:bg-white/10 cursor-pointer rounded-xl mx-2 my-1">
+                    <Link href="/settings" className="text-white hover:text-saffron transition-colors flex items-center gap-3">
+                      <Settings className="h-4 w-4" />
+                      <span className="font-medium">Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  {user.role === 'barber' && (
+                    <DropdownMenuItem asChild className="p-3 hover:bg-white/10 focus:bg-white/10 cursor-pointer rounded-xl mx-2 my-1">
+                      <Link href="/profile" className="text-white hover:text-saffron transition-colors flex items-center gap-3">
+                        <User className="h-4 w-4" />
+                        <span className="font-medium">My Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem 
+                    onClick={handleLogout}
+                    className="p-3 hover:bg-red-500/10 focus:bg-red-500/10 cursor-pointer text-red-400 hover:text-red-300 transition-colors rounded-xl mx-2 my-1"
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    <span className="font-medium">Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </nav>
+        ) : (
+          // Unauthenticated user navigation
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link href="/browse" className="text-white/80 hover:text-saffron transition-all duration-300 font-medium px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-white/5">
+              <Compass className="h-4 w-4" />
+              Browse
+            </Link>
+            <Link href="/login" className="text-white/80 hover:text-saffron transition-all duration-300 font-medium px-4 py-2 rounded-xl hover:bg-white/5">
+              Login
+            </Link>
+            <Link href="/register" className="bg-saffron text-primary px-6 py-2 rounded-xl font-semibold hover:bg-saffron/90 shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-saffron/20">
+              Get Started
+            </Link>
+          </nav>
+        )}
       </div>
     </nav>
   )

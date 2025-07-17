@@ -23,6 +23,7 @@ export type User = {
   specialties?: string[]
   priceRange?: string
   nextAvailable?: string
+  avatar_url?: string
 }
 
 interface AuthState {
@@ -193,7 +194,8 @@ export const useAuthStore = create<AuthStore>()(
           favorites: profile.favorites,
           joinDate: profile.join_date,
           createdAt: profile.created_at,
-          updatedAt: profile.updated_at
+          updatedAt: profile.updated_at,
+          avatar_url: profile.avatar_url
         };
 
         set({ 
@@ -356,7 +358,8 @@ export const useAuthStore = create<AuthStore>()(
           favorites: profile.favorites,
           joinDate: profile.join_date,
           createdAt: profile.created_at,
-          updatedAt: profile.updated_at
+          updatedAt: profile.updated_at,
+          avatar_url: profile.avatar_url
         };
 
         set({ 

@@ -379,15 +379,15 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .calendar-day.has-upcoming-events {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 140, 0, 0.2) 100%);
-            border: 2px solid rgba(255, 193, 7, 0.4);
-            box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+            background: linear-gradient(135deg, hsl(var(--secondary) / 0.2) 0%, hsl(var(--secondary) / 0.2) 100%);
+            border: 2px solid hsl(var(--secondary) / 0.4);
+            box-shadow: 0 0 20px hsl(var(--secondary) / 0.3);
             animation: pulse-orange 2s infinite;
           }
           
           .calendar-day.has-upcoming-events:hover {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%);
-            box-shadow: 0 0 25px rgba(255, 193, 7, 0.4);
+            background: linear-gradient(135deg, hsl(var(--secondary) / 0.3) 0%, hsl(var(--secondary) / 0.3) 100%);
+            box-shadow: 0 0 25px hsl(var(--secondary) / 0.4);
           }
           
           .calendar-day.has-past-events {
@@ -405,11 +405,11 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           @keyframes pulse-orange {
             0%, 100% { 
               opacity: 1; 
-              box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+              box-shadow: 0 0 20px hsl(var(--secondary) / 0.3);
             }
             50% { 
               opacity: 0.8; 
-              box-shadow: 0 0 30px rgba(255, 193, 7, 0.5);
+              box-shadow: 0 0 30px hsl(var(--secondary) / 0.5);
             }
           }
           
@@ -425,25 +425,25 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .calendar-day.selected {
-            background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+            background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary) / 0.8) 100%);
             color: white;
             transform: scale(1.08);
-            box-shadow: 0 16px 40px rgba(255, 193, 7, 0.4);
+            box-shadow: 0 16px 40px hsl(var(--secondary) / 0.4);
             border: 2px solid rgba(255, 255, 255, 0.3);
             font-weight: bold;
           }
           
           .calendar-day.today {
-            background: rgba(255, 193, 7, 0.15);
-            border: 2px solid #ffc107;
-            color: #ffc107;
+            background: hsl(var(--secondary) / 0.15);
+            border: 2px solid hsl(var(--secondary));
+            color: hsl(var(--secondary));
             font-weight: bold;
-            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+            box-shadow: 0 8px 25px hsl(var(--secondary) / 0.3);
           }
           
           .calendar-day.today:hover {
-            background: rgba(255, 193, 7, 0.25);
-            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.4);
+            background: hsl(var(--secondary) / 0.25);
+            box-shadow: 0 12px 35px hsl(var(--secondary) / 0.4);
           }
           
           .event-item {
@@ -456,15 +456,15 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .event-item.upcoming {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 140, 0, 0.08) 100%);
-            border: 1px solid rgba(255, 193, 7, 0.2);
+            background: linear-gradient(135deg, hsl(var(--secondary) / 0.08) 0%, hsl(var(--secondary) / 0.08) 100%);
+            border: 1px solid hsl(var(--secondary) / 0.2);
           }
           
           .event-item.upcoming:hover {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 140, 0, 0.15) 100%);
+            background: linear-gradient(135deg, hsl(var(--secondary) / 0.15) 0%, hsl(var(--secondary) / 0.15) 100%);
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.25);
-            border-color: rgba(255, 193, 7, 0.4);
+            box-shadow: 0 12px 35px hsl(var(--secondary) / 0.25);
+            border-color: hsl(var(--secondary) / 0.4);
           }
           
           .event-item.past {
@@ -509,9 +509,9 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .calendar-nav-button {
-            background: rgba(255, 193, 7, 0.15);
-            border: 1px solid rgba(255, 193, 7, 0.3);
-            color: #ffc107;
+            background: hsl(var(--secondary) / 0.15);
+            border: 1px solid hsl(var(--secondary) / 0.3);
+            color: hsl(var(--secondary));
             border-radius: 16px;
             padding: 0.875rem;
             cursor: pointer;
@@ -527,10 +527,10 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .calendar-nav-button:hover {
-            background: rgba(255, 193, 7, 0.25);
+            background: hsl(var(--secondary) / 0.25);
             transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 12px 35px rgba(255, 193, 7, 0.3);
-            border-color: rgba(255, 193, 7, 0.5);
+            box-shadow: 0 12px 35px hsl(var(--secondary) / 0.3);
+            border-color: hsl(var(--secondary) / 0.5);
           }
           
           .calendar-nav-button:active {
@@ -559,7 +559,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           .weekday {
             text-align: center;
             font-weight: 700;
-            color: #ffc107;
+            color: hsl(var(--secondary));
             font-size: 0.875rem;
             padding: 0.75rem 0;
             text-transform: uppercase;
@@ -581,7 +581,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .today-button {
-            background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
+            background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary) / 0.8) 100%);
             color: white;
             border: none;
             border-radius: 16px;
@@ -594,7 +594,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             min-height: 56px;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+            box-shadow: 0 8px 25px hsl(var(--secondary) / 0.3);
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             font-size: 1.1rem;
             letter-spacing: 0.025em;
@@ -602,7 +602,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           
           .today-button:hover {
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 16px 40px rgba(255, 193, 7, 0.4);
+            box-shadow: 0 16px 40px hsl(var(--secondary) / 0.4);
           }
           
           .today-button:active {
@@ -635,13 +635,13 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           }
           
           .event-list::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.6) 0%, rgba(255, 140, 0, 0.6) 100%);
+            background: linear-gradient(135deg, hsl(var(--secondary) / 0.6) 0%, hsl(var(--secondary) / 0.6) 100%);
             border-radius: 3px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           }
           
           .event-list::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.8) 0%, rgba(255, 140, 0, 0.8) 100%);
+            background: linear-gradient(135deg, hsl(var(--secondary) / 0.8) 0%, hsl(var(--secondary) / 0.8) 100%);
           }
           
           /* Mobile optimizations */
@@ -806,14 +806,14 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         </button>
 
         {/* Manual Appointment Button */}
-        <div className="mt-4 p-4 bg-gradient-to-r from-saffron/10 to-secondary/10 border border-saffron/20 rounded-xl">
+        <div className="mt-4 p-4 bg-gradient-to-r from-secondary/10 to-secondary/10 border border-secondary/20 rounded-xl backdrop-blur-sm">
           <div className="text-center mb-3">
             <h4 className="text-white font-semibold text-sm mb-1">Quick Add Appointment</h4>
             <p className="text-white/60 text-xs">For walk-ins, phone bookings, or admin purposes</p>
           </div>
           <Button
             onClick={() => setShowManualAppointmentForm(true)}
-            className="w-full bg-saffron text-black hover:bg-saffron/90 font-semibold rounded-lg py-2.5 shadow-lg shadow-saffron/25 transition-all duration-200 hover:scale-[1.02]"
+            className="w-full bg-secondary text-black hover:bg-secondary/90 font-semibold rounded-lg py-2.5 shadow-lg shadow-secondary/25 transition-all duration-200 hover:scale-[1.02]"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Manual Appointment
@@ -824,7 +824,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         {selectedDate && (
           <div className="events-panel">
             <h3 className="text-white font-bold text-lg mb-4 flex items-center">
-              <CalendarIcon className="w-5 h-5 mr-2 text-saffron" />
+              <CalendarIcon className="w-5 h-5 mr-2 text-secondary" />
               {format(selectedDate, 'EEEE, MMMM d, yyyy')}
             </h3>
             
@@ -865,9 +865,9 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                           </p>
                           <div className={cn(
                             "flex items-center text-xs",
-                            isMissed ? "text-red-400" : isPast ? "text-green-400" : "text-saffron"
+                            isMissed ? "text-red-400" : isPast ? "text-green-400" : "text-secondary"
                           )}>
-                            <Clock className={cn("w-3 h-3 mr-1", isMissed ? "text-red-400" : isPast ? "text-green-400" : "text-saffron")} />
+                            <Clock className={cn("w-3 h-3 mr-1", isMissed ? "text-red-400" : isPast ? "text-green-400" : "text-secondary")} />
                             <span className="font-medium">{formatTime(new Date(event.start))}</span>
                           </div>
                         </div>
@@ -880,7 +880,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                                 ? "bg-red-500/20 text-red-400 border-red-500/30"
                                 : isPast 
                                   ? "bg-green-500/20 text-green-400 border-green-500/30" 
-                                  : "bg-saffron/20 text-saffron border-saffron/30"
+                                  : "bg-secondary/20 text-secondary border-secondary/30"
                             )}
                           >
                             ${event.extendedProps.basePrice}
@@ -907,8 +907,8 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           <DialogHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-saffron/20 rounded-xl">
-                  <Scissors className="w-6 h-6 text-saffron" />
+                <div className="p-2 bg-secondary/20 rounded-xl">
+                  <Scissors className="w-6 h-6 text-secondary" />
                 </div>
                 <div>
                   <DialogTitle className="text-white text-xl font-bold">
@@ -941,7 +941,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                       "text-xs font-semibold",
                       selectedEvent.extendedProps.status === 'cancelled' 
                         ? "bg-red-500/20 text-red-400 border-red-500/30" 
-                        : "bg-saffron/20 text-saffron border-saffron/30"
+                        : "bg-secondary/20 text-secondary border-secondary/30"
                     )}
                   >
                     ${selectedEvent.extendedProps.price}
@@ -950,8 +950,8 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                 
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                    <div className="p-2 bg-saffron/20 rounded-lg">
-                      <User className="w-4 h-4 text-saffron" />
+                    <div className="p-2 bg-secondary/20 rounded-lg">
+                      <User className="w-4 h-4 text-secondary" />
                     </div>
                     <div>
                       <p className="text-white/60 text-xs uppercase tracking-wide">Client</p>
@@ -960,8 +960,8 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                   </div>
                   
                   <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                    <div className="p-2 bg-saffron/20 rounded-lg">
-                      <Clock className="w-4 h-4 text-saffron" />
+                    <div className="p-2 bg-secondary/20 rounded-lg">
+                      <Clock className="w-4 h-4 text-secondary" />
                     </div>
                     <div>
                       <p className="text-white/60 text-xs uppercase tracking-wide">Time</p>
@@ -972,8 +972,8 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                   </div>
                   
                   <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                    <div className="p-2 bg-saffron/20 rounded-lg">
-                      <DollarSign className="w-4 h-4 text-saffron" />
+                    <div className="p-2 bg-secondary/20 rounded-lg">
+                      <DollarSign className="w-4 h-4 text-secondary" />
                     </div>
                     <div>
                       <p className="text-white/60 text-xs uppercase tracking-wide">Total</p>
@@ -994,7 +994,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                            <span className="text-white/80">Add-ons:</span>
                            <span className="text-white">${selectedEvent.extendedProps.addonTotal}</span>
                          </div>
-                         <div className="flex justify-between font-semibold text-saffron">
+                         <div className="flex justify-between font-semibold text-secondary">
                            <span>Total:</span>
                            <span>${selectedEvent.extendedProps.price}</span>
                          </div>
@@ -1018,11 +1018,11 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
                   {selectedEvent.extendedProps.isGuest && (
                     <>
                       <div className="flex items-center gap-2 text-white/80">
-                        <Mail className="w-4 h-4 text-saffron" />
+                        <Mail className="w-4 h-4 text-secondary" />
                         <span>{selectedEvent.extendedProps.guestEmail}</span>
                       </div>
                       <div className="flex items-center gap-2 text-white/80">
-                        <Phone className="w-4 h-4 text-saffron" />
+                        <Phone className="w-4 h-4 text-secondary" />
                         <span>{selectedEvent.extendedProps.guestPhone}</span>
                       </div>
                     </>
@@ -1067,7 +1067,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
               {/* Google Calendar Sync Section */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <CalendarIcon className="w-4 h-4 text-saffron" />
+                  <CalendarIcon className="w-4 h-4 text-secondary" />
                   <span>Add to Calendar</span>
                 </div>
                 
@@ -1132,7 +1132,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           <DialogFooter>
             <Button 
               onClick={() => setShowEventDialog(false)}
-              className="w-full bg-saffron text-primary hover:bg-saffron/90"
+              className="w-full bg-secondary text-primary hover:bg-secondary/90"
             >
               Close
             </Button>

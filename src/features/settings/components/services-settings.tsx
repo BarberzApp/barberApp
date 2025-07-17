@@ -6,6 +6,7 @@ import { useAuth } from '@/shared/hooks/use-auth-zustand'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
+import { Textarea } from '@/shared/components/ui/textarea'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Loader2, Plus, Edit, Trash2, Scissors, AlertCircle, CheckCircle, Sparkles, Clock, DollarSign, Package } from 'lucide-react'
@@ -258,8 +259,8 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       <div className="space-y-6">
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-saffron/20 rounded-full">
-              <Scissors className="h-6 w-6 text-saffron" />
+            <div className="p-3 bg-secondary/20 rounded-full">
+              <Scissors className="h-6 w-6 text-secondary" />
             </div>
             <div>
               <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
@@ -275,8 +276,8 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
             <div className="flex items-center justify-center min-h-[200px]">
               <div className="text-center space-y-4">
                 <div className="relative">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-saffron" />
-                  <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-secondary" />
+                  <div className="absolute inset-0 rounded-full bg-secondary/20 animate-ping" />
                 </div>
                 <p className="text-white/60 font-medium">Loading services...</p>
               </div>
@@ -288,12 +289,12 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
   }
 
   return (
-    <div className="space-y-8 bg-black">
+    <div className="space-y-8">
       {/* Enhanced Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-4 mb-6">
-          <div className="p-4 bg-gradient-to-br from-saffron/20 to-saffron/10 rounded-2xl shadow-lg">
-            <Scissors className="h-8 w-8 text-saffron" />
+          <div className="p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-2xl shadow-lg">
+            <Scissors className="h-8 w-8 text-secondary" />
           </div>
           <div>
             <h2 className="text-3xl sm:text-4xl font-bebas text-white tracking-wide">
@@ -306,19 +307,19 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
 
       {/* Enhanced Add Service Form */}
       <Card className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-saffron/10 to-transparent border-b border-white/10 p-6">
+        <CardHeader className="bg-gradient-to-r from-secondary/10 to-transparent border-b border-white/10 p-6">
           <CardTitle className="text-white flex items-center gap-3 text-2xl">
             {editingService ? (
               <>
-                <div className="p-2 bg-saffron/20 rounded-xl">
-                  <Edit className="h-6 w-6 text-saffron" />
+                <div className="p-2 bg-secondary/20 rounded-xl">
+                  <Edit className="h-6 w-6 text-secondary" />
                 </div>
                 Edit Service
               </>
             ) : (
               <>
-                <div className="p-2 bg-saffron/20 rounded-xl">
-                  <Plus className="h-6 w-6 text-saffron" />
+                <div className="p-2 bg-secondary/20 rounded-xl">
+                  <Plus className="h-6 w-6 text-secondary" />
                 </div>
                 Add New Service
               </>
@@ -334,13 +335,13 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <Label htmlFor="name" className="text-white font-semibold text-lg flex items-center gap-2">
-                  <Scissors className="h-4 w-4 text-saffron" />
+                  <Scissors className="h-4 w-4 text-secondary" />
                   Service Name *
                 </Label>
                 <Input
                   id="name"
                   {...register('name')}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl h-12 text-lg"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary rounded-xl h-12 text-lg"
                   placeholder="e.g., Haircut, Beard Trim"
                 />
                 {validationErrors.name && (
@@ -353,7 +354,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
               
               <div className="space-y-3">
                 <Label htmlFor="price" className="text-white font-semibold text-lg flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-saffron" />
+                  <DollarSign className="h-4 w-4 text-secondary" />
                   Price ($) *
                 </Label>
                 <Input
@@ -362,7 +363,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                   step="0.01"
                   min="0"
                   {...register('price', { valueAsNumber: true })}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl h-12 text-lg"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary rounded-xl h-12 text-lg"
                   placeholder="25.00"
                 />
                 {validationErrors.price && (
@@ -377,7 +378,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <Label htmlFor="duration" className="text-white font-semibold text-lg flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-saffron" />
+                  <Clock className="h-4 w-4 text-secondary" />
                   Duration (minutes) *
                 </Label>
                 <Input
@@ -385,7 +386,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                   type="number"
                   min="1"
                   {...register('duration', { valueAsNumber: true })}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl h-12 text-lg"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary rounded-xl h-12 text-lg"
                   placeholder="30"
                 />
                 {validationErrors.duration && (
@@ -398,13 +399,13 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
               
               <div className="space-y-3">
                 <Label htmlFor="description" className="text-white font-semibold text-lg flex items-center gap-2">
-                  <Package className="h-4 w-4 text-saffron" />
+                  <Package className="h-4 w-4 text-secondary" />
                   Description
                 </Label>
-                <textarea
+                <Textarea
                   id="description"
                   {...register('description')}
-                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl text-lg min-h-[80px] p-3 resize-y"
+                  className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary rounded-xl text-lg min-h-[80px] resize-none"
                   placeholder="Brief description of the service"
                   rows={3}
                 />
@@ -415,7 +416,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl px-8 py-3 text-lg"
+                className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-primary font-semibold shadow-lg rounded-xl px-8 py-3 text-lg"
               >
                 {isLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -444,12 +445,12 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-saffron/20 rounded-xl">
-              <Scissors className="h-5 w-5 text-saffron" />
+            <div className="p-2 bg-secondary/20 rounded-xl">
+              <Scissors className="h-5 w-5 text-secondary" />
             </div>
             <h3 className="text-2xl font-bebas text-white tracking-wide">Your Services</h3>
           </div>
-          <Badge variant="glassy-saffron" className="text-sm px-4 py-2">
+          <Badge variant="secondary" className="text-sm px-4 py-2 bg-secondary/20 text-secondary border-secondary/30">
             {services.length} {services.length === 1 ? 'Service' : 'Services'}
           </Badge>
         </div>
@@ -458,8 +459,8 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
           <Card className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-xl backdrop-blur-xl rounded-3xl">
             <CardContent className="p-12 text-center">
               <div className="flex flex-col items-center gap-6">
-                <div className="p-6 bg-gradient-to-br from-saffron/20 to-saffron/10 rounded-3xl">
-                  <Sparkles className="h-12 w-12 text-saffron" />
+                <div className="p-6 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-3xl">
+                  <Sparkles className="h-12 w-12 text-secondary" />
                 </div>
                 <div className="space-y-3">
                   <h4 className="text-2xl font-bebas text-white tracking-wide">No Services Yet</h4>
@@ -467,7 +468,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                 </div>
                 <Button
                   onClick={() => document.getElementById('name')?.focus()}
-                  className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl px-8 py-3 text-lg"
+                  className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-primary font-semibold shadow-lg rounded-xl px-8 py-3 text-lg"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Add Your First Service
@@ -478,13 +479,13 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
         ) : (
           <div className="grid gap-6">
             {services.map((service) => (
-              <Card key={service.id} className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-xl backdrop-blur-xl hover:shadow-2xl hover:border-saffron/20 transition-all duration-300 rounded-3xl group">
+              <Card key={service.id} className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-xl backdrop-blur-xl hover:shadow-2xl hover:border-secondary/20 transition-all duration-300 rounded-3xl group">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-3">
                         <h4 className="text-xl font-bebas text-white tracking-wide">{service.name}</h4>
-                        <Badge variant="glassy-saffron" className="text-sm px-3 py-1">
+                        <Badge variant="secondary" className="text-sm px-3 py-1 bg-secondary/20 text-secondary border-secondary/30">
                           ${service.price}
                         </Badge>
                         <div className="flex items-center gap-2 text-white/60 text-sm bg-white/5 px-3 py-1 rounded-full">
@@ -525,29 +526,29 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
       </div>
 
       {/* Enhanced Tips Section */}
-      <Card className="bg-gradient-to-br from-saffron/10 via-saffron/5 to-transparent border border-saffron/20 shadow-xl backdrop-blur-xl rounded-3xl">
+      <Card className="bg-gradient-to-br from-secondary/10 via-secondary/5 to-transparent border border-secondary/20 shadow-xl backdrop-blur-xl rounded-3xl">
         <CardContent className="p-8">
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-gradient-to-br from-saffron/20 to-saffron/10 rounded-2xl">
-              <Sparkles className="h-6 w-6 text-saffron" />
+            <div className="p-3 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-2xl">
+              <Sparkles className="h-6 w-6 text-secondary" />
             </div>
             <div className="space-y-4">
               <h4 className="text-xl font-bebas text-white tracking-wide">Pro Tips for Success</h4>
               <ul className="text-white/70 space-y-3">
                 <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-secondary rounded-full mt-2 flex-shrink-0"></div>
                   <span className="text-base">Set competitive prices based on your location and experience level</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-secondary rounded-full mt-2 flex-shrink-0"></div>
                   <span className="text-base">Be accurate with duration estimates to avoid scheduling conflicts</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-secondary rounded-full mt-2 flex-shrink-0"></div>
                   <span className="text-base">Add detailed descriptions to help clients understand your services</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-saffron rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-secondary rounded-full mt-2 flex-shrink-0"></div>
                   <span className="text-base">Consider offering package deals for multiple services</span>
                 </li>
               </ul>

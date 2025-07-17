@@ -24,26 +24,26 @@ interface UpdatesModalProps {
 const getTypeIcon = (type: Update['type']) => {
   switch (type) {
     case 'feature':
-      return <Sparkles className="h-4 w-4" />
+      return <Sparkles className="h-4 w-4 text-saffron" />
     case 'bugfix':
-      return <Bug className="h-4 w-4" />
+      return <Bug className="h-4 w-4 text-red-400" />
     case 'improvement':
-      return <Zap className="h-4 w-4" />
+      return <Zap className="h-4 w-4 text-blue-400" />
     default:
-      return <Sparkles className="h-4 w-4" />
+      return <Sparkles className="h-4 w-4 text-saffron" />
   }
 }
 
 const getTypeColor = (type: Update['type']) => {
   switch (type) {
     case 'feature':
-      return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      return 'bg-saffron/10 border-saffron/30 text-saffron'
     case 'bugfix':
-      return 'bg-green-500/20 text-green-400 border-green-500/30'
+      return 'bg-red-500/10 border-red-500/30 text-red-400'
     case 'improvement':
-      return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+      return 'bg-blue-500/10 border-blue-500/30 text-blue-400'
     default:
-      return 'bg-saffron/20 text-saffron border-saffron/30'
+      return 'bg-saffron/10 border-saffron/30 text-saffron'
   }
 }
 
@@ -56,13 +56,13 @@ export function UpdatesModal({ open, onOpenChange, updates, onMarkAsRead }: Upda
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-full bg-black/90 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[80vh]">
+      <DialogContent className="max-w-2xl w-full bg-black/95 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-saffron" />
             What's New
             {newUpdatesCount > 0 && (
-              <Badge className="bg-red-500 text-white text-xs px-2 py-1">
+              <Badge className="bg-red-500 text-white text-xs px-2 py-1 shadow-lg shadow-red-500/50">
                 {newUpdatesCount} new
               </Badge>
             )}
@@ -77,10 +77,10 @@ export function UpdatesModal({ open, onOpenChange, updates, onMarkAsRead }: Upda
             <div
               key={update.id}
               className={cn(
-                "p-4 rounded-xl border transition-all duration-200",
+                "p-4 rounded-xl border transition-all duration-300",
                 update.isNew 
                   ? "bg-saffron/10 border-saffron/30 shadow-lg shadow-saffron/20" 
-                  : "bg-white/5 border-white/10"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
               )}
             >
               <div className="flex items-start justify-between mb-2">
@@ -95,7 +95,7 @@ export function UpdatesModal({ open, onOpenChange, updates, onMarkAsRead }: Upda
                     {update.title}
                   </h3>
                   {update.isNew && (
-                    <Badge className="bg-red-500 text-white text-xs px-2 py-0.5 ml-2">
+                    <Badge className="bg-red-500 text-white text-xs px-2 py-0.5 ml-2 shadow-lg shadow-red-500/50">
                       NEW
                     </Badge>
                   )}
@@ -115,7 +115,7 @@ export function UpdatesModal({ open, onOpenChange, updates, onMarkAsRead }: Upda
           <div className="flex justify-end mt-6 pt-4 border-t border-white/10">
             <Button
               onClick={handleMarkAsRead}
-              className="bg-saffron text-primary hover:bg-saffron/90"
+              className="bg-saffron text-primary hover:bg-saffron/90 shadow-lg shadow-saffron/20 transition-all duration-300 hover:shadow-xl hover:shadow-saffron/30"
             >
               <Check className="h-4 w-4 mr-2" />
               Mark All as Read

@@ -83,6 +83,77 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<ProfileFormData>()
   const [isDeveloper, setIsDeveloper] = useState(false)
 
+  // Add state for separate address fields
+  const [addressFields, setAddressFields] = useState({
+    address: '',
+    city: '',
+    state: '',
+    zipCode: ''
+  })
+
+  // Function to parse location string into separate fields
+  const parseLocation = (location: string) => {
+    if (!location) return { address: '', city: '', state: '', zipCode: '' }
+    
+    // Try different location formats
+    const locationStr = location.trim()
+    
+    // Format: "Address, City, State ZIP" or "Address, City, State"
+    const fullMatch = locationStr.match(/^(.+?),\s*([^,]+?),\s*([A-Za-z]{2,})\s*(\d{5})?$/);
+    if (fullMatch) {
+      return {
+        address: fullMatch[1].trim(),
+        city: fullMatch[2].trim(),
+        state: fullMatch[3].trim(),
+        zipCode: fullMatch[4] || ''
+      }
+    }
+    
+    // Format: "Address, City State ZIP" or "Address, City State"
+    const cityStateMatch = locationStr.match(/^(.+?),\s*([^,]+?)\s+([A-Za-z]{2,})\s*(\d{5})?$/);
+    if (cityStateMatch) {
+      return {
+        address: cityStateMatch[1].trim(),
+        city: cityStateMatch[2].trim(),
+        state: cityStateMatch[3].trim(),
+        zipCode: cityStateMatch[4] || ''
+      }
+    }
+    
+    // Fallback: split by comma and try to extract
+    const parts = locationStr.split(',').map((part: string) => part.trim());
+    if (parts.length >= 2) {
+      const address = parts[0];
+      const city = parts[1];
+      
+      // Try to extract state and zip from the last part
+      let state = '', zipCode = '';
+      if (parts.length >= 3) {
+        const lastPart = parts[2];
+        const stateZipMatch = lastPart.match(/([A-Za-z]{2,})\s*(\d{5})?/);
+        if (stateZipMatch) {
+          state = stateZipMatch[1];
+          zipCode = stateZipMatch[2] || '';
+        } else {
+          state = lastPart;
+        }
+      }
+      
+      return { address, city, state, zipCode }
+    }
+    
+    return { address: locationStr, city: '', state: '', zipCode: '' }
+  }
+
+  // Function to combine address fields into location string
+  const combineAddressFields = (fields: typeof addressFields) => {
+    const parts = [fields.address, fields.city, fields.state].filter(Boolean);
+    if (fields.zipCode) {
+      parts.push(fields.zipCode);
+    }
+    return parts.join(', ');
+  }
+
   const validateForm = (data: ProfileFormData): boolean => {
     const errors: {[key: string]: string} = {}
     
@@ -139,6 +210,10 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         if (barber) {
           setBarberId(barber.id)
           // Use barber's bio if available, otherwise use profile's bio
+          // Parse location into separate fields
+          const parsedLocation = parseLocation(profile.location || '');
+          setAddressFields(parsedLocation);
+          
           reset({
             name: profile.name || '',
             username: profile.username || '',
@@ -160,6 +235,10 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         }
       } else {
         // For non-barbers, just use profile data
+        // Parse location into separate fields
+        const parsedLocation = parseLocation(profile.location || '');
+        setAddressFields(parsedLocation);
+        
         reset({
           name: profile.name || '',
           username: profile.username || '',
@@ -308,7 +387,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             email: data.email,
             phone: data.phone,
             bio: data.bio,
-            location: data.location,
+            location: combineAddressFields(addressFields), // Combine address fields
             description: data.description,
             is_public: data.isPublic,
           })
@@ -366,9 +445,9 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const isClient = user?.role !== 'barber';
   // Example stats (replace with real data if available)
   const quickStats = [
-    { label: 'Total Bookings', value: 0, icon: <CheckCircle className="h-6 w-6 text-saffron" /> },
-    { label: 'Favorite Barbers', value: 0, icon: <Sparkles className="h-6 w-6 text-saffron" /> },
-    { label: 'Member Since', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Recently', icon: <User className="h-6 w-6 text-saffron" /> },
+    { label: 'Total Bookings', value: 0, icon: <CheckCircle className="h-6 w-6 text-secondary" /> },
+    { label: 'Favorite Barbers', value: 0, icon: <Sparkles className="h-6 w-6 text-secondary" /> },
+    { label: 'Member Since', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Recently', icon: <User className="h-6 w-6 text-secondary" /> },
   ];
 
   if (isInitialLoad) {
@@ -376,8 +455,8 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       <div className="space-y-6">
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-saffron/20 rounded-full">
-              <User className="h-6 w-6 text-saffron" />
+            <div className="p-3 bg-secondary/20 rounded-full">
+              <User className="h-6 w-6 text-secondary" />
             </div>
             <div>
               <h3 className="text-xl sm:text-2xl font-bebas text-white tracking-wide">
@@ -393,8 +472,8 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             <div className="flex items-center justify-center min-h-[200px]">
               <div className="text-center space-y-4">
                 <div className="relative">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-saffron" />
-                  <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-secondary" />
+                  <div className="absolute inset-0 rounded-full bg-secondary/20 animate-ping" />
                 </div>
                 <p className="text-white/60 font-medium">Loading profile...</p>
               </div>
@@ -417,7 +496,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white flex items-center gap-2">
-              <Camera className="h-5 w-5 text-saffron" />
+              <Camera className="h-5 w-5 text-secondary" />
               Personal Information
             </CardTitle>
             <CardDescription className="text-white/70">
@@ -428,15 +507,15 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             {/* Avatar Section */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
               <div className="relative">
-                <Avatar className="h-24 w-24 border-4 border-saffron/20">
+                <Avatar className="h-24 w-24 border-4 border-secondary/20">
                   <AvatarImage src={avatarUrl || ''} alt="Profile" />
-                  <AvatarFallback className="bg-saffron/20 text-saffron text-2xl font-semibold">
+                  <AvatarFallback className="bg-secondary/20 text-secondary text-2xl font-semibold">
                     {watch('name')?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 {isLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-saffron" />
+                    <Loader2 className="h-8 w-8 animate-spin text-secondary" />
                   </div>
                 )}
                 <input
@@ -450,7 +529,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                 <Button
                   type="button"
                   variant="outline"
-                  className="absolute -bottom-4 left-1/2 -translate-x-1/2 border-saffron/30 text-saffron hover:bg-saffron/10 px-4 py-2 text-sm"
+                  className="absolute -bottom-4 left-1/2 -translate-x-1/2 border-secondary/30 text-secondary hover:bg-secondary/10 px-4 py-2 text-sm"
                   onClick={() => document.getElementById('avatar-upload')?.click()}
                   disabled={isLoading}
                 >
@@ -464,13 +543,13 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name" className="text-white font-medium flex items-center gap-2">
-                      <User className="h-4 w-4 text-saffron" />
+                      <User className="h-4 w-4 text-secondary" />
                       Full Name *
                     </Label>
                     <Input
                       id="name"
                       type="text"
-                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.name ? 'border-red-400' : ''}`}
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary ${validationErrors.name ? 'border-red-400' : ''}`}
                       {...register('name', { required: 'Name is required' })}
                       placeholder="Enter your full name"
                     />
@@ -483,13 +562,13 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="username" className="text-white font-medium flex items-center gap-2">
-                      <User className="h-4 w-4 text-saffron" />
+                      <User className="h-4 w-4 text-secondary" />
                       Username *
                     </Label>
                     <Input
                       id="username"
                       type="text"
-                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.username ? 'border-red-400' : ''}`}
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary ${validationErrors.username ? 'border-red-400' : ''}`}
                       {...register('username', { required: 'Username is required' })}
                       placeholder="your_username"
                     />
@@ -507,13 +586,13 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-white font-medium flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-saffron" />
+                      <Mail className="h-4 w-4 text-secondary" />
                       Email Address *
                     </Label>
                     <Input
                       id="email"
                       type="email"
-                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.email ? 'border-red-400' : ''}`}
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary ${validationErrors.email ? 'border-red-400' : ''}`}
                       {...register('email', { required: 'Email is required' })}
                       placeholder="Enter your email address"
                     />
@@ -526,13 +605,13 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-saffron" />
+                      <Phone className="h-4 w-4 text-secondary" />
                       Phone Number
                     </Label>
                     <Input
                       id="phone"
                       type="tel"
-                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron ${validationErrors.phone ? 'border-red-400' : ''}`}
+                      className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary ${validationErrors.phone ? 'border-red-400' : ''}`}
                       {...register('phone')}
                       placeholder="(555) 123-4567"
                     />
@@ -544,18 +623,65 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                     )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-saffron" />
-                    Location
-                  </Label>
-                  <Input
-                    id="location"
-                    type="text"
-                    className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron"
-                    {...register('location')}
-                    placeholder="City, State"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="address" className="text-white font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-secondary" />
+                      Address
+                    </Label>
+                    <Input
+                      id="address"
+                      type="text"
+                      className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary"
+                      value={addressFields.address}
+                      onChange={(e) => setAddressFields(prev => ({ ...prev, address: e.target.value }))}
+                      placeholder="123 Main St"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="text-white font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-secondary" />
+                      City
+                    </Label>
+                    <Input
+                      id="city"
+                      type="text"
+                      className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary"
+                      value={addressFields.city}
+                      onChange={(e) => setAddressFields(prev => ({ ...prev, city: e.target.value }))}
+                      placeholder="New York"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="state" className="text-white font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-secondary" />
+                      State
+                    </Label>
+                    <Input
+                      id="state"
+                      type="text"
+                      className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary"
+                      value={addressFields.state}
+                      onChange={(e) => setAddressFields(prev => ({ ...prev, state: e.target.value }))}
+                      placeholder="NY"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode" className="text-white font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-secondary" />
+                      Zip Code
+                    </Label>
+                    <Input
+                      id="zipCode"
+                      type="text"
+                      className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary"
+                      value={addressFields.zipCode}
+                      onChange={(e) => setAddressFields(prev => ({ ...prev, zipCode: e.target.value }))}
+                      placeholder="10001"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio" className="text-white font-medium">
@@ -564,7 +690,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   <Textarea
                     id="bio"
                     rows={4}
-                    className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron resize-none ${validationErrors.bio ? 'border-red-400' : ''}`}
+                    className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary resize-none ${validationErrors.bio ? 'border-red-400' : ''}`}
                     {...register('bio')}
                     placeholder="Tell us about yourself..."
                   />
@@ -583,7 +709,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg px-8 py-3"
+                className="bg-secondary hover:bg-secondary/90 text-primary font-semibold shadow-lg px-8 py-3"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -602,7 +728,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-2xl">
           <CardHeader className="bg-white/5 border-b border-white/10">
             <CardTitle className="text-white flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-saffron" />
+              <Sparkles className="h-5 w-5 text-secondary" />
               Quick Stats
             </CardTitle>
           </CardHeader>
@@ -610,7 +736,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {quickStats.map((stat) => (
                 <div key={stat.label} className="flex items-center gap-3 bg-white/10 rounded-xl p-4">
-                  <div className="bg-saffron/20 rounded-full p-2 flex items-center justify-center">
+                  <div className="bg-secondary/20 rounded-full p-2 flex items-center justify-center">
                     {stat.icon}
                   </div>
                   <div>

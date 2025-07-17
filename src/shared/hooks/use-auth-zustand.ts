@@ -8,7 +8,7 @@ export const getRedirectPath = async (userId: string) => {
   try {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('role, location, email')
+      .select('role, location, email, phone')
       .eq('id', userId)
       .maybeSingle()
     
@@ -26,7 +26,53 @@ export const getRedirectPath = async (userId: string) => {
     if (profile.email === 'primbocm@gmail.com') {
       return '/super-admin'
     } else if (profile.role === 'barber') {
-      return '/barber/onboarding'
+      // Check barber completion percentage
+      try {
+        const { data: barber, error: barberError } = await supabase
+          .from('barbers')
+          .select('id, business_name, bio, specialties')
+          .eq('user_id', userId)
+          .maybeSingle()
+
+        if (barberError) {
+          console.error('Barber fetch error:', barberError)
+          return '/barber/onboarding'
+        }
+
+        // Calculate completion percentage
+        const totalFields = 6; // business_name, bio, specialties, phone, location, services
+        let completedFields = 0;
+        
+        if (barber?.business_name) completedFields++;
+        if (barber?.bio) completedFields++;
+        if (barber?.specialties && barber.specialties.length > 0) completedFields++;
+        if (profile?.phone) completedFields++;
+        if (profile?.location) completedFields++;
+        
+        // Check for services
+        if (barber?.id) {
+          const { data: services } = await supabase
+            .from('services')
+            .select('id')
+            .eq('barber_id', barber.id);
+          if (services && services.length > 0) completedFields++;
+        }
+        
+        const completionPercentage = (completedFields / totalFields) * 100;
+        
+        console.log('Login redirect: Barber completion percentage', { 
+          completedFields, 
+          totalFields, 
+          completionPercentage 
+        });
+
+        // Always redirect to onboarding for barbers
+        console.log('Login redirect: Redirecting to onboarding');
+        return '/barber/onboarding'
+      } catch (error) {
+        console.error('Error checking barber completion:', error)
+        return '/barber/onboarding'
+      }
     } else if (profile.location) {
       return '/browse'
     } else {

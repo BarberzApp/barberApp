@@ -254,11 +254,18 @@ export function SettingsPage() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 bg-black">
-        <div className="text-center space-y-4">
+      <div className="min-h-screen bg-background flex items-center justify-center py-8">
+        {/* Background Elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="text-center space-y-4 relative z-10">
           <div className="relative">
-            <SettingsIcon className="h-12 w-12 animate-spin mx-auto text-saffron" />
-            <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+            <SettingsIcon className="h-12 w-12 animate-spin mx-auto text-secondary" />
+            <div className="absolute inset-0 rounded-full bg-secondary/20 animate-ping" />
           </div>
           <p className="text-white/60 font-medium">Loading your settings...</p>
         </div>
@@ -268,11 +275,18 @@ export function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 bg-black">
-        <Card className="max-w-md bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl">
+      <div className="min-h-screen bg-background flex items-center justify-center py-8">
+        {/* Background Elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+        </div>
+        
+        <Card className="max-w-md bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl relative z-10">
           <CardContent className="p-6">
-            <Alert className="border-saffron/20 bg-saffron/10">
-              <AlertCircle className="h-4 w-4 text-saffron" />
+            <Alert className="border-secondary/20 bg-secondary/10">
+              <AlertCircle className="h-4 w-4 text-secondary" />
               <AlertDescription className="text-white">
                 Please log in to access your settings.
               </AlertDescription>
@@ -284,17 +298,24 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black pb-32">
+    <div className="min-h-screen bg-background pb-32">
+      {/* Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+      </div>
+      
       {/* Main Content */}
-      <div className="container mx-auto max-w-7xl px-4 py-8">
+      <div className="container mx-auto max-w-7xl px-4 py-8 relative z-10">
         <div className="space-y-8">
           {/* Header Section */}
           <div className="flex flex-col items-center text-center py-8">
-            <div className="p-5 bg-saffron/20 rounded-full shadow-lg mb-4 flex items-center justify-center">
-              <SettingsIcon className="h-10 w-10 text-saffron" />
+            <div className="p-5 bg-secondary/20 rounded-full shadow-lg mb-4 flex items-center justify-center">
+              <SettingsIcon className="h-10 w-10 text-secondary" />
             </div>
-            <h1 className="text-4xl font-bold text-white mb-2">Settings</h1>
-            <p className="text-white/70 text-base max-w-xs">
+            <h1 className="text-4xl font-bebas font-bold text-white mb-2">Settings</h1>
+            <p className="text-white/70 text-base max-w-xs font-pacifico">
               Manage your profile, services, and preferences
             </p>
           </div>
@@ -338,10 +359,10 @@ export function SettingsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-saffron" />
+                      <Sparkles className="h-5 w-5 text-secondary" />
                       <span className="text-sm font-medium text-white">Profile Completion</span>
                     </div>
-                    <Badge variant="secondary" className="bg-saffron/20 text-saffron border-saffron/30">
+                    <Badge variant="secondary" className="bg-secondary/20 text-secondary border-secondary/30">
                       {getCompletionPercentage()}% Complete
                     </Badge>
                   </div>
@@ -350,7 +371,7 @@ export function SettingsPage() {
                       value={getCompletionPercentage()} 
                       className="h-3 bg-white/10 border border-white/20" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-saffron/20 to-saffron/40 rounded-full" style={{ width: `${getCompletionPercentage()}%` }} />
+                    <div className="absolute inset-0 bg-gradient-to-r from-secondary/20 to-secondary/40 rounded-full" style={{ width: `${getCompletionPercentage()}%` }} />
                   </div>
                   <p className="text-sm text-white/60 text-center">
                     Complete all sections to optimize your profile for clients
@@ -359,7 +380,7 @@ export function SettingsPage() {
                     <div className="flex justify-center">
                       <Button 
                         onClick={() => safePush('/barber/onboarding')}
-                        className="bg-saffron hover:bg-saffron/90 text-primary font-semibold rounded-xl px-6 py-3"
+                        className="bg-secondary hover:bg-secondary/90 text-primary font-semibold rounded-xl px-6 py-3"
                         size="sm"
                       >
                         Complete Onboarding
@@ -382,7 +403,7 @@ export function SettingsPage() {
                       value="profile" 
                       className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                         activeTab === 'profile' 
-                          ? 'bg-saffron text-primary shadow-lg' 
+                          ? 'bg-secondary text-primary shadow-lg' 
                           : 'text-white/70 hover:text-white hover:bg-white/10'
                       }`}
                     >
@@ -396,7 +417,7 @@ export function SettingsPage() {
                           value="services" 
                           className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                             activeTab === 'services' 
-                              ? 'bg-saffron text-primary shadow-lg' 
+                              ? 'bg-secondary text-primary shadow-lg' 
                               : 'text-white/70 hover:text-white hover:bg-white/10'
                           }`}
                         >
@@ -408,8 +429,8 @@ export function SettingsPage() {
                           value="earnings" 
                           className={`relative flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 rounded-xl transition-all duration-200 text-sm sm:text-base font-semibold snap-start ${
                             activeTab === 'earnings' 
-                              ? 'bg-saffron text-primary shadow-lg scale-105' 
-                              : 'text-white/80 hover:text-white hover:bg-white/10 bg-saffron/10 border border-saffron/20'
+                              ? 'bg-secondary text-primary shadow-lg scale-105' 
+                              : 'text-white/80 hover:text-white hover:bg-white/10 bg-secondary/10 border border-secondary/20'
                           }`}
                         >
                           <DollarSign className="h-5 w-5" />
@@ -420,7 +441,7 @@ export function SettingsPage() {
                           value="addons" 
                           className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                             activeTab === 'addons' 
-                              ? 'bg-saffron text-primary shadow-lg' 
+                              ? 'bg-secondary text-primary shadow-lg' 
                               : 'text-white/70 hover:text-white hover:bg-white/10'
                           }`}
                         >
@@ -432,7 +453,7 @@ export function SettingsPage() {
                           value="availability" 
                           className={`relative flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium snap-start ${
                             activeTab === 'availability' 
-                              ? 'bg-saffron text-primary shadow-lg' 
+                              ? 'bg-secondary text-primary shadow-lg' 
                               : 'text-white/70 hover:text-white hover:bg-white/10'
                           }`}
                         >
@@ -471,8 +492,8 @@ export function SettingsPage() {
                     <TabsContent value="availability" className="mt-0">
                       <div className="space-y-6">
                         <div className="text-center space-y-2">
-                          <h2 className="text-2xl font-bold text-white">Schedule Management</h2>
-                          <p className="text-white/60">Manage your availability and working hours</p>
+                          <h2 className="text-2xl font-bebas font-bold text-white">Schedule Management</h2>
+                          <p className="text-white/60 font-pacifico">Manage your availability and working hours</p>
                         </div>
                         <AvailabilityManager barberId={barberId} onUpdate={loadSettingsData} />
                       </div>
@@ -481,8 +502,8 @@ export function SettingsPage() {
                     <TabsContent value="earnings" className="mt-0">
                       <div className="space-y-6">
                         <div className="text-center space-y-2">
-                          <h2 className="text-2xl font-bold text-white">Earnings & Payments</h2>
-                          <p className="text-white/60">Track your earnings and manage payments</p>
+                          <h2 className="text-2xl font-bebas font-bold text-white">Earnings & Payments</h2>
+                          <p className="text-white/60 font-pacifico">Track your earnings and manage payments</p>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                           <EarningsDashboard barberId={barberId} />
@@ -502,7 +523,7 @@ export function SettingsPage() {
         </div>
       </div>
       {/* Logout Button at the bottom */}
-      <div className="container max-w-6xl mx-auto px-4 mt-8 mb-8 flex justify-center">
+      <div className="container max-w-6xl mx-auto px-4 mt-8 mb-8 flex justify-center relative z-10">
         <Button
           onClick={async () => {
             try {

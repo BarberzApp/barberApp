@@ -8,6 +8,7 @@ import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSi
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { cn } from "@/shared/lib/utils"
 import { UpdatesBadge } from "@/shared/components/updates/updates-badge"
+import { NotificationBell } from "@/shared/notifications/notification-bell"
 
 export function MobileNav() {
   const router = useRouter()
@@ -96,14 +97,14 @@ export function MobileNav() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      {/* Enhanced glassy background with better blur and gradient */}
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-3xl border-t border-white/20 shadow-2xl" />
+      {/* Modern glass morphism background */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-2xl border-t border-white/10 shadow-2xl" />
       
       {/* Subtle gradient overlay for depth */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
       
       {/* Main navigation container */}
-      <div className="relative flex items-center justify-center gap-1 px-3 py-3 h-[85px] pb-safe">
+      <div className="relative flex items-center justify-center gap-2 px-4 py-6 h-[120px] pb-safe">
         {/* Left navigation items */}
         {leftItems.filter(Boolean).map((item) => {
           if (!item) return null;
@@ -119,26 +120,26 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center justify-center py-2 px-3 rounded-2xl transition-all duration-300 min-w-[56px] group",
+                "relative flex flex-col items-center justify-center py-3 px-4 rounded-2xl transition-all duration-300 min-w-[64px] group",
                 isActive 
-                  ? "text-saffron bg-saffron/20 shadow-lg shadow-saffron/20 border border-saffron/30" 
-                  : "text-white/70 hover:text-saffron hover:bg-saffron/10 hover:shadow-md"
+                  ? "text-saffron bg-saffron/15 shadow-lg shadow-saffron/25 border border-saffron/30 backdrop-blur-sm" 
+                  : "text-white/80 hover:text-saffron hover:bg-white/10 hover:shadow-md backdrop-blur-sm"
               )}
             >
               {/* Active indicator */}
               {isActive && (
-                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-saffron rounded-full shadow-lg shadow-saffron/50" />
               )}
               
               <item.icon 
                 className={cn(
-                  "h-5 w-5 mb-1 transition-all duration-300",
-                  isActive ? "text-saffron scale-110" : "text-white/70 group-hover:scale-105"
+                  "h-6 w-6 mb-1 transition-all duration-300",
+                  isActive ? "text-saffron scale-110" : "text-white/80 group-hover:scale-105 group-hover:text-saffron"
                 )} 
               />
               <span className={cn(
-                "text-xs font-medium transition-all duration-300",
-                isActive ? "text-saffron font-semibold" : "text-white/70 group-hover:text-saffron"
+                "text-xs font-semibold transition-all duration-300 tracking-wide",
+                isActive ? "text-saffron" : "text-white/80 group-hover:text-saffron"
               )}>
                 {item.name}
               </span>
@@ -146,27 +147,28 @@ export function MobileNav() {
           )
         })}
 
-        {/* Center item (highlighted) - inspired by profile page design */}
+        {/* Center item (highlighted) - modern design */}
         {centerItem && (
           <Link
             key={centerItem.href}
             href={centerItem.href}
             className={cn(
-              "relative flex flex-col items-center justify-center py-3 px-4 rounded-3xl transition-all duration-300 min-w-[72px] scale-110",
-              "bg-gradient-to-br from-saffron/90 to-saffron/70 shadow-2xl shadow-saffron/30",
-              "border-2 border-saffron/50 hover:border-saffron/70",
-              "hover:scale-115 hover:shadow-saffron/40",
-              pathname === centerItem.href ? "ring-2 ring-saffron/60" : ""
+              "relative flex flex-col items-center justify-center py-4 px-5 rounded-3xl transition-all duration-300 min-w-[80px] scale-110 group",
+              "bg-gradient-to-br from-saffron via-saffron/90 to-saffron/80 shadow-2xl shadow-saffron/40",
+              "border-2 border-saffron/60 hover:border-saffron/80",
+              "hover:scale-115 hover:shadow-saffron/50 hover:shadow-2xl",
+              pathname === centerItem.href ? "ring-2 ring-saffron/60 ring-offset-2 ring-offset-black/50" : ""
             )}
           >
-            {/* Glow effect */}
-            <div className="absolute inset-0 rounded-3xl bg-saffron/20 blur-xl" />
+            {/* Enhanced glow effect */}
+            <div className="absolute inset-0 rounded-3xl bg-saffron/30 blur-xl opacity-60" />
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-saffron/20 to-transparent" />
             
-            <centerItem.icon className="h-6 w-6 mb-1 text-primary drop-shadow-lg relative z-10" />
-            <span className="text-sm font-bold text-primary drop-shadow flex items-center relative z-10">
+            <centerItem.icon className="h-6 w-6 mb-1 text-primary drop-shadow-lg relative z-10 group-hover:scale-110 transition-transform duration-300" />
+            <span className="text-xs font-bold text-primary drop-shadow flex items-center relative z-10 tracking-wide">
               {centerItem.name}
               {centerItem.name === 'Cuts' && (
-                <span className="ml-1 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle shadow-sm">
+                <span className="ml-1 bg-purple-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full align-middle shadow-sm">
                   Beta
                 </span>
               )}
@@ -189,26 +191,26 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center justify-center py-2 px-3 rounded-2xl transition-all duration-300 min-w-[56px] group",
+                "relative flex flex-col items-center justify-center py-3 px-4 rounded-2xl transition-all duration-300 min-w-[64px] group",
                 isActive 
-                  ? "text-saffron bg-saffron/20 shadow-lg shadow-saffron/20 border border-saffron/30" 
-                  : "text-white/70 hover:text-saffron hover:bg-saffron/10 hover:shadow-md"
+                  ? "text-saffron bg-saffron/15 shadow-lg shadow-saffron/25 border border-saffron/30 backdrop-blur-sm" 
+                  : "text-white/80 hover:text-saffron hover:bg-white/10 hover:shadow-md backdrop-blur-sm"
               )}
             >
               {/* Active indicator */}
               {isActive && (
-                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-saffron rounded-full shadow-lg shadow-saffron/50" />
               )}
               
               <item.icon 
                 className={cn(
-                  "h-5 w-5 mb-1 transition-all duration-300",
-                  isActive ? "text-saffron scale-110" : "text-white/70 group-hover:scale-105"
+                  "h-6 w-6 mb-1 transition-all duration-300",
+                  isActive ? "text-saffron scale-110" : "text-white/80 group-hover:scale-105 group-hover:text-saffron"
                 )} 
               />
               <span className={cn(
-                "text-xs font-medium transition-all duration-300",
-                isActive ? "text-saffron font-semibold" : "text-white/70 group-hover:text-saffron"
+                "text-xs font-semibold transition-all duration-300 tracking-wide",
+                isActive ? "text-saffron" : "text-white/80 group-hover:text-saffron"
               )}>
                 {item.name}
               </span>
@@ -216,10 +218,10 @@ export function MobileNav() {
           )
         })}
 
-        {/* Updates badge - positioned above the navbar */}
+        {/* Notification Bell - positioned above the navbar */}
         {user && (
-          <div className="absolute -top-2 right-4">
-            <UpdatesBadge />
+          <div className="absolute -top-3 right-4">
+            <NotificationBell />
           </div>
         )}
       </div>

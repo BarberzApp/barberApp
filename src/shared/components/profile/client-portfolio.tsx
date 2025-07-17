@@ -210,16 +210,18 @@ export default function ClientPortfolio() {
 
       if (updateError) throw updateError
 
+      // Update local state
       setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null)
+
       toast({
         title: 'Success',
-        description: 'Avatar updated successfully!',
+        description: 'Profile picture updated successfully!',
       })
     } catch (error) {
       console.error('Error uploading avatar:', error)
       toast({
         title: 'Error',
-        description: 'Failed to upload avatar. Please try again.',
+        description: 'Failed to update profile picture.',
         variant: 'destructive',
       })
     } finally {
@@ -243,355 +245,324 @@ export default function ClientPortfolio() {
     })
   }
 
-  const isOwner = true // Client viewing their own profile
-
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-saffron mx-auto mb-4" />
-          <p className="text-white/60">Loading your profile...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        {/* Background Elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="text-center space-y-4 relative z-10">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-secondary" />
+            <div className="absolute inset-0 rounded-full bg-secondary/20 animate-ping" />
+          </div>
+          <p className="text-white/60 font-medium font-pacifico">Loading your profile...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/20 rounded-full blur-3xl -z-10" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-saffron/20 rounded-full blur-3xl -z-10" />
-
-      {/* Cover Photo */}
-      <div className="relative h-48 sm:h-64 md:h-80 w-full">
-        {profile?.coverphoto ? (
-          <img
-            src={profile.coverphoto}
-            alt="Cover"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-saffron/20 via-purple-500/20 to-saffron/20 relative">
-          </div>
-        )}
-        {/* Glassy overlay */}
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-        {/* Avatar */}
-        <div className="absolute left-1/2 -bottom-16 transform -translate-x-1/2 z-10">
-          <Avatar className="h-32 w-32 border-4 border-black shadow-xl">
-            <AvatarImage src={profile?.avatar_url || '/placeholder.svg'} alt={profile?.name || 'Avatar'} />
-            <AvatarFallback className="bg-saffron text-primary font-bold text-2xl">
-              {profile?.name?.charAt(0) || 'U'}
-            </AvatarFallback>
-          </Avatar>
-          {/* Avatar upload button */}
-          {isOwner && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute -bottom-1 -right-1 h-8 w-8 bg-white text-black hover:bg-white/90 rounded-full"
-              onClick={() => avatarFileInputRef.current?.click()}
-              disabled={avatarLoading}
-            >
-              {avatarLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-        </div>
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
       </div>
 
-      {/* Hidden file input */}
-      <input
-        ref={avatarFileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleAvatarUpload}
-        disabled={avatarLoading}
-      />
+      {/* Main Content */}
+      <div className="relative z-10">
+        {/* Profile Header */}
+        <div className="relative">
+          {/* Cover Photo */}
+          <div className="h-48 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-b-3xl">
+            {profile?.coverphoto && (
+              <img 
+                src={profile.coverphoto} 
+                alt="Cover" 
+                className="w-full h-full object-cover rounded-b-3xl"
+              />
+            )}
+          </div>
 
-      {/* Name, Username, Stats */}
-      <div className="pt-20 pb-6 px-4 text-center">
-        <h1 className="text-3xl font-bold mb-1 text-white">{profile?.name || 'Your Name'}</h1>
-        <div className="text-saffron text-lg font-semibold mb-2">
-          @{profile?.username || profile?.name?.toLowerCase().replace(/\s+/g, '') || 'username'}
-        </div>
-        {/* City and State */}
-        {profile?.location && (
-          <div className="text-white/70 text-base font-medium mb-2">
-            {(() => {
-              const parts = profile.location.split(',').map(s => s.trim())
-              
-              if (parts.length >= 4) {
-                const city = parts[parts.length - 2]
-                const state = parts[parts.length - 1]
-                return `${city}, ${state}`
-              } else if (parts.length >= 2) {
-                const city = parts[0]
-                const state = parts[1]
-                return `${city}, ${state}`
-              } else {
-                return profile.location
-              }
-            })()}
-          </div>
-        )}
-        {/* Stats Row */}
-        <div className="flex justify-center gap-10 mt-4 w-full">
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-2xl text-white">{likedVideos.length}</span>
-            <span className="text-xs text-white/60 uppercase tracking-wide">Liked</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-2xl text-white">{userBookings.length}</span>
-            <span className="text-xs text-white/60 uppercase tracking-wide">Bookings</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-2xl text-white">{pastBarbers.length}</span>
-            <span className="text-xs text-white/60 uppercase tracking-wide">Barbers</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs Section */}
-      <div className="max-w-3xl mx-auto w-full px-2 sm:px-4">
-        <Tabs defaultValue="liked" className="w-full">
-          <TabsList className="w-full flex justify-between bg-black border border-white/20 p-1 rounded-lg mb-6 sticky top-0 z-20">
-            <TabsTrigger value="liked" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">
-              <div className="flex items-center gap-2">
-                <Heart className="h-4 w-4" />
-                Liked Videos
-                {videosLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+          {/* Profile Info */}
+          <div className="px-4 -mt-16 relative z-10">
+            <div className="flex items-end gap-4 mb-4">
+              {/* Avatar */}
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-xl">
+                  <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
+                  <AvatarFallback className="bg-secondary text-primary font-bold text-2xl">
+                    {profile?.name?.charAt(0).toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-secondary text-primary hover:bg-secondary/90"
+                  onClick={() => avatarFileInputRef.current?.click()}
+                  disabled={avatarLoading}
+                >
+                  {avatarLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </Button>
+                <input
+                  ref={avatarFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
               </div>
-            </TabsTrigger>
-            <TabsTrigger value="past-barbers" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">
-              <Users className="h-4 w-4" />
-              Past Barbers
-            </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-1 rounded-md text-sm data-[state=active]:bg-saffron data-[state=active]:text-primary">
-              <History className="h-4 w-4" />
-              Bookings
-            </TabsTrigger>
-          </TabsList>
 
-          {/* Liked Videos Tab */}
-          <TabsContent value="liked" className="mt-6">
-            {videosLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-saffron mx-auto mb-4" />
-                  <p className="text-white/60">Loading your liked videos...</p>
+              {/* Name and Info */}
+              <div className="flex-1 pb-2">
+                <h1 className="text-3xl font-bebas font-bold mb-1 text-white">{profile?.name || 'Your Name'}</h1>
+                <div className="text-secondary text-lg font-semibold mb-2">
+                  @{profile?.username || profile?.name?.toLowerCase().replace(/\s+/g, '') || 'username'}
                 </div>
+                {profile?.location && (
+                  <div className="text-white/70 text-base font-medium mb-2 font-pacifico">
+                    {(() => {
+                      const parts = profile.location.split(',').map(s => s.trim());
+                      return parts.length >= 2 ? `${parts[0]}, ${parts[1]}` : profile.location;
+                    })()}
+                  </div>
+                )}
               </div>
-            ) : likedVideos.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {likedVideos.map((video) => (
-                  <Card key={video.id} className="bg-white/5 border border-white/10 hover:border-saffron/30 transition-colors group cursor-pointer" onClick={() => {
-                    setSelectedVideo(video)
-                    setOpenDialog('video')
-                  }}>
-                    <CardContent className="p-0">
-                      <div className="relative aspect-[4/5] bg-gray-800 rounded-t-lg overflow-hidden">
-                        {video.thumbnail ? (
-                          <img
-                            src={video.thumbnail}
-                            alt={video.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <video
-                            src={video.url}
-                            className="w-full h-full object-cover"
-                            preload="metadata"
-                            muted
-                            playsInline
-                          />
-                        )}
-                        {/* Overlay with stats */}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Play className="h-8 w-8 text-white" />
-                        </div>
-                        {/* Stats overlay */}
-                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-white text-xs">
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-3 w-3" />
-                            <span>{video.views}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Heart className="h-3 w-3" />
-                            <span>{video.likes}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="p-2">
-                        <h3 className="font-semibold text-white text-xs mb-1 line-clamp-1">{video.title}</h3>
-                        <div className="flex items-center gap-1 text-xs text-white/60">
-                          <Avatar className="h-3 w-3">
-                            <AvatarImage src={video.barber.image} alt={video.barber.name} />
-                            <AvatarFallback className="text-xs bg-saffron text-primary">
-                              {video.barber.name?.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs truncate">{video.barber.name}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Heart className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                <p className="text-white/60">No liked videos yet</p>
-                <p className="text-white/40 text-sm">Like videos from barbers to see them here</p>
-              </div>
-            )}
-          </TabsContent>
+            </div>
 
-          {/* Past Barbers Tab */}
-          <TabsContent value="past-barbers" className="mt-6">
-            {pastBarbers.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {pastBarbers.map((barber, index) => (
-                  <Card key={index} className="bg-white/5 border border-white/10 hover:border-saffron/30 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12 border-2 border-saffron/20">
-                          {barber?.image && <AvatarImage src={barber.image} alt={barber.name} />}
-                          <AvatarFallback className="bg-saffron text-primary font-bold">
-                            {barber?.name?.charAt(0) || 'B'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-white">{barber?.name}</h3>
-                          <div className="flex items-center gap-1 text-xs text-white/40 mt-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>Location not available</span>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <Card className="bg-muted border border-border backdrop-blur-xl">
+                <CardContent className="p-4 text-center">
+                  <Heart className="h-6 w-6 text-secondary mx-auto mb-2" />
+                  <span className="font-bold text-2xl text-card-foreground">{likedVideos.length}</span>
+                  <p className="text-muted-foreground text-sm">Liked Cuts</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted border border-border backdrop-blur-xl">
+                <CardContent className="p-4 text-center">
+                  <Calendar className="h-6 w-6 text-secondary mx-auto mb-2" />
+                  <span className="font-bold text-2xl text-card-foreground">{userBookings.length}</span>
+                  <p className="text-muted-foreground text-sm">Bookings</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted border border-border backdrop-blur-xl">
+                <CardContent className="p-4 text-center">
+                  <Users className="h-6 w-6 text-secondary mx-auto mb-2" />
+                  <span className="font-bold text-2xl text-card-foreground">{pastBarbers.length}</span>
+                  <p className="text-muted-foreground text-sm">Stylists</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="px-4 pb-8">
+          <Tabs defaultValue="liked" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl">
+              <TabsTrigger value="liked" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
+                <Heart className="h-4 w-4 mr-2" />
+                Liked Cuts
+              </TabsTrigger>
+              <TabsTrigger value="past-barbers" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
+                <Users className="h-4 w-4 mr-2" />
+                Past Stylists
+              </TabsTrigger>
+              <TabsTrigger value="bookings" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
+                <History className="h-4 w-4 mr-2" />
+                Bookings
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="liked" className="mt-6">
+              {videosLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-secondary mb-4" />
+                  <p className="text-white/60">Loading liked cuts...</p>
+                </div>
+              ) : likedVideos.length === 0 ? (
+                <div className="text-center py-8">
+                  <Heart className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No liked cuts yet</h3>
+                  <p className="text-white/60">Start exploring and liking cuts from your favorite stylists</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {likedVideos.map((video) => (
+                    <Card key={video.id} className="bg-white/5 border border-white/10 backdrop-blur-xl hover:border-secondary/30 transition-colors cursor-pointer" onClick={() => {
+                      setSelectedVideo(video)
+                      setOpenDialog('video')
+                    }}>
+                      <CardContent className="p-0">
+                        <div className="aspect-video relative">
+                          <video 
+                            src={video.url} 
+                            className="w-full h-full object-cover rounded-t-lg"
+                            poster={video.thumbnail}
+                          />
+                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <Play className="h-12 w-12 text-white" />
                           </div>
                         </div>
-                        <Button size="sm" variant="outline" className="border-saffron/30 text-saffron hover:bg-saffron/10">
-                          Book Again
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Users className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                <p className="text-white/60">No past bookings yet</p>
-                <p className="text-white/40 text-sm">Book with barbers to see them here</p>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Booking History Tab */}
-          <TabsContent value="bookings" className="mt-6">
-            {userBookings.length > 0 ? (
-              <div className="space-y-4">
-                {userBookings.map((booking) => (
-                  <Card key={booking.id} className="bg-white/5 border border-white/10">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border border-saffron/20">
-                            {booking.barber.image && <AvatarImage src={booking.barber.image} alt={booking.barber.name} />}
-                            <AvatarFallback className="bg-saffron text-primary font-bold text-sm">
-                              {booking.barber.name?.charAt(0) || 'B'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-semibold text-white">{booking.barber.name}</h3>
-                            <p className="text-sm text-white/60">{booking.service}</p>
-                            <div className="flex items-center gap-4 text-xs text-white/40 mt-1">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{formatDate(booking.date)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                <span>{formatTime(booking.time)}</span>
-                              </div>
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={video.barber.image} alt={video.barber.name} />
+                              <AvatarFallback className="text-xs bg-secondary text-primary">
+                                {video.barber.name?.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <h3 className="font-semibold text-white text-xs mb-1 line-clamp-1">{video.title}</h3>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-white/60">
+                            <span>{video.barber.name}</span>
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-3 w-3" />
+                              {video.views}
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <Badge 
-                            variant={booking.status === 'completed' ? 'default' : 'secondary'}
-                            className={cn(
-                              booking.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-saffron/20 text-saffron border-saffron/30'
-                            )}
-                          >
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="past-barbers" className="mt-6">
+              {pastBarbers.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-card-foreground font-bebas font-bold text-xl mb-2">No past stylists</h3>
+                  <p className="text-muted-foreground">Book appointments to see your stylists here</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pastBarbers.map((barber) => (
+                    <Card key={barber?.id} className="bg-muted border border-border backdrop-blur-xl">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={barber?.image} alt={barber?.name} />
+                            <AvatarFallback className="bg-secondary text-secondary-foreground font-bold">
+                              {barber?.name?.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-card-foreground">{barber?.name}</h3>
+                            <p className="text-muted-foreground text-sm">Previous stylist</p>
+                          </div>
+                          <Button size="sm" variant="outline" className="border-secondary/30 text-secondary hover:bg-secondary/10">
+                            Book Again
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="bookings" className="mt-6">
+              {userBookings.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No bookings yet</h3>
+                  <p className="text-white/60">Start booking appointments with stylists</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userBookings.map((booking) => (
+                    <Card key={booking.id} className="bg-white/5 border border-white/10 backdrop-blur-xl">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={booking.barber.image} alt={booking.barber.name} />
+                            <AvatarFallback className="bg-secondary text-primary font-bold text-sm">
+                              {booking.barber.name?.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-white">{booking.barber.name}</h3>
+                            <p className="text-white/60 text-sm">{booking.service}</p>
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-white/60 text-xs flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(booking.date)}
+                              </span>
+                              <span className="text-white/60 text-xs flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatTime(booking.time)}
+                              </span>
+                            </div>
+                          </div>
+                          <Badge className={
+                            booking.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-secondary/20 text-secondary border-secondary/30'
+                          }>
                             {booking.status}
                           </Badge>
-                          <p className="text-sm text-white/60 mt-1">${booking.price}</p>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <History className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                <p className="text-white/60">No booking history yet</p>
-                <p className="text-white/40 text-sm">Book appointments to see them here</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
       {/* Video Dialog */}
-      <Dialog open={openDialog === 'video'} onOpenChange={() => setOpenDialog(null)}>
-        <DialogContent className="max-w-4xl bg-black/95 border border-white/20">
-          <DialogHeader>
-            <DialogTitle className="text-white">{selectedVideo?.title}</DialogTitle>
-          </DialogHeader>
+      <Dialog open={openDialog === 'video'} onOpenChange={open => setOpenDialog(open ? 'video' : null)}>
+        <DialogContent className="max-w-4xl w-full bg-black/90 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-0 overflow-hidden">
           {selectedVideo && (
-            <div className="space-y-4">
-              <div className="relative aspect-[9/16] bg-gray-800 rounded-lg overflow-hidden">
-                <video
-                  src={selectedVideo.url}
-                  controls
+            <>
+              <div className="aspect-video">
+                <video 
+                  src={selectedVideo.url} 
                   className="w-full h-full object-cover"
-                  poster={selectedVideo.thumbnail}
+                  controls
+                  autoPlay
                 />
               </div>
-              <div className="space-y-2">
-                <h3 className="text-white font-semibold">{selectedVideo.title}</h3>
-                {selectedVideo.description && (
-                  <p className="text-white/70 text-sm">{selectedVideo.description}</p>
-                )}
-                <div className="flex items-center gap-4 text-sm text-white/60">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-4 w-4" />
-                    <span>{selectedVideo.views}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="h-4 w-4" />
-                    <span>{selectedVideo.likes}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Share2 className="h-4 w-4" />
-                    <span>{selectedVideo.shares}</span>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedVideo.barber.image} alt={selectedVideo.barber.name} />
+                    <AvatarFallback className="text-xs bg-secondary text-primary">{selectedVideo.barber.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="text-white font-bebas font-bold text-xl">{selectedVideo.title}</h3>
+                    <p className="text-white/60 text-sm">{selectedVideo.barber.name}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={selectedVideo.barber.image} alt={selectedVideo.barber.name} />
-                    <AvatarFallback className="text-xs bg-saffron text-primary">
-                      {selectedVideo.barber.name?.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-white/80 text-sm">{selectedVideo.barber.name}</span>
+                <div className="flex items-center gap-4 text-sm text-white/60">
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    {selectedVideo.views} views
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Heart className="h-4 w-4" />
+                    {selectedVideo.likes} likes
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Share2 className="h-4 w-4" />
+                    {selectedVideo.shares} shares
+                  </span>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

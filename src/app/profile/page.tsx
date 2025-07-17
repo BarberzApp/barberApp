@@ -23,8 +23,21 @@ export default function ProfilePage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-primary flex items-center justify-center">
-        <div className="text-white text-xl font-semibold animate-pulse">Loading your profile...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        {/* Background Elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="text-center space-y-4 relative z-10">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-secondary" />
+            <div className="absolute inset-0 rounded-full bg-secondary/20 animate-ping" />
+          </div>
+          <p className="text-white/60 font-medium font-pacifico">Loading your profile...</p>
+        </div>
       </div>
     )
   }
@@ -34,13 +47,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary">
-      {/* Header */}
-      {/* Removed BOCM, Browse, and Settings links from header */}
-
+    <div className="min-h-screen bg-background">
       {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/20 rounded-full blur-3xl -z-10" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-saffron/20 rounded-full blur-3xl -z-10" />
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+      </div>
 
       {/* Main Content */}
       <div className="relative z-10">

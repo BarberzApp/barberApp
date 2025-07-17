@@ -69,10 +69,10 @@ export function CalendarSyncSettings() {
   if (loading) {
     return (
       <Card className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
-        <CardHeader className="bg-gradient-to-r from-saffron/10 to-transparent border-b border-white/10">
+        <CardHeader className="bg-gradient-to-r from-secondary/10 to-transparent border-b border-white/10">
           <CardTitle className="flex items-center gap-3 text-2xl text-white">
-            <div className="p-2 bg-saffron/20 rounded-xl">
-              <Calendar className="h-6 w-6 text-saffron" />
+            <div className="p-2 bg-secondary/20 rounded-xl">
+              <Calendar className="h-6 w-6 text-secondary" />
             </div>
             Google Calendar Sync
           </CardTitle>
@@ -81,8 +81,8 @@ export function CalendarSyncSettings() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center space-y-4">
               <div className="relative">
-                <RefreshCw className="h-8 w-8 animate-spin text-saffron mx-auto" />
-                <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+                <RefreshCw className="h-8 w-8 animate-spin text-secondary mx-auto" />
+                <div className="absolute inset-0 rounded-full bg-secondary/20 animate-ping" />
               </div>
               <p className="text-white/70 font-medium">Loading calendar sync...</p>
             </div>
@@ -94,11 +94,11 @@ export function CalendarSyncSettings() {
 
   return (
     <Card className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-saffron/10 to-transparent border-b border-white/10 p-6">
+      <CardHeader className="bg-gradient-to-r from-secondary/10 to-transparent border-b border-white/10 p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-saffron/20 rounded-xl">
-              <Calendar className="h-6 w-6 text-saffron" />
+            <div className="p-2 bg-secondary/20 rounded-xl">
+              <Calendar className="h-6 w-6 text-secondary" />
             </div>
             <div>
               <CardTitle className="text-2xl text-white flex items-center gap-3">
@@ -133,7 +133,7 @@ export function CalendarSyncSettings() {
         {/* Enhanced Connection Status */}
         <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-saffron/20 rounded-xl">
+            <div className="p-2 bg-secondary/20 rounded-xl">
               {getSyncStatusIcon()}
             </div>
             <div>
@@ -151,7 +151,7 @@ export function CalendarSyncSettings() {
             <Button
               onClick={() => handleSync()}
               disabled={syncing}
-              className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl px-6 py-3"
+              className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-primary font-semibold shadow-lg rounded-xl px-6 py-3"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
               {syncing ? 'Syncing...' : 'Sync Now'}
@@ -161,10 +161,10 @@ export function CalendarSyncSettings() {
 
         {/* Enhanced Connection Actions */}
         {!connected ? (
-          <div className="space-y-6 p-6 bg-gradient-to-br from-saffron/10 to-transparent rounded-2xl border border-saffron/20">
+          <div className="space-y-6 p-6 bg-gradient-to-br from-secondary/10 to-transparent rounded-2xl border border-secondary/20">
             <div className="text-center space-y-3">
-              <div className="p-3 bg-saffron/20 rounded-2xl w-fit mx-auto">
-                <ExternalLink className="h-6 w-6 text-saffron" />
+              <div className="p-3 bg-secondary/20 rounded-2xl w-fit mx-auto">
+                <ExternalLink className="h-6 w-6 text-secondary" />
               </div>
               <h3 className="text-xl font-bebas text-white tracking-wide">Connect Your Calendar</h3>
               <p className="text-white/70 text-base">
@@ -173,7 +173,7 @@ export function CalendarSyncSettings() {
             </div>
             <Button 
               onClick={connect} 
-              className="w-full bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl py-4 text-lg"
+              className="w-full bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-primary font-semibold shadow-lg rounded-xl py-4 text-lg"
             >
               <ExternalLink className="h-5 w-5 mr-3" />
               Connect Google Calendar
@@ -185,8 +185,8 @@ export function CalendarSyncSettings() {
             <div className="space-y-6 p-6 bg-white/5 rounded-2xl border border-white/10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-saffron/20 rounded-xl">
-                    <Settings className="h-5 w-5 text-saffron" />
+                  <div className="p-2 bg-secondary/20 rounded-xl">
+                    <Settings className="h-5 w-5 text-secondary" />
                   </div>
                   <div>
                     <h4 className="text-xl font-bebas text-white tracking-wide">Sync Settings</h4>
@@ -221,7 +221,7 @@ export function CalendarSyncSettings() {
                       handleSyncDirectionChange(value)
                     }
                   >
-                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-saffron rounded-xl h-12 text-lg">
+                    <SelectTrigger className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-secondary rounded-xl h-12 text-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -254,7 +254,7 @@ export function CalendarSyncSettings() {
                 <Button
                   onClick={() => handleSync('bidirectional')}
                   disabled={syncing}
-                  className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl py-3"
+                  className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-primary font-semibold shadow-lg rounded-xl py-3"
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                   Full Sync
@@ -262,7 +262,7 @@ export function CalendarSyncSettings() {
                 <Button
                   onClick={() => handleSync('outbound')}
                   disabled={syncing}
-                  className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl py-3"
+                  className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-primary font-semibold shadow-lg rounded-xl py-3"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   To Google
@@ -270,7 +270,7 @@ export function CalendarSyncSettings() {
                 <Button
                   onClick={() => handleSync('inbound')}
                   disabled={syncing}
-                  className="bg-gradient-to-r from-saffron to-saffron/90 hover:from-saffron/90 hover:to-saffron/80 text-primary font-semibold shadow-lg rounded-xl py-3"
+                  className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-primary font-semibold shadow-lg rounded-xl py-3"
                 >
                   <ExternalLink className="h-4 w-4 mr-2 rotate-180" />
                   From Google

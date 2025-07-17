@@ -434,20 +434,13 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
               <DialogTitle className="text-2xl font-bold text-white">{getStepTitle()}</DialogTitle>
               <DialogDescription className="text-white/60 mt-1">{getStepDescription()}</DialogDescription>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-white hover:bg-white/10 rounded-full"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+
           </div>
 
           {/* Progress Bar */}
           <div className="w-full bg-white/10 rounded-full h-2 mb-4">
             <div 
-              className="bg-gradient-to-r from-saffron to-orange-500 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-secondary to-orange-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(currentStep / totalSteps) * 100}%` }}
             />
           </div>
@@ -459,9 +452,9 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                 <div className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300",
                   step < currentStep 
-                    ? "bg-saffron text-black" 
+                    ? "bg-secondary text-black" 
                     : step === currentStep 
-                    ? "bg-saffron/20 text-saffron border-2 border-saffron" 
+                    ? "bg-secondary/20 text-secondary border-2 border-secondary" 
                     : "bg-white/10 text-white/40"
                 )}>
                   {step < currentStep ? <CheckCircle className="h-4 w-4" /> : step}
@@ -485,8 +478,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Scissors className="h-8 w-8 text-saffron" />
+                <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Scissors className="h-8 w-8 text-secondary" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">What service do you need?</h3>
                 <p className="text-white/60">Choose from our available services</p>
@@ -499,14 +492,14 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                     className={cn(
                       "relative p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 group",
                       formData.serviceId === service.id
-                        ? "border-saffron bg-saffron/10 shadow-lg shadow-saffron/20"
-                        : "border-white/10 bg-white/5 hover:border-saffron/30 hover:bg-white/10"
+                        ? "border-secondary bg-secondary/10 shadow-lg shadow-secondary/20"
+                        : "border-white/10 bg-white/5 hover:border-secondary/30 hover:bg-white/10"
                     )}
                     onClick={() => handleServiceChange(service.id)}
                   >
                     {/* Selection indicator */}
                     {formData.serviceId === service.id && (
-                      <div className="absolute top-4 right-4 w-6 h-6 bg-saffron rounded-full flex items-center justify-center">
+                      <div className="absolute top-4 right-4 w-6 h-6 bg-secondary rounded-full flex items-center justify-center">
                         <CheckCircle className="h-4 w-4 text-black" />
                       </div>
                     )}
@@ -522,13 +515,13 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                             <Clock className="h-4 w-4" />
                             <span>{service.duration} min</span>
                           </div>
-                          <Badge className="bg-saffron/20 text-saffron border-saffron/30">
+                          <Badge className="bg-secondary/20 text-secondary border-secondary/30">
                             Popular
                           </Badge>
                         </div>
                       </div>
                       <div className="text-right ml-4">
-                        <div className="text-3xl font-bold text-saffron">${service.price}</div>
+                        <div className="text-3xl font-bold text-secondary">${service.price}</div>
                         <div className="text-white/40 text-sm">per service</div>
                       </div>
                     </div>
@@ -540,7 +533,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
               {addons.length > 0 && (
                 <div className="pt-6">
                   <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-saffron" />
+                    <Sparkles className="h-5 w-5 text-secondary" />
                     Enhance Your Service (Optional)
                   </h4>
                   <AddonSelector
@@ -557,8 +550,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           {currentStep === 2 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CalendarIcon className="h-8 w-8 text-saffron" />
+                <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CalendarIcon className="h-8 w-8 text-secondary" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">When works best for you?</h3>
                 <p className="text-white/60">Pick your preferred date and time</p>
@@ -567,7 +560,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           {/* Date Selection */}
               <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
                 <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-saffron" />
+                  <CalendarIcon className="h-5 w-5 text-secondary" />
                   Select Date
                 </h4>
                 <Calendar
@@ -575,27 +568,27 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                   selected={date}
                   onSelect={(newDate) => newDate && setDate(newDate)}
                   disabled={(date) => date < new Date()}
-                  className="rounded-2xl"
+                  className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-4"
                   classNames={{
                     months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
                     month: "space-y-4",
-                    caption: "flex justify-center pt-1 relative items-center text-white",
-                    caption_label: "text-sm font-medium",
+                    caption: "flex justify-center pt-1 relative items-center text-white mb-4",
+                    caption_label: "text-lg font-bebas tracking-wide text-white",
                     nav: "space-x-1 flex items-center",
-                    nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 text-white",
+                    nav_button: "h-8 w-8 bg-white/10 border border-white/20 rounded-lg p-0 opacity-70 hover:opacity-100 hover:bg-white/20 text-white transition-all duration-200",
                     nav_button_previous: "absolute left-1",
                     nav_button_next: "absolute right-1",
-                    table: "w-full border-collapse space-y-1",
-                    head_row: "flex",
-                    head_cell: "text-white/60 rounded-md w-9 font-normal text-[0.8rem]",
-                    row: "flex w-full mt-2",
-                    cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                    day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 text-white hover:bg-saffron/20 hover:text-saffron rounded-lg transition-all duration-200 focus:bg-saffron/20 focus:text-saffron",
+                    table: "w-full border-collapse space-y-2",
+                    head_row: "flex mb-2",
+                    head_cell: "text-white/70 rounded-md w-10 font-medium text-sm tracking-wide",
+                    row: "flex w-full mt-1",
+                    cell: "h-10 w-10 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                    day: "h-10 w-10 p-0 font-medium aria-selected:opacity-100 text-white hover:bg-white/10 hover:border hover:border-secondary/50 rounded-xl transition-all duration-200 focus:bg-white/10 focus:border-secondary/50",
                     day_range_end: "day-range-end",
-                    day_selected: "bg-gradient-to-br from-saffron to-orange-500 text-white font-semibold hover:bg-gradient-to-br hover:from-saffron/90 hover:to-orange-500/90 focus:bg-gradient-to-br focus:from-saffron focus:to-orange-500 shadow-lg scale-105 transition-all duration-200",
-                    day_today: "bg-saffron/20 text-saffron font-semibold border-2 border-saffron/50",
-                    day_outside: "day-outside text-white/30 opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-                    day_disabled: "text-white/30 opacity-30 aria-selected:bg-background aria-selected:text-muted-foreground",
+                    day_selected: "bg-gradient-to-br from-secondary to-orange-500 text-white font-bold shadow-lg shadow-secondary/25 scale-110 border-2 border-secondary/50 rounded-xl transition-all duration-200",
+                    day_today: "bg-secondary/20 text-secondary font-bold border-2 border-secondary/50 rounded-xl",
+                    day_outside: "day-outside text-white/20 opacity-30 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+                    day_disabled: "text-white/20 opacity-20 aria-selected:bg-background aria-selected:text-muted-foreground cursor-not-allowed",
                     day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
                     day_hidden: "invisible",
                   }}
@@ -605,7 +598,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           {/* Time Selection */}
               <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
                 <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-saffron" />
+                  <Clock className="h-5 w-5 text-secondary" />
                   Select Time
                 </h4>
                 
@@ -619,8 +612,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                         className={cn(
                           "h-16 text-sm font-medium transition-all duration-300 relative overflow-hidden group",
                           formData.time === time 
-                              ? "bg-gradient-to-br from-saffron to-orange-500 text-white border-2 border-saffron/50 shadow-lg scale-105 transform" 
-                              : "bg-white/5 border border-white/20 text-white hover:bg-gradient-to-br hover:from-saffron/20 hover:to-orange-500/20 hover:border-saffron/50 hover:scale-105 hover:shadow-md"
+                              ? "bg-gradient-to-br from-secondary to-orange-500 text-white border-2 border-secondary/50 shadow-lg scale-105 transform" 
+                              : "bg-white/5 border border-white/20 text-white hover:bg-gradient-to-br hover:from-secondary/20 hover:to-orange-500/20 hover:border-secondary/50 hover:scale-105 hover:shadow-md"
                         )}
                         onClick={() => setFormData({ ...formData, time })}
                       >
@@ -643,8 +636,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
            {currentStep === 3 && (
              <div className="space-y-6">
                <div className="text-center mb-6">
-                 <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                   <User className="h-8 w-8 text-saffron" />
+                 <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <User className="h-8 w-8 text-secondary" />
                     </div>
                  <h3 className="text-xl font-bold text-white mb-2">Tell us about yourself</h3>
                  <p className="text-white/60">We'll use this to confirm your booking</p>
@@ -660,7 +653,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                         value={formData.guestName}
                         onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
                         placeholder="Enter your full name"
-                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                       />
                     </div>
                     <div>
@@ -671,7 +664,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                         value={formData.guestEmail}
                         onChange={(e) => setFormData({ ...formData, guestEmail: e.target.value })}
                         placeholder="Enter your email"
-                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                       />
                     </div>
                     <div>
@@ -681,7 +674,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                         value={formData.guestPhone}
                         onChange={(e) => setFormData({ ...formData, guestPhone: e.target.value })}
                         placeholder="Enter your phone number"
-                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                        className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                       />
                     </div>
                   </div>
@@ -695,9 +688,9 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                    </div>
                  )
                ) : (
-                 <div className="bg-saffron/10 border border-saffron/20 rounded-2xl p-6 text-center">
-                   <div className="w-12 h-12 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                     <CheckCircle className="h-6 w-6 text-saffron" />
+                 <div className="bg-secondary/10 border border-secondary/20 rounded-2xl p-6 text-center">
+                   <div className="w-12 h-12 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                     <CheckCircle className="h-6 w-6 text-secondary" />
                    </div>
                    <h4 className="text-lg font-semibold text-white mb-2">Welcome back, {user.name}!</h4>
                    <p className="text-white/60">We'll use your account information for this booking</p>
@@ -712,7 +705,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Any special requests or notes..."
-                  className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl min-h-[100px]"
+                  className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl min-h-[100px]"
                 />
                           </div>
                         </div>
@@ -722,8 +715,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
            {currentStep === 4 && (
              <form onSubmit={handleSubmit} className="space-y-6">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-saffron/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CreditCard className="h-8 w-8 text-saffron" />
+                <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CreditCard className="h-8 w-8 text-secondary" />
                           </div>
                 <h3 className="text-xl font-bold text-white mb-2">Review Your Booking</h3>
                 <p className="text-white/60">Confirm your details and complete payment</p>
@@ -732,7 +725,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
               {/* Booking Summary */}
               <div className="bg-white/5 rounded-2xl p-6 border border-white/10 space-y-4">
                 <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-saffron" />
+                  <Sparkles className="h-5 w-5 text-secondary" />
                   Booking Summary
                 </h4>
 
@@ -743,7 +736,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                       <p className="text-white/60 text-sm">{formatTime(formData.time)} • {date.toLocaleDateString()}</p>
                           </div>
                           <div className="text-right">
-                      <p className="text-xl font-bold text-saffron">${selectedService.price}</p>
+                      <p className="text-xl font-bold text-secondary">${selectedService.price}</p>
                           </div>
                         </div>
                       )}
@@ -760,7 +753,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                             <p className="text-white/60 text-sm">Add-on service</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-saffron font-semibold">+${addon.price}</p>
+                            <p className="text-secondary font-semibold">+${addon.price}</p>
                           </div>
                         </div>
                       ) : null
@@ -777,7 +770,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                      </p>
                         </div>
                         <div className="text-right">
-                     <p className="text-lg font-bold text-saffron">
+                     <p className="text-lg font-bold text-secondary">
                        {isDeveloperAccount ? '$0.00' : '$3.38'}
                      </p>
                      <Badge className={cn(
@@ -792,13 +785,13 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                       </div>
                       
                       {/* Total */}
-                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-saffron/10 to-orange-500/10 border border-saffron/20 rounded-xl">
+                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-secondary/10 to-orange-500/10 border border-secondary/20 rounded-xl">
                         <div>
                           <p className="text-white font-bold text-lg">Total</p>
                           <p className="text-white/60 text-sm">Amount to be charged</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-saffron">
+                          <p className="text-2xl font-bold text-secondary">
                        {isDeveloperAccount ? '$0.00' : '$3.38'}
                           </p>
                         </div>
@@ -807,8 +800,8 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                    <p className="text-blue-400 text-sm">
                      {isDeveloperAccount 
-                       ? '💡 Developer account - no platform fees charged. Service cost and any add-ons will be paid directly to the barber at your appointment.'
-                       : '💡 Service cost and any add-ons will be paid directly to the barber at your appointment.'
+                       ? 'Developer account - no platform fees charged. Service cost and any add-ons will be paid directly to the barber at your appointment.'
+                       : 'Service cost and any add-ons will be paid directly to the barber at your appointment.'
                      }
                    </p>
                                  </div>
@@ -829,7 +822,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                  <Button 
                    type="submit" 
                    disabled={loading || !canProceed()}
-                   className="flex-1 bg-saffron text-black font-semibold rounded-xl hover:bg-saffron/90"
+                   className="flex-1 bg-secondary text-black font-semibold rounded-xl hover:bg-secondary/90"
                  >
                    {loading ? (
                      <>
@@ -866,7 +859,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                 type="button" 
                 onClick={handleNextStep}
                 disabled={!canProceed()}
-                className="flex-1 bg-saffron text-black font-semibold rounded-xl hover:bg-saffron/90"
+                className="flex-1 bg-secondary text-black font-semibold rounded-xl hover:bg-secondary/90"
               >
                 Continue
                 <ArrowRight className="h-4 w-4 ml-2" />

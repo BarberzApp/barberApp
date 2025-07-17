@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { supabase } from '@/shared/lib/supabase'
 import React from "react"
+import { Loader2 } from "lucide-react"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -144,22 +145,22 @@ export default function RegisterPage() {
   )
 
   return (
-    <div className="min-h-screen bg-primary flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="w-full py-6 px-6 bg-transparent">
+      <header className="w-full py-6 px-6 bg-background">
         <div className="max-w-7xl mx-auto flex items-center">
-          <Link href="/" className="text-2xl font-bebas font-bold text-saffron">BOCM</Link>
+          {/* Logo removed as requested */}
         </div>
       </header>
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center">
-        <Card className="bg-darkpurple/90 border border-white/10 shadow-2xl rounded-3xl w-full max-w-md">
+        <Card className="bg-white/5 border border-white/10 shadow-2xl rounded-3xl w-full max-w-md">
           <CardHeader className="text-center">
             <Scissors className="mx-auto h-10 w-10 text-saffron mb-2" />
             {/* Add User icon with saffron color if used visually */}
             {/* <User className="mx-auto h-10 w-10 text-saffron mb-2" /> */}
             <CardTitle className="text-3xl font-bebas text-white">Create Your Account</CardTitle>
-            <CardDescription className="text-white/80">Join BarberHub and start your journey</CardDescription>
+            <CardDescription className="text-white/80 font-pacifico">Join BarberHub and start your journey</CardDescription>
           </CardHeader>
           <CardContent>
             {/* Minimal role toggle, styled as pill buttons */}
@@ -248,7 +249,7 @@ export default function RegisterPage() {
                   I agree to the{' '}
                   <Link 
                     href="/terms" 
-                    className="text-saffron hover:underline font-semibold"
+                    className="text-saffron hover:underline font-pacifico"
                     tabIndex={0}
                   >
                     terms and conditions
@@ -257,10 +258,17 @@ export default function RegisterPage() {
               </div>
               <Button 
                 type="submit" 
-                className="w-full h-11 bg-saffron text-primary font-semibold rounded-full hover:bg-saffron/90 transition-colors" 
-                disabled={loading || !role}
+                className="w-full bg-secondary text-black font-bold px-8 py-4 rounded-xl shadow-lg shadow-secondary/25 hover:bg-secondary/90 transition-all text-lg font-bebas"
+                disabled={loading}
               >
-                {loading ? 'Creating account...' : 'Create account'}
+                {loading ? (
+                  <div className="flex items-center gap-2 font-bebas">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Signing up...
+                  </div>
+                ) : (
+                  'Sign up'
+                )}
               </Button>
             </form>
             {/* Divider */}

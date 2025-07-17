@@ -293,8 +293,8 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
     <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl min-h-[400px]">
       <CardHeader className="text-center">
         <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="p-2 bg-saffron/20 rounded-full">
-            <DollarSign className="h-5 w-5 text-saffron" />
+          <div className="p-2 bg-secondary/20 rounded-full">
+            <DollarSign className="h-5 w-5 text-secondary" />
           </div>
           <CardTitle className="text-2xl font-bebas text-white tracking-wide">Monthly Earnings</CardTitle>
         </div>
@@ -306,9 +306,9 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           <div className="text-center space-y-4">
             <div className="relative">
               {/* Glowy background effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-saffron/20 via-saffron/10 to-transparent rounded-2xl blur-xl" />
+              <div className="absolute inset-0 bg-gradient-to-r from-secondary/20 via-secondary/10 to-transparent rounded-2xl blur-xl" />
               <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8">
-                <div className="text-5xl font-bebas font-bold text-saffron mb-2">
+                <div className="text-5xl font-bebas font-bold text-secondary mb-2">
                   ${earnings?.current ? (earnings.current / 100).toFixed(2) : "0.00"}
                 </div>
                 <div className="flex items-center justify-center space-x-2">
@@ -317,7 +317,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
                   ) : (
                     <TrendingDown className="h-5 w-5 text-red-400" />
                   )}
-                  <Badge variant="glassy-saffron" className="text-xs">
+                  <Badge variant="secondary" className="text-xs bg-secondary/20 text-secondary border-secondary/30">
                     {earnings?.trend === "up" ? "+" : "-"}{earnings?.percentage}% from last month
                   </Badge>
                 </div>
@@ -328,7 +328,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           {/* Earnings Breakdown */}
           <div className="space-y-6">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-saffron" />
+              <Sparkles className="h-4 w-4 text-secondary" />
               <h3 className="text-lg font-semibold text-white">Earnings Breakdown</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -359,7 +359,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
                 <Button
                   onClick={handleSetupPayments}
                   disabled={isSettingUp}
-                  className="bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg"
+                  className="bg-secondary hover:bg-secondary/90 text-primary font-semibold shadow-lg"
                 >
                   {isSettingUp ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

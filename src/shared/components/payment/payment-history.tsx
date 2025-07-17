@@ -176,11 +176,11 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <Badge variant="glassy-saffron" className="bg-green-500/20 text-green-400 border-green-500/30">Confirmed</Badge>
+        return <Badge variant="glassy-secondary" className="bg-green-500/20 text-green-400 border-green-500/30">Confirmed</Badge>
       case 'completed':
-        return <Badge variant="glassy-saffron" className="bg-blue-500/20 text-blue-400 border-blue-500/30">Completed</Badge>
+        return <Badge variant="glassy-secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30">Completed</Badge>
       case 'cancelled':
-        return <Badge variant="glassy-saffron" className="bg-red-500/20 text-red-400 border-red-500/30">Cancelled</Badge>
+        return <Badge variant="glassy-secondary" className="bg-red-500/20 text-red-400 border-red-500/30">Cancelled</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -204,7 +204,7 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
             <p>Error loading payment history: {error}</p>
             <Button 
               onClick={() => loadPayments()} 
-              className="mt-4 bg-saffron hover:bg-saffron/90 text-primary font-semibold"
+              className="mt-4 bg-secondary hover:bg-secondary/90 text-primary font-semibold"
             >
               Try Again
             </Button>
@@ -218,8 +218,8 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
     <GlassyCard className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-2xl">
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-saffron/20 rounded-full">
-            <DollarSign className="h-5 w-5 text-saffron" />
+          <div className="p-2 bg-secondary/20 rounded-full">
+            <DollarSign className="h-5 w-5 text-secondary" />
           </div>
           <CardTitle className="text-2xl font-bebas text-white tracking-wide">Payment History</CardTitle>
         </div>
@@ -242,12 +242,12 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
               </div>
               <div className="text-xs text-white/40">vs last month</div>
             </GlassyCard>
-            <GlassyCard variant="saffron" className="p-4">
+            <GlassyCard variant="secondary" className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="h-4 w-4 text-saffron" />
-                <span className="text-sm text-saffron font-medium">Total Payout</span>
+                <DollarSign className="h-4 w-4 text-secondary" />
+                <span className="text-sm text-secondary font-medium">Total Payout</span>
               </div>
-              <div className="text-2xl font-bold text-saffron">{formatCurrency(totals.totalBarberPayout)}</div>
+              <div className="text-2xl font-bold text-secondary">{formatCurrency(totals.totalBarberPayout)}</div>
             </GlassyCard>
             <GlassyCard variant="hover" className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -290,7 +290,7 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
                 
                 <div className="text-right">
                   <div className="text-lg font-bold text-white">{formatCurrency(payment.price)}</div>
-                  <div className="text-sm text-saffron font-medium">
+                  <div className="text-sm text-secondary font-medium">
                     You earned: {formatCurrency(payment.barber_payout)}
                   </div>
                 </div>
@@ -335,8 +335,8 @@ export function PaymentHistory({ barberId }: PaymentHistoryProps) {
         {payments.length === 0 && !loading && (
           <div className="text-center py-12 text-white/60">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-3 bg-saffron/20 rounded-full">
-                <DollarSign className="h-12 w-12 text-saffron/50" />
+              <div className="p-3 bg-secondary/20 rounded-full">
+                <DollarSign className="h-12 w-12 text-secondary/50" />
               </div>
             </div>
             <p className="text-lg font-semibold text-white mb-2">No payment history found</p>

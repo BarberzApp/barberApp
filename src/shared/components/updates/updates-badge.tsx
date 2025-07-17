@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { UpdatesModal } from './updates-modal'
+import { cn } from '@/shared/lib/utils'
 
 interface Update {
   id: string
@@ -73,51 +74,59 @@ const mockUpdates: Update[] = [
   },
   {
     id: '4.3',
-    title: 'Specialties List Update',
-    description: 'Only "Lashes" and "Brows" are available as specialties, removing the long list of cuts/styles.',
+    title: 'Mobile Navigation Improvements',
+    description: 'Enhanced mobile navigation with better glass morphism, improved touch targets, and consistent styling across all pages.',
     date: '2024-07-08',
     type: 'improvement',
     isNew: true
   },
   {
     id: '4.2',
-    title: 'Specialty Filter Logic Fix',
-    description: 'Improved specialty filter on the cuts page for exact, case-insensitive matching, ensuring only relevant videos are shown.',
+    title: 'Cuts Page Video Improvements',
+    description: 'Fixed video aspect ratios, added mute toggle, improved autoplay behavior, and enhanced mobile video experience.',
+    date: '2024-07-08',
+    type: 'improvement',
+    isNew: true
+  },
+  {
+    id: '4.1',
+    title: 'Filter Bar Enhancements',
+    description: 'Made filter bar transparent and locked over videos with subtle highlights instead of heavy gradients.',
+    date: '2024-07-08',
+    type: 'improvement',
+    isNew: true
+  },
+  {
+    id: '4',
+    title: 'Cuts Page Layout Refinements',
+    description: 'Refined cuts page layout to match design specifications with profile icon and username together, description below, and tags and location at the bottom.',
+    date: '2024-07-08',
+    type: 'improvement',
+    isNew: true
+  },
+  {
+    id: '3',
+    title: 'Like & Comment Count Updates',
+    description: 'Like and comment counts now update immediately and smoothly when users interact with the buttons, with transition animations and proper React re-rendering.',
+    date: '2024-07-08',
+    type: 'improvement',
+    isNew: true
+  },
+  {
+    id: '2',
+    title: 'Page Scrolling Fixes',
+    description: 'Disabled page scrolling on cuts page so only video scrolling is allowed, and added more scrolling space on browse and calendar pages.',
     date: '2024-07-08',
     type: 'bugfix',
     isNew: true
   },
   {
     id: '1',
-    title: 'Video Preview on Profile',
-    description: 'You can now preview your cuts directly on your profile page. Hover over videos to see them in action!',
-    date: '2024-01-15',
-    type: 'feature',
-    isNew: true
-  },
-  {
-    id: '2',
-    title: 'Enhanced Location Display',
-    description: 'Profile pages now show cleaner location formatting (Town, State) instead of full addresses.',
-    date: '2024-01-14',
+    title: 'Onboarding Flow Improvements',
+    description: 'Removed automatic redirect logic that was sending barbers to their profile after 70% completion, ensuring they stay on onboarding until manually completed.',
+    date: '2024-07-08',
     type: 'improvement',
     isNew: true
-  },
-  {
-    id: '3',
-    title: 'Saffron Button Consistency',
-    description: 'All service buttons now use consistent saffron styling for better visual harmony.',
-    date: '2024-01-13',
-    type: 'improvement',
-    isNew: false
-  },
-  {
-    id: '4',
-    title: 'Multiline Service Descriptions',
-    description: 'Service descriptions now support multiple lines and line breaks for better formatting.',
-    date: '2024-01-12',
-    type: 'feature',
-    isNew: false
   }
 ]
 
@@ -145,11 +154,18 @@ export function UpdatesBadge() {
         variant="ghost"
         size="icon"
         onClick={() => setIsModalOpen(true)}
-        className="relative rounded-full p-2 hover:bg-saffron/20 transition-colors"
+        className="relative p-2 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-300 hover:border-saffron/30 hover:shadow-lg hover:shadow-saffron/20 group"
       >
-        <Bell className="h-5 w-5 text-white" />
+        <Bell className="h-5 w-5 text-white group-hover:text-saffron transition-colors duration-300" />
         {hasNewUpdates && (
-          <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse" />
+          <>
+            {/* Red blinker dot */}
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50" />
+            {/* Count badge */}
+            <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center shadow-lg shadow-red-500/50">
+              {updates.filter(u => u.isNew).length > 99 ? '99+' : updates.filter(u => u.isNew).length}
+            </span>
+          </>
         )}
       </Button>
       

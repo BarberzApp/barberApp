@@ -115,8 +115,8 @@ export default function BarberCalendar() {
           title: `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`,
           start: startDate.toISOString(),
           end: endDate.toISOString(),
-          backgroundColor: '#ffc107',
-          borderColor: '#ff8c00',
+          backgroundColor: 'var(--secondary)',
+          borderColor: 'var(--secondary)',
           textColor: '#FFFFFF',
           extendedProps: {
             status: booking.status,
@@ -185,9 +185,9 @@ export default function BarberCalendar() {
       font-weight: 600;
     }
     .barber-calendar .fc-button {
-      background: rgba(255, 193, 7, 0.2) !important;
-      border: 1px solid rgba(255, 193, 7, 0.3) !important;
-      color: #ffc107 !important;
+      background: rgba(var(--secondary), 0.2) !important;
+      border: 1px solid rgba(var(--secondary), 0.3) !important;
+      color: var(--secondary) !important;
       border-radius: 12px;
       padding: 0.75rem 1.5rem;
       font-weight: 600;
@@ -195,14 +195,14 @@ export default function BarberCalendar() {
       backdrop-filter: blur(10px);
     }
     .barber-calendar .fc-button:hover {
-      background: rgba(255, 193, 7, 0.3) !important;
+      background: rgba(var(--secondary), 0.3) !important;
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+      box-shadow: 0 8px 25px rgba(var(--secondary), 0.3);
     }
     .barber-calendar .fc-button-active {
-      background: #ffc107 !important;
+      background: var(--secondary) !important;
       color: white !important;
-      box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
+      box-shadow: 0 8px 25px rgba(var(--secondary), 0.4);
     }
     .barber-calendar .fc-col-header {
       background: rgba(255, 255, 255, 0.1);
@@ -252,7 +252,7 @@ export default function BarberCalendar() {
       font-size: 1.2rem;
       font-weight: 700;
       text-transform: uppercase;
-      color: #ffc107;
+      color: var(--secondary);
       display: block;
     }
     .barber-calendar .fc-timeGridWeek-view .fc-col-header-cell .fc-col-header-cell-cushion .day-number {
@@ -297,26 +297,26 @@ export default function BarberCalendar() {
       background: rgba(255, 255, 255, 0.05);
     }
     .barber-calendar .fc-day-today {
-      background: rgba(255, 193, 7, 0.2) !important;
-      border: 2px solid rgba(255, 193, 7, 0.5) !important;
+      background: rgba(var(--secondary), 0.2) !important;
+      border: 2px solid rgba(var(--secondary), 0.5) !important;
     }
     .barber-calendar .fc-timegrid-now-indicator-line {
-      border-color: #ffc107 !important;
+      border-color: var(--secondary) !important;
       border-width: 3px !important;
-      box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+      box-shadow: 0 0 10px rgba(var(--secondary), 0.5);
     }
     .barber-calendar .fc-timegrid-now-indicator-arrow {
-      border-color: #ffc107 !important;
-      box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+      border-color: var(--secondary) !important;
+      box-shadow: 0 0 10px rgba(var(--secondary), 0.5);
     }
     .barber-calendar .fc-event {
       border-radius: 12px !important;
-      border: 2px solid rgba(255, 193, 7, 0.5) !important;
-      background: #ffc107 !important;
+      border: 2px solid rgba(var(--secondary), 0.5) !important;
+      background: var(--secondary) !important;
       color: white !important;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+      box-shadow: 0 4px 15px rgba(var(--secondary), 0.3);
       transition: all 0.3s ease;
       backdrop-filter: blur(10px);
     }
@@ -326,9 +326,9 @@ export default function BarberCalendar() {
     }
     .barber-calendar .fc-event:hover {
       transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 12px 35px rgba(255, 193, 7, 0.4);
-      border-color: rgba(255, 193, 7, 0.8) !important;
-      background: #ff8c00 !important;
+      box-shadow: 0 12px 35px rgba(var(--secondary), 0.4);
+      border-color: rgba(var(--secondary), 0.8) !important;
+      background: var(--secondary) !important;
     }
     .barber-calendar .fc-scrollgrid {
       border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -349,7 +349,7 @@ export default function BarberCalendar() {
       font-weight: 600;
     }
     .barber-calendar .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-      color: #ffc107 !important;
+      color: var(--secondary) !important;
       font-weight: bold;
     }
     .barber-calendar .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
@@ -357,12 +357,12 @@ export default function BarberCalendar() {
     }
     /* Enhanced more link */
     .barber-calendar .fc-more-link {
-      background: #ffc107;
+      background: var(--secondary);
       color: white !important;
       font-weight: bold;
       border-radius: 9999px;
       padding: 0.25em 1em;
-      box-shadow: 0 2px 8px rgba(255,193,7,0.25);
+      box-shadow: 0 2px 8px rgba(var(--secondary), 0.25);
       border: none;
       font-size: 1.1em;
       letter-spacing: 0.5px;
@@ -381,15 +381,15 @@ export default function BarberCalendar() {
       display: none !important;
     }
     .barber-calendar .fc-more-link:hover {
-      background: #ff8c00;
-      box-shadow: 0 4px 16px rgba(255,193,7,0.35);
+      background: var(--secondary);
+      box-shadow: 0 4px 16px rgba(var(--secondary), 0.35);
       color: white !important;
       text-decoration: none;
       outline: none;
     }
     .barber-calendar .fc-popover, .barber-calendar .fc-more-popover {
-      background: rgba(38,43,46,0.95) !important;
-      border: 1.5px solid var(--saffron) !important;
+      background: rgba(255,255,255,0.05) !important;
+      border: 1.5px solid var(--secondary) !important;
       border-radius: 1rem !important;
       box-shadow: 0 8px 32px rgba(0,0,0,0.25) !important;
       backdrop-filter: blur(12px) !important;
@@ -398,14 +398,14 @@ export default function BarberCalendar() {
     }
     .barber-calendar .fc-popover .fc-popover-header, .barber-calendar .fc-more-popover .fc-popover-header {
       background: transparent !important;
-      border-bottom: 1px solid var(--saffron) !important;
-      color: var(--saffron) !important;
+      border-bottom: 1px solid var(--secondary) !important;
+      color: var(--secondary) !important;
       font-weight: 600;
       font-size: 1rem;
       border-radius: 1rem 1rem 0 0 !important;
     }
     .barber-calendar .fc-popover .fc-popover-close, .barber-calendar .fc-more-popover .fc-popover-close {
-      color: var(--saffron) !important;
+      color: var(--secondary) !important;
       opacity: 0.8;
       font-size: 1.2rem;
       transition: opacity 0.2s;
@@ -414,7 +414,7 @@ export default function BarberCalendar() {
       opacity: 1;
     }
     .barber-calendar .fc-popover .fc-daygrid-event-harness .fc-event, .barber-calendar .fc-more-popover .fc-daygrid-event-harness .fc-event {
-      background: #ffc107 !important;
+      background: var(--secondary) !important;
       color: white !important;
       border-radius: 0.75rem !important;
       border: none !important;
@@ -425,31 +425,31 @@ export default function BarberCalendar() {
       transition: box-shadow 0.2s, background 0.2s;
     }
     .barber-calendar .fc-popover .fc-daygrid-event-harness .fc-event:hover, .barber-calendar .fc-more-popover .fc-daygrid-event-harness .fc-event:hover {
-      box-shadow: 0 4px 16px rgba(255,193,7,0.25);
-      background: #ff8c00 !important;
+      box-shadow: 0 4px 16px rgba(var(--secondary), 0.25);
+      background: var(--secondary) !important;
     }
-    .barber-calendar .fc-popover .fc-daygrid-event-harness .fc-event .text-saffron, .barber-calendar .fc-more-popover .fc-daygrid-event-harness .fc-event .text-saffron {
-      color: var(--saffron) !important;
+    .barber-calendar .fc-popover .fc-daygrid-event-harness .fc-event .text-secondary, .barber-calendar .fc-more-popover .fc-daygrid-event-harness .fc-event .text-secondary {
+      color: var(--secondary) !important;
     }
     /* Today button and view toggles */
     .barber-calendar .calendar-today-btn,
     .barber-calendar .calendar-view-toggle-active {
-      background: #ffc107 !important;
+      background: var(--secondary) !important;
       color: white !important;
       border: none !important;
       font-weight: bold;
-      box-shadow: 0 2px 8px rgba(255,193,7,0.25);
+      box-shadow: 0 2px 8px rgba(var(--secondary), 0.25);
     }
     .barber-calendar .calendar-today-btn:hover,
     .barber-calendar .calendar-view-toggle-active:hover {
-      background: #ff8c00 !important;
+      background: var(--secondary) !important;
     }
     /* Icon backgrounds */
     .barber-calendar .calendar-header-icon {
-      background: #ffc107 !important;
+      background: var(--secondary) !important;
       color: white !important;
       border-radius: 1rem;
-      box-shadow: 0 2px 8px rgba(255,193,7,0.15);
+      box-shadow: 0 2px 8px rgba(var(--secondary), 0.15);
     }
   `;
 
@@ -472,9 +472,9 @@ export default function BarberCalendar() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-saffron mx-auto"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-secondary mx-auto"></div>
           <p className="text-white mt-4 text-lg">Loading Calendar...</p>
         </div>
       </div>
@@ -482,14 +482,14 @@ export default function BarberCalendar() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
 
-      <div className="relative z-10 container mx-auto px-4 py-8 flex flex-col items-center">
+      <div className="relative z-10 container mx-auto px-4 py-8 pb-32 flex flex-col items-center">
         {/* Header */}
         <div className="mb-6 sm:mb-8 w-full">
           <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-            <div className="p-2 sm:p-3 bg-saffron/20 rounded-xl">
-              <CalendarIcon className="h-6 w-6 sm:h-8 sm:w-8 text-saffron" />
+            <div className="p-2 sm:p-3 bg-secondary/20 rounded-xl">
+              <CalendarIcon className="h-6 w-6 sm:h-8 sm:w-8 text-secondary" />
             </div>
             <div>
               <h1 className="text-2xl sm:text-4xl font-bebas text-white tracking-wide">
@@ -517,7 +517,7 @@ export default function BarberCalendar() {
 
       {showEventDialog && selectedEvent && (
         <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-          <DialogContent className="max-w-md w-full bg-black/90 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-6">
+          <DialogContent className="max-w-md w-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-white">Booking Details</DialogTitle>
               <DialogDescription className="text-white/80">
@@ -557,7 +557,7 @@ export default function BarberCalendar() {
                     {selectedEvent.extendedProps.addons.map((addon, idx) => (
                       <li key={idx} className="flex items-center justify-between">
                         <span className="text-white/80">{addon.name}</span>
-                        <span className="text-saffron font-semibold">+${addon.price?.toFixed(2)}</span>
+                        <span className="text-secondary font-semibold">+${addon.price?.toFixed(2)}</span>
                       </li>
                     ))}
                   </ul>
@@ -565,7 +565,7 @@ export default function BarberCalendar() {
               )}
               <div className="flex items-center justify-between border-t border-white/10 pt-2 mt-2">
                 <span className="text-white font-bold text-lg">Total</span>
-                <span className="text-saffron font-bold text-lg">${selectedEvent.extendedProps.price?.toFixed(2)}</span>
+                <span className="text-secondary font-bold text-lg">${selectedEvent.extendedProps.price?.toFixed(2)}</span>
               </div>
             </div>
           </DialogContent>

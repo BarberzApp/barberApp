@@ -179,8 +179,8 @@ export function ShareSettings() {
           <div className="flex items-center justify-center min-h-[200px]">
             <div className="text-center space-y-4">
               <div className="relative">
-                <Share2 className="h-8 w-8 animate-spin mx-auto text-saffron" />
-                <div className="absolute inset-0 rounded-full bg-saffron/20 animate-ping" />
+                <Share2 className="h-8 w-8 animate-spin mx-auto text-secondary" />
+                <div className="absolute inset-0 rounded-full bg-secondary/20 animate-ping" />
               </div>
               <p className="text-white/60 font-medium">Loading booking link...</p>
             </div>
@@ -194,8 +194,8 @@ export function ShareSettings() {
     <Card className="mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl overflow-hidden">
       <CardHeader className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-saffron/20 rounded-full">
-            <Share2 className="h-6 w-6 text-saffron" />
+          <div className="p-3 bg-secondary/20 rounded-full">
+            <Share2 className="h-6 w-6 text-secondary" />
           </div>
           <div>
             <CardTitle className="text-xl font-bebas text-white tracking-wide">
@@ -230,7 +230,7 @@ export function ShareSettings() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium text-white">Your Booking Link</Label>
-            <Badge variant="glassy-saffron" className="text-xs">
+            <Badge variant="secondary" className="text-xs bg-secondary/20 text-secondary border-secondary/30">
               {isLinkValid ? 'Active' : 'Incomplete Profile'}
             </Badge>
           </div>
@@ -239,7 +239,7 @@ export function ShareSettings() {
             <Input
               value={bookingLink}
               readOnly
-              className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-saffron pr-28 flex-1"
+              className="bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary pr-28 flex-1"
               placeholder="Complete your profile to get your booking link"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -270,7 +270,7 @@ export function ShareSettings() {
           <Button
             onClick={shareLink}
             disabled={!isLinkValid}
-            className="flex-1 bg-saffron hover:bg-saffron/90 text-primary font-semibold shadow-lg"
+            className="flex-1 bg-secondary hover:bg-secondary/90 text-primary font-semibold shadow-lg"
           >
             <Share2 className="h-4 w-4 mr-2" />
             Share Link
@@ -280,7 +280,7 @@ export function ShareSettings() {
             onClick={() => setShowQR(!showQR)}
             disabled={!isLinkValid}
             variant="outline"
-            className="border-saffron/30 text-saffron hover:bg-saffron/10"
+            className="border-secondary/30 text-secondary hover:bg-secondary/10"
           >
             <QrCode className="h-4 w-4 mr-2" />
             QR Code
@@ -292,7 +292,7 @@ export function ShareSettings() {
           <div className="mt-6 p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl">
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center gap-2 mb-4">
-                <QrCode className="h-5 w-5 text-saffron" />
+                <QrCode className="h-5 w-5 text-secondary" />
                 <h3 className="text-lg font-semibold text-white">QR Code</h3>
               </div>
               <div className="flex justify-center">
@@ -332,7 +332,7 @@ export function ShareSettings() {
                 }}
                 variant="outline"
                 size="sm"
-                className="border-saffron/30 text-saffron hover:bg-saffron/10 rounded-2xl"
+                className="border-secondary/30 text-secondary hover:bg-secondary/10 rounded-2xl"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download QR Code
@@ -344,8 +344,8 @@ export function ShareSettings() {
         {/* Tips Section */}
         <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-3xl">
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-saffron/20 rounded-full">
-              <Sparkles className="h-4 w-4 text-saffron" />
+            <div className="p-2 bg-secondary/20 rounded-full">
+              <Sparkles className="h-4 w-4 text-secondary" />
             </div>
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-white">Pro Tips</h4>

@@ -239,8 +239,8 @@ export default function BarberOnboardingPage() {
           ...prev,
           phone: profile?.phone || '',
           address,
-          city,
-          state,
+          city: barberData?.city || city, // Use barber table city if available
+          state: barberData?.state || state, // Use barber table state if available
           zipCode,
           services,
           stripeConnected: barberData?.stripe_account_status === 'active'
@@ -280,7 +280,7 @@ export default function BarberOnboardingPage() {
           
           const { data: barber, error: barberError } = await supabase
             .from('barbers')
-            .select('business_name, bio, specialties, stripe_account_status, stripe_account_id')
+            .select('id, business_name, bio, specialties, stripe_account_status, stripe_account_id')
             .eq('user_id', user.id)
             .single();
 
@@ -321,6 +321,35 @@ export default function BarberOnboardingPage() {
             barberData: barber,
             profileData: profile
           });
+
+          // Calculate completion percentage
+          const totalFields = 6; // business_name, bio, specialties, phone, location, services
+          let completedFields = 0;
+          
+          if (barber?.business_name) completedFields++;
+          if (barber?.bio) completedFields++;
+          if (barber?.specialties && barber.specialties.length > 0) completedFields++;
+          if (profile?.phone) completedFields++;
+          if (profile?.location) completedFields++;
+          
+          // Check for services
+          if (barber?.id) {
+            const { data: services } = await supabase
+              .from('services')
+              .select('id')
+              .eq('barber_id', barber.id);
+            if (services && services.length > 0) completedFields++;
+          }
+          
+          const completionPercentage = (completedFields / totalFields) * 100;
+          
+          console.log('Onboarding page: Completion percentage', { 
+            completedFields, 
+            totalFields, 
+            completionPercentage 
+          });
+
+
 
           // Only redirect if they have basic business and contact info
           // Stripe setup can be done later
@@ -542,6 +571,8 @@ export default function BarberOnboardingPage() {
             business_name: formData.businessName,
             bio: formData.bio,
             specialties: formData.specialties,
+            city: formData.city,
+            state: formData.state,
             instagram: extractHandle(formData.socialMedia.instagram),
             twitter: extractHandle(formData.socialMedia.twitter),
             tiktok: extractHandle(formData.socialMedia.tiktok),
@@ -840,7 +871,7 @@ export default function BarberOnboardingPage() {
                 name="businessName"
                 value={formData.businessName}
                 onChange={handleChange}
-                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.businessName ? 'border-red-500' : ''}`}
+                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-secondary ${validationErrors.businessName ? 'border-red-500' : ''}`}
                 placeholder="Enter your business name"
               />
               {validationErrors.businessName && (
@@ -855,7 +886,7 @@ export default function BarberOnboardingPage() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange}
-                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.phone ? 'border-red-500' : ''}`}
+                className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-secondary ${validationErrors.phone ? 'border-red-500' : ''}`}
                 placeholder="(555) 123-4567"
               />
               {validationErrors.phone && (
@@ -870,7 +901,7 @@ export default function BarberOnboardingPage() {
                 value={locationInput}
                 onChange={handleLocationChange}
                 onFocus={() => setShowSuggestions(true)}
-                className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                 placeholder="Start typing your address..."
                 autoComplete="off"
               />
@@ -881,7 +912,7 @@ export default function BarberOnboardingPage() {
                     return (
                       <div
                         key={idx}
-                        className="px-4 py-2 cursor-pointer hover:bg-saffron/10 text-white"
+                        className="px-4 py-2 cursor-pointer hover:bg-secondary/10 text-white"
                         onClick={() => handleSuggestionSelect(suggestion)}
                       >
                         {display}
@@ -901,7 +932,7 @@ export default function BarberOnboardingPage() {
                 name="bio"
                 value={formData.bio}
                 onChange={handleChange}
-                className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors.bio ? 'border-red-500' : ''}`}
+                className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-secondary ${validationErrors.bio ? 'border-red-500' : ''}`}
                 placeholder="Tell us about your business, experience, and what makes you unique..."
                 rows={4}
               />
@@ -953,7 +984,7 @@ export default function BarberOnboardingPage() {
                     name="socialMedia.instagram"
                     value={formData.socialMedia.instagram}
                     onChange={handleChange}
-                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                     placeholder="@yourusername"
                   />
                   <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
@@ -967,7 +998,7 @@ export default function BarberOnboardingPage() {
                     name="socialMedia.twitter"
                     value={formData.socialMedia.twitter}
                     onChange={handleChange}
-                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                     placeholder="@yourusername"
                   />
                   <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
@@ -981,7 +1012,7 @@ export default function BarberOnboardingPage() {
                     name="socialMedia.tiktok"
                     value={formData.socialMedia.tiktok}
                     onChange={handleChange}
-                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                     placeholder="@yourusername"
                   />
                   <p className="text-xs text-white/60">Only your handle (e.g., @yourusername)</p>
@@ -995,7 +1026,7 @@ export default function BarberOnboardingPage() {
                     name="socialMedia.facebook"
                     value={formData.socialMedia.facebook}
                     onChange={handleChange}
-                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-saffron rounded-xl"
+                    className="bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-secondary rounded-xl"
                     placeholder="yourpagename"
                   />
                   <p className="text-xs text-white/60">Only your page name (e.g., yourpagename)</p>
@@ -1015,7 +1046,7 @@ export default function BarberOnboardingPage() {
             )}
             
             {formData.services.length === 0 && (
-              <Alert className="bg-saffron/10 border-saffron/20 text-saffron">
+              <Alert className="bg-secondary/10 border-secondary/20 text-secondary">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   Add at least one service to get started. You can always add more later.
@@ -1031,7 +1062,7 @@ export default function BarberOnboardingPage() {
                     id={`service-${index}-name`}
                     value={service.name}
                     onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
-                    className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors[`service-${index}-name`] ? 'border-red-500' : ''}`}
+                    className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-secondary ${validationErrors[`service-${index}-name`] ? 'border-red-500' : ''}`}
                     placeholder="e.g., Haircut"
                   />
                   {validationErrors[`service-${index}-name`] && (
@@ -1050,7 +1081,7 @@ export default function BarberOnboardingPage() {
                         const numVal = val === '' ? 0 : parseFloat(val);
                         handleServiceChange(index, 'price', numVal);
                       }}
-                      className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors[`service-${index}-price`] ? 'border-red-500' : ''}`}
+                      className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-secondary ${validationErrors[`service-${index}-price`] ? 'border-red-500' : ''}`}
                       min="0"
                       step="0.01"
                       placeholder="25.00"
@@ -1070,7 +1101,7 @@ export default function BarberOnboardingPage() {
                         const numVal = val === '' ? 0 : parseInt(val);
                         handleServiceChange(index, 'duration', numVal);
                       }}
-                      className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-saffron ${validationErrors[`service-${index}-duration`] ? 'border-red-500' : ''}`}
+                      className={`h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-secondary ${validationErrors[`service-${index}-duration`] ? 'border-red-500' : ''}`}
                       min="1"
                       step="1"
                       placeholder="30"
@@ -1107,7 +1138,7 @@ export default function BarberOnboardingPage() {
                 </AlertDescription>
               </Alert>
             ) : stripeStatus === 'pending' ? (
-              <Alert className="bg-saffron/10 border-saffron/20 text-saffron">
+              <Alert className="bg-secondary/10 border-secondary/20 text-secondary">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   Your Stripe account is being reviewed. This usually takes 1-2 business days.
@@ -1135,7 +1166,7 @@ export default function BarberOnboardingPage() {
                 <Button
                   onClick={handleStripeConnect}
                   disabled={loading}
-                  className="w-full bg-saffron hover:bg-saffron/90 text-primary"
+                  className="w-full bg-secondary hover:bg-secondary/90 text-black"
                 >
                   {loading ? (
                     <>
@@ -1206,23 +1237,29 @@ export default function BarberOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
-      {/* Header */}
-      <header className="w-full py-6 px-6 bg-transparent">
-        <div className="max-w-7xl mx-auto flex items-center">
-          <Link href="/" className="text-2xl font-bebas font-bold text-saffron">BOCM</Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+      </div>
+      {/* Step Title Header */}
+      <div className="w-full max-w-2xl mx-auto pt-8 pb-2 px-4">
+        <h1 className="text-3xl sm:text-4xl font-bebas font-bold text-white text-center">
+          {steps[currentStep].title}
+        </h1>
+      </div>
 
       {/* Progress Bar & Step Indicator */}
-      <div className="w-full max-w-2xl mx-auto mt-4 px-4">
+      <div className="w-full max-w-2xl mx-auto px-4">
         <div className="flex items-center justify-between mb-4">
           {steps.map((step, idx) => (
             <div key={step.id} className="flex-1 flex flex-col items-center">
-              <div className={`rounded-full border-2 ${currentStep === idx ? 'border-saffron bg-saffron/20' : 'border-white/20 bg-white/10'} w-12 h-12 flex items-center justify-center mb-2 transition-all`}>
-                <step.icon className={`h-6 w-6 ${currentStep === idx ? 'text-saffron' : 'text-white/60'}`} />
+              <div className={`rounded-full border-2 ${currentStep === idx ? 'border-secondary bg-secondary/20' : 'border-white/20 bg-white/10'} w-12 h-12 flex items-center justify-center mb-2 transition-all`}>
+                <step.icon className={`h-6 w-6 ${currentStep === idx ? 'text-secondary' : 'text-white/60'}`} />
               </div>
-              <span className={`text-xs font-semibold ${currentStep === idx ? 'text-saffron' : 'text-white/60'}`}>{step.title}</span>
+              <span className={`text-xs font-semibold ${currentStep === idx ? 'text-secondary' : 'text-white/60'}`}>{step.title}</span>
             </div>
           ))}
         </div>
@@ -1230,12 +1267,13 @@ export default function BarberOnboardingPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8 pb-24">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 pb-24 relative">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-secondary/10 rounded-full blur-3xl -z-10" />
         <div className="w-full max-w-2xl">
           {/* Onboarding Complete Banner */}
           {onboardingComplete && showCompleteBanner && (
             <div className="flex justify-center mb-8">
-              <Card className="bg-gradient-to-br from-green-900/80 to-green-700/60 border border-green-400/30 shadow-2xl rounded-3xl max-w-lg w-full relative">
+              <Card className="bg-white/10 border border-white/20 shadow-2xl rounded-3xl max-w-lg w-full relative">
                 <button
                   className="absolute top-4 right-4 text-green-200 hover:text-green-100 rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-green-400"
                   aria-label="Dismiss"
@@ -1245,16 +1283,16 @@ export default function BarberOnboardingPage() {
                 </button>
                 <CardHeader className="bg-transparent rounded-t-3xl flex flex-col items-center">
                   <div className="flex items-center justify-center mb-2">
-                    <CheckCircle className="h-10 w-10 text-saffron drop-shadow-lg" />
+                    <CheckCircle className="h-10 w-10 text-secondary drop-shadow-lg" />
                   </div>
-                  <CardTitle className="text-2xl font-bold text-white text-center">Onboarding Complete!</CardTitle>
-                  <CardDescription className="text-green-100 text-center mt-2">
+                  <CardTitle className="text-2xl font-bebas font-bold text-white text-center">Onboarding Complete!</CardTitle>
+                  <CardDescription className="text-white text-center mt-2 font-medium">
                     Your profile is ready. You can now receive bookings and payments.<br />
                     Welcome to the platform!
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center pb-8 pt-2">
-                  <Button asChild className="bg-saffron text-primary font-semibold rounded-xl px-8 py-3 mt-4 hover:bg-saffron/90 shadow-lg text-lg transition-all duration-200 hover:scale-105 active:scale-100 focus:ring-2 focus:ring-saffron focus:ring-offset-2 focus:ring-offset-darkpurple">
+                  <Button asChild className="bg-secondary text-black font-bebas font-bold rounded-xl px-8 py-3 mt-4 hover:bg-secondary/90 shadow-md text-lg transition-all duration-200 hover:scale-105 active:scale-100 focus:ring-2 focus:ring-secondary focus:ring-offset-2 focus:ring-offset-black">
                     <Link href="/profile">Go to Profile</Link>
                   </Button>
                 </CardContent>
@@ -1263,13 +1301,15 @@ export default function BarberOnboardingPage() {
           )}
 
           {/* Step Card */}
-          <Card className="bg-white/5 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl">
+          <Card className="bg-white/5 border border-white/10 shadow-xl backdrop-blur-xl rounded-3xl">
             <CardHeader className="bg-white/5 border-b border-white/10 rounded-t-3xl">
-              <CardTitle className="text-white flex items-center gap-2">
-                {React.createElement(steps[currentStep].icon, { className: 'h-6 w-6 text-saffron' })}
-                {steps[currentStep].title}
+              <CardTitle className="text-white flex flex-col items-center gap-2 text-center font-bebas font-bold text-3xl">
+                <span className="flex items-center justify-center gap-2">
+                  {React.createElement(steps[currentStep].icon, { className: 'h-6 w-6 text-secondary' })}
+                  {steps[currentStep].title}
+                </span>
               </CardTitle>
-              <CardDescription className="text-white/70">
+              <CardDescription className="text-white/70 font-medium text-center">
                 {steps[currentStep].description}
               </CardDescription>
             </CardHeader>
@@ -1283,7 +1323,7 @@ export default function BarberOnboardingPage() {
             <Button
               type="button"
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-3"
+              className="border-secondary text-secondary font-bebas font-bold hover:bg-secondary/10 rounded-xl px-6 py-3"
               onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
               disabled={currentStep === 0}
             >
@@ -1291,7 +1331,7 @@ export default function BarberOnboardingPage() {
             </Button>
             <Button
               type="button"
-              className="bg-saffron text-primary font-semibold rounded-xl px-8 py-3 hover:bg-saffron/90 shadow-lg text-lg transition-all duration-200 hover:scale-105 active:scale-100 focus:ring-2 focus:ring-saffron focus:ring-offset-2 focus:ring-offset-darkpurple"
+              className="bg-secondary text-black font-bebas font-bold rounded-xl px-8 py-3 hover:bg-secondary/90 shadow-md text-lg transition-all duration-200 hover:scale-105 active:scale-100 focus:ring-2 focus:ring-secondary focus:ring-offset-2 focus:ring-offset-black"
               onClick={async () => {
                 if (await validateStep(currentStep)) {
                   if (currentStep < steps.length - 1) {
