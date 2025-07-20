@@ -262,8 +262,27 @@ export default function ProfilePortfolio() {
   // Booking state
   const [bookingFormOpen, setBookingFormOpen] = useState(false);
   const [selectedBookingDate, setSelectedBookingDate] = useState<Date>(new Date());
+  // Add state for client bookings
+  const [clientBookings, setClientBookings] = useState<any[]>([]);
 
-
+  // Fetch bookings where the current user is the client
+  useEffect(() => {
+    const fetchClientBookings = async () => {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`*, barbers:barber_id(name, user_id), services:service_id(name, price)`) // join barber and service info
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        setClientBookings(data || []);
+      } catch (error) {
+        console.error('Error fetching client bookings:', error);
+      }
+    };
+    fetchClientBookings();
+  }, [user]);
 
   const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -1523,28 +1542,47 @@ export default function ProfilePortfolio() {
           {/* Reviews Tab */}
           <TabsContent value="reviews">
             <div className="space-y-4">
-              {(barberProfile?.reviews || []).map((review) => (
-                <div key={review.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={review.avatar || '/placeholder.svg'} alt={review.user} />
-                      <AvatarFallback>{review.user?.charAt(0) || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold">{review.user}</h4>
-                        <span className="text-white/70 text-sm">{review.date}</span>
-                      </div>
-                      <div className="flex items-center mt-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={cn('h-4 w-4', i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-white/30')} />
-                        ))}
+              {clientBookings.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-8 max-w-md mx-auto">
+                    <Calendar className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                    <h3 className="text-white font-bebas font-bold text-xl mb-2">No bookings yet</h3>
+                    <p className="text-white/60 text-sm mb-6">
+                      You haven't booked any services yet as a client.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                clientBookings.map((booking) => (
+                  <div key={booking.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={booking.barbers?.avatar_url || '/placeholder.svg'} alt={booking.barbers?.name || 'Barber'} />
+                        <AvatarFallback>{booking.barbers?.name?.charAt(0) || 'B'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">{booking.barbers?.name || 'Barber'}</h4>
+                          <span className="text-white/70 text-sm">{booking.created_at ? new Date(booking.created_at).toLocaleDateString() : ''}</span>
+                        </div>
+                        <div className="flex items-center mt-1 text-white/80 text-sm">
+                          {booking.services?.name || 'Service'}
+                          {booking.services?.price && (
+                            <span className="ml-2 text-white/50">${booking.services.price}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 text-xs text-white/60 mb-2">
+                      <span>Status:</span>
+                      <span className="font-semibold text-secondary">{booking.status || 'Pending'}</span>
+                    </div>
+                    {booking.notes && (
+                      <p className="text-white/90 text-sm mt-2">{booking.notes}</p>
+                    )}
                   </div>
-                  <p className="text-white/90">{review.comment}</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </TabsContent>
         </Tabs>

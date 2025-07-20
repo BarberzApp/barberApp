@@ -201,20 +201,19 @@ export function Navbar() {
                     {user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-white/10" />
+                  {/* Profile tab for all users */}
+                  <DropdownMenuItem asChild className="p-3 hover:bg-white/10 focus:bg-white/10 cursor-pointer rounded-xl mx-2 my-1">
+                    <Link href="/profile" className="text-white hover:text-saffron transition-colors flex items-center gap-3">
+                      <User className="h-4 w-4" />
+                      <span className="font-medium">Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild className="p-3 hover:bg-white/10 focus:bg-white/10 cursor-pointer rounded-xl mx-2 my-1">
                     <Link href="/settings" className="text-white hover:text-saffron transition-colors flex items-center gap-3">
                       <Settings className="h-4 w-4" />
                       <span className="font-medium">Settings</span>
                     </Link>
                   </DropdownMenuItem>
-                  {user.role === 'barber' && (
-                    <DropdownMenuItem asChild className="p-3 hover:bg-white/10 focus:bg-white/10 cursor-pointer rounded-xl mx-2 my-1">
-                      <Link href="/profile" className="text-white hover:text-saffron transition-colors flex items-center gap-3">
-                        <User className="h-4 w-4" />
-                        <span className="font-medium">My Profile</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem 
                     onClick={handleLogout}

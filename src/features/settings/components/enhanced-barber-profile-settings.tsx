@@ -30,12 +30,17 @@ import {
   Loader2,
   User,
   Sparkles,
-  Save
+  Save,
+  Info,
+  Phone,
+  Check,
+  X
 } from 'lucide-react'
 // import { BrowseIntegrationGuide } from './browse-integration-guide' // Removed
 import { BARBER_SPECIALTIES } from '@/shared/constants/specialties'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 import { geocodeAddress, getAddressSuggestionsNominatim } from '@/shared/lib/geocode'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 const barberProfileSchema = z.object({
   // Basic Info
@@ -45,6 +50,8 @@ const barberProfileSchema = z.object({
   bio: z.string().max(500, 'Bio must be less than 500 characters'),
   location: z.string().min(2, 'Location is required'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
+  carrier: z.string().min(2, 'Carrier is required'),
+  sms_notifications: z.boolean().default(false),
   
   // Professional Info
   specialties: z.array(z.string()).min(1, 'Select at least one specialty'),
@@ -69,6 +76,18 @@ const PRICE_RANGES = [
   { value: 'Mid-range ($30-$60)', label: 'Mid-range ($30-$60)', description: 'Mid-range ($30-$60) - Quality services at fair prices' },
   { value: 'Premium ($60+)', label: 'Premium ($60+)', description: 'Premium ($60+) - High-end services and expertise' }
 ]
+
+const CARRIER_OPTIONS = [
+  { value: 'verizon', label: 'Verizon' },
+  { value: 'att', label: 'AT&T' },
+  { value: 'tmobile', label: 'T-Mobile' },
+  { value: 'sprint', label: 'Sprint' },
+  { value: 'boost', label: 'Boost Mobile' },
+  { value: 'uscellular', label: 'US Cellular' },
+  { value: 'cricket', label: 'Cricket' },
+  { value: 'metro', label: 'MetroPCS' },
+  { value: 'googlefi', label: 'Google Fi' },
+];
 
 interface EnhancedBarberProfileSettingsProps {
   onSave?: () => void;
@@ -119,6 +138,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       bio: '',
       location: '',
       phone: '',
+      carrier: '',
       specialties: [],
       priceRange: 'Mid-range ($30-$60)',
       instagram: '',
@@ -126,6 +146,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       tiktok: '',
       facebook: '',
       isPublic: true,
+      sms_notifications: false,
     },
   })
 
@@ -191,8 +212,8 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
   const handleSuggestionSelect = (suggestion: any) => {
     // Format: house_number road, city/town, state (e.g., '88 Doe Court, South Brunswick, NJ')
     const address = suggestion.address || {};
-    const house = address.house_number ? address.house_number : '';
-    const road = address.road ? address.road : '';
+    const house = address.house_number || '';
+    const road = address.road || '';
     const city = address.city || address.town || address.village || address.hamlet || '';
     const state = address.state || address.state_code || '';
     // Build the formatted string
@@ -268,6 +289,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         bio: barber.bio || profile.bio || '',
         location: profile.location || '',
         phone: profile.phone || '',
+        carrier: profile.carrier || '',
         specialties: barber.specialties || [],
         priceRange: barber.price_range || 'Mid-range ($30-$60)',
         instagram: barber.instagram || '',
@@ -275,6 +297,7 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         tiktok: barber.tiktok || '',
         facebook: barber.facebook || '',
         isPublic: profile.is_public ?? true,
+        sms_notifications: profile.sms_notifications ?? false,
       }
 
       console.log('Setting form data:', formData)
@@ -317,25 +340,25 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
       let formattedLocation = data.location;
       if (geoSuggestions && geoSuggestions.length > 0) {
         const address = geoSuggestions[0].address || {};
-        const house = address.house_number ? address.house_number : '';
-        const road = address.road ? address.road : '';
+        const house = address.house_number || '';
+        const road = address.road || '';
         const city = address.city || address.town || address.village || address.hamlet || '';
         const state = address.state || address.state_code || '';
-        let line1 = [house, road].filter(Boolean).join(' ');
-        let line2 = [city, state].filter(Boolean).join(', ');
+        const line1 = [house, road].filter(Boolean).join(' ');
+        const line2 = [city, state].filter(Boolean).join(', ');
         formattedLocation = [line1, line2].filter(Boolean).join(', ');
       }
       // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
+          sms_notifications: data.sms_notifications,
+          carrier: data.carrier,
+          phone: data.phone,
+          is_public: data.isPublic,
+          location: formattedLocation,
           name: data.name,
           username: data.username,
-          location: formattedLocation,
-          phone: data.phone,
-          bio: data.bio,
-          is_public: data.isPublic,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', user.id)
 
@@ -365,6 +388,40 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
         title: 'Success',
         description: 'Profile updated successfully! Your changes will be visible in search results.',
       })
+
+      // After successful save, send test SMS if enabled
+      if (data.sms_notifications && data.phone && data.carrier) {
+        try {
+          const res = await fetch('/api/bookings/send-sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phoneNumber: data.phone,
+              carrier: data.carrier,
+              message: 'Thank you for enabling SMS notifications! You will now receive important updates by text.'
+            })
+          });
+          if (res.ok) {
+            toast({
+              title: 'Test SMS sent',
+              description: 'A test SMS was sent to your phone to confirm notifications are enabled.'
+            });
+          } else {
+            const err = await res.json();
+            toast({
+              title: 'SMS failed',
+              description: err.error || 'Failed to send test SMS. Please check your carrier and phone number.',
+              variant: 'destructive',
+            });
+          }
+        } catch (e) {
+          toast({
+            title: 'SMS failed',
+            description: 'Could not send test SMS. Please check your connection.',
+            variant: 'destructive',
+          });
+        }
+      }
 
       if (onSave) onSave();
 
@@ -562,6 +619,62 @@ export function EnhancedBarberProfileSettings({ onSave, showPreview = true, show
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="carrier"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        Carrier *
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <span>We need your carrier to send you free SMS reminders. If you’re unsure, check your phone bill or carrier app.</span>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className={`bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary rounded-xl flex items-center gap-2 ${form.formState.errors.carrier ? 'border-red-400' : ''}`}>
+                          <Phone className="h-4 w-4 text-secondary mr-2" />
+                          <SelectValue placeholder="Select your carrier…" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-darkpurple border-white/20 text-white">
+                          {CARRIER_OPTIONS.map((carrier) => (
+                            <SelectItem key={carrier.value} value={carrier.value} className="flex items-center justify-between">
+                              <span>{carrier.label}</span>
+                              {field.value === carrier.value && <Check className="h-4 w-4 text-secondary ml-2" />}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="sms_notifications"
+                  render={({ field }) => (
+                    <FormItem className="mt-2">
+                      <Button
+                        size="sm"
+                        className={
+                          field.value
+                            ? 'bg-green-600 text-white font-semibold rounded-lg px-4 py-2 shadow flex items-center gap-2 hover:bg-green-700 transition'
+                            : 'bg-secondary text-primary font-semibold rounded-lg px-4 py-2 shadow hover:bg-secondary/90 transition'
+                        }
+                        onClick={() => field.onChange(!field.value)}
+                      >
+                        {field.value ? <><Check className="h-4 w-4" /> SMS Notifications Enabled</> : <>Enable SMS Notifications</>}
+                      </Button>
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <Separator className="bg-white/20" />

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from '@/shared/lib/supabase'
+import { sendBookingConfirmationSMS } from "@/shared/utils/sendSMS"
 
 export async function POST(request: Request) {
   try {
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert(bookingData)
-      .select()
+      .select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)')
       .single()
 
     if (bookingError) {
@@ -153,6 +154,16 @@ export async function POST(request: Request) {
           console.error('Error adding add-ons to booking:', addonError)
         }
       }
+    }
+
+    // Send SMS notifications to both barber and client
+    try {
+      console.log('Sending SMS notifications for developer booking:', booking.id)
+      const smsResults = await sendBookingConfirmationSMS(booking)
+      console.log('SMS notification results:', smsResults)
+    } catch (smsError) {
+      console.error('Failed to send SMS notifications:', smsError)
+      // Don't fail the booking creation if SMS fails
     }
 
     console.log('Developer booking created successfully:', {

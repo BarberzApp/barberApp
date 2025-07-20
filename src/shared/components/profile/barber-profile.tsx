@@ -11,7 +11,7 @@ import { Input } from "@/shared/components/ui/input"
 import { Label } from "@/shared/components/ui/label"
 import { Textarea } from "@/shared/components/ui/textarea"
 import { Badge } from "@/shared/components/ui/badge"
-import { Calendar, Star, Scissors, Camera, Search, Info, X } from "lucide-react"
+import { Calendar, Star, Scissors, Camera, Search, Info, X, User } from "lucide-react"
 import { useToast } from "@/shared/components/ui/use-toast"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useData } from "../../hooks/use-data"
@@ -44,7 +44,7 @@ export function BarberProfile() {
   const [barberId, setBarberId] = useState<string>('')
   const [stats, setStats] = useState({
     totalAppointments: 0,
-    averageRating: 0,
+    bookedByYou: 0, // new stat
     servicesCount: 0
   })
   const [specialtiesOpen, setSpecialtiesOpen] = useState(false)
@@ -79,7 +79,7 @@ export function BarberProfile() {
 
   const fetchStats = async () => {
     try {
-      // Fetch appointments count
+      // Fetch appointments count (as barber)
       const { count: appointmentsCount } = await supabase
         .from('appointments')
         .select('*', { count: 'exact' })
@@ -91,19 +91,15 @@ export function BarberProfile() {
         .select('*', { count: 'exact' })
         .eq('barber_id', barberId)
 
-      // Fetch average rating
-      const { data: reviews } = await supabase
-        .from('reviews')
-        .select('rating')
-        .eq('barber_id', barberId)
-
-      const averageRating = reviews?.length 
-        ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length 
-        : 0
+      // Fetch bookings made by this barber as a client
+      const { count: bookedByYou } = await supabase
+        .from('appointments')
+        .select('*', { count: 'exact' })
+        .eq('client_id', user?.id)
 
       setStats({
         totalAppointments: appointmentsCount || 0,
-        averageRating: Number(averageRating.toFixed(1)),
+        bookedByYou: bookedByYou || 0,
         servicesCount: servicesCount || 0
       })
     } catch (error) {
@@ -440,15 +436,15 @@ export function BarberProfile() {
                     </div>
                   </div>
                 </div>
-                
+                {/* Booked by You stat replaces Average Rating */}
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                      <Star className="h-5 w-5 text-white" />
+                      <User className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <p className="text-white/60 text-sm">Average Rating</p>
-                      <p className="text-2xl font-bold text-white">{stats.averageRating}</p>
+                      <p className="text-white/60 text-sm">Booked by You</p>
+                      <p className="text-2xl font-bold text-white">{stats.bookedByYou}</p>
                     </div>
                   </div>
                 </div>

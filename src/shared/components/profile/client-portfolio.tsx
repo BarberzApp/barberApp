@@ -70,6 +70,8 @@ export default function ClientPortfolio() {
   const [videosLoading, setVideosLoading] = useState(true)
   const [avatarLoading, setAvatarLoading] = useState(false)
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
+  const coverFileInputRef = useRef<HTMLInputElement>(null)
+  const [coverLoading, setCoverLoading] = useState(false)
 
   // Get user's bookings
   const userBookings = bookings.filter(b => b.clientId === user?.id)
@@ -229,6 +231,46 @@ export default function ClientPortfolio() {
     }
   }
 
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    try {
+      setCoverLoading(true)
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}-cover-${Date.now()}.${fileExt}`
+      const { data, error } = await supabase.storage
+        .from('covers')
+        .upload(fileName, file)
+      if (error) throw error
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('covers')
+        .getPublicUrl(fileName)
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ coverphoto: publicUrl })
+        .eq('id', user.id)
+      if (updateError) throw updateError
+      // Update local state
+      setProfile(prev => prev ? { ...prev, coverphoto: publicUrl } : null)
+      toast({
+        title: 'Success',
+        description: 'Cover photo updated successfully!',
+      })
+    } catch (error) {
+      console.error('Error uploading cover photo:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update cover photo.',
+        variant: 'destructive',
+      })
+    } finally {
+      setCoverLoading(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -275,115 +317,114 @@ export default function ClientPortfolio() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
       </div>
 
-      {/* Main Content */}
-      <div className="relative z-10">
-        {/* Profile Header */}
-        <div className="relative">
-          {/* Cover Photo */}
-          <div className="h-48 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-b-3xl">
-            {profile?.coverphoto && (
-              <img 
-                src={profile.coverphoto} 
-                alt="Cover" 
-                className="w-full h-full object-cover rounded-b-3xl"
-              />
+      {/* Header Section */}
+      <div className="relative w-full rounded-2xl overflow-hidden mb-8">
+        {/* Cover Photo */}
+        <div className="h-40 sm:h-56 w-full bg-gradient-to-br from-darkpurple to-secondary/30 flex items-end justify-center relative">
+          {profile?.coverphoto ? (
+            <img
+              src={profile.coverphoto}
+              alt="Cover"
+              className="absolute inset-0 w-full h-full object-cover object-center z-0"
+            />
+          ) : (
+            <div className="absolute inset-0 w-full h-full bg-darkpurple/80 z-0" />
+          )}
+          {/* Camera button for cover photo */}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="absolute top-3 right-3 z-20 h-10 w-10 rounded-full bg-black/40 text-white hover:bg-black/60"
+            onClick={() => coverFileInputRef.current?.click()}
+            disabled={coverLoading}
+            title="Change cover photo"
+          >
+            {coverLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Camera className="h-5 w-5" />
             )}
-          </div>
-
-          {/* Profile Info */}
-          <div className="px-4 -mt-16 relative z-10">
-            <div className="flex items-end gap-4 mb-4">
-              {/* Avatar */}
-              <div className="relative">
-                <Avatar className="h-32 w-32 border-4 border-background shadow-xl">
-                  <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
-                  <AvatarFallback className="bg-secondary text-primary font-bold text-2xl">
-                    {profile?.name?.charAt(0).toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-secondary text-primary hover:bg-secondary/90"
-                  onClick={() => avatarFileInputRef.current?.click()}
-                  disabled={avatarLoading}
-                >
-                  {avatarLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Camera className="h-4 w-4" />
-                  )}
-                </Button>
-                <input
-                  ref={avatarFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Name and Info */}
-              <div className="flex-1 pb-2">
-                <h1 className="text-3xl font-bebas font-bold mb-1 text-white">{profile?.name || 'Your Name'}</h1>
-                <div className="text-secondary text-lg font-semibold mb-2">
-                  @{profile?.username || profile?.name?.toLowerCase().replace(/\s+/g, '') || 'username'}
-                </div>
-                {profile?.location && (
-                  <div className="text-white/70 text-base font-medium mb-2 font-pacifico">
-                    {(() => {
-                      const parts = profile.location.split(',').map(s => s.trim());
-                      return parts.length >= 2 ? `${parts[0]}, ${parts[1]}` : profile.location;
-                    })()}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <Card className="bg-muted border border-border backdrop-blur-xl">
-                <CardContent className="p-4 text-center">
-                  <Heart className="h-6 w-6 text-secondary mx-auto mb-2" />
-                  <span className="font-bold text-2xl text-card-foreground">{likedVideos.length}</span>
-                  <p className="text-muted-foreground text-sm">Liked Cuts</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted border border-border backdrop-blur-xl">
-                <CardContent className="p-4 text-center">
-                  <Calendar className="h-6 w-6 text-secondary mx-auto mb-2" />
-                  <span className="font-bold text-2xl text-card-foreground">{userBookings.length}</span>
-                  <p className="text-muted-foreground text-sm">Bookings</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted border border-border backdrop-blur-xl">
-                <CardContent className="p-4 text-center">
-                  <Users className="h-6 w-6 text-secondary mx-auto mb-2" />
-                  <span className="font-bold text-2xl text-card-foreground">{pastBarbers.length}</span>
-                  <p className="text-muted-foreground text-sm">Stylists</p>
-                </CardContent>
-              </Card>
-            </div>
+          </Button>
+          <input
+            ref={coverFileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleCoverUpload}
+            className="hidden"
+          />
+          {/* Glass overlay */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-md z-10" />
+          {/* Avatar */}
+          <div className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 z-20">
+            <Avatar className="w-28 h-28 border-4 border-secondary/80 shadow-xl bg-white/10">
+              <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
+              <AvatarFallback className="bg-secondary text-primary font-bold text-3xl">{profile?.name?.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-secondary text-primary hover:bg-secondary/90"
+              onClick={() => avatarFileInputRef.current?.click()}
+              disabled={avatarLoading}
+            >
+              {avatarLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
+            </Button>
+            <input
+              ref={avatarFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="px-4 pb-8">
-          <Tabs defaultValue="liked" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl">
-              <TabsTrigger value="liked" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-                <Heart className="h-4 w-4 mr-2" />
-                Liked Cuts
-              </TabsTrigger>
-              <TabsTrigger value="past-barbers" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-                <Users className="h-4 w-4 mr-2" />
-                Past Stylists
-              </TabsTrigger>
-              <TabsTrigger value="bookings" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-                <History className="h-4 w-4 mr-2" />
-                Bookings
-              </TabsTrigger>
-            </TabsList>
+        {/* Name, Username, Location */}
+        <div className="pt-20 pb-4 flex flex-col items-center relative z-30">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-1">{profile?.name}</h1>
+          {profile?.username && (
+            <div className="text-secondary text-lg font-mono mb-2">@{profile.username}</div>
+          )}
+          {profile?.location && (
+            <div className="text-white/80 text-base font-medium mb-2 font-pacifico">{profile.location}</div>
+          )}
+        </div>
+      </div>
+      {/* Stats Row */}
+      <div className="flex justify-center gap-8 mb-6">
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-white">{likedVideos.length}</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Cuts</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-white">{userBookings.length}</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Portfolio</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-white">{pastBarbers.length}</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Stylists</span>
+        </div>
+      </div>
+      {/* Tabs */}
+      <div className="w-full max-w-3xl mx-auto mb-8">
+        <Tabs defaultValue="liked" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl">
+            <TabsTrigger value="liked" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
+              <Heart className="h-4 w-4 mr-2" />
+              Portfolio
+            </TabsTrigger>
+            <TabsTrigger value="past-barbers" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
+              <Users className="h-4 w-4 mr-2" />
+              Cuts
+            </TabsTrigger>
+            <TabsTrigger value="bookings" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
+              <History className="h-4 w-4 mr-2" />
+              Services
+            </TabsTrigger>
+          </TabsList>
 
             <TabsContent value="liked" className="mt-6">
               {videosLoading ? (
@@ -521,7 +562,7 @@ export default function ClientPortfolio() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
+      {/* Portfolio Grid (tab content remains below) */}
 
       {/* Video Dialog */}
       <Dialog open={openDialog === 'video'} onOpenChange={open => setOpenDialog(open ? 'video' : null)}>

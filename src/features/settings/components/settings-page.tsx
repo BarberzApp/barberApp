@@ -491,10 +491,6 @@ export function SettingsPage() {
                     
                     <TabsContent value="availability" className="mt-0">
                       <div className="space-y-6">
-                        <div className="text-center space-y-2">
-                          <h2 className="text-2xl font-bebas font-bold text-white">Schedule Management</h2>
-                          <p className="text-white/60 font-pacifico">Manage your availability and working hours</p>
-                        </div>
                         <AvailabilityManager barberId={barberId} onUpdate={loadSettingsData} />
                       </div>
                     </TabsContent>

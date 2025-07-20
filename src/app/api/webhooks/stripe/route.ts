@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server"
-import Stripe from "stripe"
+import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
 import { supabaseAdmin } from "@/shared/lib/supabase"
 import { headers } from "next/headers"
+import { sendBookingConfirmationSMS } from '@/shared/utils/sendSMS'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY')
@@ -378,7 +379,7 @@ export async function POST(request: Request) {
             client_id: clientId === 'guest' ? null : clientId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          }).select('id').single()
+          }).select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)').single()
 
           // Debug logging for the insert operation
           console.log('Inserting booking with client_id:', clientId === 'guest' ? null : clientId)
@@ -395,6 +396,16 @@ export async function POST(request: Request) {
 
           bookingId = newBooking.id
           console.log('Booking created after payment for payment_intent:', paymentIntent.id)
+
+          // Send SMS notifications to both barber and client
+          try {
+            console.log('Sending SMS notifications for Stripe booking:', newBooking.id)
+            const smsResults = await sendBookingConfirmationSMS(newBooking)
+            console.log('SMS notification results:', smsResults)
+          } catch (smsError) {
+            console.error('Failed to send SMS notifications:', smsError)
+            // Don't fail the booking creation if SMS fails
+          }
 
           // Add add-ons to the booking if any were selected
           if (addonIds && addonIds.length > 0) {

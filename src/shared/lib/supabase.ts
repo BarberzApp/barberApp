@@ -24,46 +24,7 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    storageKey: 'barber-app-auth',
-    storage: {
-      getItem: (key) => {
-        if (typeof window === 'undefined') return null
-        try {
-          const value = window.localStorage.getItem(key)
-          if (!value) return null
-          const { session, expiresAt } = JSON.parse(value)
-          if (new Date(expiresAt) <= new Date()) {
-            // Session expired, remove it
-            window.localStorage.removeItem(key)
-            return null
-          }
-          return session
-        } catch (error) {
-          console.error('Error reading from localStorage:', error)
-          return null
-        }
-      },
-      setItem: (key, value) => {
-        if (typeof window === 'undefined') return
-        try {
-          const sessionData = {
-            session: value,
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-          }
-          window.localStorage.setItem(key, JSON.stringify(sessionData))
-        } catch (error) {
-          console.error('Error writing to localStorage:', error)
-        }
-      },
-      removeItem: (key) => {
-        if (typeof window === 'undefined') return
-        try {
-          window.localStorage.removeItem(key)
-        } catch (error) {
-          console.error('Error removing from localStorage:', error)
-        }
-      }
-    }
+    storageKey: 'barber-app-auth'
   },
   db: {
     schema: 'public'

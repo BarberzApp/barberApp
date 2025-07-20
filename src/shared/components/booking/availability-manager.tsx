@@ -199,70 +199,56 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
   }
 
   return (
-    <div className="space-y-8 bg-black">
-      {/* Enhanced Header */}
-      <div className="text-center space-y-6">
-        <div className="flex items-center justify-center gap-4 mb-6">
-          <div className="p-4 bg-gradient-to-br from-saffron/20 to-saffron/10 rounded-2xl shadow-lg">
-            <Settings className="h-8 w-8 text-saffron" />
-          </div>
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-bebas text-white tracking-wide">
-              Schedule Management
-            </h2>
-            <p className="text-white/70 text-lg mt-2">
-              Manage your availability, special hours, and time off
-            </p>
-          </div>
+    <div className="space-y-8 bg-background">
+      {/* Unified Header */}
+      <div className="text-center space-y-2 mb-4">
+        <div className="flex items-center justify-center gap-3">
+          <Settings className="h-7 w-7 text-secondary" />
+          <h2 className="text-2xl sm:text-3xl font-bebas text-white tracking-wide">Schedule Management</h2>
         </div>
+        <p className="text-white/70 text-base mt-1">Manage your availability, special hours, and time off</p>
       </div>
-
-      {/* Enhanced Main Content */}
-      <Card className="bg-gradient-to-br from-white/5 to-white/3 border border-white/10 shadow-2xl backdrop-blur-xl rounded-3xl overflow-hidden">
+      {/* Main Content - glassmorphism card style */}
+      <Card className="bg-white/5 border border-white/10 shadow-lg rounded-xl overflow-hidden">
         <CardContent className="p-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="border-b border-white/10 bg-gradient-to-r from-saffron/5 to-transparent">
+            <div className="border-b border-white/10 bg-white/5">
               <TabsList className="grid w-full grid-cols-3 bg-transparent border-0 p-0 h-auto">
                 <TabsTrigger 
                   value="weekly" 
                   className={`relative flex items-center gap-3 px-8 py-6 rounded-none border-b-2 transition-all duration-300 text-base font-semibold ${
                     activeTab === 'weekly' 
-                      ? 'bg-transparent text-saffron border-saffron' 
+                      ? 'bg-transparent text-secondary border-secondary' 
                       : 'text-white/70 hover:text-white border-transparent hover:border-white/20'
                   }`}
                 >
                   <Calendar className="h-5 w-5" />
                   <span className="hidden sm:inline">Weekly Schedule</span>
                 </TabsTrigger>
-                
                 <TabsTrigger 
                   value="special-hours" 
                   className={`relative flex items-center gap-3 px-8 py-6 rounded-none border-b-2 transition-all duration-300 text-base font-semibold ${
                     activeTab === 'special-hours' 
-                      ? 'bg-transparent text-saffron border-saffron' 
+                      ? 'bg-transparent text-secondary border-secondary' 
                       : 'text-white/70 hover:text-white border-transparent hover:border-white/20'
                   }`}
                 >
                   <Clock className="h-5 w-5" />
                   <span className="hidden sm:inline">Special Hours</span>
                 </TabsTrigger>
-                
                 <TabsTrigger 
                   value="time-off" 
                   className={`relative flex items-center gap-3 px-8 py-6 rounded-none border-b-2 transition-all duration-300 text-base font-semibold ${
                     activeTab === 'time-off' 
-                      ? 'bg-transparent text-saffron border-saffron' 
+                      ? 'bg-transparent text-secondary border-secondary' 
                       : 'text-white/70 hover:text-white border-transparent hover:border-white/20'
                   }`}
                 >
                   <Umbrella className="h-5 w-5" />
                   <span className="hidden sm:inline">Time Off</span>
                 </TabsTrigger>
-                
-
               </TabsList>
             </div>
-
             <div className="p-8">
               <TabsContent value="weekly" className="m-0">
                 <WeeklySchedule
@@ -271,7 +257,6 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
                   onUpdate={onUpdate}
                 />
               </TabsContent>
-
               <TabsContent value="special-hours" className="m-0">
                 <SpecialHoursManager
                   specialHours={specialHours}
@@ -280,7 +265,6 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
                   barberId={barberId}
                 />
               </TabsContent>
-
               <TabsContent value="time-off" className="m-0">
                 <TimeOffManager
                   timeOff={timeOff}
@@ -288,8 +272,6 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
                   onRemove={handleRemoveTimeOff}
                 />
               </TabsContent>
-
-
             </div>
           </Tabs>
         </CardContent>

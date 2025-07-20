@@ -34,4 +34,6 @@ export interface Booking {
   service?: any // Replace with proper service type
   client?: any // Replace with proper client type
   addons?: ServiceAddon[]
+  client_sms_notifications?: boolean;
+  barber_sms_notifications?: boolean;
 } 

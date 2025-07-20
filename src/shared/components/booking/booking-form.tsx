@@ -280,7 +280,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
           onBookingCreated(data.booking)
       } else {
-        // For regular accounts, use direct database insertion (authenticated users only)
+        // For regular accounts, use the API endpoint to ensure SMS notifications are sent
         if (!user) {
           toast({
             title: "Error",
@@ -304,30 +304,31 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           }
         }
 
-        const bookingData = {
-          barber_id: barberId,
-          client_id: user.id,
-          service_id: formData.serviceId,
-          date: bookingDate.toISOString(),
-          notes: formData.notes,
-          status: 'pending',
-          payment_status: 'pending',
-          price: service.price + addonTotal,
-          addon_total: addonTotal,
+        // Use the API endpoint to create booking (this will handle SMS notifications)
+        const response = await fetch('/api/bookings/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            barber_id: barberId,
+            service_id: formData.serviceId,
+            date: bookingDate.toISOString(),
+            price: service.price + addonTotal,
+            client_id: user.id,
+            notes: formData.notes,
+            platform_fee: 0,
+            barber_payout: service.price + addonTotal
+          })
+        })
+
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create booking')
         }
-
-        const { data: booking, error } = await supabase
-          .from('bookings')
-          .insert(bookingData)
-          .select()
-          .single()
-
-        if (error) throw error
 
         // Add add-ons if any are selected
         if (selectedAddonIds.length > 0) {
           const addonBookings = selectedAddonIds.map(addonId => ({
-            booking_id: booking.id,
+            booking_id: data.booking.id,
             addon_id: addonId,
             price: addonPriceMap[addonId] || 0,
           }))
@@ -343,7 +344,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
         // Sync with external service
         if (syncService) {
-          await syncService.saveBooking(booking)
+          await syncService.saveBooking(data.booking)
         }
 
         toast({
@@ -351,7 +352,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           description: "Your booking has been created successfully.",
         })
 
-        onBookingCreated(booking)
+        onBookingCreated(data.booking)
       }
     } catch (error) {
       console.error('Error creating booking:', error)

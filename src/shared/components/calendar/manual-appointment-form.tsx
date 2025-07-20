@@ -253,20 +253,24 @@ export function ManualAppointmentForm({
         barber_payout: formData.price
       }
 
-      const { data: appointment, error } = await supabase
-        .from('bookings')
-        .insert(appointmentData)
-        .select('*, service:service_id(*)')
-        .single()
+      // Use the API endpoint to create booking (this will handle SMS notifications)
+      const response = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appointmentData)
+      })
 
-      if (error) throw error
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create appointment')
+      }
 
       toast({
         title: 'Success!',
         description: 'Manual appointment created successfully.',
       })
 
-      onAppointmentCreated(appointment)
+      onAppointmentCreated(data.booking)
       handleClose()
     } catch (error) {
       console.error('Error creating manual appointment:', error)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth-zustand';
+import { supabase } from '@/shared/lib/supabase';
 import { toast } from 'sonner';
 
 interface CalendarConnection {
@@ -29,11 +30,11 @@ interface SyncResults {
 }
 
 export const useCalendarSync = () => {
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
   const [status, setStatus] = useState<SyncStatus>({
     connection: null,
     connected: false,
-    loading: true,
+    loading: authStatus === 'loading',
     syncing: false,
     stats: {
       syncedEventsCount: 0
@@ -44,18 +45,36 @@ export const useCalendarSync = () => {
   // Fetch connection status
   const fetchStatus = useCallback(async () => {
     if (!user) {
+      console.log('Calendar sync: No user, skipping fetch');
       setStatus(prev => ({ ...prev, loading: false, connected: false }));
       return;
     }
 
     try {
+      console.log('Calendar sync: Fetching status for user:', user.id);
       setStatus(prev => ({ ...prev, loading: true }));
 
-      const response = await fetch('/api/calendar/sync');
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.error('Calendar sync: No access token available');
+        setStatus(prev => ({ ...prev, loading: false, connected: false }));
+        return;
+      }
+
+      const response = await fetch('/api/calendar/sync', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      console.log('Calendar sync: Response status:', response.status);
       
       if (!response.ok) {
         if (response.status === 404) {
           // No connection found
+          console.log('Calendar sync: No connection found (404)');
           setStatus(prev => ({
             ...prev,
             loading: false,
@@ -64,10 +83,21 @@ export const useCalendarSync = () => {
           }));
           return;
         }
-        throw new Error('Failed to fetch calendar status');
+        
+        if (response.status === 401) {
+          console.error('Calendar sync: Authentication error (401)');
+          setStatus(prev => ({ ...prev, loading: false, connected: false }));
+          toast.error('Authentication required. Please log in again.');
+          return;
+        }
+        
+        const errorText = await response.text();
+        console.error('Calendar sync: API error:', response.status, errorText);
+        throw new Error(`Failed to fetch calendar status: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Calendar sync: Success, data:', data);
       
       setStatus(prev => ({
         ...prev,
@@ -84,6 +114,22 @@ export const useCalendarSync = () => {
       toast.error('Failed to load calendar status');
     }
   }, [user]);
+
+  // Only fetch status when user is authenticated
+  useEffect(() => {
+    if (authStatus === 'authenticated' && user) {
+      console.log('Calendar sync: User authenticated, fetching status');
+      fetchStatus();
+    } else if (authStatus === 'unauthenticated') {
+      console.log('Calendar sync: User not authenticated, clearing status');
+      setStatus(prev => ({ 
+        ...prev, 
+        loading: false, 
+        connected: false, 
+        connection: null 
+      }));
+    }
+  }, [authStatus, user, fetchStatus]);
 
   // Connect to Google Calendar
   const connect = useCallback(async () => {

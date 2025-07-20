@@ -8,7 +8,7 @@ import { Label } from '@/shared/components/ui/label'
 import { Button } from '@/shared/components/ui/button'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { useToast } from '@/shared/components/ui/use-toast'
-import { Loader2, Upload, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Building2, Instagram, Twitter, Facebook, Globe, Save, Camera, Sparkles } from 'lucide-react'
+import { Loader2, Upload, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Building2, Instagram, Twitter, Facebook, Globe, Save, Camera, Sparkles, Info, Check } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
@@ -18,6 +18,8 @@ import { Switch } from '@/shared/components/ui/switch'
 import { SpecialtyAutocomplete } from '@/shared/components/ui/specialty-autocomplete'
 import { Badge } from '@/shared/components/ui/badge'
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/shared/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 interface ProfileFormData {
   name: string
@@ -36,6 +38,8 @@ interface ProfileFormData {
     tiktok: string
     facebook: string
   }
+  carrier: string
+  sms_notifications: boolean
 }
 
 interface ProfileSettingsProps {
@@ -68,6 +72,18 @@ async function withTimeout(promise: Promise<any>, ms = 10000) {
     new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
   ])
 }
+
+const CARRIER_OPTIONS = [
+  { value: 'verizon', label: 'Verizon' },
+  { value: 'att', label: 'AT&T' },
+  { value: 'tmobile', label: 'T-Mobile' },
+  { value: 'sprint', label: 'Sprint' },
+  { value: 'boost', label: 'Boost Mobile' },
+  { value: 'uscellular', label: 'US Cellular' },
+  { value: 'cricket', label: 'Cricket' },
+  { value: 'metro', label: 'MetroPCS' },
+  { value: 'googlefi', label: 'Google Fi' },
+];
 
 export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -169,6 +185,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
     if (data.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(data.phone.replace(/\s/g, ''))) {
       errors.phone = 'Please enter a valid phone number'
     }
+    if (!data.carrier?.trim()) errors.carrier = 'Carrier is required';
     if (isBarber && !data.businessName?.trim()) {
       errors.businessName = 'Business name is required for barbers'
     }
@@ -230,7 +247,9 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               twitter: barber.twitter || '',
               tiktok: barber.tiktok || '',
               facebook: barber.facebook || ''
-            }
+            },
+            carrier: profile.carrier || '',
+            sms_notifications: profile.sms_notifications || false,
           })
         }
       } else {
@@ -255,7 +274,9 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             twitter: '',
             tiktok: '',
             facebook: ''
-          }
+          },
+          carrier: profile.carrier || '',
+          sms_notifications: profile.sms_notifications || false,
         })
       }
 
@@ -390,6 +411,8 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             location: combineAddressFields(addressFields), // Combine address fields
             description: data.description,
             is_public: data.isPublic,
+            carrier: data.carrier,
+            sms_notifications: data.sms_notifications,
           })
           .eq('id', user?.id)
         if (profileError) throw profileError
@@ -625,6 +648,42 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
+                    <Label htmlFor="carrier" className="text-white font-medium flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-secondary" />
+                      Carrier *
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-secondary cursor-pointer" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <span>We need your carrier to send you free SMS reminders. If you’re unsure, check your phone bill or carrier app.</span>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Select
+                      value={watch('carrier')}
+                      onValueChange={(value) => setValue('carrier', value)}
+                    >
+                      <SelectTrigger className={`h-12 px-4 bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:border-secondary focus:ring-2 focus:ring-secondary/40 rounded-xl shadow-sm flex items-center gap-2 ${errors.carrier ? 'border-red-400' : ''}`}>
+                        <Phone className="h-4 w-4 text-secondary mr-2" />
+                        <SelectValue placeholder="Select your carrier…" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white/10 border border-white/20 shadow-xl rounded-xl text-white">
+                        {CARRIER_OPTIONS.map((carrier) => (
+                          <SelectItem key={carrier.value} value={carrier.value} className="flex items-center justify-between px-4 py-2 hover:bg-secondary/10 rounded-lg transition-colors">
+                            <span>{carrier.label}</span>
+                            {watch('carrier') === carrier.value && <Check className="h-4 w-4 text-secondary ml-2" />}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.carrier && (
+                      <p className="text-red-400 text-sm">Carrier is required</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="address" className="text-white font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-secondary" />
                       Address
@@ -638,6 +697,8 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                       placeholder="123 Main St"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city" className="text-white font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-secondary" />
@@ -652,8 +713,6 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                       placeholder="New York"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="state" className="text-white font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-secondary" />
@@ -668,6 +727,8 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                       placeholder="NY"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="zipCode" className="text-white font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-secondary" />
@@ -699,6 +760,27 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                       <AlertCircle className="h-3 w-3" />
                       {validationErrors.bio}
                     </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  {!watch('sms_notifications') ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-2 bg-secondary text-primary font-semibold rounded-lg px-4 py-2 shadow hover:bg-secondary/90 transition"
+                      onClick={() => setValue('sms_notifications', true)}
+                    >
+                      Enable SMS Notifications
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-2 bg-green-600 text-white font-semibold rounded-lg px-4 py-2 shadow flex items-center gap-2 cursor-default"
+                      disabled
+                    >
+                      <Check className="h-4 w-4" /> SMS Notifications Enabled
+                    </Button>
                   )}
                 </div>
               </div>

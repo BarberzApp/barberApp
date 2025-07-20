@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/shared/lib/supabase"
+import { sendBookingConfirmationSMS } from "@/shared/utils/sendSMS"
 
 export async function POST(request: Request) {
   try {
@@ -48,7 +49,12 @@ export async function POST(request: Request) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .select('*, barber:barber_id(*), service:service_id(*), client:client_id(*)')
+      .select(`
+        *,
+        barber:barber_id(id, user_id),
+        service:service_id(*),
+        client:client_id(*)
+      `)
       .single()
 
     if (bookingError) {
@@ -57,6 +63,42 @@ export async function POST(request: Request) {
         { error: `Database error: ${bookingError.message}` },
         { status: 500 }
       )
+    }
+
+    // Get the barber's profile data for SMS
+    let barberWithSmsData = booking;
+    if (booking.barber) {
+      try {
+        const { data: barberProfile, error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .select('phone, carrier, sms_notifications')
+          .eq('id', booking.barber.user_id)
+          .single();
+
+        if (!profileError && barberProfile) {
+          barberWithSmsData = {
+            ...booking,
+            barber: {
+              ...booking.barber,
+              phone: barberProfile.phone,
+              carrier: barberProfile.carrier,
+              sms_notifications: barberProfile.sms_notifications
+            }
+          };
+        }
+      } catch (error) {
+        console.error('Failed to fetch barber profile for SMS:', error);
+      }
+    }
+
+    // Send SMS notifications to both barber and client
+    try {
+      console.log('Sending SMS notifications for booking:', booking.id)
+      const smsResults = await sendBookingConfirmationSMS(barberWithSmsData)
+      console.log('SMS notification results:', smsResults)
+    } catch (smsError) {
+      console.error('Failed to send SMS notifications:', smsError)
+      // Don't fail the booking creation if SMS fails
     }
 
     return NextResponse.json({ booking })

@@ -26,7 +26,7 @@
     --ring: #8d7250;
     --radius: 0.5rem;
     --saffron: #c78e3f;
-    --darkpurple: #d4c5b0;
+    --darkneutral: #2d2a26;
     --darkgreen: #FFFFFF;
     /* Social Media Colors */
     --booking-highlight: #ff3b30;
@@ -36,37 +36,7 @@
     --social-facebook: #1877f3;
   }
   
-  .light {
-    --background: #d5c6b1;
-    --foreground: #272a2f;
-    --card: #fff;
-    --card-foreground: #272a2f;
-    --popover: #fff;
-    --popover-foreground: #272a2f;
-    --primary: #d5c6b1;
-    --primary-foreground: #272a2f;
-    --secondary: 33 27% 44%;
-    --secondary-foreground: #fff;
-    --muted: #f5f5f5;
-    --muted-foreground: #b0b0b0;
-    --accent: #8d7150;
-    --accent-foreground: #fff;
-    --destructive: #ff4d4f;
-    --destructive-foreground: #fff;
-    --border: #e5e7eb;
-    --input: #e5e7eb;
-    --ring: #8d7150;
-    --radius: 0.5rem;
-    --saffron: #8d7150;
-    --darkpurple: #d4c5b0;
-    --darkgreen: #272a2f;
-    /* Social Media Colors */
-    --booking-highlight: #ff3b30;
-    --social-instagram: #e1306c;
-    --social-twitter: #1da1f2;
-    --social-tiktok: #000000;
-    --social-facebook: #1877f3;
-  }
+
 }
 
 @layer base {
