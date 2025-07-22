@@ -10,6 +10,7 @@ import { EnhancedErrorBoundary } from "@/shared/components/ui/enhanced-error-bou
 import { LoadingProvider } from "@/shared/components/ui/loading-provider"
 import { PWARegistration } from "@/shared/components/pwa/pwa-registration"
 import { LoadingSpinner } from "@/shared/components/ui/loading-spinner"
+import { SMSPopupWrapper } from "@/shared/components/ui/sms-popup-wrapper"
 import { cn } from "@/shared/lib/utils"
 import React from 'react'
 
@@ -85,6 +86,7 @@ export default function RootLayout({
             </React.Suspense>
             <Toaster />
             <PWARegistration />
+            <SMSPopupWrapper />
             </LoadingProvider>
           </EnhancedErrorBoundary>
           </TooltipProvider>

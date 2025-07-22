@@ -141,7 +141,9 @@ export default function CutsPage() {
   const [hasUserInteracted, setHasUserInteracted] = useState(false)
   const [buffering, setBuffering] = useState<boolean[]>([])
   const [activeVideoIndex, setActiveVideoIndex] = useState(0)
-const [mutedStates, setMutedStates] = useState<{[id: string]: boolean}>({})
+  const [mutedStates, setMutedStates] = useState<{[id: string]: boolean}>({})
+
+
 
 // Simple video control functions
 const playVideo = useCallback((index: number) => {
