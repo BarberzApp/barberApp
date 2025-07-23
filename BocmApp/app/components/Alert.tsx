@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ViewStyle } from 'react-native';
+import { View, Text, ViewStyle, TextStyle } from 'react-native';
 import tw from 'twrnc';
 
 type AlertVariant = 'default' | 'destructive';
@@ -12,12 +12,12 @@ interface AlertProps {
 
 interface AlertTitleProps {
   children: React.ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: TextStyle | TextStyle[];
 }
 
 interface AlertDescriptionProps {
   children: React.ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: TextStyle | TextStyle[];
 }
 
 const Alert: React.FC<AlertProps> = ({ children, variant = 'default', style }) => {
