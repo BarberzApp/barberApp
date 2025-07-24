@@ -110,13 +110,6 @@ export function SMSPermissionPopup({ isOpen, onClose, onEnableSMS }: SMSPermissi
       <DialogContent className="max-w-md w-full bg-black/95 border border-white/20 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
         {/* Header */}
         <div className="relative p-6 border-b border-white/10">
-          <button
-            onClick={handleDismiss}
-            className="absolute top-4 right-4 p-2 text-white/60 hover:text-white transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-secondary/20 rounded-full flex items-center justify-center">
               <Bell className="h-6 w-6 text-secondary" />

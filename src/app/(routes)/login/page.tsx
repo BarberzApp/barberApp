@@ -19,11 +19,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(true)
   const [redirecting, setRedirecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { push } = useSafeNavigation()
-  const { login, user } = useAuth()
+  const { login, user, status, isInitialized } = useAuth()
   const { toast } = useToast()
 
   // Function to handle redirect with proper error handling
@@ -60,27 +59,12 @@ export default function LoginPage() {
     }
   }
 
-  // On mount, check Supabase session directly for instant redirect
+  // Use global auth state for session check and redirect
   useEffect(() => {
-    const checkSession = async () => {
-      setCheckingSession(true)
-      try {
-        console.log('🔍 Checking existing session...')
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (session?.user) {
-          console.log('✅ Found existing session for user:', session.user.id)
-          await handleRedirect(session.user.id)
-        } else {
-          console.log('ℹ️ No existing session found')
-          setCheckingSession(false)
-        }
-      } catch (error) {
-        console.error('❌ Session check error:', error)
-        setCheckingSession(false)
-      }
+    if (isInitialized && user) {
+      handleRedirect(user.id)
     }
-    checkSession()
-  }, [push])
+  }, [isInitialized, user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,14 +77,13 @@ export default function LoginPage() {
       
       if (success) {
         console.log('✅ Login successful, getting session...')
-        // Get the current user from Supabase session
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
+        // Use global auth state for redirect
+        if (user) {
           console.log('✅ Session confirmed, redirecting...')
-          await handleRedirect(session.user.id)
+          await handleRedirect(user.id)
         } else {
-          console.error('❌ No session after successful login')
-          setError('Login successful but session not found. Please try again.')
+          console.error('❌ No user after successful login')
+          setError('Login successful but user not found. Please try again.')
         }
       } else {
         console.log('❌ Login failed')
@@ -150,17 +133,6 @@ export default function LoginPage() {
       </defs>
     </svg>
   )
-
-  if (checkingSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-saffron" />
-          <div className="text-white text-xl font-semibold">Checking session...</div>
-        </div>
-      </div>
-    )
-  }
 
   if (redirecting) {
     return (

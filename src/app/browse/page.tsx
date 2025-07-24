@@ -17,7 +17,6 @@ import {
   AlertCircle, 
   Users, 
   Filter, 
-  SlidersHorizontal,
   X,
   SortAsc,
   SortDesc,
@@ -90,6 +89,7 @@ type Barber = {
   city?: string
   state?: string
   distance?: number // Distance from user's location
+  totalViews?: number // Total views for the barber's cuts
 }
 
 type SortOption = 'name' | 'rating' | 'location' | 'price' | 'distance'
@@ -128,6 +128,8 @@ export default function BrowsePage() {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [locationSuggestionsLoading, setLocationSuggestionsLoading] = useState(false)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [barberViews, setBarberViews] = useState<Record<string, number>>({});
+  const [barberLikes, setBarberLikes] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (showLocationFilter && cityInputRef.current) {
@@ -384,6 +386,21 @@ export default function BrowsePage() {
 
       if (profileError) throw profileError
 
+      // Fetch total likes for all barbers' cuts
+      const { data: cutsData, error: cutsError } = await supabase
+        .from('cuts')
+        .select('barber_id, likes')
+
+      if (cutsError) throw cutsError
+
+      // Aggregate total likes per barber
+      const likesMap: Record<string, number> = {};
+      cutsData.forEach((cut: any) => {
+        if (!cut.barber_id) return;
+        likesMap[cut.barber_id] = (likesMap[cut.barber_id] || 0) + (cut.likes || 0);
+      });
+      setBarberLikes(likesMap);
+
       // Create a map of profiles by user_id
       const profileMap = new Map(profileData.map(profile => [profile.id, profile]))
 
@@ -410,7 +427,8 @@ export default function BrowsePage() {
           latitude: barber.latitude,
           longitude: barber.longitude,
           city: barber.city,
-          state: barber.state
+          state: barber.state,
+          totalLikes: likesMap[barber.id] || 0
         }
       })
 
@@ -769,7 +787,8 @@ export default function BrowsePage() {
                     trending: false,
                     openToHire: false,
                     isPublic: barber.isPublic,
-                    nextAvailable: undefined
+                    nextAvailable: undefined,
+                    totalLikes: barberLikes[barber.id] || 0
                   }}
                   className="hover:-translate-y-2 transition-all duration-300"
                 />

@@ -38,7 +38,7 @@ import {
   Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { BookingForm } from '@/shared/components/booking/booking-form';
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
@@ -142,6 +142,7 @@ export default function CutsPage() {
   const [buffering, setBuffering] = useState<boolean[]>([])
   const [activeVideoIndex, setActiveVideoIndex] = useState(0)
   const [mutedStates, setMutedStates] = useState<{[id: string]: boolean}>({})
+  const searchParams = useSearchParams();
 
 
 
@@ -593,6 +594,27 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
   useEffect(() => {
     fetchCuts()
   }, [fetchCuts, currentCategory])
+
+  useEffect(() => {
+    if (cuts.length > 0) {
+      const cutId = searchParams.get('cutId');
+      if (cutId) {
+        const idx = cuts.findIndex(cut => cut.id === cutId);
+        if (idx !== -1) {
+          setCurrentCutIndex(idx);
+          setActiveVideoIndex(idx);
+          // Scroll to the video
+          setTimeout(() => {
+            const videoElement = videoRefs.current[idx];
+            if (videoElement) {
+              videoElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              videoElement.play();
+            }
+          }, 300);
+        }
+      }
+    }
+  }, [cuts, searchParams]);
 
   useEffect(() => {
     if (cuts.length > 0) {

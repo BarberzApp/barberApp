@@ -137,10 +137,10 @@ export function BarberCard({ barber, className }: BarberCardProps) {
                   </div>
                 )}
 
-                {/* Rating */}
+                {/* Total Likes */}
                 <div className="flex items-center justify-center gap-1">
-                  <Star className="h-4 w-4 fill-secondary text-secondary" />
-                  <span className="text-sm font-semibold text-white">{barber.rating || 4.5}</span>
+                  <Heart className="h-4 w-4 text-secondary" />
+                  <span className="text-sm font-semibold text-white">{barber.totalLikes || 0}</span>
                 </div>
 
                 {/* Price Range */}

@@ -790,8 +790,7 @@ function BookPageContent() {
                     key={reel.id}
                     className="group relative aspect-square bg-white/5 cursor-pointer"
                     onClick={() => {
-                      setSelectedVideo(reel)
-                      setShowVideoDialog(true)
+                      window.location.href = `/reels?cutId=${reel.id}`
                     }}
                   >
                     <video

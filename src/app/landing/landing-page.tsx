@@ -464,7 +464,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center mt-12">
-            <Link href="/reels" className="inline-flex items-center bg-secondary text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-secondary/25">
+            <Link href="/login" className="inline-flex items-center bg-secondary text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-secondary/25">
               <Video className="mr-2 h-5 w-5" />
               Explore All Cuts
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -685,9 +685,6 @@ export default function LandingPage() {
       <footer className="py-12 bg-white/5 backdrop-blur-sm border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center">
-              <Link href="/" className="flex items-center gap-2 text-xl sm:text-2xl font-bebas font-bold text-secondary mb-4 ">
-              <img src="/BocmLogo.png" alt="BOCM Logo" className="h-8 w-8 sm:h-10 sm:w-10" />
-            </Link>
             <p className="text-white/60 text-sm">
               © 2025 BOCM. All rights reserved. The future of booking.
             </p>

@@ -58,6 +58,7 @@ export interface Barber {
   joinDate?: string;
   createdAt?: string;
   updatedAt?: string;
+  totalLikes?: number;
 }
 
 // Service Types
