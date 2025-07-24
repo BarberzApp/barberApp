@@ -19,15 +19,11 @@ import { supabase } from '../lib/supabase';
 import { theme } from '../lib/theme';
 import { Scissors } from 'lucide-react-native';
 
-const BocmLogo = () => (
-  <Text style={[tw`text-3xl font-bold`, { color: theme.colors.saffron }]}>BOCM</Text>
-);
-
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function LoginPage() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login, userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,45 +34,235 @@ export default function LoginPage() {
     const checkSession = async () => {
       setCheckingSession(true);
       try {
+        console.log('🔐 Checking existing session...');
         const { data: { session } } = await supabase.auth.getSession();
+        
         if (session?.user) {
-          // The getRedirectPath logic is now handled locally or needs to be re-imported
-          // For now, we'll just navigate to the home screen if a session exists
-          navigation.replace('Settings');
+          console.log('✅ Session found for user:', session.user.id);
+          await handleRedirect(session.user.id);
         } else {
+          console.log('❌ No existing session found');
           setCheckingSession(false);
         }
       } catch (e) {
+        console.error('❌ Session check error:', e);
         setCheckingSession(false);
       }
     };
     checkSession();
   }, []);
 
+  const handleRedirect = async (userId: string) => {
+    try {
+      console.log('🎯 Starting redirect process for user:', userId);
+      
+      // Fetch profile with retry
+      let profile = null;
+      let retries = 3;
+      
+      while (retries > 0) {
+        console.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (data) {
+          profile = data;
+          console.log('✅ Profile fetched successfully');
+          break;
+        }
+        
+        console.log('❌ Profile fetch attempt failed:', error);
+        retries--;
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      if (!profile) {
+        console.log('❌ Could not fetch profile after retries');
+        setCheckingSession(false);
+        return;
+      }
+
+      // Check if profile needs completion
+      if (!profile.role || !profile.username) {
+        console.log('⚠️ Profile incomplete, redirecting to completion');
+        navigation.replace('ProfileComplete' as any);
+        return;
+      }
+
+      // Ensure barber row exists
+      if (profile.role === 'barber') {
+        console.log('💈 Checking for barber row...');
+        const { data: existingBarber } = await supabase
+          .from('barbers')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!existingBarber) {
+          console.log('💈 Creating barber row...');
+          const { error: insertError } = await supabase
+            .from('barbers')
+            .insert({
+              user_id: userId,
+              business_name: profile.business_name || '',
+              status: 'pending',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+
+          if (insertError) {
+            console.error('❌ Failed to create barber row:', insertError);
+          } else {
+            console.log('✅ Barber row created successfully');
+          }
+        }
+      }
+
+      // Determine redirect path
+      let redirectPath = 'MainTabs';
+      
+      if (profile.email === 'primbocm@gmail.com') {
+        redirectPath = 'SuperAdmin' as any;
+      } else if (profile.role === 'barber') {
+        redirectPath = 'BarberOnboarding';
+      } else if (profile.location) {
+        redirectPath = 'MainTabs';
+      } else {
+        redirectPath = 'ClientOnboarding' as any;
+      }
+
+      console.log('🎯 Redirecting to:', redirectPath);
+      navigation.replace(redirectPath as any);
+      
+    } catch (error) {
+      console.error('❌ Redirect error:', error);
+      setCheckingSession(false);
+    }
+  };
+
   const handleSignIn = async () => {
     setError(null);
+    
     if (!email || !password) {
       setError('Please fill in all fields');
       return;
     }
+    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
       return;
     }
+    
     setIsLoading(true);
+    console.log('🔐 Starting login process for:', email);
+    
     try {
-      await login(email, password);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // The getRedirectPath logic is now handled locally or needs to be re-imported
-        // For now, we'll just navigate to the home screen if a session exists
-        navigation.replace('Settings');
-      } else {
-        setError('Login successful but session not found. Please try again.');
+      // Authenticate with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        console.error('❌ Authentication error:', authError);
+        
+        if (authError.message?.includes('Invalid login credentials')) {
+          setError('Invalid email or password');
+        } else if (authError.message?.includes('Email not confirmed')) {
+          setError('Please check your email to confirm your account');
+        } else {
+          setError(authError.message || 'An error occurred during login');
+        }
+        return;
       }
-    } catch (e) {
-      setError('Invalid email or password');
+
+      if (!authData.user) {
+        console.error('❌ No user data returned');
+        setError('Login failed. Please try again.');
+        return;
+      }
+
+      console.log('✅ Authentication successful for user:', authData.user.id);
+
+      // Fetch profile with retry
+      let profile = null;
+      let retries = 3;
+      
+      while (retries > 0) {
+        console.log(`📋 Fetching profile - Attempt ${4 - retries}/3...`);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+        
+        if (data) {
+          profile = data;
+          console.log('✅ Profile fetched successfully');
+          break;
+        }
+        
+        console.log('❌ Profile fetch attempt failed:', error);
+        retries--;
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      if (!profile) {
+        console.error('❌ Could not fetch profile after retries');
+        setError('Could not load profile. Please try again.');
+        return;
+      }
+
+      // Check if profile is complete
+      if (!profile.role || !profile.username) {
+        console.log('⚠️ Profile incomplete, user needs to complete registration');
+        navigation.replace('ProfileComplete' as any);
+        return;
+      }
+
+      // Ensure barber row exists for barber users
+      if (profile.role === 'barber') {
+        console.log('💈 Checking for barber row...');
+        const { data: existingBarber } = await supabase
+          .from('barbers')
+          .select('id')
+          .eq('user_id', authData.user.id)
+          .maybeSingle();
+
+        if (!existingBarber) {
+          console.log('💈 Creating barber row...');
+          const { error: insertError } = await supabase
+            .from('barbers')
+            .insert({
+              user_id: authData.user.id,
+              business_name: profile.business_name || '',
+              status: 'pending',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+
+          if (insertError) {
+            console.error('❌ Failed to create barber row:', insertError);
+          } else {
+            console.log('✅ Barber row created successfully');
+          }
+        }
+      }
+
+      console.log('✅ Login successful, redirecting...');
+      await handleRedirect(authData.user.id);
+      
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -86,14 +272,44 @@ export default function LoginPage() {
     navigation.navigate('SignUp');
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert('Info', 'Forgot password functionality coming soon!');
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Enter Email', 'Please enter your email address first');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert(
+          'Check Your Email',
+          'We\'ve sent you a password reset link. Please check your email.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send reset email. Please try again.');
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      // Note: Google OAuth in React Native requires additional setup with expo-auth-session
+      // This is a placeholder - you'll need to implement the actual OAuth flow
+      Alert.alert('Coming Soon', 'Google Sign-In will be available soon!');
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+    }
   };
 
   if (checkingSession) {
     return (
       <View style={[tw`flex-1 items-center justify-center`, { backgroundColor: theme.colors.primary }]}>
-        <Text style={[tw`text-xl font-semibold`, { color: theme.colors.saffron }]}>Checking session...</Text>
+        <LoadingSpinner color={theme.colors.saffron} />
+        <Text style={[tw`text-xl font-semibold mt-4`, { color: theme.colors.saffron }]}>Checking session...</Text>
       </View>
     );
   }
@@ -129,14 +345,23 @@ export default function LoginPage() {
             <CardContent style={tw`px-6`}>
               {/* Error Display */}
               {error && (
-                <Text style={{ color: theme.colors.destructive, textAlign: 'center', marginBottom: 8 }}>{error}</Text>
+                <View style={[
+                  tw`p-3 mb-4 rounded-lg`,
+                  { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)', borderWidth: 1 }
+                ]}>
+                  <Text style={{ color: '#ef4444', textAlign: 'center' }}>{error}</Text>
+                </View>
               )}
+              
               <View style={tw`gap-4`}>
                 <Input
                   label="Email"
                   placeholder="name@example.com"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setError(null);
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -149,7 +374,10 @@ export default function LoginPage() {
                     label="Password"
                     placeholder="Enter your password"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      setError(null);
+                    }}
                     secureTextEntry
                     autoCapitalize="none"
                     editable={!isLoading}
@@ -178,6 +406,25 @@ export default function LoginPage() {
                 >
                   {isLoading ? <LoadingSpinner color="#262b2e" /> : 'Sign in'}
                 </Button>
+
+                {/* Divider */}
+                <View style={tw`flex-row items-center my-4`}>
+                  <View style={[tw`flex-1 h-px`, { backgroundColor: 'rgba(255,255,255,0.2)' }]} />
+                  <Text style={tw`mx-4 text-white/60`}>or</Text>
+                  <View style={[tw`flex-1 h-px`, { backgroundColor: 'rgba(255,255,255,0.2)' }]} />
+                </View>
+
+                {/* Google Sign In */}
+                <TouchableOpacity
+                  onPress={handleGoogleSignIn}
+                  disabled={isLoading}
+                  style={[
+                    tw`w-full flex-row items-center justify-center py-3 rounded-lg`,
+                    { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', borderWidth: 1 }
+                  ]}
+                >
+                  <Text style={tw`text-white font-medium`}>Continue with Google</Text>
+                </TouchableOpacity>
               </View>
             </CardContent>
 

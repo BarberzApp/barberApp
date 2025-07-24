@@ -136,10 +136,11 @@ function MainTabs() {
 export const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Home" component={HomePage} />
         <Stack.Screen name="Login" component={LoginPage} />
         <Stack.Screen name="SignUp" component={SignUpPage} />
+        <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="BookingCalendar" component={BookingCalendarPage} />
         <Stack.Screen name="BarberOnboarding" component={BarberOnboardingPage} />
         <Stack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
