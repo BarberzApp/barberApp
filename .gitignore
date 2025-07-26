@@ -1,0 +1,98 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+/cypress/videos/
+/cypress/screenshots/
+cypress.env.json
+cypress.env.*.json
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.idea/
+.vscode/
+
+# barber-app
+barber-app.zip
+
+# BocmApp (React Native app - keep local only)
+/BocmApp/
+
+# future features
+/future-features/
+
+# Move the directories to future-features
+mv app/marketplace future-features/
+mv app/jobs future-features/
+mv app/gallery future-features/
+mv app/calendar future-features/
+mv app/wallet future-features/
+mv app/business future-features/
+mv app/offline future-features/
+
+# Src Structure Rules
+# Prevent files from being created outside of designated directories
+/src/*
+!/src/app/
+!/src/lib/
+!/src/features/
+!/src/shared/
+
+# Prevent feature-specific code outside of features directory
+/src/features/*
+!/src/features/calendar/
+!/src/features/notifications/
+!/src/features/booking/
+!/src/features/auth/
+!/src/features/settings/
+
+# Prevent shared code outside of shared directory
+/src/shared/*
+!/src/shared/types/
+!/src/shared/hooks/
+!/src/shared/lib/
+!/src/shared/components/
+!/src/shared/constants/
+!/src/shared/contexts/
+!/src/shared/notifications/
+!/src/shared/pwa/
+!/src/shared/services/
+!/src/shared/utils/
+!/src/shared/stores/
+
+# Prevent lib code outside of lib directory
+/src/lib/*
+!/src/lib/utils.ts
+!/src/lib/supabase/
+!/src/lib/config.ts
