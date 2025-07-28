@@ -46,8 +46,27 @@ next-env.d.ts
 # barber-app
 barber-app.zip
 
-# BocmApp (React Native app - keep local only)
-/BocmApp/
+# BocmApp specific ignores (but keep the source code)
+/BocmApp/node_modules/
+/BocmApp/.expo/
+/BocmApp/dist/
+/BocmApp/web-build/
+/BocmApp/expo-env.d.ts
+/BocmApp/.env
+/BocmApp/.env.local
+/BocmApp/.env.development
+/BocmApp/.env.production
+/BocmApp/ios/
+/BocmApp/android/
+/BocmApp/*.log
+/BocmApp/coverage/
+/BocmApp/.nyc_output/
+/BocmApp/.npm/
+/BocmApp/.eslintcache/
+/BocmApp/.cache/
+/BocmApp/.parcel-cache/
+/BocmApp/tmp/
+/BocmApp/temp/
 
 # future features
 /future-features/
