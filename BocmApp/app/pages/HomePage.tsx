@@ -232,7 +232,7 @@ export default function HomePage() {
   );
 
   return (
-    <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.primary }]}>
+    <SafeAreaView style={[tw`flex-1`, { backgroundColor: styles.darkBg.backgroundColor }]}>
       <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={tw`flex-1`}>
         <ScrollView showsVerticalScrollIndicator={false} bounces={true} contentContainerStyle={tw`pb-8`}>
@@ -242,7 +242,7 @@ export default function HomePage() {
             <View style={tw`flex-row items-center justify-between`}>
               <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
               <View style={tw`flex-row gap-2`}>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.8}
+                <TouchableOpacity onPress={() => navigation.navigate('Settings')} activeOpacity={0.8}
                   style={[tw`px-4 py-2 rounded-xl`, styles.secondaryBtn]}>
                   <Text style={tw`text-white font-medium text-sm`}>Log In</Text>
                 </TouchableOpacity>
