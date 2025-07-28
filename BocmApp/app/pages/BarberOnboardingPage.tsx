@@ -15,13 +15,13 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import { RootStackParamList } from '../types/types';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
-import Icon from 'react-native-vector-icons/Feather';
+import { RootStackParamList } from '../shared/types';
+import { supabase } from '../shared/lib/supabase';
+import { useAuth } from '../shared/hooks/useAuth';
+const Icon = require('react-native-vector-icons/Feather').default;
 import InAppBrowser from 'react-native-inappbrowser-reborn';
 import { WebView } from 'react-native-webview';
-import { theme } from '../lib/theme';
+import { theme } from '../shared/lib/theme';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "";
 
@@ -750,7 +750,7 @@ export default function BarberOnboardingPage() {
                                         Stripe Connected!
                                     </Text>
                                     <Text style={tw`text-green-300 text-center mt-2`}>
-                                        You're all set to receive payments.
+                                        You&apos;re all set to receive payments.
                                     </Text>
                                 </View>
                             </View>

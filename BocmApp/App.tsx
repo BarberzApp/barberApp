@@ -1,5 +1,5 @@
 import { AppNavigator } from './app/navigation/AppNavigator'
-import { AuthProvider } from './app/hooks/useAuth';
+import { AuthProvider } from './app/shared/hooks/useAuth';
 // import * as Font from 'expo-font';
 // import { useEffect, useState } from 'react';
 // import { Text } from 'react-native';

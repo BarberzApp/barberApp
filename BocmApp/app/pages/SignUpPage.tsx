@@ -12,13 +12,13 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import { Button, Input, Card, CardContent, CardFooter, LoadingSpinner } from '../components';
-import { RootStackParamList } from '../types/types';
-import { supabase } from '../lib/supabase';
-import { theme } from '../lib/theme';
+import { Button, Input, Card, CardContent, CardFooter, LoadingSpinner } from '../shared/components/ui';
+import { RootStackParamList } from '../shared/types';
+import { supabase } from '../shared/lib/supabase';
+import { theme } from '../shared/lib/theme';
 import { Scissors, User } from 'lucide-react-native';
 
-type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
+type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 type UserType = 'client' | 'barber';
 
@@ -105,7 +105,7 @@ export default function SignUpPage() {
                         'Account Exists',
                         'An account with this email already exists. Please sign in instead.',
                         [
-                            { text: 'Go to Login', onPress: () => navigation.navigate('Login') }
+                            { text: 'Go to Login', onPress: () => navigation.navigate('Login' as any) }
                         ]
                     );
                     return;
@@ -126,7 +126,7 @@ export default function SignUpPage() {
                     [
                         {
                             text: 'OK',
-                            onPress: () => navigation.navigate('EmailConfirmation')
+                            onPress: () => navigation.navigate('EmailConfirmation' as any)
                         }
                     ]
                 );
@@ -191,9 +191,9 @@ export default function SignUpPage() {
                             text: 'OK',
                             onPress: () => {
                                 if (userType === 'barber') {
-                                    navigation.navigate('BarberOnboarding');
+                                    navigation.navigate('BarberOnboarding' as any);
                                 } else {
-                                    navigation.navigate('MainTabs' as any);
+                                    navigation.navigate('Home' as any);
                                 }
                             }
                         }
@@ -210,11 +210,11 @@ export default function SignUpPage() {
     };
 
     const handleSignIn = () => {
-        navigation.navigate('Login');
+        navigation.navigate('Login' as any);
     };
 
     const handleTermsPress = () => {
-        navigation.navigate('Terms');
+        navigation.navigate('Terms' as any);
     };
 
     const handleGoogleSignUp = async () => {

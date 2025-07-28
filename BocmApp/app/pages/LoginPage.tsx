@@ -12,12 +12,19 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import { Button, Input, Card, CardHeader, CardContent, CardFooter, LoadingSpinner } from '../components';
-import { RootStackParamList } from '../types/types';
-import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
-import { theme } from '../lib/theme';
+import { Button, Input, Card, CardHeader, CardContent, CardFooter, LoadingSpinner } from '../shared/components/ui';
+import { User, Barber } from '../shared/types';
+import { useAuth } from '../shared/hooks/useAuth';
+import { supabase } from '../shared/lib/supabase';
+import { theme } from '../shared/lib/theme';
 import { Scissors } from 'lucide-react-native';
+
+type RootStackParamList = {
+  Login: undefined;
+  SignUp: undefined;
+  MainTabs: undefined;
+  ProfileComplete: undefined;
+};
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -431,7 +438,7 @@ export default function LoginPage() {
             <CardFooter style={tw`pb-6`}>
               <View style={tw`w-full items-center`}>
                 <Text style={tw`text-sm text-white/80 text-center`}>
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <Text onPress={handleSignUp} style={tw`text-[#FFD180] underline font-bold`}>
                     Sign up
                   </Text>

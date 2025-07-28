@@ -15,11 +15,11 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import { RootStackParamList } from '../types/types';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
-import { theme } from '../lib/theme';
-import Icon from 'react-native-vector-icons/Feather';
+import { RootStackParamList } from '../shared/types';
+import { supabase } from '../shared/lib/supabase';
+import { useAuth } from '../shared/hooks/useAuth';
+import { theme } from '../shared/lib/theme';
+const Icon = require('react-native-vector-icons/Feather').default;
 
 type SettingsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -287,7 +287,7 @@ export default function SettingsPage() {
                     style: 'destructive',
                     onPress: async () => {
                         await logout();
-                        navigation.navigate('Login');
+                        navigation.navigate('Home');
                     },
                 },
             ]
@@ -425,25 +425,49 @@ export default function SettingsPage() {
 
                 <View style={tw`mb-6`}>
                     <Text style={[tw`text-sm mb-1`, { color: theme.colors.mutedForeground }]}>Specialties</Text>
-                    <TextInput
-                        style={[
-                            tw`px-4 py-3.5 rounded-xl text-base`, 
-                            { 
-                                backgroundColor: 'rgba(255,255,255,0.05)', 
-                                color: theme.colors.foreground,
-                                lineHeight: 20,
-                                borderWidth: 1,
-                                borderColor: 'rgba(255,255,255,0.1)'
-                            }
-                        ]}
-                        value={profileData.specialties.join(', ')}
-                        onChangeText={(text) => setProfileData(prev => ({ 
-                            ...prev, 
-                            specialties: text.split(',').map(s => s.trim()).filter(s => s)
-                        }))}
-                        placeholder="Fades, Beard Trims, etc."
-                        placeholderTextColor={theme.colors.mutedForeground}
-                    />
+                    <View style={tw`flex-row flex-wrap gap-2 mb-2`}>
+                        {[
+                            'Barber',
+                            'Braider',
+                            'Stylist',
+                            'Nails',
+                            'Lash',
+                            'Brow',
+                            'Tattoo',
+                            'Piercings',
+                            'Dyeing'
+                        ].map(specialty => (
+                            <TouchableOpacity
+                                key={specialty}
+                                style={[
+                                    tw`px-3 py-2 rounded-full`,
+                                    profileData.specialties.includes(specialty)
+                                        ? { backgroundColor: theme.colors.secondary }
+                                        : { backgroundColor: 'rgba(255,255,255,0.1)' }
+                                ]}
+                                onPress={() => {
+                                    setProfileData(prev => ({
+                                        ...prev,
+                                        specialties: prev.specialties.includes(specialty)
+                                            ? prev.specialties.filter(s => s !== specialty)
+                                            : [...prev.specialties, specialty]
+                                    }));
+                                }}
+                            >
+                                <Text style={[
+                                    tw`text-sm`,
+                                    profileData.specialties.includes(specialty)
+                                        ? { color: theme.colors.primary }
+                                        : { color: theme.colors.foreground }
+                                ]}>
+                                    {specialty}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                    <Text style={[tw`text-xs`, { color: theme.colors.mutedForeground }]}>
+                        Selected: {profileData.specialties.length > 0 ? profileData.specialties.join(', ') : 'None'}
+                    </Text>
                 </View>
 
                 <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>Privacy & Notifications</Text>

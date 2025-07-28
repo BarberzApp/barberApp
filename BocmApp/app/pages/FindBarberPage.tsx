@@ -14,11 +14,10 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import { RootStackParamList } from '../types/types';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
-import Icon from 'react-native-vector-icons/Feather';
-import { theme } from '../lib/theme';
+import { RootStackParamList } from '../shared/types';
+import { supabase, theme } from '../shared/lib';
+import { useAuth } from '../shared/hooks';
+const Icon = require('react-native-vector-icons/Feather').default;
 
 type FindBarberNavigationProp = NativeStackNavigationProp<RootStackParamList, 'FindBarber'>;
 

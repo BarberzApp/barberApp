@@ -117,7 +117,7 @@ export default function BarberOnboardingPage() {
   const [locationInput, setLocationInput] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<number | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   useEffect(() => {

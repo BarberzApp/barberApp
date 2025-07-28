@@ -10,9 +10,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import Icon from 'react-native-vector-icons/Feather';
-import { theme } from '../lib/theme';
-import { RootStackParamList } from '../types/types';
+const Icon = require('react-native-vector-icons/Feather').default;
+import { theme } from '../shared/lib/theme';
+import { RootStackParamList } from '../shared/types';
 
 type BookingSuccessNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingSuccess'>;
 
@@ -43,8 +43,8 @@ export default function BookingSuccessPage() {
           <Icon name="check" size={40} color={theme.colors.accent} />
         </View>
         
-        <Text style={[tw`text-2xl font-bold text-center mb-2`, { color: theme.colors.foreground }]}>
-          Booking Confirmed!
+        <Text style={tw`text-2xl font-bold text-white text-center mb-2`}>
+          You&apos;re All Set!
         </Text>
         
         <Text style={[tw`text-center mb-8`, { color: theme.colors.mutedForeground }]}>

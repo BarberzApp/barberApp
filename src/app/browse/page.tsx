@@ -127,7 +127,7 @@ export default function BrowsePage() {
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([])
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [locationSuggestionsLoading, setLocationSuggestionsLoading] = useState(false)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (showLocationFilter && cityInputRef.current) {

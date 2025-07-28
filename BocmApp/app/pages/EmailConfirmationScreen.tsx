@@ -1,20 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  SafeAreaView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Linking, SafeAreaView } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { theme } from '../shared/lib/theme';
 import tw from 'twrnc';
-import Button from '../components/Button';
-import { RootStackParamList } from '../types/types';
-import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
-import { theme } from '../lib/theme';
+import Button from '../shared/components/ui/Button';
+import { User, Barber } from '../shared/types';
+import { useAuth } from '../shared/hooks/useAuth';
+import { supabase } from '../shared/lib/supabase';
+
+type RootStackParamList = {
+  EmailConfirmation: { email: string };
+};
 
 type EmailConfirmationScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -32,7 +29,7 @@ export default function EmailConfirmationScreen() {
   const { user } = useAuth();
   const [checking, setChecking] = useState(false);
   
-  const { email, userType } = route.params || {};
+  const { email } = route.params || {};
 
   useEffect(() => {
     const checkInterval = setInterval(async () => {
@@ -46,11 +43,8 @@ export default function EmailConfirmationScreen() {
   }, [user]);
 
   const handleConfirmed = () => {
-    if (userType === 'barber') {
-      navigation.replace('BarberOnboarding' as any);
-    } else {
-      navigation.replace('FindBarber' as any);
-    }
+    // Default to client flow if no user profile
+    navigation.replace('FindBarber' as any, {});
   };
 
   const checkEmailConfirmation = async () => {
@@ -95,7 +89,7 @@ export default function EmailConfirmationScreen() {
 
       Alert.alert(
         'Email Sent',
-        'We\'ve sent another confirmation email. Please check your inbox.',
+        'We&apos;ve sent another confirmation email. Please check your inbox.',
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to resend confirmation email. Please try again.');
@@ -103,7 +97,7 @@ export default function EmailConfirmationScreen() {
   };
 
   const goToLogin = () => {
-    navigation.replace('Login');
+    navigation.replace('Login' as any, {});
   };
 
   return (
@@ -117,8 +111,8 @@ export default function EmailConfirmationScreen() {
             <Text style={[tw`text-2xl font-bold text-center mb-2`, { color: theme.colors.foreground }]}>
               Check Your Email
             </Text>
-            <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
-              We've sent a confirmation link to
+            <Text style={tw`text-white text-center mb-6`}>
+              Didn&apos;t receive an email? Resend
             </Text>
             <Text style={[tw`text-center font-semibold`, { color: theme.colors.secondary }]}>
               {email}
@@ -140,7 +134,7 @@ export default function EmailConfirmationScreen() {
                 size="lg"
                 style={[tw`w-full`, { backgroundColor: theme.colors.secondary }]}
               >
-                I've Confirmed My Email
+                I&apos;ve Confirmed My Email
               </Button>
             )}
 
@@ -149,7 +143,7 @@ export default function EmailConfirmationScreen() {
               style={tw`py-3`}
             >
               <Text style={[tw`text-center`, { color: theme.colors.secondary }]}>
-                Didn't receive an email? Resend
+                Didn&apos;t receive an email? Resend
               </Text>
             </TouchableOpacity>
 
