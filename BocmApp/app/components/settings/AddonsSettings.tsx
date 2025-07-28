@@ -250,12 +250,12 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
                     backgroundColor: 'rgba(255,255,255,0.05)', 
                     color: theme.colors.foreground,
                     borderWidth: 1,
-                    borderColor: validationErrors.name ? '#ef4444' : 'rgba(255,255,255,0.1)'
+                    borderColor: validationErrors.name ? theme.colors.destructive : 'rgba(255,255,255,0.1)'
                   }
                 ]}
               />
               {validationErrors.name && (
-                <Text style={tw`text-red-400 text-xs mt-1`}>{validationErrors.name}</Text>
+                <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.name}</Text>
               )}
             </View>
 
@@ -275,12 +275,12 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
                     backgroundColor: 'rgba(255,255,255,0.05)', 
                     color: theme.colors.foreground,
                     borderWidth: 1,
-                    borderColor: validationErrors.price ? '#ef4444' : 'rgba(255,255,255,0.1)'
+                    borderColor: validationErrors.price ? theme.colors.destructive : 'rgba(255,255,255,0.1)'
                   }
                 ]}
               />
               {validationErrors.price && (
-                <Text style={tw`text-red-400 text-xs mt-1`}>{validationErrors.price}</Text>
+                <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.price}</Text>
               )}
             </View>
 
@@ -316,7 +316,7 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
               <Switch
                 value={formData.is_active}
                 onValueChange={(value) => setFormData({ ...formData, is_active: value })}
-                trackColor={{ false: '#374151', true: theme.colors.secondary }}
+                trackColor={{ false: theme.colors.input, true: theme.colors.secondary }}
                 thumbColor={theme.colors.foreground}
               />
             </View>
@@ -379,13 +379,11 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
                           </Text>
                           <View style={[
                             tw`px-2 py-0.5 rounded-full`,
-                            addon.is_active 
-                              ? { backgroundColor: 'rgba(34,197,94,0.2)' }
-                              : { backgroundColor: 'rgba(156,163,175,0.2)' }
+                            { backgroundColor: addon.is_active ? theme.colors.secondary + '20' : theme.colors.mutedForeground + '20' }
                           ]}>
                             <Text style={[
                               tw`text-xs`,
-                              { color: addon.is_active ? '#22c55e' : '#9ca3af' }
+                              { color: addon.is_active ? theme.colors.secondary : theme.colors.mutedForeground }
                             ]}>
                               {addon.is_active ? 'Active' : 'Inactive'}
                             </Text>
@@ -413,9 +411,9 @@ export function AddonsSettings({ onUpdate }: AddonsSettingsProps) {
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => handleDelete(addon.id!)}
-                          style={[tw`p-2 rounded-xl`, { backgroundColor: 'rgba(239,68,68,0.1)' }]}
+                          style={[tw`p-2 rounded-xl`, { backgroundColor: theme.colors.destructive + '10' }]}
                         >
-                          <Trash2 size={18} color="#ef4444" />
+                          <Trash2 size={18} color={theme.colors.destructive} />
                         </TouchableOpacity>
                       </View>
                     </View>

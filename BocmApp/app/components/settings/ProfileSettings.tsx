@@ -269,7 +269,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             backgroundColor: 'rgba(255,255,255,0.05)', 
             color: theme.colors.foreground,
             borderWidth: 1,
-            borderColor: error ? '#ef4444' : 'rgba(255,255,255,0.1)',
+            borderColor: error ? theme.colors.destructive : 'rgba(255,255,255,0.1)',
             textAlignVertical: multiline ? 'top' : 'center'
           }
         ]}
@@ -278,7 +278,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>{description}</Text>
       )}
       {error && (
-        <Text style={tw`text-red-400 text-xs mt-1`}>{error}</Text>
+        <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{error}</Text>
       )}
     </View>
   );
@@ -406,7 +406,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                   ))}
                 </View>
                 {validationErrors.specialties && (
-                  <Text style={tw`text-red-400 text-xs mt-1`}>{validationErrors.specialties}</Text>
+                  <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.specialties}</Text>
                 )}
               </View>
             </CardContent>
@@ -487,7 +487,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               </Text>
               <View style={[
                 tw`rounded-xl overflow-hidden`,
-                { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: validationErrors.carrier ? '#ef4444' : 'rgba(255,255,255,0.1)' }
+                { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: validationErrors.carrier ? theme.colors.destructive : 'rgba(255,255,255,0.1)' }
               ]}>
                 <Picker
                   selectedValue={formData.carrier}
@@ -502,7 +502,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
                 </Picker>
               </View>
               {validationErrors.carrier && (
-                <Text style={tw`text-red-400 text-xs mt-1`}>{validationErrors.carrier}</Text>
+                <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.carrier}</Text>
               )}
             </View>
 
@@ -510,18 +510,16 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               onPress={() => setFormData({ ...formData, sms_notifications: !formData.sms_notifications })}
               style={[
                 tw`px-4 py-2 rounded-xl flex-row items-center justify-center`,
-                formData.sms_notifications
-                  ? { backgroundColor: '#22c55e' }
-                  : { backgroundColor: theme.colors.secondary }
+                { backgroundColor: formData.sms_notifications ? theme.colors.secondary : theme.colors.input }
               ]}
             >
               {formData.sms_notifications ? (
                 <>
-                  <Check size={16} color="#fff" style={tw`mr-2`} />
-                  <Text style={tw`text-white font-medium`}>SMS Notifications Enabled</Text>
+                  <Check size={16} color={theme.colors.primaryForeground} style={tw`mr-2`} />
+                  <Text style={[tw`font-medium`, { color: theme.colors.primaryForeground }]}>SMS Notifications Enabled</Text>
                 </>
               ) : (
-                <Text style={tw`text-white font-medium`}>Enable SMS Notifications</Text>
+                <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>Enable SMS Notifications</Text>
               )}
             </TouchableOpacity>
           </CardContent>
@@ -542,7 +540,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               <Switch
                 value={formData.isPublic}
                 onValueChange={(value) => setFormData({ ...formData, isPublic: value })}
-                trackColor={{ false: '#374151', true: theme.colors.secondary }}
+                trackColor={{ false: theme.colors.input, true: theme.colors.secondary }}
                 thumbColor={theme.colors.foreground}
               />
             </View>
@@ -550,10 +548,10 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
         </Card>
 
         {!formData.isPublic && (
-          <View style={[tw`mb-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }]}>
-            <AlertCircle size={16} color="#ef4444" style={tw`mr-2 mt-0.5`} />
+          <View style={[tw`mb-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.destructive + '10', borderWidth: 1, borderColor: theme.colors.destructive + '20' }]}>
+            <AlertCircle size={16} color={theme.colors.destructive} style={tw`mr-2 mt-0.5`} />
             <View style={tw`flex-1`}>
-              <Text style={tw`text-red-400 text-sm`}>
+              <Text style={[tw`text-sm`, { color: theme.colors.destructive }]}>
                 Your profile is currently private and won't appear in search results. Enable public profile to start receiving bookings from new clients.
               </Text>
             </View>

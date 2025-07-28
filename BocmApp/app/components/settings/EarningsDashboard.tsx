@@ -130,7 +130,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
   const handleStripeConnect = async () => {
     try {
-      // In a real app, this would initiate Stripe Connect onboarding
+      // Removing stripe connect data since it broke down for some reason
       const stripeUrl = 'https://connect.stripe.com/oauth/authorize';
       Linking.openURL(stripeUrl);
     } catch (error) {
@@ -139,7 +139,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
   };
 
   const getPercentageChange = () => {
-    // Calculate percentage change (mock data for now)
+    // Calculate percentage change (random number, change later)
     return 12.5;
   };
 
@@ -160,24 +160,24 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pb-24`}>
       {/* Stripe Connect Status */}
       {!earnings.stripeConnected && (
-        <Card style={[tw`mb-6`, { backgroundColor: 'rgba(251,191,36,0.1)', borderColor: 'rgba(251,191,36,0.2)' }]}>
+        <Card style={[tw`mb-6`, { backgroundColor: theme.colors.saffron + '10', borderColor: theme.colors.saffron + '20' }]}>
           <CardContent style={tw`p-4`}>
             <View style={tw`flex-row items-start`}>
-              <AlertCircle size={20} color="#fbbf24" style={tw`mr-3 mt-0.5`} />
+              <AlertCircle size={20} color={theme.colors.saffron} style={tw`mr-3 mt-0.5`} />
               <View style={tw`flex-1`}>
-                <Text style={[tw`font-semibold mb-1`, { color: '#fbbf24' }]}>
+                <Text style={[tw`font-semibold mb-1`, { color: theme.colors.saffron }]}>
                   Connect Stripe to receive payments
                 </Text>
-                <Text style={[tw`text-sm mb-3`, { color: '#fbbf24' }]}>
+                <Text style={[tw`text-sm mb-3`, { color: theme.colors.saffron }]}>
                   You need to connect your Stripe account to receive payouts from bookings.
                 </Text>
                 <TouchableOpacity
                   onPress={handleStripeConnect}
-                  style={[tw`py-2 px-4 rounded-xl flex-row items-center self-start`, { backgroundColor: '#fbbf24' }]}
+                  style={[tw`py-2 px-4 rounded-xl flex-row items-center self-start`, { backgroundColor: theme.colors.saffron }]}
                 >
-                  <CreditCard size={16} color="#000" style={tw`mr-2`} />
-                  <Text style={tw`text-black font-semibold`}>Connect Stripe</Text>
-                  <ExternalLink size={14} color="#000" style={tw`ml-2`} />
+                  <CreditCard size={16} color={theme.colors.primary} style={tw`mr-2`} />
+                  <Text style={[tw`font-semibold`, { color: theme.colors.primary }]}>Connect Stripe</Text>
+                  <ExternalLink size={14} color={theme.colors.primary} style={tw`ml-2`} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -217,18 +217,16 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
             </Text>
             <View style={[
               tw`flex-row items-center px-2 py-1 rounded-full`,
-              getPercentageChange() >= 0 
-                ? { backgroundColor: 'rgba(34,197,94,0.2)' }
-                : { backgroundColor: 'rgba(239,68,68,0.2)' }
+              { backgroundColor: getPercentageChange() >= 0 ? theme.colors.secondary + '20' : theme.colors.destructive + '20' }
             ]}>
               {getPercentageChange() >= 0 ? (
-                <ArrowUpRight size={14} color="#22c55e" />
+                <ArrowUpRight size={14} color={theme.colors.secondary} />
               ) : (
-                <ArrowDownRight size={14} color="#ef4444" />
+                <ArrowDownRight size={14} color={theme.colors.destructive} />
               )}
               <Text style={[
                 tw`text-xs font-bold ml-1`,
-                { color: getPercentageChange() >= 0 ? '#22c55e' : '#ef4444' }
+                { color: getPercentageChange() >= 0 ? theme.colors.secondary : theme.colors.destructive }
               ]}>
                 {Math.abs(getPercentageChange())}%
               </Text>
@@ -269,7 +267,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
                 <View style={[tw`p-2 rounded-xl`, { backgroundColor: theme.colors.secondary + '20' }]}>
                   <DollarSign size={20} color={theme.colors.secondary} />
                 </View>
-                <TrendingUp size={16} color="#22c55e" />
+                <TrendingUp size={16} color={theme.colors.secondary} />
               </View>
               <Text style={[tw`text-xs`, { color: theme.colors.mutedForeground }]}>
                 Total Earnings
@@ -283,8 +281,8 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
           <Card style={[tw`flex-1`, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
             <CardContent style={tw`p-4`}>
               <View style={tw`flex-row items-center justify-between mb-2`}>
-                <View style={[tw`p-2 rounded-xl`, { backgroundColor: 'rgba(251,191,36,0.2)' }]}>
-                  <Calendar size={20} color="#fbbf24" />
+                <View style={[tw`p-2 rounded-xl`, { backgroundColor: theme.colors.saffron + '20' }]}>
+                  <Calendar size={20} color={theme.colors.saffron} />
                 </View>
               </View>
               <Text style={[tw`text-xs`, { color: theme.colors.mutedForeground }]}>
@@ -328,13 +326,13 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
       {/* Success Message */}
       {earnings.stripeConnected && (
-        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: 'rgba(34,197,94,0.1)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.2)' }]}>
-          <CheckCircle size={16} color="#22c55e" style={tw`mr-2 mt-0.5`} />
+        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.secondary + '10', borderWidth: 1, borderColor: theme.colors.secondary + '20' }]}>
+          <CheckCircle size={16} color={theme.colors.secondary} style={tw`mr-2 mt-0.5`} />
           <View style={tw`flex-1`}>
-            <Text style={[tw`font-semibold mb-1`, { color: '#22c55e' }]}>
+            <Text style={[tw`font-semibold mb-1`, { color: theme.colors.secondary }]}>
               Stripe Connected
             </Text>
-            <Text style={[tw`text-sm`, { color: '#22c55e' }]}>
+            <Text style={[tw`text-sm`, { color: theme.colors.secondary }]}>
               Your payments are being processed automatically. Payouts occur daily.
             </Text>
           </View>

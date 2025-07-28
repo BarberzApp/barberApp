@@ -233,7 +233,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
                 <Switch
                   value={day.enabled}
                   onValueChange={() => toggleDay(index)}
-                  trackColor={{ false: '#374151', true: theme.colors.secondary }}
+                  trackColor={{ false: theme.colors.input, true: theme.colors.secondary }}
                   thumbColor={theme.colors.foreground}
                 />
               </View>
@@ -300,10 +300,10 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
 
       {/* Status Alert */}
       {getAvailableDaysCount() === 0 && (
-        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: 'rgba(251,191,36,0.1)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.2)' }]}>
-          <AlertCircle size={16} color="#fbbf24" style={tw`mr-2 mt-0.5`} />
+        <View style={[tw`mt-6 p-4 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.saffron + '10', borderWidth: 1, borderColor: theme.colors.saffron + '20' }]}>
+          <AlertCircle size={16} color={theme.colors.saffron} style={tw`mr-2 mt-0.5`} />
           <View style={tw`flex-1`}>
-            <Text style={tw`text-yellow-500 text-sm`}>
+            <Text style={[tw`text-sm`, { color: theme.colors.saffron }]}>
               You haven't set any available days. Clients won't be able to book appointments until you set your schedule.
             </Text>
           </View>
@@ -346,7 +346,7 @@ export function AvailabilityManager({ barberId, onUpdate }: AvailabilityManagerP
                 ].map((tip, index) => (
                   <View key={index} style={tw`flex-row items-start`}>
                     <Text style={[tw`text-xs mr-1`, { color: theme.colors.secondary }]}>•</Text>
-                    <Text style={[tw`text-xs flex-1 text-white`, { color: theme.colors.foreground + '80' }]}>
+                    <Text style={[tw`text-xs flex-1`, { color: theme.colors.foreground, opacity: 0.8 }]}>
                       {tip}
                     </Text>
                   </View>

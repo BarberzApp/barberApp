@@ -300,7 +300,7 @@ export default function SettingsPage() {
                     {tab.label}
                   </Text>
                   {status === 'complete' && (
-                    <CheckCircle size={14} color="#22c55e" style={tw`ml-2`} />
+                    <CheckCircle size={14} color={theme.colors.secondary} style={tw`ml-2`} />
                   )}
                 </View>
               </TouchableOpacity>
@@ -338,8 +338,8 @@ export default function SettingsPage() {
             onPress={handleLogout}
           >
             <View style={tw`flex-row items-center justify-center`}>
-              <LogOut size={20} color="#fff" style={tw`mr-2`} />
-              <Text style={tw`text-white font-semibold`}>Log Out</Text>
+              <LogOut size={20} color={theme.colors.destructiveForeground} style={tw`mr-2`} />
+              <Text style={[tw`font-semibold`, { color: theme.colors.destructiveForeground }]}>Log Out</Text>
             </View>
           </TouchableOpacity>
         </View>

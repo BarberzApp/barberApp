@@ -255,12 +255,12 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                     backgroundColor: 'rgba(255,255,255,0.05)', 
                     color: theme.colors.foreground,
                     borderWidth: 1,
-                    borderColor: validationErrors.name ? '#ef4444' : 'rgba(255,255,255,0.1)'
+                    borderColor: validationErrors.name ? theme.colors.destructive : 'rgba(255,255,255,0.1)'
                   }
                 ]}
               />
               {validationErrors.name && (
-                <Text style={tw`text-red-400 text-xs mt-1`}>{validationErrors.name}</Text>
+                <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.name}</Text>
               )}
             </View>
 
@@ -284,12 +284,12 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                       backgroundColor: 'rgba(255,255,255,0.05)', 
                       color: theme.colors.foreground,
                       borderWidth: 1,
-                      borderColor: validationErrors.price ? '#ef4444' : 'rgba(255,255,255,0.1)'
+                      borderColor: validationErrors.price ? theme.colors.destructive : 'rgba(255,255,255,0.1)'
                     }
                   ]}
                 />
                 {validationErrors.price && (
-                  <Text style={tw`text-red-400 text-xs mt-1`}>{validationErrors.price}</Text>
+                  <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.price}</Text>
                 )}
               </View>
 
@@ -312,12 +312,12 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                       backgroundColor: 'rgba(255,255,255,0.05)', 
                       color: theme.colors.foreground,
                       borderWidth: 1,
-                      borderColor: validationErrors.duration ? '#ef4444' : 'rgba(255,255,255,0.1)'
+                      borderColor: validationErrors.duration ? theme.colors.destructive : 'rgba(255,255,255,0.1)'
                     }
                   ]}
                 />
                 {validationErrors.duration && (
-                  <Text style={tw`text-red-400 text-xs mt-1`}>{validationErrors.duration}</Text>
+                  <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.duration}</Text>
                 )}
               </View>
             </View>
@@ -459,9 +459,9 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => handleDelete(service.id!)}
-                          style={[tw`p-2 rounded-xl`, { backgroundColor: 'rgba(239,68,68,0.1)' }]}
+                          style={[tw`p-2 rounded-xl`, { backgroundColor: theme.colors.destructive + '10' }]}
                         >
-                          <Trash2 size={18} color="#ef4444" />
+                          <Trash2 size={18} color={theme.colors.destructive} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -492,7 +492,7 @@ export function ServicesSettings({ onUpdate }: ServicesSettingsProps) {
                   ].map((tip, index) => (
                     <View key={index} style={tw`flex-row items-start`}>
                       <View style={[tw`w-1.5 h-1.5 rounded-full mt-1.5 mr-2`, { backgroundColor: theme.colors.secondary }]} />
-                      <Text style={[tw`flex-1 text-sm text-white`]}>
+                      <Text style={[tw`flex-1 text-sm`, { color: theme.colors.foreground }]}>
                         {tip}
                       </Text>
                     </View>

@@ -136,9 +136,6 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
       Alert.alert('Cannot open link', 'Please complete your barber profile first.');
       return;
     }
-    // In React Native, you would typically use Linking.openURL
-    // import { Linking } from 'react-native';
-    // Linking.openURL(bookingLink);
   };
 
   if (isLoading) {
@@ -175,10 +172,10 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
 
         {/* Profile Status Alert */}
         {!profileData.is_public && (
-          <View style={[tw`mb-4 p-3 rounded-xl flex-row items-start`, { backgroundColor: 'rgba(251,191,36,0.1)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.2)' }]}>
-            <AlertCircle size={16} color="#fbbf24" style={tw`mr-2 mt-0.5`} />
+          <View style={[tw`mb-4 p-3 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.saffron + '10', borderWidth: 1, borderColor: theme.colors.saffron + '20' }]}>
+            <AlertCircle size={16} color={theme.colors.saffron} style={tw`mr-2 mt-0.5`} />
             <View style={tw`flex-1`}>
-              <Text style={tw`text-yellow-500 text-sm`}>
+              <Text style={[tw`text-sm`, { color: theme.colors.saffron }]}>
                 Your profile is currently private. Make it public to allow clients to book appointments.
               </Text>
             </View>
@@ -217,7 +214,7 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
             style={[tw`px-4 py-3 rounded-xl`, { borderWidth: 1, borderColor: theme.colors.secondary + '30' }]}
           >
             {copied ? (
-              <CheckCircle size={20} color="#22c55e" />
+              <CheckCircle size={20} color={theme.colors.secondary} />
             ) : (
               <Copy size={20} color={theme.colors.secondary} />
             )}
@@ -244,8 +241,8 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
                 Clients can scan this QR code to book appointments
               </Text>
               {/* QR Code would be rendered here using a library like react-native-qrcode-svg */}
-              <View style={[tw`w-48 h-48 rounded-xl items-center justify-center`, { backgroundColor: '#fff' }]}>
-                <Text style={tw`text-black text-xs text-center`}>QR Code Placeholder</Text>
+              <View style={[tw`w-48 h-48 rounded-xl items-center justify-center`, { backgroundColor: theme.colors.foreground }]}>
+                <Text style={[tw`text-xs text-center`, { color: theme.colors.primary }]}>QR Code Placeholder</Text>
               </View>
               <TouchableOpacity
                 style={[tw`mt-4 px-4 py-2 rounded-xl flex-row items-center`, { backgroundColor: theme.colors.secondary + '20' }]}
@@ -276,7 +273,7 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
                 ].map((tip, index) => (
                   <View key={index} style={tw`flex-row items-start`}>
                     <Text style={[tw`text-xs mr-1`, { color: theme.colors.secondary }]}>•</Text>
-                    <Text style={[tw`text-xs flex-1`, { color: theme.colors.foreground + '80' }]}>
+                    <Text style={[tw`text-xs flex-1`, { color: theme.colors.foreground, opacity: 0.8 }]}>
                       {tip}
                     </Text>
                   </View>
