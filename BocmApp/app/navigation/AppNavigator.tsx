@@ -291,7 +291,7 @@ function MainTabs() {
           component={CutsPage}
           options={{
             tabBarLabel: 'Cuts',
-            tabBarIcon: ({ color, size }) => <Video color={color} size={size} />, 
+            tabBarIcon: ({ color, size }) => <Video color={color} size={size + 2} />, 
           }}
         />
         <Tab.Screen

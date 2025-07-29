@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -91,17 +91,26 @@ export default function BrowsePage() {
   const navigation = useNavigation<BrowseNavigationProp>();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<string>('');
   const [allSpecialties, setAllSpecialties] = useState<string[]>([]);
 
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchPosts = async () => {
     try {
@@ -191,6 +200,19 @@ export default function BrowsePage() {
   useEffect(() => {
     let filtered = posts;
 
+    // Filter by search query (using debounced value)
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim();
+      filtered = filtered.filter(post => {
+        // Search in post title, barber name, and other relevant fields
+        return (
+          (post.title && post.title.toLowerCase().includes(query)) ||
+          (post.barberName && post.barberName.toLowerCase().includes(query)) ||
+          (post.barberId && post.barberId.toLowerCase().includes(query))
+        );
+      });
+    }
+
     // Filter by specialty
     if (selectedSpecialties.length > 0) {
       // For now, we'll filter by barber specialties
@@ -201,14 +223,8 @@ export default function BrowsePage() {
       });
     }
 
-    // Filter by price range
-    if (priceRange) {
-      // This would filter by barber price range
-      // For now, we'll show all posts
-    }
-
     setFilteredPosts(filtered);
-  }, [posts, selectedSpecialties, priceRange]);
+  }, [posts, selectedSpecialties, debouncedSearchQuery]);
 
   const toggleSpecialty = (specialty: string) => {
     setSelectedSpecialties(prev => 
@@ -220,7 +236,7 @@ export default function BrowsePage() {
 
   const clearFilters = () => {
     setSelectedSpecialties([]);
-    setPriceRange('');
+    setSearchQuery('');
   };
 
   // Navigation handlers
@@ -228,7 +244,8 @@ export default function BrowsePage() {
     // Navigate to CutsPage with the specific video
     // Store the selected cut ID in a global way that CutsPage can access
     (global as any).selectedCutId = post.id;
-    (navigation as any).navigate('Cuts');
+    // Use the tab navigation to switch to the Cuts tab
+    navigation.navigate('Cuts' as never);
   };
 
   const handleImagePress = (post: any) => {
@@ -309,35 +326,7 @@ export default function BrowsePage() {
               </View>
             </View>
 
-            {/* Price Range Filter */}
-            <View style={tw`mb-4`}>
-              <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
-                Price Range
-              </Text>
-              <View style={tw`flex-row gap-2`}>
-                {['$', '$$', '$$$', '$$$$'].map(range => (
-                  <TouchableOpacity
-                    key={range}
-                    style={[
-                      tw`px-3 py-1 rounded-full`,
-                      priceRange === range
-                        ? { backgroundColor: theme.colors.secondary }
-                        : { backgroundColor: 'rgba(255,255,255,0.1)' }
-                    ]}
-                    onPress={() => setPriceRange(priceRange === range ? '' : range)}
-                  >
-                    <Text style={[
-                      tw`text-xs`,
-                      priceRange === range
-                        ? { color: theme.colors.primary }
-                        : { color: theme.colors.foreground }
-                    ]}>
-                      {range}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+
 
             {/* Clear Filters */}
             <TouchableOpacity

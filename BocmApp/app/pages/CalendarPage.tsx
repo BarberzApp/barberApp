@@ -10,7 +10,8 @@ import {
   Dimensions,
   Animated,
   Vibration,
-  TextInput
+  TextInput,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -613,39 +614,22 @@ export default function CalendarPage() {
       >
         <ScrollView 
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.colors.secondary}
+              colors={[theme.colors.secondary]}
+              progressBackgroundColor="rgba(0, 0, 0, 0.3)"
+            />
+          }
         >
-        {/* Header */}
-        <View style={tw`px-5 pt-4 pb-6`}>
-          <View style={tw`flex-row items-center gap-3 mb-4`}>
-              <Animated.View 
-                style={[
-                  tw`p-3 rounded-xl`,
-                  { 
-                    backgroundColor: `${theme.colors.secondary}20`,
-                    shadowColor: theme.colors.secondary,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 15,
-                    elevation: 5,
-                  }
-                ]}
-              >
-              <CalendarIcon size={24} color={theme.colors.secondary} />
-              </Animated.View>
-            <View>
-              <Text style={[tw`text-2xl font-bold`, { color: theme.colors.foreground }]}>
-                  {userRole === 'client' ? 'My Appointments' : 'Appointment Calendar'}
-              </Text>
-              <Text style={[tw`text-base`, { color: theme.colors.mutedForeground }]}>
-                  {userRole === 'client' ? 'View your booked appointments' : 'View your bookings and schedule'}
-              </Text>
-            </View>
-          </View>
-
-
-
-
-          </View>
+        {/* Title */}
+        <View style={tw`px-4 pt-4 pb-2`}>
+          <Text style={[tw`text-2xl font-bold mb-4`, { color: theme.colors.foreground }]}>
+            Calendar
+          </Text>
+        </View>
 
           {/* Single Main Calendar Container - Enhanced with glow */}
           <Animated.View 

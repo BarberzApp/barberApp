@@ -2,48 +2,17 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "jsx": "react-jsx",
-    "allowJs": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./app/*"
-      ],
-      "@/shared/*": [
-        "./app/shared/*"
-      ],
-      "@/components/*": [
-        "./app/shared/components/*"
-      ],
-      "@/hooks/*": [
-        "./app/shared/hooks/*"
-      ],
-      "@/lib/*": [
-        "./app/shared/lib/*"
-      ],
-      "@/types/*": [
-        "./app/shared/types/*"
-      ],
-      "@/utils/*": [
-        "./app/shared/utils/*"
-      ],
-      "@/services/*": [
-        "./app/shared/services/*"
-      ],
-      "@/stores/*": [
-        "./app/shared/stores/*"
-      ],
-      "@/contexts/*": [
-        "./app/shared/contexts/*"
-      ],
-      "@/config/*": [
-        "./app/shared/config/*"
-      ],
-      "@/constants/*": [
-        "./app/shared/constants/*"
-      ]
+      "@/*": ["app/*"],
+      "@/shared/*": ["app/shared/*"],
+      "@/components/*": ["app/shared/components/*"],
+      "@/hooks/*": ["app/shared/hooks/*"],
+      "@/lib/*": ["app/shared/lib/*"],
+      "@/types/*": ["app/shared/types/*"],
+      "@/utils/*": ["app/shared/utils/*"],
+      "@/pages/*": ["app/pages/*"],
+      "@/navigation/*": ["app/navigation/*"]
     }
   },
   "include": [

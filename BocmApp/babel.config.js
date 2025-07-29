@@ -3,11 +3,10 @@ module.exports = function (api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      'react-native-reanimated/plugin',
       [
         'module-resolver',
         {
-          root: ['./'],
+          root: ['./app'],
           alias: {
             '@': './app',
             '@/shared': './app/shared',
@@ -16,14 +15,12 @@ module.exports = function (api) {
             '@/lib': './app/shared/lib',
             '@/types': './app/shared/types',
             '@/utils': './app/shared/utils',
-            '@/services': './app/shared/services',
-            '@/stores': './app/shared/stores',
-            '@/contexts': './app/shared/contexts',
-            '@/config': './app/shared/config',
-            '@/constants': './app/shared/constants',
+            '@/pages': './app/pages',
+            '@/navigation': './app/navigation',
           },
         },
       ],
+      'react-native-reanimated/plugin',
     ],
   };
 }; 

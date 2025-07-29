@@ -116,9 +116,13 @@ export default function StaircaseGrid({
   };
 
   const handlePostPress = (item: GridItem) => {
-    if (item.isVideo && onVideoPress) {
-      onVideoPress(item.post);
-    } else if (!item.isVideo && onImagePress) {
+    if (item.isVideo) {
+      // For videos, toggle play/pause first, then navigate
+      handleVideoPress(item.post.id);
+      if (onVideoPress) {
+        onVideoPress(item.post);
+      }
+    } else if (onImagePress) {
       onImagePress(item.post);
     }
   };
@@ -143,16 +147,14 @@ export default function StaircaseGrid({
         <View style={tw`w-full h-full relative`}>
           {/* Video or Image Content */}
           {isVideo ? (
-            <TouchableOpacity onPress={() => handleVideoPress(post.id)}>
-              <Video
-                source={{ uri: post.url }}
-                style={tw`w-full h-full`}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay={isPlaying}
-                isMuted={true}
-                isLooping={true}
-              />
-            </TouchableOpacity>
+            <Video
+              source={{ uri: post.url }}
+              style={tw`w-full h-full`}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay={isPlaying}
+              isMuted={true}
+              isLooping={true}
+            />
           ) : (
             <Image
               source={{ uri: post.url }}
