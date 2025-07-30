@@ -18,7 +18,7 @@ export function AuthGuard({
   fallbackRoute = 'Login',
   showLoading = true 
 }: AuthGuardProps) {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const { push } = useSafeNavigation();
   const [isChecking, setIsChecking] = useState(true);
 
@@ -32,11 +32,11 @@ export function AuthGuard({
       }
 
       // Check if user has required role
-      if (requiredRole && user.role !== requiredRole) {
-        console.log(`🔒 AuthGuard: User role ${user.role} does not match required role ${requiredRole}`);
+      if (requiredRole && userProfile?.role !== requiredRole) {
+        console.log(`🔒 AuthGuard: User role ${userProfile?.role} does not match required role ${requiredRole}`);
         
         // Redirect based on user role
-        switch (user.role) {
+        switch (userProfile?.role) {
           case 'barber':
             push('MainTabs');
             break;
@@ -51,7 +51,7 @@ export function AuthGuard({
 
       setIsChecking(false);
     }
-  }, [user, loading, requiredRole, push, fallbackRoute]);
+  }, [user, userProfile, loading, requiredRole, push, fallbackRoute]);
 
   // Show loading while checking authentication
   if (loading || isChecking) {

@@ -38,6 +38,8 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../shared/lib/supabase';
 import VideoPreview from '../shared/components/VideoPreview';
+import { ImageUpload } from '../shared/components/ui/ImageUpload';
+import { VideoUpload } from '../shared/components/ui/VideoUpload';
 
 const { width, height } = Dimensions.get('window');
 
@@ -116,7 +118,7 @@ interface Booking {
 
 export default function ProfilePortfolio() {
   const navigation = useNavigation();
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [barberProfile, setBarberProfile] = useState<BarberProfile | null>(null);
   const [cuts, setCuts] = useState<Cut[]>([]);
@@ -136,6 +138,8 @@ export default function ProfilePortfolio() {
 
     try {
       setLoading(true);
+      console.log('🔄 Fetching profile data for user:', user.id);
+      console.log('👤 User profile role:', userProfile?.role);
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
@@ -150,47 +154,69 @@ export default function ProfilePortfolio() {
         setProfile(profileData);
       }
 
-      // Fetch barber profile if user is a barber
-      if (user.role === 'barber') {
-        const { data: barberData, error: barberError } = await supabase
-          .from('barbers')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+              // Fetch barber profile if user is a barber
+        if (userProfile?.role === 'barber') {
+          const { data: barberData, error: barberError } = await supabase
+            .from('barbers')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
 
-        if (barberError) {
-          console.error('Error fetching barber profile:', barberError);
-        } else {
-          setBarberProfile(barberData);
-        }
+          if (barberError) {
+            console.error('Error fetching barber profile:', barberError);
+          } else {
+            setBarberProfile(barberData);
+            
+            // Fetch barber's cuts and services using the barber_id
+            if (barberData) {
+              // Fetch cuts
+              const { data: cutsData, error: cutsError } = await supabase
+                .from('cuts')
+                .select(`
+                  *,
+                  barbers:barber_id(
+                    id,
+                    user_id,
+                    profiles:user_id(name, avatar_url)
+                  )
+                `)
+                .eq('barber_id', barberData.id)
+                .order('created_at', { ascending: false });
 
-        // Fetch barber's cuts
-        const { data: cutsData, error: cutsError } = await supabase
-          .from('cuts')
-          .select(`
-            *,
-            barbers:barber_id(
-              id,
-              user_id,
-              profiles:user_id(name, avatar_url)
-            )
-          `)
-          .eq('barber_id', user.id)
-          .order('created_at', { ascending: false });
+              if (cutsError) {
+                console.error('Error fetching cuts:', cutsError);
+              } else {
+                console.log('📹 Fetched cuts:', cutsData?.length || 0);
+                const formattedCuts = (cutsData || []).map((cut: any) => ({
+                  ...cut,
+                  barber: {
+                    id: cut.barbers?.id,
+                    name: cut.barbers?.profiles?.name || 'Unknown',
+                    image: cut.barbers?.profiles?.avatar_url
+                  }
+                }));
+                setCuts(formattedCuts);
+              }
 
-        if (cutsError) {
-          console.error('Error fetching cuts:', cutsError);
-        } else {
-          const formattedCuts = (cutsData || []).map((cut: any) => ({
-            ...cut,
-            barber: {
-              id: cut.barbers?.id,
-              name: cut.barbers?.profiles?.name || 'Unknown',
-              image: cut.barbers?.profiles?.avatar_url
+              // Fetch services
+              const { data: servicesData, error: servicesError } = await supabase
+                .from('services')
+                .select('*')
+                .eq('barber_id', barberData.id)
+                .order('name', { ascending: true });
+
+              if (servicesError) {
+                console.error('Error fetching services:', servicesError);
+              } else {
+                console.log('💇 Fetched services:', servicesData?.length || 0);
+                // Update barberProfile with services
+                setBarberProfile(prev => prev ? {
+                  ...prev,
+                  services: servicesData || []
+                } : null);
+              }
             }
-          }));
-          setCuts(formattedCuts);
-        }
+          }
       } else {
         // Fetch client's liked cuts
         const { data: likedData, error: likedError } = await supabase
@@ -330,7 +356,7 @@ export default function ProfilePortfolio() {
     );
   }
 
-  const isBarber = user.role === 'barber';
+  const isBarber = userProfile?.role === 'barber';
   const displayCuts = isBarber ? cuts : likedCuts;
   const pastBarbers = [...new Set(bookings.map(b => b.barber.id))].map(barberId => {
     const booking = bookings.find(b => b.barber.id === barberId);
@@ -342,48 +368,104 @@ export default function ProfilePortfolio() {
       case 'portfolio':
         return (
           <View style={tw`flex-1 px-4`}>
-            {displayCuts.length === 0 ? (
-              <View style={tw`flex-1 justify-center items-center py-8`}>
-                <Heart size={48} style={[tw`mb-4`, { color: 'rgba(255,255,255,0.4)' }]} />
-                <Text style={[tw`font-bold text-xl mb-2 text-center`, { color: theme.colors.foreground }]}>
-                  No {isBarber ? 'cuts' : 'liked cuts'} yet
-                </Text>
-                <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
-                  {isBarber ? 'Start uploading your cuts to build your portfolio' : 'Start exploring and liking cuts from your favorite stylists'}
-                </Text>
+            {isBarber ? (
+              // Barber Portfolio - Show portfolio images
+              <View style={tw`space-y-4 py-4`}>
+                {/* Portfolio Image Upload */}
+                <ImageUpload
+                  onUploadComplete={async (imageUrl) => {
+                    try {
+                      // Add image to barber's portfolio
+                      const updatedPortfolio = [...(barberProfile?.portfolio || []), imageUrl];
+                      const { error } = await supabase
+                        .from('barbers')
+                        .update({ portfolio: updatedPortfolio })
+                        .eq('user_id', user?.id);
+
+                      if (error) {
+                        Alert.alert('Error', 'Failed to save portfolio image');
+                      } else {
+                        // Update local state
+                        setBarberProfile(prev => prev ? {
+                          ...prev,
+                          portfolio: updatedPortfolio
+                        } : null);
+                        Alert.alert('Success', 'Portfolio image added successfully!');
+                      }
+                    } catch (error) {
+                      Alert.alert('Error', 'Failed to save portfolio image');
+                    }
+                  }}
+                  onUploadError={(error) => {
+                    Alert.alert('Upload Error', error);
+                  }}
+                  maxImages={10}
+                  aspectRatio={1}
+                  title="Add Portfolio Image"
+                  description="Showcase your best work"
+                  existingImages={barberProfile?.portfolio || []}
+                  onRemoveImage={async (index) => {
+                    try {
+                      const updatedPortfolio = (barberProfile?.portfolio || []).filter((_, i) => i !== index);
+                      const { error } = await supabase
+                        .from('barbers')
+                        .update({ portfolio: updatedPortfolio })
+                        .eq('user_id', user?.id);
+
+                      if (error) {
+                        Alert.alert('Error', 'Failed to remove portfolio image');
+                      } else {
+                        setBarberProfile(prev => prev ? {
+                          ...prev,
+                          portfolio: updatedPortfolio
+                        } : null);
+                      }
+                    } catch (error) {
+                      Alert.alert('Error', 'Failed to remove portfolio image');
+                    }
+                  }}
+                />
+
+
               </View>
             ) : (
-              <View style={tw`py-4`}>
-                {/* Grid Layout for Cuts */}
-                <View style={tw`flex-row flex-wrap justify-between`}>
-                  {displayCuts.map((cut, index) => {
-                    // Debug logging
-                    console.log('Cut data:', {
-                      id: cut.id,
-                      title: cut.title,
-                      thumbnail: cut.thumbnail,
-                      url: cut.url,
-                      barber: cut.barber
-                    });
-                    
-                    return (
-                      <VideoPreview
-                        key={cut.id}
-                        videoUrl={cut.url}
-                        title={cut.title}
-                        barberName={cut.barber.name}
-                        barberAvatar={cut.barber.image}
-                        views={cut.views}
-                        likes={cut.likes}
-                        onPress={() => {
-                          // Navigate to cuts page for this specific video
-                          // @ts-ignore - Navigation type issue
-                          navigation.navigate('Cuts', { cutId: cut.id });
-                        }}
-                      />
-                    );
-                  })}
-                </View>
+              // Client Portfolio - Show liked cuts
+              <View style={tw`flex-1 px-4`}>
+                {displayCuts.length === 0 ? (
+                  <View style={tw`flex-1 justify-center items-center py-8`}>
+                    <Heart size={48} style={[tw`mb-4`, { color: 'rgba(255,255,255,0.4)' }]} />
+                    <Text style={[tw`font-bold text-xl mb-2 text-center`, { color: theme.colors.foreground }]}>
+                      No liked cuts yet
+                    </Text>
+                    <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
+                      Start exploring and liking cuts from your favorite stylists
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={tw`py-4`}>
+                    {/* Grid Layout for Cuts */}
+                    <View style={tw`flex-row flex-wrap justify-between`}>
+                      {displayCuts.map((cut, index) => {
+                        return (
+                          <VideoPreview
+                            key={cut.id}
+                            videoUrl={cut.url}
+                            title={cut.title}
+                            barberName={cut.barber.name}
+                            barberAvatar={cut.barber.image}
+                            views={cut.views}
+                            likes={cut.likes}
+                            onPress={() => {
+                              // Navigate to cuts page for this specific video
+                              // @ts-ignore - Navigation type issue
+                              navigation.navigate('Cuts', { cutId: cut.id });
+                            }}
+                          />
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -393,14 +475,108 @@ export default function ProfilePortfolio() {
         return (
           <View style={tw`flex-1 px-4`}>
             {isBarber ? (
-              <View style={tw`flex-1 justify-center items-center py-8`}>
-                <Users size={48} style={[tw`mb-4`, { color: theme.colors.mutedForeground }]} />
-                <Text style={[tw`font-bold text-xl mb-2 text-center`, { color: theme.colors.foreground }]}>
-                  Barber cuts management
-                </Text>
-                <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
-                  Manage your cuts and portfolio here
-                </Text>
+              <View style={tw`space-y-4 py-4`}>
+                {/* Video Upload */}
+                <VideoUpload
+                  onUploadComplete={async (videoData) => {
+                    try {
+                      // Get barber ID
+                      const { data: barberData } = await supabase
+                        .from('barbers')
+                        .select('id')
+                        .eq('user_id', user?.id)
+                        .single();
+
+                      if (!barberData) {
+                        Alert.alert('Error', 'Barber profile not found');
+                        return;
+                      }
+
+                      // Create new cut record
+                      const { error } = await supabase
+                        .from('cuts')
+                        .insert({
+                          barber_id: barberData.id,
+                          title: videoData.title,
+                          description: videoData.description,
+                          url: videoData.url,
+                          is_public: true,
+                          views: 0,
+                          likes: 0,
+                          shares: 0,
+                        });
+
+                      if (error) {
+                        Alert.alert('Error', 'Failed to save cut');
+                      } else {
+                        Alert.alert('Success', 'Cut uploaded successfully!');
+                        // Refresh cuts data
+                        fetchProfileData();
+                      }
+                    } catch (error) {
+                      Alert.alert('Error', 'Failed to save cut');
+                    }
+                  }}
+                  onUploadError={(error) => {
+                    Alert.alert('Upload Error', error);
+                  }}
+                  title="Upload New Cut"
+                  description="Share your latest work"
+                />
+
+                {/* Cuts List */}
+                {cuts.length > 0 && (
+                  <View style={tw`space-y-3`}>
+                    <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
+                      My Cuts ({cuts.length})
+                    </Text>
+                    <View style={tw`space-y-3`}>
+                      {cuts.map((cut) => (
+                        <Card key={cut.id} style={[tw`bg-white/5 border`, { borderColor: 'rgba(255,255,255,0.1)' }]}>
+                          <CardContent style={tw`p-4`}>
+                            <View style={tw`flex-row items-center gap-3`}>
+                              <View style={tw`w-16 h-16 rounded-lg overflow-hidden bg-white/10`}>
+                                {cut.thumbnail ? (
+                                  <Image
+                                    source={{ uri: cut.thumbnail }}
+                                    style={tw`w-full h-full`}
+                                    resizeMode="cover"
+                                  />
+                                ) : (
+                                  <View style={tw`w-full h-full items-center justify-center`}>
+                                    <Play size={24} color={theme.colors.mutedForeground} />
+                                  </View>
+                                )}
+                              </View>
+                              <View style={tw`flex-1`}>
+                                <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                                  {cut.title}
+                                </Text>
+                                <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+                                  {cut.description || 'No description'}
+                                </Text>
+                                <View style={tw`flex-row items-center gap-4 mt-1`}>
+                                  <View style={tw`flex-row items-center gap-1`}>
+                                    <Eye size={12} color={theme.colors.mutedForeground} />
+                                    <Text style={[tw`text-xs`, { color: theme.colors.mutedForeground }]}>
+                                      {cut.views} views
+                                    </Text>
+                                  </View>
+                                  <View style={tw`flex-row items-center gap-1`}>
+                                    <Heart size={12} color={theme.colors.mutedForeground} />
+                                    <Text style={[tw`text-xs`, { color: theme.colors.mutedForeground }]}>
+                                      {cut.likes} likes
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            </View>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
             ) : (
               <View style={tw`flex-1 justify-center items-center py-8`}>
@@ -420,14 +596,83 @@ export default function ProfilePortfolio() {
         return (
           <View style={tw`flex-1 px-4`}>
             {isBarber ? (
-              <View style={tw`flex-1 justify-center items-center py-8`}>
-                <History size={48} style={[tw`mb-4`, { color: theme.colors.mutedForeground }]} />
-                <Text style={[tw`font-bold text-xl mb-2 text-center`, { color: theme.colors.foreground }]}>
-                  Barber services management
-                </Text>
-                <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
-                  Manage your services and pricing here
-                </Text>
+              <View style={tw`space-y-4 py-4`}>
+                {/* Services Overview Header */}
+                <View style={[
+                  tw`flex-row items-center justify-center p-6 rounded-2xl`,
+                  { backgroundColor: 'rgba(255,255,255,0.05)' }
+                ]}>
+                  <View style={tw`items-center`}>
+                    <View style={[
+                      tw`w-12 h-12 rounded-full items-center justify-center mb-3`,
+                      { backgroundColor: 'rgba(255,255,255,0.1)' }
+                    ]}>
+                      <History size={24} color={theme.colors.secondary} />
+                    </View>
+                    <Text style={[tw`font-semibold text-base`, { color: theme.colors.foreground }]}>
+                      My Services
+                    </Text>
+                    <Text style={[tw`text-sm mt-1`, { color: theme.colors.mutedForeground }]}>
+                      View your current offerings
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Services Overview */}
+                <View style={tw`space-y-3`}>
+                  <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
+                    My Services
+                  </Text>
+                  
+                  {barberProfile?.services && barberProfile.services.length > 0 ? (
+                    <View style={tw`space-y-3`}>
+                      {barberProfile.services.map((service) => (
+                        <View key={service.id} style={[
+                          tw`p-4 rounded-xl`,
+                          { backgroundColor: 'rgba(255,255,255,0.05)' }
+                        ]}>
+                          <View style={tw`flex-row items-center justify-between`}>
+                            <View style={tw`flex-1`}>
+                              <Text style={[tw`font-semibold text-base`, { color: theme.colors.foreground }]}>
+                                {service.name}
+                              </Text>
+                              {service.description && (
+                                <Text style={[tw`text-sm mt-1`, { color: theme.colors.mutedForeground }]}>
+                                  {service.description}
+                                </Text>
+                              )}
+                              <View style={tw`flex-row items-center mt-2`}>
+                                <View style={[
+                                  tw`px-2 py-1 rounded-full`,
+                                  { backgroundColor: 'rgba(255,255,255,0.1)' }
+                                ]}>
+                                  <Text style={[tw`text-xs font-medium`, { color: theme.colors.secondary }]}>
+                                    {service.duration} min
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+                            <View style={tw`items-end`}>
+                              <Text style={[tw`font-bold text-xl`, { color: theme.colors.secondary }]}>
+                                ${service.price}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <View style={tw`flex-1 justify-center items-center py-8`}>
+                      <History size={48} style={[tw`mb-4`, { color: 'rgba(255,255,255,0.4)' }]} />
+                      <Text style={[tw`font-bold text-xl mb-2 text-center`, { color: theme.colors.foreground }]}>
+                        No services set up yet
+                      </Text>
+                      <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
+                        Set up your services and pricing to start accepting bookings
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
             ) : (
               <View style={tw`space-y-4`}>
@@ -555,17 +800,40 @@ export default function ProfilePortfolio() {
         {/* Profile Info */}
         <View style={tw`px-4 pt-16 pb-4 items-center`}>
           <Text style={[tw`text-xl font-bold mb-1 text-center`, { color: theme.colors.foreground }]}>
-            {profile.name}
+            {isBarber && barberProfile?.business_name ? barberProfile.business_name : profile.name}
           </Text>
           {profile.username && (
             <Text style={[tw`text-sm mb-1 text-center`, { color: theme.colors.secondary }]}>
               @{profile.username}
             </Text>
           )}
+          {isBarber && barberProfile?.bio && (
+            <Text style={[tw`text-sm mb-2 text-center`, { color: theme.colors.mutedForeground }]}>
+              {barberProfile.bio}
+            </Text>
+          )}
           {profile.location && (
             <Text style={[tw`text-sm text-center`, { color: theme.colors.foreground }]}>
               {profile.location}
             </Text>
+          )}
+          {isBarber && barberProfile?.specialties && barberProfile.specialties.length > 0 && (
+            <View style={tw`flex-row flex-wrap justify-center mt-2 gap-1`}>
+              {barberProfile.specialties.slice(0, 3).map((specialty, index) => (
+                <Badge key={index} style={tw`bg-white/10 border-white/20`}>
+                  <Text style={[tw`text-xs`, { color: theme.colors.foreground }]}>
+                    {specialty}
+                  </Text>
+                </Badge>
+              ))}
+              {barberProfile.specialties.length > 3 && (
+                <Badge style={tw`bg-white/10 border-white/20`}>
+                  <Text style={[tw`text-xs`, { color: theme.colors.foreground }]}>
+                    +{barberProfile.specialties.length - 3} more
+                  </Text>
+                </Badge>
+              )}
+            </View>
           )}
         </View>
 
@@ -583,7 +851,7 @@ export default function ProfilePortfolio() {
               tw`text-xs mt-1`, 
               { color: activeTab === 'portfolio' ? theme.colors.secondary : theme.colors.mutedForeground }
             ]}>
-              Portfolio
+              {isBarber ? 'Portfolio' : 'Liked Cuts'}
             </Text>
           </TouchableOpacity>
           
@@ -599,7 +867,7 @@ export default function ProfilePortfolio() {
               tw`text-xs mt-1`, 
               { color: activeTab === 'cuts' ? theme.colors.secondary : theme.colors.mutedForeground }
             ]}>
-              Cuts
+              {isBarber ? 'My Cuts' : 'Stylists'}
             </Text>
           </TouchableOpacity>
           
@@ -615,7 +883,7 @@ export default function ProfilePortfolio() {
               tw`text-xs mt-1`, 
               { color: activeTab === 'services' ? theme.colors.secondary : theme.colors.mutedForeground }
             ]}>
-              Services
+              {isBarber ? 'Services' : 'Bookings'}
             </Text>
           </TouchableOpacity>
         </View>

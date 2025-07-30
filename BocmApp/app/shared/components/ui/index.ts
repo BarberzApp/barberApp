@@ -36,4 +36,8 @@ export { Tooltip, TooltipProvider } from './tooltip';
 export { ToggleGroup, ToggleGroupItem } from './toggle-group';
 export { HoverCard, HoverCardTrigger, HoverCardContent } from './hover-card';
 export { Menubar, MenubarItem, MenubarSeparator } from './menubar';
-export { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuTrigger, NavigationMenuContent } from './navigation-menu'; 
+export { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuTrigger, NavigationMenuContent } from './navigation-menu';
+
+// Upload Components
+export { ImageUpload } from './ImageUpload';
+export { VideoUpload } from './VideoUpload'; 
