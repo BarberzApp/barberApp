@@ -53,12 +53,34 @@ export class BookingService {
         .single();
 
       if (error) {
+        // Handle specific constraint violations
+        if (error.message.includes('Booking time conflicts with existing booking')) {
+          throw new Error('Booking time conflicts with existing booking');
+        }
+        if (error.message.includes('Booking time is not within barber availability')) {
+          throw new Error('Booking time is not within barber availability');
+        }
+        if (error.message.includes('Daily booking limit exceeded')) {
+          throw new Error('Daily booking limit exceeded');
+        }
+        if (error.message.includes('Booking too far in advance')) {
+          throw new Error('Booking too far in advance');
+        }
+        if (error.message.includes('Same day bookings not allowed')) {
+          throw new Error('Same day bookings not allowed');
+        }
+        if (error.message.includes('Minimum interval between bookings not met')) {
+          throw new Error('Minimum interval between bookings not met');
+        }
+        
+        // Handle PostgreSQL constraint violation codes
         if (error.code === '23514') {
           throw new Error('Booking time is not within barber availability');
         }
         if (error.code === '23505') {
           throw new Error('Booking time conflicts with existing booking');
         }
+        
         throw error;
       }
 
