@@ -107,7 +107,13 @@ export default function ProfilePortfolio() {
     useCurrentLocation: false
   });
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const { cuts, analytics, refreshCuts, loading: cutsLoading, createCut } = useCuts(); // Use only this hook for cuts data
+  // Only use useCuts hook if user is a barber
+  const cutsHook = useCuts();
+  const cuts = barberProfile ? cutsHook.cuts : [];
+  const analytics = barberProfile ? cutsHook.analytics : null;
+  const refreshCuts = barberProfile ? cutsHook.refreshCuts : () => {};
+  const cutsLoading = barberProfile ? cutsHook.loading : false;
+  const createCut = barberProfile ? cutsHook.createCut : null;
   
   // Debug logging
   useEffect(() => {
@@ -262,27 +268,7 @@ export default function ProfilePortfolio() {
   // Booking state
   const [bookingFormOpen, setBookingFormOpen] = useState(false);
   const [selectedBookingDate, setSelectedBookingDate] = useState<Date>(new Date());
-  // Add state for client bookings
-  const [clientBookings, setClientBookings] = useState<any[]>([]);
 
-  // Fetch bookings where the current user is the client
-  useEffect(() => {
-    const fetchClientBookings = async () => {
-      if (!user) return;
-      try {
-        const { data, error } = await supabase
-          .from('bookings')
-          .select(`*, barbers:barber_id(name, user_id), services:service_id(name, price)`) // join barber and service info
-          .eq('client_id', user.id)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        setClientBookings(data || []);
-      } catch (error) {
-        console.error('Error fetching client bookings:', error);
-      }
-    };
-    fetchClientBookings();
-  }, [user]);
 
   const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -382,27 +368,9 @@ export default function ProfilePortfolio() {
           }
           // Remove fetchUserCuts call - useCuts hook handles this
         } else {
-          // User is not a barber yet, create a barber profile
-          console.log('Creating new barber profile for user:', user.id);
-          const { data: newBarber, error: createError } = await supabase
-            .from('barbers')
-            .insert({
-              user_id: user.id,
-              bio: '',
-              specialties: [],
-              portfolio: []
-            })
-            .select()
-            .single();
-          
-          if (createError) {
-            console.error('Error creating barber profile:', createError);
-          }
-          
-          if (newBarber && !createError) {
-            setBarberProfile(newBarber);
-            console.log('Created new barber profile:', newBarber);
-          }
+          // User is not a barber - they are a client
+          console.log('User is a client (no barber profile found):', user.id);
+          setBarberProfile(null); // Explicitly set to null to ensure client interface
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
@@ -1088,7 +1056,7 @@ export default function ProfilePortfolio() {
       <div className="max-w-3xl mx-auto w-full px-2 sm:px-4">
         <Tabs defaultValue="portfolio" className="w-full">
           <TabsList className="w-full flex justify-between bg-white/5 border border-white/10 backdrop-blur-xl p-1 rounded-lg mb-6 sticky top-0 z-20">
-                          <TabsTrigger value="portfolio" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">Portfolio</TabsTrigger>
+            <TabsTrigger value="portfolio" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">Portfolio</TabsTrigger>
             <TabsTrigger value="reels" className="flex-1 rounded-md text-sm data-[state=active]:bg-white data-[state=active]:text-black">
               <div className="flex items-center gap-2">
                 <VideoIcon className="h-4 w-4" />
@@ -1096,8 +1064,8 @@ export default function ProfilePortfolio() {
                 {cutsLoading && <Loader2 className="h-3 w-3 animate-spin" />}
               </div>
             </TabsTrigger>
-                          <TabsTrigger value="services" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">Services</TabsTrigger>
-              <TabsTrigger value="reviews" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">Reviews</TabsTrigger>
+            <TabsTrigger value="services" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">Services</TabsTrigger>
+            <TabsTrigger value="reviews" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">Reviews</TabsTrigger>
           </TabsList>
 
           {/* Reels Tab */}
@@ -1153,6 +1121,7 @@ export default function ProfilePortfolio() {
                       </Button>
                       <Button
                         onClick={async () => {
+                          if (!createCut) return;
                           try {
                             const testCut = await createCut({
                               title: 'Test Cut',
@@ -1539,52 +1508,7 @@ export default function ProfilePortfolio() {
             </Tabs>
           </TabsContent>
 
-          {/* Reviews Tab */}
-          <TabsContent value="reviews">
-            <div className="space-y-4">
-              {clientBookings.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-8 max-w-md mx-auto">
-                    <Calendar className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                    <h3 className="text-white font-bebas font-bold text-xl mb-2">No bookings yet</h3>
-                    <p className="text-white/60 text-sm mb-6">
-                      You haven't booked any services yet as a client.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                clientBookings.map((booking) => (
-                  <div key={booking.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={booking.barbers?.avatar_url || '/placeholder.svg'} alt={booking.barbers?.name || 'Barber'} />
-                        <AvatarFallback>{booking.barbers?.name?.charAt(0) || 'B'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold">{booking.barbers?.name || 'Barber'}</h4>
-                          <span className="text-white/70 text-sm">{booking.created_at ? new Date(booking.created_at).toLocaleDateString() : ''}</span>
-                        </div>
-                        <div className="flex items-center mt-1 text-white/80 text-sm">
-                          {booking.services?.name || 'Service'}
-                          {booking.services?.price && (
-                            <span className="ml-2 text-white/50">${booking.services.price}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-white/60 mb-2">
-                      <span>Status:</span>
-                      <span className="font-semibold text-secondary">{booking.status || 'Pending'}</span>
-                    </div>
-                    {booking.notes && (
-                      <p className="text-white/90 text-sm mt-2">{booking.notes}</p>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </TabsContent>
+
         </Tabs>
       </div>
       {/* Upload Dialog */}

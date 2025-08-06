@@ -50,6 +50,12 @@ export const useCalendarSync = () => {
       return;
     }
 
+    // Prevent multiple simultaneous calls
+    if (status.loading) {
+      console.log('Calendar sync: Already loading, skipping fetch');
+      return;
+    }
+
     try {
       console.log('Calendar sync: Fetching status for user:', user.id);
       setStatus(prev => ({ ...prev, loading: true }));
@@ -314,10 +320,7 @@ export const useCalendarSync = () => {
     }
   }, [fetchStatus]);
 
-  // Fetch status on mount and when user changes
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+
 
   return {
     ...status,

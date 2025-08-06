@@ -27,13 +27,15 @@ interface CalendarEvent {
   extendedProps: {
     status: string;
     serviceName: string;
-    clientName: string;
+    clientName?: string;
+    barberName?: string;
     price: number;
     basePrice: number;
     addons: { name: string; price: number }[];
     isGuest: boolean;
     guestEmail: string;
     guestPhone: string;
+    isBarberView: boolean;
   };
 }
 
@@ -45,6 +47,8 @@ export default function BarberCalendar() {
   const [mounted, setMounted] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showEventDialog, setShowEventDialog] = useState(false);
+  const [userRole, setUserRole] = useState<'barber' | 'client' | null>(null);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -55,84 +59,204 @@ export default function BarberCalendar() {
   useEffect(() => {
     if (!user) return;
     console.log('Fetching bookings for user:', user);
+    
     const fetchBookings = async () => {
-      // Fetch the barber's ID from the barbers table
-      const { data: barberData, error: barberError } = await supabase
-        .from('barbers')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      console.log('Barber data:', barberData, 'Error:', barberError);
-      if (barberError || !barberData) return;
-      // Fetch bookings for this barber (flat rows)
-      const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('barber_id', barberData.id)
-        .order('date', { ascending: true });
-      console.log('Bookings data:', bookings, 'Error:', error);
-      if (error || !bookings) return;
-      // For each booking, fetch the related service and client
-      const events = await Promise.all(bookings.map(async (booking) => {
-        // Fetch service
-        const { data: service } = await supabase
-          .from('services')
-          .select('name, duration, price')
-          .eq('id', booking.service_id)
+      setLoading(true);
+      try {
+        // First, check if user is a barber
+        const { data: barberData, error: barberError } = await supabase
+          .from('barbers')
+          .select('id')
+          .eq('user_id', user.id)
           .single();
-        // Fetch client
-        let client = null;
-        if (booking.client_id) {
-          const { data: clientData } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('id', booking.client_id)
-            .single();
-          client = clientData;
-        }
-        // Fetch add-ons for this booking
-        let addonTotal = 0;
-        let addonList: { name: string; price: number }[] = [];
-        const { data: bookingAddons, error: bookingAddonsError } = await supabase
-          .from('booking_addons')
-          .select('addon_id')
-          .eq('booking_id', booking.id);
-        if (!bookingAddonsError && bookingAddons && bookingAddons.length > 0) {
-          const addonIds = bookingAddons.map((ba) => ba.addon_id);
-          const { data: addons, error: addonsError } = await supabase
-            .from('service_addons')
-            .select('id, name, price')
-            .in('id', addonIds);
-          if (!addonsError && addons) {
-            addonTotal = addons.reduce((sum, addon) => sum + (addon.price || 0), 0);
-            addonList = addons.map(a => ({ name: a.name, price: a.price }));
+        
+        if (barberData && !barberError) {
+          // User is a barber - fetch their appointments
+          setUserRole('barber');
+          console.log('User is a barber, fetching barber appointments');
+          
+          const { data: bookings, error } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('barber_id', barberData.id)
+            .order('date', { ascending: true });
+          
+          if (error || !bookings) {
+            console.error('Error fetching barber bookings:', error);
+            setEvents([]);
+            return;
           }
-        }
-        const startDate = new Date(booking.date);
-        const endDate = new Date(startDate.getTime() + (service?.duration || 60) * 60000);
-        return {
-          id: booking.id,
-          title: `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`,
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
-          backgroundColor: 'var(--secondary)',
-          borderColor: 'var(--secondary)',
-          textColor: '#FFFFFF',
-          extendedProps: {
-            status: booking.status,
-            serviceName: service?.name || '',
-            clientName: client?.name || booking.guest_name || 'Guest',
-            price: (service?.price || booking.price || 0) + addonTotal,
-            basePrice: service?.price || booking.price || 0,
-            addons: addonList,
-            isGuest: !client,
-            guestEmail: booking.guest_email,
-            guestPhone: booking.guest_phone
+          
+          // For each booking, fetch the related service and client
+          const events = await Promise.all(bookings.map(async (booking) => {
+            // Fetch service
+            const { data: service } = await supabase
+              .from('services')
+              .select('name, duration, price')
+              .eq('id', booking.service_id)
+              .single();
+            
+            // Fetch client
+            let client = null;
+            if (booking.client_id) {
+              const { data: clientData } = await supabase
+                .from('profiles')
+                .select('name')
+                .eq('id', booking.client_id)
+                .single();
+              client = clientData;
+            }
+            
+            // Fetch add-ons for this booking
+            let addonTotal = 0;
+            let addonList: { name: string; price: number }[] = [];
+            const { data: bookingAddons, error: bookingAddonsError } = await supabase
+              .from('booking_addons')
+              .select('addon_id')
+              .eq('booking_id', booking.id);
+            if (!bookingAddonsError && bookingAddons && bookingAddons.length > 0) {
+              const addonIds = bookingAddons.map((ba) => ba.addon_id);
+              const { data: addons, error: addonsError } = await supabase
+                .from('service_addons')
+                .select('id, name, price')
+                .in('id', addonIds);
+              if (!addonsError && addons) {
+                addonTotal = addons.reduce((sum, addon) => sum + (addon.price || 0), 0);
+                addonList = addons.map(a => ({ name: a.name, price: a.price }));
+              }
+            }
+            
+            const startDate = new Date(booking.date);
+            const endDate = new Date(startDate.getTime() + (service?.duration || 60) * 60000);
+            
+            return {
+              id: booking.id,
+              title: `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`,
+              start: startDate.toISOString(),
+              end: endDate.toISOString(),
+              backgroundColor: 'var(--secondary)',
+              borderColor: 'var(--secondary)',
+              textColor: '#FFFFFF',
+              extendedProps: {
+                status: booking.status,
+                serviceName: service?.name || '',
+                clientName: client?.name || booking.guest_name || 'Guest',
+                price: (service?.price || booking.price || 0) + addonTotal,
+                basePrice: service?.price || booking.price || 0,
+                addons: addonList,
+                isGuest: !client,
+                guestEmail: booking.guest_email,
+                guestPhone: booking.guest_phone,
+                isBarberView: true
+              }
+            };
+          }));
+          
+          setEvents(events);
+        } else {
+          // User is a client - fetch their appointments
+          setUserRole('client');
+          console.log('User is a client, fetching client appointments');
+          console.log('🔍 Fetching bookings for client ID:', user.id);
+          
+          const { data: bookings, error } = await supabase
+            .from('bookings')
+            .select(`
+              *,
+              barbers:barber_id(
+                id,
+                user_id,
+                profiles:user_id(name, avatar_url)
+              ),
+              services:service_id(name, duration, price)
+            `)
+            .eq('client_id', user.id)
+            .order('date', { ascending: true });
+          
+          console.log('📊 Client bookings query result:', { bookings, error });
+          
+          if (error || !bookings) {
+            console.error('Error fetching client bookings:', error);
+            setEvents([]);
+            return;
           }
-        };
-      }));
-      setEvents(events);
+          
+          console.log('✅ Found', bookings.length, 'bookings for client');
+          
+          // Debug: Check if there are any bookings at all for this user
+          const { data: allBookingsDebug, error: debugError } = await supabase
+            .from('bookings')
+            .select('client_id, barber_id, date, status')
+            .limit(10);
+          
+          console.log('🔍 Debug - All bookings in DB:', allBookingsDebug);
+          console.log('🔍 Debug - Bookings for current user:', allBookingsDebug?.filter(b => b.client_id === user.id));
+          
+          console.log('🔄 Starting to transform bookings into events...');
+          
+          // For each booking, fetch add-ons
+          const events = await Promise.all(bookings.map(async (booking, index) => {
+            console.log(`📅 Processing booking ${index + 1}:`, booking);
+            
+            // Fetch add-ons for this booking
+            let addonTotal = 0;
+            let addonList: { name: string; price: number }[] = [];
+            const { data: bookingAddons, error: bookingAddonsError } = await supabase
+              .from('booking_addons')
+              .select('addon_id')
+              .eq('booking_id', booking.id);
+            if (!bookingAddonsError && bookingAddons && bookingAddons.length > 0) {
+              const addonIds = bookingAddons.map((ba) => ba.addon_id);
+              const { data: addons, error: addonsError } = await supabase
+                .from('service_addons')
+                .select('id, name, price')
+                .in('id', addonIds);
+              if (!addonsError && addons) {
+                addonTotal = addons.reduce((sum, addon) => sum + (addon.price || 0), 0);
+                addonList = addons.map(a => ({ name: a.name, price: a.price }));
+              }
+            }
+            
+            const startDate = new Date(booking.date);
+            const endDate = new Date(startDate.getTime() + (booking.services?.duration || 60) * 60000);
+            
+            const event = {
+              id: booking.id,
+              title: `${booking.services?.name || 'Service'} with ${booking.barbers?.profiles?.name || 'Barber'}`,
+              start: startDate.toISOString(),
+              end: endDate.toISOString(),
+              backgroundColor: 'var(--secondary)',
+              borderColor: 'var(--secondary)',
+              textColor: '#FFFFFF',
+              extendedProps: {
+                status: booking.status,
+                serviceName: booking.services?.name || '',
+                barberName: booking.barbers?.profiles?.name || 'Barber',
+                price: (booking.services?.price || booking.price || 0) + addonTotal,
+                basePrice: booking.services?.price || booking.price || 0,
+                addons: addonList,
+                isGuest: false,
+                guestEmail: booking.guest_email,
+                guestPhone: booking.guest_phone,
+                isBarberView: false
+              }
+            };
+            
+            console.log(`✅ Created event for booking ${index + 1}:`, event);
+            return event;
+          }));
+          
+          console.log('🎯 Final events array:', events);
+          setEvents(events);
+        }
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
     };
+    
     fetchBookings();
   }, [user]);
 
@@ -493,10 +617,13 @@ export default function BarberCalendar() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-4xl font-bebas text-white tracking-wide">
-                Appointment Calendar
+                {userRole === 'barber' ? 'Appointment Calendar' : 'My Appointments'}
               </h1>
               <p className="text-white/70 text-sm sm:text-lg">
-                View your bookings and schedule
+                {userRole === 'barber' 
+                  ? 'View your bookings and schedule' 
+                  : 'View your upcoming appointments'
+                }
               </p>
             </div>
           </div>
@@ -510,7 +637,35 @@ export default function BarberCalendar() {
         {/* Centered EnhancedCalendar */}
         <div className="w-full flex justify-center">
           <div className="max-w-2xl w-full mx-auto p-0 overflow-visible" style={{ maxWidth: '700px' }}>
-            <EnhancedCalendar />
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                <p className="text-white/60">Loading appointments...</p>
+              </div>
+            ) : events.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-8 max-w-md mx-auto">
+                  <CalendarIcon className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">
+                    {userRole === 'barber' ? 'No appointments yet' : 'No upcoming appointments'}
+                  </h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    {userRole === 'barber' 
+                      ? 'When clients book appointments with you, they will appear here.'
+                      : 'Book your first appointment to see it here.'
+                    }
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = userRole === 'barber' ? '/profile' : '/browse'}
+                    className="bg-secondary text-primary hover:bg-secondary/90"
+                  >
+                    {userRole === 'barber' ? 'View Profile' : 'Browse Barbers'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <EnhancedCalendar />
+            )}
           </div>
         </div>
       </div>
@@ -519,7 +674,9 @@ export default function BarberCalendar() {
         <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
           <DialogContent className="max-w-md w-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-white">Booking Details</DialogTitle>
+              <DialogTitle className="text-2xl font-bold text-white">
+                {selectedEvent.extendedProps.isBarberView ? 'Booking Details' : 'Appointment Details'}
+              </DialogTitle>
               <DialogDescription className="text-white/80">
                 {selectedEvent.title}
               </DialogDescription>
@@ -529,10 +686,17 @@ export default function BarberCalendar() {
                 <span className="text-white/70">Service</span>
                 <span className="text-white font-semibold">{selectedEvent.extendedProps.serviceName}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white/70">Client</span>
-                <span className="text-white font-semibold">{selectedEvent.extendedProps.clientName}</span>
-              </div>
+              {selectedEvent.extendedProps.isBarberView ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70">Client</span>
+                  <span className="text-white font-semibold">{selectedEvent.extendedProps.clientName}</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70">Barber</span>
+                  <span className="text-white font-semibold">{selectedEvent.extendedProps.barberName}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-white/70">Status</span>
                 <span className="text-white font-semibold capitalize">{selectedEvent.extendedProps.status}</span>

@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog'
 import { Progress } from '@/shared/components/ui/progress'
 import { 
   Heart, 
@@ -26,6 +26,7 @@ import {
   Share2,
   Eye
 } from 'lucide-react'
+import { PastStylistCard } from './PastStylistCard'
 import { supabase } from '@/shared/lib/supabase'
 import { cn } from '@/lib/utils'
 
@@ -73,12 +74,31 @@ export default function ClientPortfolio() {
   const coverFileInputRef = useRef<HTMLInputElement>(null)
   const [coverLoading, setCoverLoading] = useState(false)
 
-  // Get user's bookings
+  // Client-specific state for bookings from database
+  const [clientBookings, setClientBookings] = useState<any[]>([]);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  // Get user's bookings from useData hook
   const userBookings = bookings.filter(b => b.clientId === user?.id)
-  const pastBarbers = [...new Set(userBookings.map(b => b.barber.id))].map(barberId => {
-    const booking = userBookings.find(b => b.barber.id === barberId)
-    return booking?.barber
+  
+  // Create past barbers from clientBookings (direct database data)
+  const pastBarbers = [...new Set(clientBookings.map(b => b.barber_id))].map(barberId => {
+    const booking = clientBookings.find(b => b.barber_id === barberId)
+    if (booking?.barbers?.profiles) {
+      return {
+        id: booking.barber_id,
+        name: booking.barbers.profiles.name,
+        image: booking.barbers.profiles.avatar_url || undefined,
+        username: booking.barbers.profiles.username || undefined
+      }
+    }
+    return null
   }).filter(Boolean)
+
+  // Debug logging for past barbers
+  console.log('👥 Past barbers calculated:', pastBarbers);
+  console.log('📋 Client bookings count:', clientBookings.length);
 
   // Fetch user profile
   useEffect(() => {
@@ -108,6 +128,74 @@ export default function ClientPortfolio() {
 
     fetchProfile()
   }, [user])
+
+  // Fetch client bookings from database
+  useEffect(() => {
+    const fetchClientBookings = async () => {
+      if (!user) return;
+      try {
+        console.log('🔍 Fetching client bookings for user:', user.id);
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`*, barbers:barber_id(user_id, profiles:user_id(name, avatar_url, username)), services:service_id(name, price)`) // join barber and service info
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        console.log('📊 Client bookings data:', data);
+        setClientBookings(data || []);
+      } catch (error) {
+        console.error('Error fetching client bookings:', error);
+      }
+    };
+    fetchClientBookings();
+  }, [user]);
+
+  // Fetch user reviews
+  useEffect(() => {
+    const fetchUserReviews = async () => {
+      if (!user) return;
+      try {
+        setReviewsLoading(true);
+        console.log('🔍 Fetching user reviews for:', user.id);
+        const { data, error } = await supabase
+          .from('reviews')
+          .select(`
+            id,
+            rating,
+            comment,
+            created_at,
+            barber:barber_id(
+              id,
+              user_id,
+              profiles:user_id(
+                name,
+                avatar_url,
+                username
+              )
+            ),
+            booking:booking_id(
+              id,
+              date,
+              service:service_id(
+                name
+              )
+            )
+          `)
+          .eq('client_id', user.id)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        console.log('📊 User reviews data:', data);
+        setUserReviews(data || []);
+      } catch (error) {
+        console.error('Error fetching user reviews:', error);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    fetchUserReviews();
+  }, [user]);
 
   // Fetch liked videos
   useEffect(() => {
@@ -287,6 +375,8 @@ export default function ClientPortfolio() {
     })
   }
 
+
+
   if (profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -397,15 +487,15 @@ export default function ClientPortfolio() {
       <div className="flex justify-center gap-8 mb-6">
         <div className="flex flex-col items-center">
           <span className="text-2xl font-bold text-white">{likedVideos.length}</span>
-          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Cuts</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-2xl font-bold text-white">{userBookings.length}</span>
-          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Portfolio</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Likes</span>
         </div>
         <div className="flex flex-col items-center">
           <span className="text-2xl font-bold text-white">{pastBarbers.length}</span>
-          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Stylists</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Past Barbers</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-white">{clientBookings.length}</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Bookings</span>
         </div>
       </div>
       {/* Tabs */}
@@ -414,15 +504,15 @@ export default function ClientPortfolio() {
           <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl">
             <TabsTrigger value="liked" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
               <Heart className="h-4 w-4 mr-2" />
-              Portfolio
+              Likes
             </TabsTrigger>
             <TabsTrigger value="past-barbers" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
               <Users className="h-4 w-4 mr-2" />
-              Cuts
+              Past Barbers
             </TabsTrigger>
             <TabsTrigger value="bookings" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-              <History className="h-4 w-4 mr-2" />
-              Services
+              <Star className="h-4 w-4 mr-2" />
+              Reviews
             </TabsTrigger>
           </TabsList>
 
@@ -430,13 +520,21 @@ export default function ClientPortfolio() {
               {videosLoading ? (
                 <div className="text-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto text-secondary mb-4" />
-                  <p className="text-white/60">Loading liked cuts...</p>
+                  <p className="text-white/60">Loading liked videos...</p>
                 </div>
               ) : likedVideos.length === 0 ? (
                 <div className="text-center py-8">
                   <Heart className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No liked cuts yet</h3>
-                  <p className="text-white/60">Start exploring and liking cuts from your favorite stylists</p>
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No likes yet</h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    Videos you like from barbers will appear here. Start exploring and liking some cuts!
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/reels'}
+                    className="bg-secondary text-primary hover:bg-secondary/90"
+                  >
+                    Browse Cuts
+                  </Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -484,75 +582,111 @@ export default function ClientPortfolio() {
             <TabsContent value="past-barbers" className="mt-6">
               {pastBarbers.length === 0 ? (
                 <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-card-foreground font-bebas font-bold text-xl mb-2">No past stylists</h3>
-                  <p className="text-muted-foreground">Book appointments to see your stylists here</p>
+                  <Users className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No past stylists</h3>
+                  <p className="text-white/60 text-sm mb-6">Book appointments to see your stylists here</p>
+                  <Button
+                    onClick={() => window.location.href = '/browse'}
+                    className="bg-secondary text-primary hover:bg-secondary/90"
+                  >
+                    Browse Barbers
+                  </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-6">
                   {pastBarbers.map((barber) => (
-                    <Card key={barber?.id} className="bg-muted border border-border backdrop-blur-xl">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={barber?.image} alt={barber?.name} />
-                            <AvatarFallback className="bg-secondary text-secondary-foreground font-bold">
-                              {barber?.name?.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-card-foreground">{barber?.name}</h3>
-                            <p className="text-muted-foreground text-sm">Previous stylist</p>
-                          </div>
-                          <Button size="sm" variant="outline" className="border-secondary/30 text-secondary hover:bg-secondary/10">
-                            Book Again
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <PastStylistCard
+                      key={barber?.id}
+                      barber={{
+                        id: barber?.id || '',
+                        name: barber?.name || '',
+                        image: barber?.image,
+                        username: barber?.username
+                      }}
+                      rating={4}
+                      isOnline={true}
+                      onBookAgain={(barberId) => {
+                        if (barber?.username) {
+                          window.location.href = `/book/${barber.username}`;
+                        } else {
+                          window.location.href = `/browse?barber=${barberId}`;
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               )}
             </TabsContent>
 
             <TabsContent value="bookings" className="mt-6">
-              {userBookings.length === 0 ? (
+              {reviewsLoading ? (
                 <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No bookings yet</h3>
-                  <p className="text-white/60">Start booking appointments with stylists</p>
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-secondary mb-4" />
+                  <p className="text-white/60">Loading your reviews...</p>
+                </div>
+              ) : userReviews.length === 0 ? (
+                <div className="text-center py-8">
+                  <Star className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No reviews yet</h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    Reviews you leave for barbers will appear here. Start reviewing your past appointments!
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/browse'}
+                    className="bg-secondary text-primary hover:bg-secondary/90"
+                  >
+                    Browse Barbers
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {userBookings.map((booking) => (
-                    <Card key={booking.id} className="bg-white/5 border border-white/10 backdrop-blur-xl">
+                  {userReviews.map((review) => (
+                    <Card key={review.id} className="bg-white/5 border border-white/10 backdrop-blur-xl">
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={booking.barber.image} alt={booking.barber.name} />
-                            <AvatarFallback className="bg-secondary text-primary font-bold text-sm">
-                              {booking.barber.name?.charAt(0).toUpperCase()}
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10 flex-shrink-0">
+                            <AvatarImage 
+                              src={review.barber?.profiles?.avatar_url} 
+                              alt={review.barber?.profiles?.name} 
+                            />
+                            <AvatarFallback className="bg-secondary text-primary text-sm">
+                              {review.barber?.profiles?.name?.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-white">{booking.barber.name}</h3>
-                            <p className="text-white/60 text-sm">{booking.service}</p>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-white/60 text-xs flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(booking.date)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-white text-sm">
+                                {review.barber?.profiles?.name}
+                              </h4>
+                              <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-3 w-3 ${
+                                      i < review.rating
+                                        ? 'text-yellow-400 fill-current'
+                                        : 'text-white/30'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            {review.comment && (
+                              <p className="text-white/80 text-sm leading-relaxed mb-2">
+                                {review.comment}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-white/50">
+                              <span>
+                                {review.booking?.service?.name && (
+                                  <span>Service: {review.booking.service.name}</span>
+                                )}
                               </span>
-                              <span className="text-white/60 text-xs flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatTime(booking.time)}
+                              <span>
+                                {new Date(review.created_at).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
-                          <Badge className={
-                            booking.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-secondary/20 text-secondary border-secondary/30'
-                          }>
-                            {booking.status}
-                          </Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -607,6 +741,8 @@ export default function ClientPortfolio() {
           )}
         </DialogContent>
       </Dialog>
+
+
     </div>
   )
 } 

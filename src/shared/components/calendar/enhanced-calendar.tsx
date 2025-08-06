@@ -45,6 +45,7 @@ interface CalendarEvent {
     status: string
     serviceName: string
     clientName: string
+    barberName: string
     price: number
     basePrice: number
     addonTotal: number
@@ -52,6 +53,7 @@ interface CalendarEvent {
     isGuest: boolean
     guestEmail: string
     guestPhone: string
+    isBarberView: boolean
   }
 }
 
@@ -72,6 +74,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [isMarkingMissed, setIsMarkingMissed] = useState(false)
   const [showManualAppointmentForm, setShowManualAppointmentForm] = useState(false)
+  const [isBarber, setIsBarber] = useState(false)
   const { user } = useAuth()
 
   // Minimum swipe distance (in px)
@@ -122,6 +125,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
     try {
       console.log('EnhancedCalendar: Starting fetchBookings for user:', user?.id)
       
+      // Check if user is a barber or client
       const { data: barberData, error: barberError } = await supabase
         .from('barbers')
         .select('id')
@@ -130,27 +134,58 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
 
       console.log('EnhancedCalendar: Barber data:', barberData, 'Error:', barberError)
       
-      if (barberError || !barberData) {
-        console.log('EnhancedCalendar: No barber found or error:', barberError)
-        return
+      // Update isBarber state based on barberData
+      setIsBarber(!!barberData)
+      
+      let bookingsQuery;
+      
+      if (barberData) {
+        // User is a barber - fetch their bookings
+        console.log('EnhancedCalendar: User is a barber, fetching barber bookings')
+        bookingsQuery = supabase
+          .from('bookings')
+          .select(`
+            *,
+            booking_addons (
+              id,
+              price,
+              service_addons (
+                id,
+                name,
+                price
+              )
+            )
+          `)
+          .eq('barber_id', barberData.id)
+          .order('date', { ascending: true })
+      } else {
+        // User is a client - fetch their bookings
+        console.log('EnhancedCalendar: User is a client, fetching client bookings')
+        bookingsQuery = supabase
+          .from('bookings')
+          .select(`
+            *,
+            barbers:barber_id(
+              id,
+              user_id,
+              profiles:user_id(name, avatar_url)
+            ),
+            services:service_id(name, duration, price),
+            booking_addons (
+              id,
+              price,
+              service_addons (
+                id,
+                name,
+                price
+              )
+            )
+          `)
+          .eq('client_id', user?.id)
+          .order('date', { ascending: true })
       }
 
-      const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          booking_addons (
-            id,
-            price,
-            service_addons (
-              id,
-              name,
-              price
-            )
-          )
-        `)
-        .eq('barber_id', barberData.id)
-        .order('date', { ascending: true })
+      const { data: bookings, error } = await bookingsQuery
 
       console.log('EnhancedCalendar: Bookings data:', bookings, 'Error:', error)
       
@@ -160,27 +195,42 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
       }
 
       const events = await Promise.all(bookings.map(async (booking) => {
-        const { data: service } = await supabase
-          .from('services')
-          .select('name, duration, price')
-          .eq('id', booking.service_id)
-          .single()
-
+        console.log('EnhancedCalendar: Processing booking:', booking)
+        
+        // For barber view, we need to fetch service and client separately
+        // For client view, service and barber info are already included in the query
+        let service = booking.services
         let client = null
-        if (booking.client_id) {
-          const { data: clientData } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('id', booking.client_id)
-            .single()
-          client = clientData
+        let barber = null
+        
+        if (barberData) {
+          // Barber view - fetch service and client info
+          if (!service) {
+            const { data: serviceData } = await supabase
+              .from('services')
+              .select('name, duration, price')
+              .eq('id', booking.service_id)
+              .single()
+            service = serviceData
+          }
+          
+          if (booking.client_id) {
+            const { data: clientData } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', booking.client_id)
+              .single()
+            client = clientData
+          }
+        } else {
+          // Client view - barber info is already included
+          barber = booking.barbers
         }
 
         const startDate = new Date(booking.date)
         const endDate = new Date(startDate.getTime() + (service?.duration || 60) * 60000)
 
         // Calculate total price including add-ons
-        // booking.price is the base service price, addon_total is the add-on total
         const basePrice = booking.price || service?.price || 0
         const addonTotal = booking.addon_total || 0
         const totalPrice = basePrice + addonTotal
@@ -199,25 +249,37 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           addon.service_addons?.name || 'Unknown Add-on'
         ) || []
 
+        // Create title based on user role
+        let title
+        if (barberData) {
+          // Barber view: "Service - Client Name"
+          title = `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`
+        } else {
+          // Client view: "Service with Barber Name"
+          title = `${service?.name || 'Service'} with ${barber?.profiles?.name || 'Barber'}`
+        }
+
         return {
           id: booking.id,
-          title: `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`,
+          title,
           start: startDate.toISOString(),
           end: endDate.toISOString(),
-          backgroundColor: '#ffc107',
-          borderColor: '#ff8c00',
+          backgroundColor: barberData ? '#ffc107' : '#3b82f6', // Yellow for barber, blue for client
+          borderColor: barberData ? '#ff8c00' : '#1d4ed8',
           textColor: '#FFFFFF',
           extendedProps: {
             status: booking.status,
             serviceName: service?.name || '',
             clientName: client?.name || booking.guest_name || 'Guest',
+            barberName: barber?.profiles?.name || 'Barber',
             price: totalPrice,
             basePrice: basePrice,
             addonTotal: addonTotal,
             addonNames: addonNames,
             isGuest: !client,
             guestEmail: booking.guest_email,
-            guestPhone: booking.guest_phone
+            guestPhone: booking.guest_phone,
+            isBarberView: !!barberData
           }
         }
       }))
@@ -805,20 +867,22 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           Today
         </button>
 
-        {/* Manual Appointment Button */}
-        <div className="mt-4 p-4 bg-gradient-to-r from-secondary/10 to-secondary/10 border border-secondary/20 rounded-xl backdrop-blur-sm">
-          <div className="text-center mb-3">
-            <h4 className="text-white font-semibold text-sm mb-1">Quick Add Appointment</h4>
-            <p className="text-white/60 text-xs">For walk-ins, phone bookings, or admin purposes</p>
+        {/* Manual Appointment Button - Only for Barbers */}
+        {isBarber && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-secondary/10 to-secondary/10 border border-secondary/20 rounded-xl backdrop-blur-sm">
+            <div className="text-center mb-3">
+              <h4 className="text-white font-semibold text-sm mb-1">Quick Add Appointment</h4>
+              <p className="text-white/60 text-xs">For walk-ins, phone bookings, or admin purposes</p>
+            </div>
+            <Button
+              onClick={() => setShowManualAppointmentForm(true)}
+              className="w-full bg-secondary text-black hover:bg-secondary/90 font-semibold rounded-lg py-2.5 shadow-lg shadow-secondary/25 transition-all duration-200 hover:scale-[1.02]"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Manual Appointment
+            </Button>
           </div>
-          <Button
-            onClick={() => setShowManualAppointmentForm(true)}
-            className="w-full bg-secondary text-black hover:bg-secondary/90 font-semibold rounded-lg py-2.5 shadow-lg shadow-secondary/25 transition-all duration-200 hover:scale-[1.02]"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Manual Appointment
-          </Button>
-        </div>
+        )}
 
         {/* Events Panel */}
         {selectedDate && (
@@ -903,236 +967,268 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
 
       {/* Event Detail Dialog */}
       <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="bg-black/90 backdrop-blur-3xl border border-white/20 max-w-md mx-4 rounded-2xl shadow-2xl">
-          <DialogHeader className="pb-4">
+        <DialogContent className="bg-black/95 backdrop-blur-3xl border border-white/20 max-w-lg mx-4 rounded-2xl shadow-2xl">
+          <DialogHeader className="pb-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-secondary/20 rounded-xl">
-                  <Scissors className="w-6 h-6 text-secondary" />
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "p-3 rounded-xl",
+                  selectedEvent?.extendedProps.isBarberView 
+                    ? "bg-blue-500/20" 
+                    : "bg-secondary/20"
+                )}>
+                  {selectedEvent?.extendedProps.isBarberView ? (
+                    <User className="w-6 h-6 text-blue-400" />
+                  ) : (
+                    <Scissors className="w-6 h-6 text-secondary" />
+                  )}
                 </div>
                 <div>
-                  <DialogTitle className="text-white text-xl font-bold">
-                    Appointment Details
+                  <DialogTitle className="text-white text-2xl font-bold">
+                    {selectedEvent?.extendedProps.isBarberView ? 'Client Booking' : 'My Appointment'}
                   </DialogTitle>
                   <DialogDescription className="text-white/70 text-sm">
                     {selectedEvent && formatDate(new Date(selectedEvent.start))}
                   </DialogDescription>
                 </div>
               </div>
+              <Badge 
+                variant={selectedEvent?.extendedProps.status === 'confirmed' ? 'default' : 'secondary'}
+                className={cn(
+                  "text-xs font-semibold px-3 py-1",
+                  selectedEvent?.extendedProps.status === 'cancelled' && "bg-red-500/20 text-red-400 border-red-500/30"
+                )}
+              >
+                {selectedEvent?.extendedProps.status}
+              </Badge>
             </div>
           </DialogHeader>
           
           {selectedEvent && (
             <div className="space-y-6">
-              {/* Service Card */}
+              {/* Service Information */}
               <div className={cn(
                 "rounded-2xl p-6 transition-all duration-300 border",
                 selectedEvent.extendedProps.status === 'cancelled' 
                   ? "bg-red-500/10 border-red-500/30 shadow-lg shadow-red-500/20" 
-                  : "bg-white/5 border-white/10 shadow-lg"
+                  : selectedEvent.extendedProps.isBarberView
+                    ? "bg-blue-500/10 border-blue-500/30 shadow-lg shadow-blue-500/20"
+                    : "bg-secondary/10 border-secondary/30 shadow-lg shadow-secondary/20"
               )}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-bold text-lg">
-                    {selectedEvent.extendedProps.serviceName}
-                  </h3>
-                  <Badge 
-                    variant="secondary" 
-                    className={cn(
-                      "text-xs font-semibold",
-                      selectedEvent.extendedProps.status === 'cancelled' 
-                        ? "bg-red-500/20 text-red-400 border-red-500/30" 
-                        : "bg-secondary/20 text-secondary border-secondary/30"
-                    )}
-                  >
-                    ${selectedEvent.extendedProps.price}
-                  </Badge>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-white font-bold text-xl mb-1">
+                      {selectedEvent.extendedProps.serviceName}
+                    </h3>
+                    <p className="text-white/60 text-sm">
+                      {selectedEvent.extendedProps.isBarberView ? 'Client Request' : 'Your Service'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-white">
+                      ${selectedEvent.extendedProps.price}
+                    </div>
+                    <div className="text-white/60 text-xs">Total Amount</div>
+                  </div>
                 </div>
                 
+                {/* Role-specific Information */}
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                    <div className="p-2 bg-secondary/20 rounded-lg">
-                      <User className="w-4 h-4 text-secondary" />
+                  {selectedEvent.extendedProps.isBarberView ? (
+                    // Barber View - Show Client Info
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                          <User className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-white/60 text-xs uppercase tracking-wide mb-1">Client</p>
+                          <p className="text-white font-semibold text-lg">{selectedEvent.extendedProps.clientName}</p>
+                          {selectedEvent.extendedProps.isGuest && (
+                            <p className="text-blue-400 text-xs mt-1">Guest Booking</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Guest Contact Info */}
+                      {selectedEvent.extendedProps.isGuest && (
+                        <div className="space-y-3 p-4 bg-blue-500/5 rounded-xl border border-blue-500/20">
+                          <h4 className="text-blue-400 font-semibold text-sm mb-3">Contact Information</h4>
+                          <div className="flex items-center gap-3">
+                            <Mail className="w-4 h-4 text-blue-400" />
+                            <span className="text-white/80 text-sm">{selectedEvent.extendedProps.guestEmail}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Phone className="w-4 h-4 text-blue-400" />
+                            <span className="text-white/80 text-sm">{selectedEvent.extendedProps.guestPhone}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-white/60 text-xs uppercase tracking-wide">Client</p>
-                      <p className="text-white font-semibold">{selectedEvent.extendedProps.clientName}</p>
+                  ) : (
+                    // Client View - Show Barber Info
+                    <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                      <div className="p-2 bg-secondary/20 rounded-lg">
+                        <Scissors className="w-5 h-5 text-secondary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-white/60 text-xs uppercase tracking-wide mb-1">Barber</p>
+                        <p className="text-white font-semibold text-lg">{selectedEvent.extendedProps.barberName}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                    <div className="p-2 bg-secondary/20 rounded-lg">
-                      <Clock className="w-4 h-4 text-secondary" />
+                  {/* Time Information */}
+                  <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="p-2 bg-green-500/20 rounded-lg">
+                      <Clock className="w-5 h-5 text-green-400" />
                     </div>
-                    <div>
-                      <p className="text-white/60 text-xs uppercase tracking-wide">Time</p>
-                      <p className="text-white font-semibold">
+                    <div className="flex-1">
+                      <p className="text-white/60 text-xs uppercase tracking-wide mb-1">Appointment Time</p>
+                      <p className="text-white font-semibold text-lg">
                         {formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}
+                      </p>
+                      <p className="text-white/60 text-sm mt-1">
+                        {formatDate(new Date(selectedEvent.start))}
                       </p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                    <div className="p-2 bg-secondary/20 rounded-lg">
-                      <DollarSign className="w-4 h-4 text-secondary" />
+                </div>
+              </div>
+              
+              {/* Price Breakdown */}
+              {selectedEvent.extendedProps.addonTotal > 0 && (
+                <div className="rounded-2xl p-6 bg-white/5 border border-white/10">
+                  <h4 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-secondary" />
+                    Price Breakdown
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                      <span className="text-white/80">Base Service</span>
+                      <span className="text-white font-semibold">${selectedEvent.extendedProps.basePrice}</span>
                     </div>
-                    <div>
-                      <p className="text-white/60 text-xs uppercase tracking-wide">Total</p>
-                      <p className="text-white font-semibold">${selectedEvent.extendedProps.price}</p>
+                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                      <span className="text-white/80">Add-ons</span>
+                      <span className="text-white font-semibold">${selectedEvent.extendedProps.addonTotal}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 pt-3">
+                      <span className="text-white font-bold text-lg">Total</span>
+                      <span className="text-secondary font-bold text-xl">${selectedEvent.extendedProps.price}</span>
                     </div>
                   </div>
-                   
-                   {/* Price breakdown */}
-                   {selectedEvent.extendedProps.addonTotal > 0 && (
-                     <div className="mt-3 pt-3 border-t border-white/20">
-                       <div className="text-xs text-white/60 mb-2">Price Breakdown:</div>
-                       <div className="space-y-1 text-xs">
-                         <div className="flex justify-between">
-                           <span className="text-white/80">Base Service:</span>
-                           <span className="text-white">${selectedEvent.extendedProps.basePrice}</span>
-                         </div>
-                         <div className="flex justify-between">
-                           <span className="text-white/80">Add-ons:</span>
-                           <span className="text-white">${selectedEvent.extendedProps.addonTotal}</span>
-                         </div>
-                         <div className="flex justify-between font-semibold text-secondary">
-                           <span>Total:</span>
-                           <span>${selectedEvent.extendedProps.price}</span>
-                         </div>
-                       </div>
-                       
-                       {/* Add-on names */}
-                       {selectedEvent.extendedProps.addonNames.length > 0 && (
-                         <div className="mt-2 pt-2 border-t border-white/10">
-                           <div className="text-xs text-white/60 mb-1">Add-ons:</div>
-                           <div className="flex flex-wrap gap-1">
-                             {selectedEvent.extendedProps.addonNames.map((addonName, index) => (
-                               <Badge key={index} variant="secondary" className="text-xs">
-                                 {addonName}
-                               </Badge>
-                             ))}
-                           </div>
-                         </div>
-                       )}
-                     </div>
-                   )}
-                  {selectedEvent.extendedProps.isGuest && (
-                    <>
-                      <div className="flex items-center gap-2 text-white/80">
-                        <Mail className="w-4 h-4 text-secondary" />
-                        <span>{selectedEvent.extendedProps.guestEmail}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-white/80">
-                        <Phone className="w-4 h-4 text-secondary" />
-                        <span>{selectedEvent.extendedProps.guestPhone}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Badge 
-                  variant={selectedEvent.extendedProps.status === 'confirmed' ? 'default' : 'secondary'}
-                  className={cn(
-                    "text-xs",
-                    selectedEvent.extendedProps.status === 'cancelled' && "bg-red-500/20 text-red-400 border-red-500/30"
-                  )}
-                >
-                  {selectedEvent.extendedProps.status}
-                </Badge>
-                
-                {selectedEvent.extendedProps.status !== 'cancelled' && (
-                  <Button
-                    onClick={handleMarkAsMissed}
-                    disabled={isMarkingMissed}
-                    variant="destructive"
-                    size="sm"
-                    className="bg-red-500 hover:bg-red-600 text-white"
-                  >
-                    {isMarkingMissed ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Marking...
-                      </>
-                    ) : (
-                      <>
-                        <X className="w-4 h-4 mr-2" />
-                        Mark as Missed
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-              
-              {/* Google Calendar Sync Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <CalendarIcon className="w-4 h-4 text-secondary" />
-                  <span>Add to Calendar</span>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      if (selectedEvent) {
-                        try {
-                          addToGoogleCalendar(
-                            selectedEvent,
-                            'barber',
-                            {
-                              name: (user as any)?.user_metadata?.full_name || 'Barber',
-                              email: user?.email || '',
-                              location: ''
-                            }
-                          )
-                        } catch (error) {
-                          console.error('Error adding to Google Calendar:', error)
-                        }
-                      }
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Google Calendar
-                  </Button>
                   
-                  <Button
-                    onClick={() => {
-                      if (selectedEvent) {
-                        try {
-                          downloadICalFile(
-                            [selectedEvent],
-                            'barber',
-                            {
-                              name: (user as any)?.user_metadata?.full_name || 'Barber',
-                              email: user?.email || '',
-                              location: ''
-                            },
-                            `appointment-${selectedEvent.id}.ics`
-                          )
-                        } catch (error) {
-                          console.error('Error downloading iCal file:', error)
+                  {/* Add-on Details */}
+                  {selectedEvent.extendedProps.addonNames.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <h5 className="text-white/60 text-sm mb-3">Selected Add-ons:</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedEvent.extendedProps.addonNames.map((addonName, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs bg-secondary/20 text-secondary border-secondary/30">
+                            {addonName}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Action Buttons */}
+              <div className="space-y-4">
+                {/* Barber-specific Actions */}
+                {selectedEvent.extendedProps.isBarberView && selectedEvent.extendedProps.status !== 'cancelled' && (
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleMarkAsMissed}
+                      disabled={isMarkingMissed}
+                      variant="destructive"
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      {isMarkingMissed ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Marking as Missed...
+                        </>
+                      ) : (
+                        <>
+                          <X className="w-4 h-4 mr-2" />
+                          Mark as Missed
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Calendar Integration */}
+                <div className="rounded-2xl p-4 bg-white/5 border border-white/10">
+                  <h4 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-secondary" />
+                    Add to Calendar
+                  </h4>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        if (selectedEvent) {
+                          try {
+                            addToGoogleCalendar(
+                              selectedEvent,
+                              selectedEvent.extendedProps.isBarberView ? 'barber' : 'client',
+                              {
+                                name: (user as any)?.user_metadata?.full_name || (selectedEvent.extendedProps.isBarberView ? 'Barber' : 'Client'),
+                                email: user?.email || '',
+                                location: ''
+                              }
+                            )
+                          } catch (error) {
+                            console.error('Error adding to Google Calendar:', error)
+                          }
                         }
-                      }
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download iCal
-                  </Button>
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Google Calendar
+                    </Button>
+                    
+                    <Button
+                      onClick={() => {
+                        if (selectedEvent) {
+                          try {
+                            downloadICalFile(
+                              [selectedEvent],
+                              selectedEvent.extendedProps.isBarberView ? 'barber' : 'client',
+                              {
+                                name: (user as any)?.user_metadata?.full_name || (selectedEvent.extendedProps.isBarberView ? 'Barber' : 'Client'),
+                                email: user?.email || '',
+                                location: ''
+                              },
+                              `appointment-${selectedEvent.id}.ics`
+                            )
+                          } catch (error) {
+                            console.error('Error downloading iCal file:', error)
+                          }
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download iCal
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           )}
           
-          <DialogFooter>
+          <DialogFooter className="pt-6">
             <Button 
               onClick={() => setShowEventDialog(false)}
-              className="w-full bg-secondary text-primary hover:bg-secondary/90"
+              className="w-full bg-secondary text-primary hover:bg-secondary/90 font-semibold py-3"
             >
               Close
             </Button>
@@ -1153,4 +1249,4 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
       />
     </div>
   )
-} 
+}
