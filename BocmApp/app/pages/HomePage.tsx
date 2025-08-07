@@ -12,13 +12,10 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
-import { Button } from '../shared/components/ui';
 import { theme } from '../shared/lib/theme';
 import { ArrowRight, Sparkles } from 'lucide-react-native';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Animated Text Component
 const AnimatedText = ({ text, delay = 0, style }: { text: string; delay?: number; style?: any }) => {
@@ -186,11 +183,23 @@ export default function HomePage() {
         <View style={tw`mb-12 items-center`}>
           <View style={[
             tw`w-24 h-24 rounded-full items-center justify-center mb-6`,
-            { backgroundColor: `${theme.colors.secondary}20` }
+            { 
+              backgroundColor: `${theme.colors.secondary}20`,
+              width: theme.spacing[24],
+              height: theme.spacing[24],
+              borderRadius: theme.borderRadius.full,
+              marginBottom: theme.spacing[6]
+            }
           ]}>
             <Image
               source={require('../../assets/images/BocmLogo.png')}
-              style={tw`w-16 h-16`}
+              style={[
+                tw`w-16 h-16`,
+                {
+                  width: theme.spacing[16],
+                  height: theme.spacing[16]
+                }
+              ]}
               resizeMode="contain"
             />
           </View>
@@ -202,49 +211,98 @@ export default function HomePage() {
             <AnimatedText
               text="Welcome to"
               delay={0}
-              style={[tw`text-2xl font-medium text-center`, { color: theme.colors.mutedForeground }]}
+              style={[
+                tw`text-2xl font-medium text-center`, 
+                { 
+                  color: theme.colors.mutedForeground,
+                  fontSize: theme.typography.fontSizes['2xl'],
+                  fontWeight: theme.typography.fontWeights.medium
+                }
+              ]}
             />
             <AnimatedText
               text="BOCM"
               delay={800}
-              style={[tw`text-5xl font-bold text-center mt-2`, { color: theme.colors.secondary }]}
+              style={[
+                tw`text-5xl font-bold text-center mt-2`, 
+                { 
+                  color: theme.colors.secondary, 
+                  fontFamily: 'BebasNeue-Regular',
+                  fontSize: theme.typography.fontSizes['5xl'],
+                  fontWeight: theme.typography.fontWeights.bold,
+                  marginTop: theme.spacing[2]
+                }
+              ]}
             />
           </View>
         )}
 
-        {/* Subtitle */}
+                {/* Subtitle */}
         {showContent && (
           <AnimatedText
             text="The future of barbering is here"
             delay={1600}
-            style={[tw`text-lg text-center mb-12`, { color: theme.colors.mutedForeground }]}
+            style={[
+              tw`text-lg text-center mb-12 leading-relaxed`, 
+              { 
+                color: theme.colors.mutedForeground,
+                fontSize: theme.typography.fontSizes.lg,
+                marginBottom: theme.spacing[12]
+              }
+            ]}
           />
         )}
 
         {/* Action Buttons */}
         {showContent && (
-          <View style={tw`w-full space-y-4`}>
+          <View style={tw`w-full space-y-6`}>
             <TouchableOpacity
               onPress={handleGetStarted}
               style={[
                 tw`w-full py-4 rounded-2xl flex-row items-center justify-center`,
-                { backgroundColor: theme.colors.secondary }
+                { 
+                  backgroundColor: theme.colors.secondary,
+                  borderRadius: theme.borderRadius.xl,
+                  paddingVertical: theme.spacing[4],
+                  paddingHorizontal: theme.spacing[4]
+                }
               ]}
             >
-              <Text style={[tw`text-lg font-semibold mr-2`, { color: theme.colors.background }]}>
-                Get Started
+              <Text style={[
+                tw`text-lg font-semibold mr-2`, 
+                { 
+                  color: theme.colors.background,
+                  fontSize: theme.typography.fontSizes.lg,
+                  fontWeight: theme.typography.fontWeights.semibold
+                }
+              ]}>
+                Get Started Free
               </Text>
-              <ArrowRight size={20} color={theme.colors.background} />
+              <ArrowRight size={theme.typography.fontSizes.xl} color={theme.colors.background} />
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleLogin}
               style={[
-                tw`w-full py-4 rounded-2xl border-2 flex-row items-center justify-center`,
-                { borderColor: theme.colors.secondary, backgroundColor: 'transparent' }
+                tw`w-full py-4 rounded-2xl border-2 flex-row items-center justify-center mt-2`,
+                { 
+                  borderColor: theme.colors.secondary, 
+                  backgroundColor: 'transparent',
+                  borderRadius: theme.borderRadius.xl,
+                  paddingVertical: theme.spacing[4],
+                  paddingHorizontal: theme.spacing[4],
+                  borderWidth: 2
+                }
               ]}
             >
-              <Text style={[tw`text-lg font-semibold`, { color: theme.colors.secondary }]}>
+              <Text style={[
+                tw`text-lg font-semibold`, 
+                { 
+                  color: theme.colors.secondary,
+                  fontSize: theme.typography.fontSizes.lg,
+                  fontWeight: theme.typography.fontWeights.semibold
+                }
+              ]}>
                 Log In
               </Text>
             </TouchableOpacity>
@@ -254,10 +312,25 @@ export default function HomePage() {
         {/* Footer Text */}
         {showContent && (
           <View style={tw`absolute bottom-12 items-center`}>
-            <Text style={[tw`text-sm text-center`, { color: theme.colors.mutedForeground }]}>
+            <Text style={[
+              tw`text-sm text-center font-medium`, 
+              { 
+                color: theme.colors.mutedForeground,
+                fontSize: theme.typography.fontSizes.sm,
+                fontWeight: theme.typography.fontWeights.medium
+              }
+            ]}>
               Join cosmetologists and clients
             </Text>
-            <Text style={[tw`text-sm text-center mt-1`, { color: theme.colors.mutedForeground }]}>
+            <Text style={[
+              tw`text-sm text-center mt-1 font-medium`, 
+              { 
+                color: theme.colors.mutedForeground,
+                fontSize: theme.typography.fontSizes.sm,
+                fontWeight: theme.typography.fontWeights.medium,
+                marginTop: theme.spacing[1]
+              }
+            ]}>
               revolutionizing the beauty industry
             </Text>
           </View>
