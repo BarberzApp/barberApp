@@ -58,7 +58,7 @@ const steps = [
         title: 'Business Information',
         description: 'Tell us about your business',
         icon: Building,
-        required: ['businessName', 'phone', 'address', 'city', 'state', 'zipCode', 'bio']
+        required: ['businessName', 'phone', 'location', 'bio']
     },
     {
         id: 'services',
@@ -79,10 +79,7 @@ const steps = [
 interface FormData {
     businessName: string;
     phone: string;
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
+    location: string;
     bio: string;
     specialties: string[];
     services: Array<{ name: string; price: number; duration: number }>;
@@ -118,18 +115,7 @@ function extractHandle(input: string): string {
     return '@' + input;
 }
 
-// Add async address validation function
-async function validateAddress(address: string, city: string, state: string, zip: string): Promise<boolean> {
-    const query = encodeURIComponent(`${address}, ${city}, ${state} ${zip}`);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}`;
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        return Array.isArray(data) && data.length > 0;
-    } catch (e) {
-        return false;
-    }
-}
+
 
 export default function BarberOnboardingPage() {
     const navigation = useNavigation<BarberOnboardingNavigationProp>();
@@ -146,10 +132,7 @@ export default function BarberOnboardingPage() {
     const [formData, setFormData] = useState<FormData>({
         businessName: '',
         phone: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
+        location: '',
         bio: '',
         specialties: [],
         services: [
@@ -209,54 +192,6 @@ export default function BarberOnboardingPage() {
                     console.error('Error fetching profile data:', profileError);
                 }
 
-                // Parse location with improved regex patterns
-                let address = '', city = '', state = '', zipCode = '';
-                if (profile?.location) {
-                    console.log('Parsing location:', profile.location);
-                    
-                    // Try different location formats
-                    const location = profile.location.trim();
-                    
-                    // Format: "Address, City, State ZIP" or "Address, City, State"
-                    const fullMatch = location.match(/^(.+?),\s*([^,]+?),\s*([A-Za-z]{2,})\s*(\d{5})?$/);
-                    if (fullMatch) {
-                        address = fullMatch[1].trim();
-                        city = fullMatch[2].trim();
-                        state = fullMatch[3].trim();
-                        zipCode = fullMatch[4] || '';
-                    } else {
-                        // Format: "Address, City State ZIP" or "Address, City State"
-                        const cityStateMatch = location.match(/^(.+?),\s*([^,]+?)\s+([A-Za-z]{2,})\s*(\d{5})?$/);
-                        if (cityStateMatch) {
-                            address = cityStateMatch[1].trim();
-                            city = cityStateMatch[2].trim();
-                            state = cityStateMatch[3].trim();
-                            zipCode = cityStateMatch[4] || '';
-                        } else {
-                            // Fallback: split by comma and try to extract
-                            const parts = location.split(',').map((part: string) => part.trim());
-                            if (parts.length >= 2) {
-                                address = parts[0];
-                                city = parts[1];
-                                
-                                // Try to extract state and zip from the last part
-                                if (parts.length >= 3) {
-                                    const lastPart = parts[2];
-                                    const stateZipMatch = lastPart.match(/([A-Za-z]{2,})\s*(\d{5})?/);
-                                    if (stateZipMatch) {
-                                        state = stateZipMatch[1];
-                                        zipCode = stateZipMatch[2] || '';
-                                    } else {
-                                        state = lastPart;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    console.log('Parsed location:', { address, city, state, zipCode });
-                }
-
                 // Fetch services
                 let services: Array<{ name: string; price: number; duration: number }> = [];
                 if (barberData?.id) {
@@ -279,10 +214,7 @@ export default function BarberOnboardingPage() {
                 setFormData(prev => ({
                     ...prev,
                     phone: profile?.phone || '',
-                    address,
-                    city: barberData?.city || city, // Use barber table city if available
-                    state: barberData?.state || state, // Use barber table state if available
-                    zipCode,
+                    location: profile?.location || '',
                     services,
                     stripeConnected: barberData?.stripe_account_status === 'active'
                 }));
@@ -321,17 +253,8 @@ export default function BarberOnboardingPage() {
             if (!formData.phone.trim()) {
                 errors.phone = 'Phone number is required';
             }
-            if (!formData.address.trim()) {
-                errors.address = 'Address is required';
-            }
-            if (!formData.city.trim()) {
-                errors.city = 'City is required';
-            }
-            if (!formData.state.trim()) {
-                errors.state = 'State is required';
-            }
-            if (!formData.zipCode.trim()) {
-                errors.zipCode = 'ZIP code is required';
+            if (!formData.location.trim()) {
+                errors.location = 'Location is required';
             }
             if (!formData.bio.trim()) {
                 errors.bio = 'Bio is required';
@@ -346,20 +269,6 @@ export default function BarberOnboardingPage() {
                 const cleanedPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
                 if (!phoneRegex.test(cleanedPhone)) {
                     errors.phone = 'Please enter a valid phone number';
-                }
-            }
-
-            // ZIP code validation
-            const zipRegex = /^\d{5}(-\d{4})?$/;
-            if (formData.zipCode && !zipRegex.test(formData.zipCode)) {
-                errors.zipCode = 'Please enter a valid ZIP code';
-            }
-
-            // Address validation (async)
-            if (!errors.address && !errors.city && !errors.state && !errors.zipCode) {
-                const isValidAddress = await validateAddress(formData.address, formData.city, formData.state, formData.zipCode);
-                if (!isValidAddress) {
-                    errors.address = 'Please enter a real address';
                 }
             }
         } else if (step.id === 'services') {
@@ -482,8 +391,6 @@ export default function BarberOnboardingPage() {
                         business_name: formData.businessName,
                         bio: formData.bio,
                         specialties: formData.specialties,
-                        city: formData.city,
-                        state: formData.state,
                         instagram: extractHandle(formData.socialMedia.instagram),
                         twitter: extractHandle(formData.socialMedia.twitter),
                         tiktok: extractHandle(formData.socialMedia.tiktok),
@@ -502,7 +409,7 @@ export default function BarberOnboardingPage() {
                 .from('profiles')
                 .update({
                     phone: formData.phone,
-                    location: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+                    location: formData.location,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', user?.id);
@@ -707,44 +614,20 @@ export default function BarberOnboardingPage() {
                                     error={validationErrors.phone}
                                 />
 
-                                <InputField
-                                    label="Address *"
-                                    value={formData.address}
-                                    onChangeText={(text: string) => handleChange('address', text)}
-                                    placeholder="123 Main St"
-                                    icon={MapPin}
-                                    error={validationErrors.address}
-                                />
-
-                                <View style={tw`flex-row gap-4`}>
-                                    <View style={tw`flex-1`}>
-                                        <InputField
-                                            label="City *"
-                                            value={formData.city}
-                                            onChangeText={(text: string) => handleChange('city', text)}
-                                            placeholder="New York"
-                                            error={validationErrors.city}
-                                        />
+                                <View style={tw`mb-4`}>
+                                    <View style={tw`flex-row items-center mb-2`}>
+                                        <MapPin size={16} color={theme.colors.secondary} style={tw`mr-2`} />
+                                        <Text style={[tw`text-sm font-medium`, { color: theme.colors.foreground }]}>
+                                            Location *
+                                        </Text>
                                     </View>
-                                    <View style={tw`flex-1`}>
-                                        <InputField
-                                            label="State *"
-                                            value={formData.state}
-                                            onChangeText={(text: string) => handleChange('state', text)}
-                                            placeholder="NY"
-                                            error={validationErrors.state}
-                                        />
-                                    </View>
+                                    <LocationInput
+                                        value={formData.location}
+                                        onChange={(value: string) => handleChange('location', value)}
+                                        placeholder="Enter your business location..."
+                                        error={validationErrors.location}
+                                    />
                                 </View>
-
-                                <InputField
-                                    label="ZIP Code *"
-                                    value={formData.zipCode}
-                                    onChangeText={(text: string) => handleChange('zipCode', text)}
-                                    placeholder="12345"
-                                    keyboardType="numeric"
-                                    error={validationErrors.zipCode}
-                                />
 
                                 <InputField
                                     label="Bio *"
