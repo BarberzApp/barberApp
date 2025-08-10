@@ -9,8 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog'
 import { Progress } from '@/shared/components/ui/progress'
+import { Textarea } from '@/shared/components/ui/textarea'
 import { 
   Heart, 
   Users, 
@@ -24,8 +25,12 @@ import {
   Star,
   MessageCircle,
   Share2,
-  Eye
+  Eye,
+  Edit3,
+  Save,
+  X
 } from 'lucide-react'
+import { PastStylistCard } from './PastStylistCard'
 import { supabase } from '@/shared/lib/supabase'
 import { cn } from '@/lib/utils'
 
@@ -73,12 +78,34 @@ export default function ClientPortfolio() {
   const coverFileInputRef = useRef<HTMLInputElement>(null)
   const [coverLoading, setCoverLoading] = useState(false)
 
-  // Get user's bookings
+  // Client-specific state for bookings from database
+  const [clientBookings, setClientBookings] = useState<any[]>([]);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [editingReview, setEditingReview] = useState<string | null>(null);
+  const [editReviewData, setEditReviewData] = useState<{rating: number, comment: string}>({rating: 5, comment: ''});
+  const [updatingReview, setUpdatingReview] = useState(false);
+
+  // Get user's bookings from useData hook
   const userBookings = bookings.filter(b => b.clientId === user?.id)
-  const pastBarbers = [...new Set(userBookings.map(b => b.barber.id))].map(barberId => {
-    const booking = userBookings.find(b => b.barber.id === barberId)
-    return booking?.barber
+  
+  // Create past barbers from clientBookings (direct database data)
+  const pastBarbers = [...new Set(clientBookings.map(b => b.barber_id))].map(barberId => {
+    const booking = clientBookings.find(b => b.barber_id === barberId)
+    if (booking?.barbers?.profiles) {
+      return {
+        id: booking.barber_id,
+        name: booking.barbers.profiles.name,
+        image: booking.barbers.profiles.avatar_url || undefined,
+        username: booking.barbers.profiles.username || undefined
+      }
+    }
+    return null
   }).filter(Boolean)
+
+  // Debug logging for past barbers
+  console.log('👥 Past barbers calculated:', pastBarbers);
+  console.log('📋 Client bookings count:', clientBookings.length);
 
   // Fetch user profile
   useEffect(() => {
@@ -108,6 +135,74 @@ export default function ClientPortfolio() {
 
     fetchProfile()
   }, [user])
+
+  // Fetch client bookings from database
+  useEffect(() => {
+    const fetchClientBookings = async () => {
+      if (!user) return;
+      try {
+        console.log('🔍 Fetching client bookings for user:', user.id);
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`*, barbers:barber_id(user_id, profiles:user_id(name, avatar_url, username)), services:service_id(name, price)`) // join barber and service info
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        console.log('📊 Client bookings data:', data);
+        setClientBookings(data || []);
+      } catch (error) {
+        console.error('Error fetching client bookings:', error);
+      }
+    };
+    fetchClientBookings();
+  }, [user]);
+
+  // Fetch user reviews
+  useEffect(() => {
+    const fetchUserReviews = async () => {
+      if (!user) return;
+      try {
+        setReviewsLoading(true);
+        console.log('🔍 Fetching user reviews for:', user.id);
+        const { data, error } = await supabase
+          .from('reviews')
+          .select(`
+            id,
+            rating,
+            comment,
+            created_at,
+            barber:barber_id(
+              id,
+              user_id,
+              profiles:user_id(
+                name,
+                avatar_url,
+                username
+              )
+            ),
+            booking:booking_id(
+              id,
+              date,
+              service:service_id(
+                name
+              )
+            )
+          `)
+          .eq('client_id', user.id)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        console.log('📊 User reviews data:', data);
+        setUserReviews(data || []);
+      } catch (error) {
+        console.error('Error fetching user reviews:', error);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    fetchUserReviews();
+  }, [user]);
 
   // Fetch liked videos
   useEffect(() => {
@@ -150,6 +245,26 @@ export default function ClientPortfolio() {
         }
 
         const videos: Cut[] = []
+        
+        // Get actual like counts for each cut
+        const cutIds = likedData?.map(item => item.cut_id).filter(Boolean) || []
+        let likeCounts: {[key: string]: number} = {}
+        
+        if (cutIds.length > 0) {
+          const { data: likeCountData } = await supabase
+            .from('cut_analytics')
+            .select('cut_id')
+            .in('cut_id', cutIds)
+            .eq('action_type', 'like')
+          
+          // Count likes per cut
+          likeCountData?.forEach(item => {
+            likeCounts[item.cut_id] = (likeCounts[item.cut_id] || 0) + 1
+          })
+          
+          console.log('📊 Like counts for liked videos:', likeCounts)
+        }
+        
         likedData?.forEach(item => {
           const cutData = item.cuts as any
           if (cutData && cutData.barbers && cutData.barbers.profiles) {
@@ -160,7 +275,7 @@ export default function ClientPortfolio() {
               url: cutData.url,
               thumbnail: cutData.thumbnail,
               views: cutData.views,
-              likes: cutData.likes,
+              likes: likeCounts[cutData.id] || cutData.likes || 0, // Use actual count or fallback
               shares: cutData.shares,
               created_at: cutData.created_at,
               barber: {
@@ -287,9 +402,72 @@ export default function ClientPortfolio() {
     })
   }
 
+  // Handle review editing
+  const handleEditReview = (review: any) => {
+    setEditingReview(review.id)
+    setEditReviewData({
+      rating: review.rating,
+      comment: review.comment || ''
+    })
+  }
+
+  const handleSaveReview = async (reviewId: string) => {
+    if (!user || updatingReview) return
+
+    try {
+      setUpdatingReview(true)
+
+      const { error } = await supabase
+        .from('reviews')
+        .update({
+          rating: editReviewData.rating,
+          comment: editReviewData.comment.trim() || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reviewId)
+        .eq('client_id', user.id) // Ensure user can only edit their own reviews
+
+      if (error) throw error
+
+      // Update local state
+      setUserReviews(prev => prev.map(review => 
+        review.id === reviewId 
+          ? { 
+              ...review, 
+              rating: editReviewData.rating, 
+              comment: editReviewData.comment.trim() || null,
+              updated_at: new Date().toISOString()
+            }
+          : review
+      ))
+
+      setEditingReview(null)
+      toast({
+        title: "Success",
+        description: "Review updated successfully!",
+      })
+    } catch (error) {
+      console.error('Error updating review:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update review. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingReview(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingReview(null)
+    setEditReviewData({rating: 5, comment: ''})
+  }
+
+
+
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center pb-[140px] md:pb-0">
         {/* Background Elements */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
@@ -309,7 +487,7 @@ export default function ClientPortfolio() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-[140px] md:pb-0">
       {/* Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
@@ -397,32 +575,32 @@ export default function ClientPortfolio() {
       <div className="flex justify-center gap-8 mb-6">
         <div className="flex flex-col items-center">
           <span className="text-2xl font-bold text-white">{likedVideos.length}</span>
-          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Cuts</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-2xl font-bold text-white">{userBookings.length}</span>
-          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Portfolio</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Likes</span>
         </div>
         <div className="flex flex-col items-center">
           <span className="text-2xl font-bold text-white">{pastBarbers.length}</span>
-          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Stylists</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Past Barbers</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-2xl font-bold text-white">{clientBookings.length}</span>
+          <span className="text-white/60 text-xs uppercase tracking-widest mt-1">Bookings</span>
         </div>
       </div>
       {/* Tabs */}
       <div className="w-full max-w-3xl mx-auto mb-8">
         <Tabs defaultValue="liked" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl">
-            <TabsTrigger value="liked" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-              <Heart className="h-4 w-4 mr-2" />
-              Portfolio
+          <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl h-12 p-1">
+            <TabsTrigger value="liked" className="flex items-center justify-center gap-2 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary h-full px-2">
+              <Heart className="h-4 w-4 flex-shrink-0" />
+              <span>Likes</span>
             </TabsTrigger>
-            <TabsTrigger value="past-barbers" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-              <Users className="h-4 w-4 mr-2" />
-              Cuts
+            <TabsTrigger value="past-barbers" className="flex items-center justify-center gap-2 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary h-full px-2">
+              <Users className="h-4 w-4 flex-shrink-0" />
+              <span>Past Barbers</span>
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-              <History className="h-4 w-4 mr-2" />
-              Services
+            <TabsTrigger value="bookings" className="flex items-center justify-center gap-2 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary h-full px-2">
+              <Star className="h-4 w-4 flex-shrink-0" />
+              <span>Reviews</span>
             </TabsTrigger>
           </TabsList>
 
@@ -430,52 +608,88 @@ export default function ClientPortfolio() {
               {videosLoading ? (
                 <div className="text-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto text-secondary mb-4" />
-                  <p className="text-white/60">Loading liked cuts...</p>
+                  <p className="text-white/60">Loading liked videos...</p>
                 </div>
               ) : likedVideos.length === 0 ? (
                 <div className="text-center py-8">
                   <Heart className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No liked cuts yet</h3>
-                  <p className="text-white/60">Start exploring and liking cuts from your favorite stylists</p>
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No likes yet</h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    Videos you like from barbers will appear here. Start exploring and liking some cuts!
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/reels'}
+                    className="bg-secondary text-primary hover:bg-secondary/90"
+                  >
+                    Browse Cuts
+                  </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                   {likedVideos.map((video) => (
-                    <Card key={video.id} className="bg-white/5 border border-white/10 backdrop-blur-xl hover:border-secondary/30 transition-colors cursor-pointer" onClick={() => {
-                      setSelectedVideo(video)
-                      setOpenDialog('video')
-                    }}>
-                      <CardContent className="p-0">
-                        <div className="aspect-video relative">
-                          <video 
-                            src={video.url} 
-                            className="w-full h-full object-cover rounded-t-lg"
-                            poster={video.thumbnail}
-                          />
-                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <Play className="h-12 w-12 text-white" />
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={video.barber.image} alt={video.barber.name} />
-                              <AvatarFallback className="text-xs bg-secondary text-primary">
-                                {video.barber.name?.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <h3 className="font-semibold text-white text-xs mb-1 line-clamp-1">{video.title}</h3>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-white/60">
-                            <span>{video.barber.name}</span>
+                    <div 
+                      key={video.id} 
+                      className="relative aspect-[4/5] bg-gray-800 rounded-lg overflow-hidden group cursor-pointer"
+                      onMouseEnter={(e) => {
+                        const videoEl = e.currentTarget.querySelector('video') as HTMLVideoElement;
+                        if (videoEl) {
+                          videoEl.play().catch(() => {
+                            // Auto-play might be blocked
+                          });
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        const videoEl = e.currentTarget.querySelector('video') as HTMLVideoElement;
+                        if (videoEl) {
+                          videoEl.pause();
+                        }
+                      }}
+                      onClick={() => {
+                        window.location.href = `/reels?cutId=${video.id}`;
+                      }}
+                    >
+                      {video.thumbnail ? (
+                        <img 
+                          src={video.thumbnail} 
+                          alt={video.title} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <video 
+                          src={video.url} 
+                          className="w-full h-full object-cover"
+                          muted 
+                          playsInline 
+                          preload="metadata"
+                        />
+                      )}
+                      {/* Overlay with stats */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-2 left-2 right-2">
+                          <div className="flex items-center justify-between text-white text-xs">
+                            <div className="flex items-center gap-2">
+                              <Heart className="h-3 w-3" />
+                              <span>{video.likes || 0}</span>
+                            </div>
                             <div className="flex items-center gap-2">
                               <Eye className="h-3 w-3" />
-                              {video.views}
+                              <span>{video.views || 0}</span>
+                            </div>
+                          </div>
+                          <div className="mt-1">
+                            <div className="flex items-center gap-1">
+                              <Avatar className="h-4 w-4">
+                                <AvatarImage src={video.barber.image} alt={video.barber.name} />
+                                <AvatarFallback className="text-xs bg-secondary text-primary text-[8px]">
+                                  {video.barber.name?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs text-white/80 truncate">{video.barber.name}</span>
                             </div>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -484,75 +698,174 @@ export default function ClientPortfolio() {
             <TabsContent value="past-barbers" className="mt-6">
               {pastBarbers.length === 0 ? (
                 <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-card-foreground font-bebas font-bold text-xl mb-2">No past stylists</h3>
-                  <p className="text-muted-foreground">Book appointments to see your stylists here</p>
+                  <Users className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No past stylists</h3>
+                  <p className="text-white/60 text-sm mb-6">Book appointments to see your stylists here</p>
+                  <Button
+                    onClick={() => window.location.href = '/browse'}
+                    className="bg-secondary text-primary hover:bg-secondary/90"
+                  >
+                    Browse Barbers
+                  </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-6">
                   {pastBarbers.map((barber) => (
-                    <Card key={barber?.id} className="bg-muted border border-border backdrop-blur-xl">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={barber?.image} alt={barber?.name} />
-                            <AvatarFallback className="bg-secondary text-secondary-foreground font-bold">
-                              {barber?.name?.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-card-foreground">{barber?.name}</h3>
-                            <p className="text-muted-foreground text-sm">Previous stylist</p>
-                          </div>
-                          <Button size="sm" variant="outline" className="border-secondary/30 text-secondary hover:bg-secondary/10">
-                            Book Again
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <PastStylistCard
+                      key={barber?.id}
+                      barber={{
+                        id: barber?.id || '',
+                        name: barber?.name || '',
+                        image: barber?.image,
+                        username: barber?.username
+                      }}
+                      rating={4}
+                      isOnline={true}
+                      onBookAgain={(barberId) => {
+                        if (barber?.username) {
+                          window.location.href = `/book/${barber.username}`;
+                        } else {
+                          window.location.href = `/browse?barber=${barberId}`;
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               )}
             </TabsContent>
 
             <TabsContent value="bookings" className="mt-6">
-              {userBookings.length === 0 ? (
+              {reviewsLoading ? (
                 <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-white/40 mx-auto mb-4" />
-                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No bookings yet</h3>
-                  <p className="text-white/60">Start booking appointments with stylists</p>
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-secondary mb-4" />
+                  <p className="text-white/60">Loading your reviews...</p>
+                </div>
+              ) : userReviews.length === 0 ? (
+                <div className="text-center py-8">
+                  <Star className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                  <h3 className="text-white font-bebas font-bold text-xl mb-2">No reviews yet</h3>
+                  <p className="text-white/60 text-sm mb-6">
+                    Reviews you leave for barbers will appear here. Start reviewing your past appointments!
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/browse'}
+                    className="bg-secondary text-primary hover:bg-secondary/90"
+                  >
+                    Browse Barbers
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {userBookings.map((booking) => (
-                    <Card key={booking.id} className="bg-white/5 border border-white/10 backdrop-blur-xl">
+                  {userReviews.map((review) => (
+                    <Card key={review.id} className="bg-white/5 border border-white/10 backdrop-blur-xl">
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={booking.barber.image} alt={booking.barber.name} />
-                            <AvatarFallback className="bg-secondary text-primary font-bold text-sm">
-                              {booking.barber.name?.charAt(0).toUpperCase()}
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10 flex-shrink-0">
+                            <AvatarImage 
+                              src={review.barber?.profiles?.avatar_url} 
+                              alt={review.barber?.profiles?.name} 
+                            />
+                            <AvatarFallback className="bg-secondary text-primary text-sm">
+                              {review.barber?.profiles?.name?.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-white">{booking.barber.name}</h3>
-                            <p className="text-white/60 text-sm">{booking.service}</p>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-white/60 text-xs flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(booking.date)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-white text-sm">
+                                  {review.barber?.profiles?.name}
+                                </h4>
+                                {editingReview === review.id ? (
+                                  <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-4 w-4 cursor-pointer transition-colors ${
+                                          i < editReviewData.rating
+                                            ? 'text-yellow-400 fill-current hover:text-yellow-300'
+                                            : 'text-white/30 hover:text-yellow-200'
+                                        }`}
+                                        onClick={() => setEditReviewData(prev => ({...prev, rating: i + 1}))}
+                                      />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-3 w-3 ${
+                                          i < review.rating
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-white/30'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              {editingReview === review.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveReview(review.id)}
+                                    disabled={updatingReview}
+                                    className="h-7 px-2 bg-secondary hover:bg-secondary/90 text-primary"
+                                  >
+                                    {updatingReview ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Save className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelEdit}
+                                    className="h-7 px-2 border-white/20 text-white hover:bg-white/10"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditReview(review)}
+                                  className="h-7 px-2 text-white/60 hover:text-white hover:bg-white/10"
+                                >
+                                  <Edit3 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            {editingReview === review.id ? (
+                              <Textarea
+                                value={editReviewData.comment}
+                                onChange={(e) => setEditReviewData(prev => ({...prev, comment: e.target.value}))}
+                                placeholder="Share your experience..."
+                                className="bg-white/5 border-white/10 text-white placeholder-white/40 text-sm mb-2 min-h-[60px]"
+                              />
+                            ) : (
+                              review.comment && (
+                                <p className="text-white/80 text-sm leading-relaxed mb-2">
+                                  {review.comment}
+                                </p>
+                              )
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-white/50">
+                              <span>
+                                {review.booking?.service?.name && (
+                                  <span>Service: {review.booking.service.name}</span>
+                                )}
                               </span>
-                              <span className="text-white/60 text-xs flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatTime(booking.time)}
+                              <span>
+                                {new Date(review.created_at).toLocaleDateString()}
                               </span>
+                              {review.updated_at && review.updated_at !== review.created_at && (
+                                <span className="text-white/40">(edited)</span>
+                              )}
                             </div>
                           </div>
-                          <Badge className={
-                            booking.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-secondary/20 text-secondary border-secondary/30'
-                          }>
-                            {booking.status}
-                          </Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -607,6 +920,8 @@ export default function ClientPortfolio() {
           )}
         </DialogContent>
       </Dialog>
+
+
     </div>
   )
 } 

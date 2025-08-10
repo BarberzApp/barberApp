@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { AlertTriangle, RefreshCw, Home, ArrowLeft, Bug } from 'lucide-react'
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 import { useAuth } from '@/shared/hooks/use-auth-zustand'
+import { reportReactError } from '@/shared/utils/error-reporter'
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -51,19 +52,17 @@ export class EnhancedErrorBoundary extends React.Component<ErrorBoundaryProps, E
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('EnhancedErrorBoundary caught an error:', error, errorInfo)
     
+    // Report error with SMS notification
+    reportReactError(error, errorInfo, this.state.retryCount)
+    
     // Call custom error handler if provided
     this.props.onError?.(error, errorInfo)
     
-    // Log to external service in production
-    if (process.env.NODE_ENV === 'production') {
-      // TODO: Add error reporting service (Sentry, LogRocket, etc.)
-      console.error('Production error:', {
-        message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        timestamp: new Date().toISOString()
-      })
-    }
+    // Store error info in state
+    this.setState(prevState => ({
+      ...prevState,
+      errorInfo
+    }))
   }
 
   componentWillUnmount() {
@@ -286,8 +285,9 @@ export function useErrorHandler() {
 
   const handleError = React.useCallback((error: Error) => {
     console.error('Error caught by useErrorHandler:', error)
+    reportReactError(error, undefined, retryCount)
     setError(error)
-  }, [])
+  }, [retryCount])
 
   const retryError = React.useCallback(() => {
     setRetryCount(prev => prev + 1)

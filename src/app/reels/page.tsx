@@ -38,7 +38,7 @@ import {
   Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { BookingForm } from '@/shared/components/booking/booking-form';
 import { useSafeNavigation } from '@/shared/hooks/use-safe-navigation'
 
@@ -142,6 +142,7 @@ export default function CutsPage() {
   const [buffering, setBuffering] = useState<boolean[]>([])
   const [activeVideoIndex, setActiveVideoIndex] = useState(0)
   const [mutedStates, setMutedStates] = useState<{[id: string]: boolean}>({})
+  const searchParams = useSearchParams();
 
 
 
@@ -596,6 +597,27 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
 
   useEffect(() => {
     if (cuts.length > 0) {
+      const cutId = searchParams.get('cutId');
+      if (cutId) {
+        const idx = cuts.findIndex(cut => cut.id === cutId);
+        if (idx !== -1) {
+          setCurrentCutIndex(idx);
+          setActiveVideoIndex(idx);
+          // Scroll to the video
+          setTimeout(() => {
+            const videoElement = videoRefs.current[idx];
+            if (videoElement) {
+              videoElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              videoElement.play();
+            }
+          }, 300);
+        }
+      }
+    }
+  }, [cuts, searchParams]);
+
+  useEffect(() => {
+    if (cuts.length > 0) {
       // checkUserLikes() // This function is no longer needed as likes are tracked via analytics
     }
   }, [cuts.length])
@@ -1004,7 +1026,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
   const cardHeight = isDesktop ? 'calc(100dvh - 128px)' : 'calc(100dvh - 136px)';
 
   return (
-    <div className="relative h-screen bg-black overflow-hidden">
+    <div className="relative h-screen bg-black overflow-hidden pb-[140px] md:pb-0">
       {/* Enhanced filter bar with glass morphism */}
       <div className="fixed top-0 md:top-16 left-0 w-full z-40 h-[64px] bg-transparent backdrop-blur-sm border-b border-white/5">
         <div className="relative h-full flex items-center justify-center">
@@ -1391,7 +1413,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
 
       {/* Booking Form Dialog */}
       <Dialog open={showBookingForm} onOpenChange={setShowBookingForm}>
-        <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden mb-[140px] md:mb-0">
           {selectedBarberId && (
             <BookingForm
               isOpen={showBookingForm}

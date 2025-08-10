@@ -6,11 +6,65 @@ import { cookies } from 'next/headers';
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  process.env.NODE_ENV === 'development' 
+    ? 'https://3d6b1eb7b7c8.ngrok-free.app/api/auth/google-calendar/callback'
+    : process.env.GOOGLE_REDIRECT_URI
 );
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if user is authenticated first
+    const supabase = createRouteHandlerClient({ cookies });
+    
+    // First try to get session from cookies
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    let user: any = session?.user || null;
+    let userError = sessionError;
+    
+    // If no session from cookies, try to get user directly
+    if (!user) {
+      const { data: { user: directUser }, error: directUserError } = await supabase.auth.getUser();
+      user = directUser;
+      userError = directUserError;
+    }
+    
+    // If still no user, check if we have an authorization header (for client-side calls)
+    if (!user) {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '');
+        console.log('🔐 Calendar OAuth - Using Bearer token for authentication');
+        
+        // Create a new Supabase client with the token
+        const { createClient } = await import('@supabase/supabase-js');
+        const tokenClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          }
+        );
+        
+        const { data: { user: tokenUser }, error: tokenError } = await tokenClient.auth.getUser();
+        user = tokenUser;
+        userError = tokenError;
+      }
+    }
+    
+    if (userError || !user) {
+      console.error('❌ Calendar OAuth - User not authenticated:', userError);
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
+    
+    console.log('✅ Calendar OAuth - User authenticated:', user.id);
+    
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: [
@@ -18,7 +72,8 @@ export async function GET(request: NextRequest) {
         'https://www.googleapis.com/auth/calendar.events'
       ],
       prompt: 'consent',
-      include_granted_scopes: true
+      include_granted_scopes: true,
+      state: user.id // Pass user ID in state for session recovery
     });
 
     return NextResponse.json({ url });

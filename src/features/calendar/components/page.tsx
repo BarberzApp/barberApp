@@ -54,12 +54,13 @@ interface Booking {
   status: string
   service_name: string
   price: number
-  barber: {
-  id: string
-  name: string
+  // For clients: contains barber info, for barbers: contains client info
+  otherParty: {
+    id: string
+    name: string
     username: string
     image?: string
-  location?: string
+    location?: string
   }
 }
 
@@ -112,12 +113,19 @@ export default function CalendarPage() {
           return
         }
 
+        console.log('👤 Current user:', user)
+        console.log('🎭 User role:', user?.role)
+        
         if (user.role === 'client') {
+          console.log('✅ User is client, fetching client bookings')
           // For clients: fetch their bookings
           await fetchClientBookings()
         } else if (user.role === 'barber') {
+          console.log('✅ User is barber, fetching barber data')
           // For barbers: fetch all barbers (for admin purposes) and their own bookings
           await fetchBarberData()
+        } else {
+          console.log('❓ Unknown user role:', user?.role)
         }
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -132,6 +140,9 @@ export default function CalendarPage() {
 
   const fetchClientBookings = async () => {
     try {
+      console.log('🔍 Fetching client bookings for user ID:', user?.id)
+      console.log('🔍 User role:', user?.role)
+      
       // Fetch client's bookings
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
@@ -152,14 +163,35 @@ export default function CalendarPage() {
         .eq('client_id', user?.id)
         .order('date', { ascending: true })
 
+      console.log('📊 Raw bookings data:', bookingsData)
+      console.log('❌ Bookings error:', bookingsError)
+
       if (bookingsError) {
         console.error('Error fetching bookings:', bookingsError)
         throw bookingsError
       }
 
       if (!bookingsData || bookingsData.length === 0) {
+        console.log('⚠️ No bookings found for client ID:', user?.id)
         setBookings([])
         return
+      }
+
+      console.log('✅ Found', bookingsData.length, 'bookings')
+      
+      // Debug: Check if user ID matches any client_id in the database
+      console.log('🔍 Checking if user ID matches any bookings...')
+      const { data: allBookingsDebug, error: debugError } = await supabase
+        .from('bookings')
+        .select('client_id, barber_id, date, status')
+        .limit(10)
+      
+      if (debugError) {
+        console.log('❌ Debug query error:', debugError)
+      } else {
+        console.log('📊 All bookings in DB (for debugging):', allBookingsDebug)
+        const userBookings = allBookingsDebug?.filter(b => b.client_id === user?.id)
+        console.log('👤 Bookings for current user:', userBookings)
       }
 
       // Fetch service names for bookings
@@ -191,7 +223,7 @@ export default function CalendarPage() {
            status: booking.status,
            service_name: serviceMap.get(booking.service_id) || 'Unknown Service',
            price: booking.price,
-           barber: {
+           otherParty: {
              id: barberData?.id || '',
              name: profile?.name || barberData?.business_name || 'Unknown Barber',
              username: profile?.username || '',
@@ -210,71 +242,69 @@ export default function CalendarPage() {
 
   const fetchBarberData = async () => {
     try {
-      // For barbers, fetch all barbers (admin view)
-        const { data: barbersData, error: barbersError } = await supabase
-          .from('barbers')
-          .select('*')
+      // For barbers, fetch their own bookings (where they are the barber)
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          date,
+          time,
+          status,
+          price,
+          service_id,
+          client_id,
+          client:profiles!client_id (
+            id,
+            name,
+            username,
+            avatar_url,
+            location
+          )
+        `)
+        .eq('barber_id', user?.id)
+        .order('date', { ascending: true })
 
-        if (barbersError) {
-          console.error('Supabase error:', barbersError)
-          throw barbersError
-        }
+      if (bookingsError) {
+        console.error('Error fetching barber bookings:', bookingsError)
+        throw bookingsError
+      }
 
-        if (!barbersData || barbersData.length === 0) {
-          setBarbers([])
-          return
-        }
+      if (!bookingsData || bookingsData.length === 0) {
+        setBookings([])
+        return
+      }
 
-      // Fetch all profiles for these barbers
-      const userIds = barbersData.map((b: any) => b.user_id)
-        
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, name, location, bio, avatar_url, is_public')
-          .in('id', userIds)
+      // Fetch service names for bookings
+      const serviceIds = bookingsData.map(booking => booking.service_id).filter(Boolean)
+      const { data: servicesData } = await supabase
+        .from('services')
+        .select('id, name')
+        .in('id', serviceIds)
 
-        if (profilesError) {
-          console.error('Supabase error (profiles):', profilesError)
-          throw profilesError
-        }
+      const serviceMap = new Map(servicesData?.map(service => [service.id, service.name]) || [])
 
-      // Merge barbers and profiles
-      const profileMap: Record<string, any> = {}
-        for (const profile of profilesData || []) {
-          profileMap[profile.id] = profile
-        }
-
-      const formattedBarbers: Barber[] = barbersData.map((barber: any) => {
-          const profile = profileMap[barber.user_id]
-          return {
-            id: profile?.id || barber.user_id,
-            name: profile?.name || '',
-          email: '',
-            location: profile?.location,
-            bio: profile?.bio,
-            businessName: '',
-            specialties: barber.specialties || [],
-          services: [],
-            priceRange: barber.price_range,
-            nextAvailable: barber.next_available,
-          rating: 4.5,
-            image: profile?.avatar_url,
-            portfolio: [],
-            trending: false,
-            openToHire: false,
-            isPublic: profile?.is_public,
-            instagram: '',
-            twitter: '',
-            tiktok: '',
-            facebook: '',
-            joinDate: barber.created_at,
-            createdAt: barber.created_at,
-            updatedAt: barber.updated_at
+      // Transform bookings data for barber view
+      const transformedBookings: Booking[] = bookingsData.map(booking => {
+        const clientData = booking.client as any
+        return {
+          id: booking.id,
+          date: booking.date,
+          time: booking.time,
+          status: booking.status,
+          service_name: serviceMap.get(booking.service_id) || 'Unknown Service',
+          price: booking.price,
+          otherParty: {
+            id: clientData?.id || '',
+            name: clientData?.name || 'Unknown Client',
+            username: clientData?.username || '',
+            image: clientData?.avatar_url,
+            location: clientData?.location
           }
-        })
+        }
+      })
 
-        setBarbers(formattedBarbers)
-      } catch (error) {
+      setBookings(transformedBookings)
+    } catch (error) {
       console.error('Error in fetchBarberData:', error)
       throw error
     }
@@ -432,16 +462,16 @@ export default function CalendarPage() {
                         <div className="space-y-2 text-sm text-white/80">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4" />
-                            <span>{booking.barber.name}</span>
+                            <span>{user?.role === 'client' ? 'Barber: ' : 'Client: '}{booking.otherParty.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4" />
                             <span>{formatTime(booking.time)}</span>
                           </div>
-                          {booking.barber.location && (
+                          {booking.otherParty.location && (
                             <div className="flex items-center gap-2">
                               <MapPin className="h-4 w-4" />
-                              <span>{booking.barber.location}</span>
+                              <span>{booking.otherParty.location}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2">
@@ -461,7 +491,7 @@ export default function CalendarPage() {
                                   
                                   addToGoogleCalendar(
                                     {
-                                      title: `${booking.service_name} - ${booking.barber.name}`,
+                                      title: `${booking.service_name} - ${booking.otherParty.name}`,
                                       start: startDate.toISOString(),
                                       end: endDate.toISOString(),
                                       extendedProps: {
@@ -477,7 +507,7 @@ export default function CalendarPage() {
                                     {
                                       name: (user as any)?.user_metadata?.full_name || (user?.role === 'client' ? 'Client' : 'Barber'),
                                       email: user?.email || '',
-                                      location: booking.barber.location || ''
+                                      location: booking.otherParty.location || ''
                                     }
                                   )
                                 } catch (error) {
@@ -500,7 +530,7 @@ export default function CalendarPage() {
                                   
                                   downloadICalFile(
                                     [{
-                                      title: `${booking.service_name} - ${booking.barber.name}`,
+                                      title: `${booking.service_name} - ${booking.otherParty.name}`,
                                       start: startDate.toISOString(),
                                       end: endDate.toISOString(),
                                       extendedProps: {
@@ -516,7 +546,7 @@ export default function CalendarPage() {
                                     {
                                       name: (user as any)?.user_metadata?.full_name || (user?.role === 'client' ? 'Client' : 'Barber'),
                                       email: user?.email || '',
-                                      location: booking.barber.location || ''
+                                      location: booking.otherParty.location || ''
                                     },
                                     `appointment-${booking.id}.ics`
                                   )

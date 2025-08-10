@@ -117,6 +117,7 @@ export default function BarberOnboardingPage() {
   const [locationInput, setLocationInput] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLocationAutofilled, setIsLocationAutofilled] = useState(false);
   const debounceTimerRef = useRef<number | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
@@ -135,11 +136,12 @@ export default function BarberOnboardingPage() {
         // Fetch barber profile data
         const { data: barberData, error: barberError } = await supabase
           .from('barbers')
-          .select('*')
+          .select('*, profiles!user_id(location, phone)')
           .eq('user_id', user.id)
           .single()
 
         console.log('Barber data fetched:', barberData, 'Error:', barberError);
+        console.log('Profile data from join:', barberData?.profiles);
 
         if (barberData) {
           console.log('Setting barber data in form');
@@ -157,19 +159,33 @@ export default function BarberOnboardingPage() {
           }))
         }
 
-        // Fetch profile data
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('phone, location')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Error fetching profile data:', profileError);
+        // Get profile data from the joined query
+        let profile = barberData?.profiles;
+        
+        // Fallback: if profile data not available through join, fetch separately
+        if (!profile) {
+          console.log('Profile data not available through join, fetching separately');
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('phone, location')
+            .eq('id', user.id)
+            .single();
+          
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Error fetching profile data:', profileError);
+          } else {
+            profile = profileData;
+          }
         }
 
         // Parse location with improved regex patterns
         let address = '', city = '', state = '', zipCode = '';
+        console.log('Available location data:', {
+          profileLocation: profile?.location,
+          barberCity: barberData?.city,
+          barberState: barberData?.state
+        });
+        
         if (profile?.location) {
           console.log('Parsing location:', profile.location);
           
@@ -235,16 +251,28 @@ export default function BarberOnboardingPage() {
           }
         }
 
+        // Create the full location string for the input field
+        // Prioritize barber table location data over parsed profile location
+        const finalCity = barberData?.city || city;
+        const finalState = barberData?.state || state;
+        const fullLocation = [address, finalCity, finalState, zipCode].filter(Boolean).join(', ');
+        
         setFormData(prev => ({
           ...prev,
           phone: profile?.phone || '',
           address,
-          city: barberData?.city || city, // Use barber table city if available
-          state: barberData?.state || state, // Use barber table state if available
+          city: finalCity, // Use barber table city if available
+          state: finalState, // Use barber table state if available
           zipCode,
           services,
           stripeConnected: barberData?.stripe_account_status === 'active'
         }));
+
+        // Set the location input to show the full address
+        if (fullLocation) {
+          setLocationInput(fullLocation);
+          setIsLocationAutofilled(true); // Mark as autofilled
+        }
 
         // Only set Stripe status if they have actually started the Stripe Connect process
         if (barberData?.stripe_account_id) {
@@ -424,12 +452,16 @@ export default function BarberOnboardingPage() {
         errors.zipCode = 'Please enter a valid ZIP code';
       }
 
-      // Address validation (async)
+      // Address validation - skip OSM validation if user has entered any location data
+      // This allows users to enter any valid location without requiring exact OSM matches
       if (!errors.address && !errors.city && !errors.state && !errors.zipCode) {
-        const isValidAddress = await validateAddress(formData.address, formData.city, formData.state, formData.zipCode)
-        if (!isValidAddress) {
-          errors.address = 'Please enter a real address';
+        // Only validate if the user hasn't entered any location data at all
+        const hasLocationData = formData.address || formData.city || formData.state || formData.zipCode;
+        
+        if (!hasLocationData) {
+          errors.address = 'Please enter your location';
         }
+        // Skip OSM validation entirely - trust that user knows their own address
       }
     }
 
@@ -839,6 +871,7 @@ export default function BarberOnboardingPage() {
   const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocationInput(e.target.value ?? '');
     setShowSuggestions(true);
+    setIsLocationAutofilled(false); // Reset autofilled flag when user types
     setFormData(prev => ({ ...prev, address: '', city: '', state: '', zipCode: '' }));
   };
 
@@ -856,6 +889,7 @@ export default function BarberOnboardingPage() {
     setLocationInput(formatted);
     setShowSuggestions(false);
     setLocationSuggestions([]);
+    setIsLocationAutofilled(false); // Reset autofilled flag when user selects suggestion
     setFormData(prev => ({ ...prev, address: line1, city, state, zipCode: zip }));
   };
 

@@ -1,237 +1,276 @@
-# Database Schema Reference
-
-## Core Tables
-
-### barbers
-Primary table for barber information and Stripe Connect integration
-- id (uuid, PK)
-- user_id (uuid, FK to profiles)
-- bio (text)
-- specialties (ARRAY)
-- price_range (text)
-- next_available (timestamp with time zone)
-- stripe_account_id (text)
-- stripe_account_status (text)
-- stripe_account_ready (boolean)
-- created_at (timestamp with time zone)
-- updated_at (timestamp with time zone)
-
-### profiles
-User profiles and authentication
-- id (uuid, PK)
-- name (text)
-- email (text)
-- role (text)
-- phone (text)
-- location (text)
-- description (text)
-- bio (text)
-- favorites (ARRAY)
-- username (text)
-- join_date (timestamp with time zone)
-- created_at (timestamp with time zone)
-- updated_at (timestamp with time zone)
-
-### bookings
-Appointment bookings
-- id (uuid, PK)
-- barber_id (uuid, FK to barbers)
-- client_id (uuid, FK to profiles)
-- service_id (uuid, FK to services)
-- date (timestamp with time zone)
-- status (text)
-- price (numeric)
-- payment_status (text)
-- payment_intent_id (text)
-- platform_fee (numeric)
-- barber_payout (numeric)
-- guest_name (text)
-- guest_email (text)
-- guest_phone (text)
-- notes (text)
-- created_at (timestamp with time zone)
-- updated_at (timestamp with time zone)
-
-### services
-Barber services offered
-- id (uuid, PK)
-- barber_id (uuid, FK to barbers)
-- name (text)
-- description (text)
-- duration (integer)
-- price (numeric)
-- created_at (timestamp with time zone)
-- updated_at (timestamp with time zone)
-
-### payments
-Stripe payment records
-- id (uuid, PK)
-- payment_intent_id (text)
-- amount (integer)
-- currency (text)
-- status (text)
-- barber_stripe_account_id (text)
-- platform_fee (integer)
-- barber_payout (integer)
-- booking_id (uuid, FK to bookings)  # Ensured to exist by migration
-- created_at (timestamp with time zone)
-- updated_at (timestamp with time zone)
-
-# Note: RLS policies are now present for payments (see migration 20240321000009_stripe_connect_fixes.sql)
-
-## Scheduling Tables
-
-### availability
-Regular weekly availability
-- id (uuid, PK)
-- barber_id (uuid, FK to barbers)
-- day_of_week (integer)
-- start_time (time without time zone)
-- end_time (time without time zone)
-- created_at (timestamp with time zone)
-- updated_at (timestamp with time zone)
-
-### special_hours
-Special/exception hours
-- id (uuid, PK)
-- barber_id (uuid, FK to barbers)
-- date (date)
-- start_time (time without time zone)
-- end_time (time without time zone)
-- is_closed (boolean)
-- reason (text)
-- created_at (timestamp with time zone)
-- updated_at (timestamp with time zone)
-
-## Notification System
-
-### notifications
-User notifications
-- id (uuid, PK)
-- user_id (uuid, FK to profiles)
-- title (text)
-- message (text)
-- type (text)
-- booking_id (uuid, FK to bookings)
-- read (boolean)
-- created_at (timestamp with time zone)
-
-## System Tables
-
-### _prisma_migrations
-Prisma migration history
-- id (character varying)
-- checksum (character varying)
-- finished_at (timestamp with time zone)
-- migration_name (character varying)
-- logs (text)
-- rolled_back_at (timestamp with time zone)
-- started_at (timestamp with time zone)
-- applied_steps_count (integer)
-
-## Key Relationships
-1. barbers.user_id -> profiles.id
-2. bookings.barber_id -> barbers.id
-3. bookings.client_id -> profiles.id
-4. bookings.service_id -> services.id
-5. services.barber_id -> barbers.id
-6. availability.barber_id -> barbers.id
-7. special_hours.barber_id -> barbers.id
-8. notifications.user_id -> profiles.id
-9. notifications.booking_id -> bookings.id
-10. payments.booking_id -> bookings.id
-
-| table_name         | column_name              | data_type                |
-| ------------------ | ------------------------ | ------------------------ |
-| _prisma_migrations | id                       | character varying        |
-| _prisma_migrations | checksum                 | character varying        |
-| _prisma_migrations | finished_at              | timestamp with time zone |
-| _prisma_migrations | migration_name           | character varying        |
-| _prisma_migrations | logs                     | text                     |
-| _prisma_migrations | rolled_back_at           | timestamp with time zone |
-| _prisma_migrations | started_at               | timestamp with time zone |
-| _prisma_migrations | applied_steps_count      | integer                  |
-| availability       | id                       | uuid                     |
-| availability       | barber_id                | uuid                     |
-| availability       | day_of_week              | integer                  |
-| availability       | start_time               | time without time zone   |
-| availability       | end_time                 | time without time zone   |
-| availability       | created_at               | timestamp with time zone |
-| availability       | updated_at               | timestamp with time zone |
-| barbers            | id                       | uuid                     |
-| barbers            | user_id                  | uuid                     |
-| barbers            | bio                      | text                     |
-| barbers            | specialties              | ARRAY                    |
-| barbers            | price_range              | text                     |
-| barbers            | next_available           | timestamp with time zone |
-| barbers            | created_at               | timestamp with time zone |
-| barbers            | updated_at               | timestamp with time zone |
-| barbers            | stripe_account_id        | text                     |
-| barbers            | stripe_account_status    | text                     |
-| barbers            | stripe_account_ready     | boolean                  |
-| bookings           | id                       | uuid                     |
-| bookings           | barber_id                | uuid                     |
-| bookings           | client_id                | uuid                     |
-| bookings           | service_id               | uuid                     |
-| bookings           | date                     | timestamp with time zone |
-| bookings           | status                   | text                     |
-| bookings           | price                    | numeric                  |
-| bookings           | created_at               | timestamp with time zone |
-| bookings           | updated_at               | timestamp with time zone |
-| bookings           | payment_status           | text                     |
-| bookings           | guest_name               | text                     |
-| bookings           | guest_email              | text                     |
-| bookings           | guest_phone              | text                     |
-| bookings           | notes                    | text                     |
-| bookings           | payment_intent_id        | text                     |
-| bookings           | platform_fee             | numeric                  |
-| bookings           | barber_payout            | numeric                  |
-| notifications      | id                       | uuid                     |
-| notifications      | user_id                  | uuid                     |
-| notifications      | title                    | text                     |
-| notifications      | message                  | text                     |
-| notifications      | type                     | text                     |
-| notifications      | booking_id               | uuid                     |
-| notifications      | read                     | boolean                  |
-| notifications      | created_at               | timestamp with time zone |
-| payments           | id                       | uuid                     |
-| payments           | payment_intent_id        | text                     |
-| payments           | amount                   | integer                  |
-| payments           | currency                 | text                     |
-| payments           | status                   | text                     |
-| payments           | barber_stripe_account_id | text                     |
-| payments           | platform_fee             | integer                  |
-| payments           | barber_payout            | integer                  |
-| payments           | booking_id               | uuid                     |
-| payments           | created_at               | timestamp with time zone |
-| payments           | updated_at               | timestamp with time zone |
-| profiles           | id                       | uuid                     |
-| profiles           | name                     | text                     |
-| profiles           | email                    | text                     |
-| profiles           | role                     | text                     |
-| profiles           | phone                    | text                     |
-| profiles           | location                 | text                     |
-| profiles           | description              | text                     |
-| profiles           | bio                      | text                     |
-| profiles           | favorites                | ARRAY                    |
-| profiles           | join_date                | timestamp with time zone |
-| profiles           | created_at               | timestamp with time zone |
-| profiles           | updated_at               | timestamp with time zone |
-| profiles           | username                 | text                     |
-| services           | id                       | uuid                     |
-| services           | barber_id                | uuid                     |
-| services           | name                     | text                     |
-| services           | description              | text                     |
-| services           | duration                 | integer                  |
-| services           | price                    | numeric                  |
-| services           | created_at               | timestamp with time zone |
-| services           | updated_at               | timestamp with time zone |
-| special_hours      | id                       | uuid                     |
-| special_hours      | barber_id                | uuid                     |
-| special_hours      | date                     | date                     |
-| special_hours      | start_time               | time without time zone   |
-| special_hours      | end_time                 | time without time zone   |
-| special_hours      | is_closed                | boolean                  |
-| special_hours      | reason                   | text                     |
-| special_hours      | created_at               | timestamp with time zone |
-| special_hours      | updated_at               | timestamp with time zone | 
+| table_name                | column_name               | data_type                |
+| ------------------------- | ------------------------- | ------------------------ |
+| _prisma_migrations        | id                        | character varying        |
+| _prisma_migrations        | checksum                  | character varying        |
+| _prisma_migrations        | finished_at               | timestamp with time zone |
+| _prisma_migrations        | migration_name            | character varying        |
+| _prisma_migrations        | logs                      | text                     |
+| _prisma_migrations        | rolled_back_at            | timestamp with time zone |
+| _prisma_migrations        | started_at                | timestamp with time zone |
+| _prisma_migrations        | applied_steps_count       | integer                  |
+| availability              | id                        | uuid                     |
+| availability              | barber_id                 | uuid                     |
+| availability              | day_of_week               | integer                  |
+| availability              | start_time                | time without time zone   |
+| availability              | end_time                  | time without time zone   |
+| availability              | created_at                | timestamp with time zone |
+| availability              | updated_at                | timestamp with time zone |
+| barbers                   | id                        | uuid                     |
+| barbers                   | user_id                   | uuid                     |
+| barbers                   | bio                       | text                     |
+| barbers                   | specialties               | ARRAY                    |
+| barbers                   | price_range               | text                     |
+| barbers                   | next_available            | timestamp with time zone |
+| barbers                   | created_at                | timestamp with time zone |
+| barbers                   | updated_at                | timestamp with time zone |
+| barbers                   | stripe_account_id         | text                     |
+| barbers                   | stripe_account_status     | text                     |
+| barbers                   | business_name             | text                     |
+| barbers                   | status                    | text                     |
+| barbers                   | onboarding_complete       | boolean                  |
+| barbers                   | stripe_account_ready      | boolean                  |
+| barbers                   | instagram                 | text                     |
+| barbers                   | twitter                   | text                     |
+| barbers                   | tiktok                    | text                     |
+| barbers                   | facebook                  | text                     |
+| barbers                   | portfolio                 | ARRAY                    |
+| barbers                   | is_developer              | boolean                  |
+| barbers                   | latitude                  | numeric                  |
+| barbers                   | longitude                 | numeric                  |
+| barbers                   | city                      | text                     |
+| barbers                   | state                     | text                     |
+| barbers                   | review_count              | integer                  |
+| barbers                   | average_rating            | numeric                  |
+| booking_addons            | id                        | uuid                     |
+| booking_addons            | booking_id                | uuid                     |
+| booking_addons            | addon_id                  | uuid                     |
+| booking_addons            | price                     | numeric                  |
+| booking_addons            | created_at                | timestamp with time zone |
+| booking_restrictions      | id                        | uuid                     |
+| booking_restrictions      | barber_id                 | uuid                     |
+| booking_restrictions      | min_interval_minutes      | integer                  |
+| booking_restrictions      | max_bookings_per_day      | integer                  |
+| booking_restrictions      | advance_booking_days      | integer                  |
+| booking_restrictions      | same_day_booking_enabled  | boolean                  |
+| booking_restrictions      | created_at                | timestamp with time zone |
+| booking_restrictions      | updated_at                | timestamp with time zone |
+| booking_texts             | id                        | uuid                     |
+| booking_texts             | client_name               | text                     |
+| booking_texts             | client_phone              | text                     |
+| booking_texts             | client_carrier            | text                     |
+| booking_texts             | barber_phone              | text                     |
+| booking_texts             | barber_carrier            | text                     |
+| booking_texts             | booking_time              | timestamp with time zone |
+| booking_texts             | confirmation_sent         | boolean                  |
+| booking_texts             | reminder_sent             | boolean                  |
+| booking_texts             | barber_sms_notifications  | boolean                  |
+| booking_texts             | client_sms_notifications  | boolean                  |
+| bookings                  | id                        | uuid                     |
+| bookings                  | barber_id                 | uuid                     |
+| bookings                  | client_id                 | uuid                     |
+| bookings                  | service_id                | uuid                     |
+| bookings                  | date                      | timestamp with time zone |
+| bookings                  | status                    | text                     |
+| bookings                  | price                     | numeric                  |
+| bookings                  | created_at                | timestamp with time zone |
+| bookings                  | updated_at                | timestamp with time zone |
+| bookings                  | payment_status            | text                     |
+| bookings                  | guest_name                | text                     |
+| bookings                  | guest_email               | text                     |
+| bookings                  | guest_phone               | text                     |
+| bookings                  | notes                     | text                     |
+| bookings                  | platform_fee              | numeric                  |
+| bookings                  | barber_payout             | numeric                  |
+| bookings                  | payment_intent_id         | text                     |
+| bookings                  | addon_total               | numeric                  |
+| bookings                  | review_requested          | boolean                  |
+| bookings                  | review_requested_at       | timestamp with time zone |
+| calendar_sync_logs        | id                        | uuid                     |
+| calendar_sync_logs        | user_id                   | uuid                     |
+| calendar_sync_logs        | connection_id             | uuid                     |
+| calendar_sync_logs        | operation                 | text                     |
+| calendar_sync_logs        | status                    | text                     |
+| calendar_sync_logs        | details                   | jsonb                    |
+| calendar_sync_logs        | error_message             | text                     |
+| calendar_sync_logs        | created_at                | timestamp with time zone |
+| cut_analytics             | id                        | uuid                     |
+| cut_analytics             | cut_id                    | uuid                     |
+| cut_analytics             | user_id                   | uuid                     |
+| cut_analytics             | action_type               | text                     |
+| cut_analytics             | ip_address                | inet                     |
+| cut_analytics             | user_agent                | text                     |
+| cut_analytics             | created_at                | timestamp with time zone |
+| cut_comments              | id                        | uuid                     |
+| cut_comments              | cut_id                    | uuid                     |
+| cut_comments              | user_id                   | uuid                     |
+| cut_comments              | comment                   | text                     |
+| cut_comments              | created_at                | timestamp with time zone |
+| cut_comments              | updated_at                | timestamp with time zone |
+| cuts                      | id                        | uuid                     |
+| cuts                      | barber_id                 | uuid                     |
+| cuts                      | title                     | text                     |
+| cuts                      | description               | text                     |
+| cuts                      | url                       | text                     |
+| cuts                      | thumbnail                 | text                     |
+| cuts                      | category                  | text                     |
+| cuts                      | duration                  | integer                  |
+| cuts                      | views                     | integer                  |
+| cuts                      | likes                     | integer                  |
+| cuts                      | shares                    | integer                  |
+| cuts                      | tags                      | ARRAY                    |
+| cuts                      | is_featured               | boolean                  |
+| cuts                      | is_public                 | boolean                  |
+| cuts                      | created_at                | timestamp with time zone |
+| cuts                      | updated_at                | timestamp with time zone |
+| cuts                      | location_name             | text                     |
+| cuts                      | latitude                  | numeric                  |
+| cuts                      | longitude                 | numeric                  |
+| cuts                      | city                      | text                     |
+| cuts                      | state                     | text                     |
+| cuts                      | country                   | text                     |
+| cuts                      | comments_count            | integer                  |
+| notifications             | id                        | uuid                     |
+| notifications             | user_id                   | uuid                     |
+| notifications             | title                     | text                     |
+| notifications             | message                   | text                     |
+| notifications             | type                      | text                     |
+| notifications             | booking_id                | uuid                     |
+| notifications             | read                      | boolean                  |
+| notifications             | created_at                | timestamp with time zone |
+| ondemand_requests         | id                        | uuid                     |
+| ondemand_requests         | client_id                 | uuid                     |
+| ondemand_requests         | barber_id                 | uuid                     |
+| ondemand_requests         | service_id                | uuid                     |
+| ondemand_requests         | requested_time            | timestamp with time zone |
+| ondemand_requests         | location_lat              | numeric                  |
+| ondemand_requests         | location_lng              | numeric                  |
+| ondemand_requests         | location_address          | text                     |
+| ondemand_requests         | status                    | text                     |
+| ondemand_requests         | price                     | numeric                  |
+| ondemand_requests         | surge_multiplier          | numeric                  |
+| ondemand_requests         | notes                     | text                     |
+| ondemand_requests         | created_at                | timestamp with time zone |
+| ondemand_requests         | updated_at                | timestamp with time zone |
+| ondemand_settings         | id                        | uuid                     |
+| ondemand_settings         | barber_id                 | uuid                     |
+| ondemand_settings         | is_enabled                | boolean                  |
+| ondemand_settings         | availability_radius_miles | integer                  |
+| ondemand_settings         | min_notice_minutes        | integer                  |
+| ondemand_settings         | max_notice_hours          | integer                  |
+| ondemand_settings         | surge_pricing_enabled     | boolean                  |
+| ondemand_settings         | surge_multiplier          | numeric                  |
+| ondemand_settings         | created_at                | timestamp with time zone |
+| ondemand_settings         | updated_at                | timestamp with time zone |
+| payments                  | id                        | uuid                     |
+| payments                  | payment_intent_id         | text                     |
+| payments                  | amount                    | integer                  |
+| payments                  | currency                  | text                     |
+| payments                  | status                    | text                     |
+| payments                  | barber_stripe_account_id  | text                     |
+| payments                  | platform_fee              | integer                  |
+| payments                  | created_at                | timestamp with time zone |
+| payments                  | booking_id                | uuid                     |
+| profiles                  | id                        | uuid                     |
+| profiles                  | name                      | text                     |
+| profiles                  | email                     | text                     |
+| profiles                  | role                      | text                     |
+| profiles                  | phone                     | text                     |
+| profiles                  | location                  | text                     |
+| profiles                  | description               | text                     |
+| profiles                  | bio                       | text                     |
+| profiles                  | favorites                 | ARRAY                    |
+| profiles                  | join_date                 | timestamp with time zone |
+| profiles                  | created_at                | timestamp with time zone |
+| profiles                  | updated_at                | timestamp with time zone |
+| profiles                  | username                  | text                     |
+| profiles                  | avatar_url                | text                     |
+| profiles                  | is_public                 | boolean                  |
+| profiles                  | email_notifications       | boolean                  |
+| profiles                  | sms_notifications         | boolean                  |
+| profiles                  | marketing_emails          | boolean                  |
+| profiles                  | instagram_url             | text                     |
+| profiles                  | twitter_url               | text                     |
+| profiles                  | tiktok_url                | text                     |
+| profiles                  | facebook_url              | text                     |
+| profiles                  | is_disabled               | boolean                  |
+| profiles                  | coverphoto                | text                     |
+| profiles                  | carrier                   | character varying        |
+| reviews                   | id                        | uuid                     |
+| reviews                   | booking_id                | uuid                     |
+| reviews                   | barber_id                 | uuid                     |
+| reviews                   | client_id                 | uuid                     |
+| reviews                   | rating                    | integer                  |
+| reviews                   | comment                   | text                     |
+| reviews                   | is_verified               | boolean                  |
+| reviews                   | is_public                 | boolean                  |
+| reviews                   | is_moderated              | boolean                  |
+| reviews                   | moderator_notes           | text                     |
+| reviews                   | created_at                | timestamp with time zone |
+| reviews                   | updated_at                | timestamp with time zone |
+| scheduling_slots          | id                        | uuid                     |
+| scheduling_slots          | barber_id                 | uuid                     |
+| scheduling_slots          | day_of_week               | integer                  |
+| scheduling_slots          | start_time                | time without time zone   |
+| scheduling_slots          | end_time                  | time without time zone   |
+| scheduling_slots          | slot_duration_minutes     | integer                  |
+| scheduling_slots          | buffer_minutes_before     | integer                  |
+| scheduling_slots          | buffer_minutes_after      | integer                  |
+| scheduling_slots          | max_bookings_per_slot     | integer                  |
+| scheduling_slots          | is_active                 | boolean                  |
+| scheduling_slots          | created_at                | timestamp with time zone |
+| scheduling_slots          | updated_at                | timestamp with time zone |
+| service_addons            | id                        | uuid                     |
+| service_addons            | barber_id                 | uuid                     |
+| service_addons            | name                      | text                     |
+| service_addons            | description               | text                     |
+| service_addons            | price                     | numeric                  |
+| service_addons            | is_active                 | boolean                  |
+| service_addons            | created_at                | timestamp with time zone |
+| service_addons            | updated_at                | timestamp with time zone |
+| services                  | id                        | uuid                     |
+| services                  | barber_id                 | uuid                     |
+| services                  | name                      | text                     |
+| services                  | description               | text                     |
+| services                  | duration                  | integer                  |
+| services                  | price                     | numeric                  |
+| services                  | created_at                | timestamp with time zone |
+| services                  | updated_at                | timestamp with time zone |
+| special_hours             | id                        | uuid                     |
+| special_hours             | barber_id                 | uuid                     |
+| special_hours             | date                      | date                     |
+| special_hours             | start_time                | time without time zone   |
+| special_hours             | end_time                  | time without time zone   |
+| special_hours             | is_closed                 | boolean                  |
+| special_hours             | reason                    | text                     |
+| special_hours             | created_at                | timestamp with time zone |
+| special_hours             | updated_at                | timestamp with time zone |
+| synced_events             | id                        | uuid                     |
+| synced_events             | user_id                   | uuid                     |
+| synced_events             | external_event_id         | text                     |
+| synced_events             | external_calendar_id      | text                     |
+| synced_events             | booking_id                | uuid                     |
+| synced_events             | event_data                | jsonb                    |
+| synced_events             | sync_direction            | text                     |
+| synced_events             | sync_status               | text                     |
+| synced_events             | last_synced_at            | timestamp with time zone |
+| synced_events             | created_at                | timestamp with time zone |
+| synced_events             | updated_at                | timestamp with time zone |
+| time_off                  | id                        | uuid                     |
+| time_off                  | barber_id                 | uuid                     |
+| time_off                  | start_date                | date                     |
+| time_off                  | end_date                  | date                     |
+| time_off                  | reason                    | text                     |
+| time_off                  | created_at                | timestamp with time zone |
+| time_off                  | updated_at                | timestamp with time zone |
+| user_calendar_connections | id                        | uuid                     |
+| user_calendar_connections | user_id                   | uuid                     |
+| user_calendar_connections | provider                  | text                     |
+| user_calendar_connections | access_token              | text                     |
+| user_calendar_connections | refresh_token             | text                     |
+| user_calendar_connections | expires_at                | timestamp with time zone |
+| user_calendar_connections | calendar_id               | text                     |
+| user_calendar_connections | sync_enabled              | boolean                  |
+| user_calendar_connections | last_sync_at              | timestamp with time zone |
+| user_calendar_connections | sync_direction            | text                     |
+| user_calendar_connections | created_at                | timestamp with time zone |
+| user_calendar_connections | updated_at                | timestamp with time zone |

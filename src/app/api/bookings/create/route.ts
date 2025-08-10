@@ -59,6 +59,66 @@ export async function POST(request: Request) {
 
     if (bookingError) {
       console.error('Error creating booking:', bookingError)
+      
+      // Handle specific constraint violations with 409 status
+      if (bookingError.message.includes('Booking time conflicts with existing booking')) {
+        return NextResponse.json(
+          { error: 'This time slot is already booked. Please select a different time.' },
+          { status: 409 }
+        )
+      }
+      
+      if (bookingError.message.includes('Booking time is not within barber availability')) {
+        return NextResponse.json(
+          { error: 'This time is outside the barber\'s available hours.' },
+          { status: 409 }
+        )
+      }
+      
+      if (bookingError.message.includes('Daily booking limit exceeded')) {
+        return NextResponse.json(
+          { error: 'The barber has reached their daily booking limit.' },
+          { status: 409 }
+        )
+      }
+      
+      if (bookingError.message.includes('Booking too far in advance')) {
+        return NextResponse.json(
+          { error: 'This booking is too far in advance. Please select a closer date.' },
+          { status: 409 }
+        )
+      }
+      
+      if (bookingError.message.includes('Same day bookings not allowed')) {
+        return NextResponse.json(
+          { error: 'Same day bookings are not allowed for this barber.' },
+          { status: 409 }
+        )
+      }
+      
+      if (bookingError.message.includes('Minimum interval between bookings not met')) {
+        return NextResponse.json(
+          { error: 'There must be more time between bookings.' },
+          { status: 409 }
+        )
+      }
+      
+      // Handle PostgreSQL constraint violation codes
+      if (bookingError.code === '23505') { // Unique constraint violation
+        return NextResponse.json(
+          { error: 'A booking already exists for this time slot.' },
+          { status: 409 }
+        )
+      }
+      
+      if (bookingError.code === '23514') { // Check constraint violation
+        return NextResponse.json(
+          { error: 'Booking violates business rules. Please check the time and date.' },
+          { status: 409 }
+        )
+      }
+      
+      // Generic database error
       return NextResponse.json(
         { error: `Database error: ${bookingError.message}` },
         { status: 500 }

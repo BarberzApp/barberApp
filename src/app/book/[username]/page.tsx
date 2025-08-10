@@ -57,6 +57,19 @@ type Barber = {
   twitter?: string
   facebook?: string
   email?: string
+  review_count?: number
+  average_rating?: number
+}
+
+type Review = {
+  id: string
+  rating: number
+  comment?: string
+  created_at: string
+  client: {
+    name: string
+    avatar_url?: string
+  }
 }
 
 type FeaturedReel = {
@@ -171,6 +184,8 @@ function BookPageContent() {
   const [loadingReels, setLoadingReels] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('cuts')
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loadingReviews, setLoadingReviews] = useState(false)
 
   // Share functionality
   const handleShare = async () => {
@@ -405,13 +420,18 @@ function BookPageContent() {
         instagram: barberData.instagram,
         twitter: barberData.twitter,
         facebook: barberData.facebook,
-        email: profileData.email
+        email: profileData.email,
+        review_count: barberData.review_count || 0,
+        average_rating: barberData.average_rating || 0
       }
 
       setBarber(barberObject)
 
       // Fetch featured reels
       await fetchFeaturedReels(barberData.id)
+
+      // Fetch reviews
+      await fetchReviews(barberData.id)
 
     } catch (error) {
       console.error('Error fetching barber details:', error)
@@ -443,6 +463,53 @@ function BookPageContent() {
       console.error('Error fetching featured cuts:', error)
     } finally {
       setLoadingReels(false)
+    }
+  }
+
+  const fetchReviews = async (barberId: string) => {
+    try {
+      setLoadingReviews(true)
+      
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          client:client_id(
+            name,
+            avatar_url
+          )
+        `)
+        .eq('barber_id', barberId)
+        .eq('is_public', true)
+        .eq('is_moderated', true)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (error) {
+        console.error('Error fetching reviews:', error)
+        return
+      }
+
+      // Transform the data to match the Review type
+      const transformedReviews: Review[] = (data || []).map((review: any) => ({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.created_at,
+        client: {
+          name: review.client?.name || 'Anonymous',
+          avatar_url: review.client?.avatar_url
+        }
+      }))
+
+      setReviews(transformedReviews)
+    } catch (error) {
+      console.error('Error fetching reviews:', error)
+    } finally {
+      setLoadingReviews(false)
     }
   }
 
@@ -595,7 +662,7 @@ function BookPageContent() {
   }
 
   return (
-    <div className="bg-background">
+    <div className="bg-background pb-[140px] md:pb-0">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/5 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center justify-between px-4 py-3">
@@ -658,21 +725,43 @@ function BookPageContent() {
             </div>
           )}
           
-          {/* Stats */}
-          <div className="flex justify-center gap-8 mb-4">
-            <div className="text-center">
-              <div className="text-xl font-bold text-white">{featuredReels.length}</div>
-              <div className="text-xs text-white/60 uppercase tracking-wide">Cuts</div>
+          {/* Rating Display */}
+          {barber.average_rating && barber.average_rating > 0 ? (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-5 w-5 ${
+                      i < Math.round(barber.average_rating!)
+                        ? 'text-yellow-400 fill-current'
+                        : 'text-white/30'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-white/90 text-base font-semibold">
+                {barber.average_rating?.toFixed(1)}
+              </span>
+              <span className="text-white/60 text-sm">
+                ({barber.review_count || 0} reviews)
+              </span>
             </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-white">{barber.services.length}</div>
-              <div className="text-xs text-white/60 uppercase tracking-wide">Services</div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className="h-5 w-5 text-white/30"
+                  />
+                ))}
+              </div>
+              <span className="text-white/60 text-sm">
+                No reviews yet
+              </span>
             </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-white">{barber.portfolio.length}</div>
-              <div className="text-xs text-white/60 uppercase tracking-wide">Portfolio</div>
-            </div>
-          </div>
+          )}
 
           {/* Bio */}
           {barber.bio && (
@@ -775,6 +864,13 @@ function BookPageContent() {
               <Award className="h-4 w-4 mr-2" />
               Portfolio
             </TabsTrigger>
+            <TabsTrigger 
+              value="reviews" 
+              className="flex-1 data-[state=active]:text-secondary data-[state=active]:border-b-2 data-[state=active]:border-secondary bg-transparent text-white/60 hover:text-white"
+            >
+              <Star className="h-4 w-4 mr-2" />
+              Reviews
+            </TabsTrigger>
           </TabsList>
 
           {/* Cuts Tab */}
@@ -790,8 +886,7 @@ function BookPageContent() {
                     key={reel.id}
                     className="group relative aspect-square bg-white/5 cursor-pointer"
                     onClick={() => {
-                      setSelectedVideo(reel)
-                      setShowVideoDialog(true)
+                      window.location.href = `/reels?cutId=${reel.id}`
                     }}
                   >
                     <video
@@ -803,7 +898,19 @@ function BookPageContent() {
                       onMouseLeave={(e) => (e.target as HTMLVideoElement).pause()}
                     />
                     
-                    {/* Overlay */}
+                    {/* Stats Overlay */}
+                    <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between text-white text-xs bg-black/50 backdrop-blur-sm rounded px-2 py-1">
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-3 w-3" />
+                        <span>{formatViews(reel.views)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="h-3 w-3" />
+                        <span>{formatViews(reel.likes)}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Play Overlay */}
                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="absolute inset-0 flex items-center justify-center">
                         <Play className="h-8 w-8 text-white" />
@@ -882,6 +989,62 @@ function BookPageContent() {
               <div className="text-center py-12">
                 <Award className="h-12 w-12 text-white/40 mx-auto mb-4" />
                 <p className="text-white/60">No portfolio items available</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Reviews Tab */}
+          <TabsContent value="reviews" className="mt-6">
+            {loadingReviews ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+              </div>
+            ) : reviews.length > 0 ? (
+              <div className="space-y-4">
+                {reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="p-4 bg-white/5 rounded-2xl border border-white/10"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage src={review.client.avatar_url} alt={review.client.name} />
+                        <AvatarFallback className="bg-secondary/20 text-secondary text-sm">
+                          {review.client.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-white text-sm">{review.client.name}</h4>
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-3 w-3 ${
+                                  i < review.rating
+                                    ? 'text-yellow-400 fill-current'
+                                    : 'text-white/30'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="text-white/80 text-sm leading-relaxed">{review.comment}</p>
+                        )}
+                        <p className="text-white/50 text-xs mt-2">
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Star className="h-12 w-12 text-white/40 mx-auto mb-4" />
+                <p className="text-white/60">No reviews yet</p>
+                <p className="text-white/40 text-sm mt-2">Be the first to leave a review!</p>
               </div>
             )}
           </TabsContent>

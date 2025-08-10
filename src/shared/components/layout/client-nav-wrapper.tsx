@@ -1,18 +1,17 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Navbar } from "@/shared/components/layout/navbar";
 import { MobileNav } from "@/shared/components/layout/mobile-nav";
 import React from "react";
 
 export default function ClientNavWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [pathname, setPathname] = React.useState("");
+  const pathname = usePathname(); // Use Next.js hook for real-time pathname
   const [mounted, setMounted] = React.useState(false);
   const [isNavigating, setIsNavigating] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
-    setPathname(window.location.pathname);
   }, []);
 
   // Handle navigation state
@@ -36,8 +35,9 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
   // Determine what to show
   const showNavbar = pathname ? !hiddenPages.includes(pathname) : true;
   const isSettingsPage = pathname?.startsWith('/settings') || false;
-  const shouldShowNav = showNavbar || isSettingsPage;
-  const showMobileNav = showNavbar || isSettingsPage;
+  const isProfilePage = pathname?.startsWith('/profile') || false;
+  const shouldShowNav = showNavbar || isSettingsPage || isProfilePage;
+  const showMobileNav = showNavbar || isSettingsPage || isProfilePage;
 
   // Debug logging
   React.useEffect(() => {
@@ -46,11 +46,12 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
       mounted,
       showNavbar,
       isSettingsPage,
+      isProfilePage,
       shouldShowNav,
       showMobileNav,
       isNavigating,
     });
-  }, [pathname, mounted, showNavbar, isSettingsPage, shouldShowNav, showMobileNav, isNavigating]);
+  }, [pathname, mounted, showNavbar, isSettingsPage, isProfilePage, shouldShowNav, showMobileNav, isNavigating]);
 
   // Show loading state during navigation
   if (isNavigating) {

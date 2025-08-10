@@ -6,7 +6,9 @@ import { cookies } from 'next/headers';
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  process.env.NODE_ENV === 'development' 
+    ? 'https://3d6b1eb7b7c8.ngrok-free.app/api/auth/google-calendar/callback'
+    : process.env.GOOGLE_REDIRECT_URI
 );
 
 export async function GET(request: NextRequest) {
@@ -14,6 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
+    const state = searchParams.get('state'); // Extract state parameter
 
     if (error) {
       console.error('OAuth error:', error);
@@ -37,18 +40,82 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get current user
+    // Get current user with session recovery
     const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // First try to get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('🔐 OAuth Callback - Session check:', { 
+      hasSession: !!session, 
+      sessionError 
+    });
+    
+    let user: any = session?.user || null;
+    let userError = sessionError;
+    
+    // If no session, try to refresh it
+    if (!session && !sessionError) {
+      console.log('🔄 OAuth Callback - No session found, attempting refresh...');
+      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error('❌ OAuth Callback - Session refresh failed:', refreshError);
+      } else if (refreshedSession) {
+        console.log('✅ OAuth Callback - Session refreshed successfully');
+        user = refreshedSession.user;
+      }
+    }
+    
+    // If still no user, try to get user directly
+    if (!user) {
+      const { data: { user: directUser }, error: directUserError } = await supabase.auth.getUser();
+      user = directUser;
+      userError = directUserError;
+    }
+    
+    // If still no user, try to recover from state parameter
+    if (!user && state) {
+      console.log('🔄 OAuth Callback - Attempting session recovery from state parameter:', state);
+      
+      // Try to get user by ID from state parameter
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('id', state)
+        .single();
+      
+      if (profile && !profileError) {
+        console.log('✅ OAuth Callback - Found user from state parameter:', profile.id);
+        // Create a minimal user object for the callback
+        user = { id: profile.id, email: profile.email } as any;
+        userError = null;
+      } else {
+        console.error('❌ OAuth Callback - Could not recover user from state parameter:', profileError);
+      }
+    }
+    
+    console.log('🔐 OAuth Callback - Final user check:', { 
+      hasUser: !!user, 
+      userId: user?.id, 
+      error: userError 
+    });
     
     if (userError || !user) {
+      console.error('❌ OAuth Callback - Authentication failed:', userError);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/login?error=not_authenticated`
+        `${process.env.NEXT_PUBLIC_APP_URL}/login?error=not_authenticated&message=${encodeURIComponent('Session expired during OAuth flow. Please log in again.')}`
       );
     }
 
-    // Save connection to database
-    const { data: connection, error: connectionError } = await supabase
+    // Save connection to database using service role to bypass RLS
+    console.log('💾 OAuth Callback - Saving calendar connection for user:', user.id);
+    
+    // Import the admin client
+    const { supabaseAdmin } = await import('@/shared/lib/supabase');
+    
+    console.log('🔧 OAuth Callback - Using service role for database operations');
+    
+    const { data: connection, error: connectionError } = await supabaseAdmin
       .from('user_calendar_connections')
       .upsert({
         user_id: user.id,
@@ -65,14 +132,16 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (connectionError) {
-      console.error('Error saving calendar connection:', connectionError);
+      console.error('❌ OAuth Callback - Database save failed:', connectionError);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=save_failed`
+        `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=save_failed&message=${encodeURIComponent(connectionError.message)}`
       );
     }
+    
+    console.log('✅ OAuth Callback - Calendar connection saved successfully:', connection.id);
 
-    // Log successful connection
-    await supabase
+    // Log successful connection using service role
+    await supabaseAdmin
       .from('calendar_sync_logs')
       .insert({
         user_id: user.id,
@@ -88,9 +157,22 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('Error in Google Calendar OAuth callback:', error);
+    console.error('❌ Error in Google Calendar OAuth callback:', error);
+    
+    // Provide more specific error information
+    let errorMessage = 'callback_failed';
+    if (error instanceof Error) {
+      if (error.message.includes('403')) {
+        errorMessage = 'access_denied';
+      } else if (error.message.includes('401')) {
+        errorMessage = 'not_authenticated';
+      } else if (error.message.includes('database')) {
+        errorMessage = 'database_error';
+      }
+    }
+    
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=callback_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=${errorMessage}&message=${encodeURIComponent(error instanceof Error ? error.message : 'Unknown error')}`
     );
   }
 } 
