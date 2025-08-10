@@ -427,7 +427,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden mb-[140px] md:mb-0">
         {/* Header */}
         <div className="relative p-6 border-b border-white/10">
           <div className="flex items-center justify-between mb-4">

@@ -11,6 +11,7 @@ import { LoadingProvider } from "@/shared/components/ui/loading-provider"
 import { PWARegistration } from "@/shared/components/pwa/pwa-registration"
 import { LoadingSpinner } from "@/shared/components/ui/loading-spinner"
 import { SMSPopupWrapper } from "@/shared/components/ui/sms-popup-wrapper"
+import { ErrorReportingProvider } from "@/shared/components/error-reporting-provider"
 import { cn } from "@/shared/lib/utils"
 import React from 'react'
 
@@ -77,20 +78,22 @@ export default function RootLayout({
         />
       </head>
       <body className={cn(inter.className, "bg-background min-h-screen")}> 
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <TooltipProvider>
-          <EnhancedErrorBoundary>
-            <LoadingProvider>
-            <React.Suspense fallback={null}>
-              <ClientNavWrapper>{children}</ClientNavWrapper>
-            </React.Suspense>
-            <Toaster />
-            <PWARegistration />
-            <SMSPopupWrapper />
-            </LoadingProvider>
-          </EnhancedErrorBoundary>
-          </TooltipProvider>
-        </ThemeProvider>
+        <ErrorReportingProvider>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+            <TooltipProvider>
+            <EnhancedErrorBoundary>
+              <LoadingProvider>
+              <React.Suspense fallback={null}>
+                <ClientNavWrapper>{children}</ClientNavWrapper>
+              </React.Suspense>
+              <Toaster />
+              <PWARegistration />
+              <SMSPopupWrapper />
+              </LoadingProvider>
+            </EnhancedErrorBoundary>
+            </TooltipProvider>
+          </ThemeProvider>
+        </ErrorReportingProvider>
       </body>
     </html>
   )

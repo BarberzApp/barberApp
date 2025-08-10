@@ -18,7 +18,7 @@ const APP_URL = getBaseUrl();
 console.log('Using app URL:', APP_URL);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-05-28.basil',
+  apiVersion: '2024-06-20' as any,
 })
 
 // Type definitions

@@ -101,13 +101,21 @@ export default function LoginPage() {
     setError(null)
     try {
       console.log('🔐 Starting Google OAuth login...')
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: 'https://www.bocmstyle.com/auth/callback'
-      }
-    })
-    if (error) {
+      
+      // Use ngrok URL for development, production URL for production
+      const redirectUrl = process.env.NODE_ENV === 'development' 
+        ? 'https://3d6b1eb7b7c8.ngrok-free.app/auth/callback'
+        : 'https://www.bocmstyle.com/auth/callback';
+      
+      console.log('🔄 Using redirect URL:', redirectUrl);
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl
+        }
+      })
+      if (error) {
         console.error('❌ Google login error:', error.message)
         setError('Could not sign in with Google. Please try again.')
       }

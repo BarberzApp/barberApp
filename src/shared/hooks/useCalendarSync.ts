@@ -145,10 +145,27 @@ export const useCalendarSync = () => {
     }
 
     try {
-      // Get auth URL
-      const response = await fetch('/api/auth/google-calendar');
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.error('Calendar connect: No access token available');
+        toast.error('Authentication required. Please log in again.');
+        return;
+      }
+
+      // Get auth URL with proper authentication
+      const response = await fetch('/api/auth/google-calendar', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
       
       if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Authentication required. Please log in again.');
+          return;
+        }
         throw new Error('Failed to get authentication URL');
       }
 
@@ -173,11 +190,29 @@ export const useCalendarSync = () => {
     try {
       setStatus(prev => ({ ...prev, loading: true }));
 
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.error('Calendar disconnect: No access token available');
+        toast.error('Authentication required. Please log in again.');
+        setStatus(prev => ({ ...prev, loading: false }));
+        return;
+      }
+
       const response = await fetch('/api/calendar/connection', {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Authentication required. Please log in again.');
+          setStatus(prev => ({ ...prev, loading: false }));
+          return;
+        }
         throw new Error('Failed to disconnect calendar');
       }
 
@@ -209,15 +244,31 @@ export const useCalendarSync = () => {
     try {
       setStatus(prev => ({ ...prev, syncing: true }));
 
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.error('Calendar sync: No access token available');
+        toast.error('Authentication required. Please log in again.');
+        setStatus(prev => ({ ...prev, syncing: false }));
+        return null;
+      }
+
       const response = await fetch('/api/calendar/sync', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ direction, force })
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Authentication required. Please log in again.');
+          setStatus(prev => ({ ...prev, syncing: false }));
+          return null;
+        }
         throw new Error('Failed to sync calendar');
       }
 
@@ -306,7 +357,10 @@ export const useCalendarSync = () => {
         'no_code': 'Authentication was cancelled',
         'no_token': 'Failed to get access token',
         'save_failed': 'Failed to save calendar connection',
-        'callback_failed': 'Authentication callback failed'
+        'callback_failed': 'Authentication callback failed',
+        'access_denied': 'Access denied - please check your Google Calendar permissions',
+        'not_authenticated': 'Please log in to connect Google Calendar',
+        'database_error': 'Database error - please try again'
       };
 
       const message = urlParams.get('message') || errorMessages[error] || 'Authentication failed';

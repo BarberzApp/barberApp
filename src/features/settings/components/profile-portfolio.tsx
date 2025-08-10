@@ -1057,7 +1057,7 @@ export default function ProfilePortfolio() {
         <Tabs defaultValue="portfolio" className="w-full">
           <TabsList className="w-full flex justify-between bg-white/5 border border-white/10 backdrop-blur-xl p-1 rounded-lg mb-6 sticky top-0 z-20">
             <TabsTrigger value="portfolio" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">Portfolio</TabsTrigger>
-            <TabsTrigger value="reels" className="flex-1 rounded-md text-sm data-[state=active]:bg-white data-[state=active]:text-black">
+            <TabsTrigger value="reels" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
               <div className="flex items-center gap-2">
                 <VideoIcon className="h-4 w-4" />
                 Cuts

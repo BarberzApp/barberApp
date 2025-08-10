@@ -108,11 +108,18 @@ export default function RegisterPage() {
       })
       return
     }
-    // No longer store pendingRole in sessionStorage
+    
+    // Use ngrok URL for development, production URL for production
+    const redirectUrl = process.env.NODE_ENV === 'development' 
+      ? 'https://3d6b1eb7b7c8.ngrok-free.app/auth/callback'
+      : 'https://www.bocmstyle.com/auth/callback';
+    
+    console.log('🔄 Using redirect URL for Google signup:', redirectUrl);
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'https://www.bocmstyle.com/auth/callback'
+        redirectTo: redirectUrl
       }
     })
     if (error) {

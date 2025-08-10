@@ -57,14 +57,20 @@ export function ReviewModeration() {
           is_public,
           is_moderated,
           created_at,
-          client:client_id(name, avatar_url),
-          barber:barber_id(name, avatar_url)
+          client:profiles!client_id(
+            name,
+            avatar_url
+          ),
+          barber:profiles!barber_id(
+            name,
+            avatar_url
+          )
         `)
         .eq('is_moderated', false)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setReviews(data || []);
+      setReviews((data || []) as unknown as Review[]);
     } catch (error) {
       console.error('Error fetching pending reviews:', error);
       toast({

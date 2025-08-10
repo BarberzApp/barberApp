@@ -11,6 +11,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog'
 import { Progress } from '@/shared/components/ui/progress'
+import { Textarea } from '@/shared/components/ui/textarea'
 import { 
   Heart, 
   Users, 
@@ -24,7 +25,10 @@ import {
   Star,
   MessageCircle,
   Share2,
-  Eye
+  Eye,
+  Edit3,
+  Save,
+  X
 } from 'lucide-react'
 import { PastStylistCard } from './PastStylistCard'
 import { supabase } from '@/shared/lib/supabase'
@@ -78,6 +82,9 @@ export default function ClientPortfolio() {
   const [clientBookings, setClientBookings] = useState<any[]>([]);
   const [userReviews, setUserReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [editingReview, setEditingReview] = useState<string | null>(null);
+  const [editReviewData, setEditReviewData] = useState<{rating: number, comment: string}>({rating: 5, comment: ''});
+  const [updatingReview, setUpdatingReview] = useState(false);
 
   // Get user's bookings from useData hook
   const userBookings = bookings.filter(b => b.clientId === user?.id)
@@ -238,6 +245,26 @@ export default function ClientPortfolio() {
         }
 
         const videos: Cut[] = []
+        
+        // Get actual like counts for each cut
+        const cutIds = likedData?.map(item => item.cut_id).filter(Boolean) || []
+        let likeCounts: {[key: string]: number} = {}
+        
+        if (cutIds.length > 0) {
+          const { data: likeCountData } = await supabase
+            .from('cut_analytics')
+            .select('cut_id')
+            .in('cut_id', cutIds)
+            .eq('action_type', 'like')
+          
+          // Count likes per cut
+          likeCountData?.forEach(item => {
+            likeCounts[item.cut_id] = (likeCounts[item.cut_id] || 0) + 1
+          })
+          
+          console.log('📊 Like counts for liked videos:', likeCounts)
+        }
+        
         likedData?.forEach(item => {
           const cutData = item.cuts as any
           if (cutData && cutData.barbers && cutData.barbers.profiles) {
@@ -248,7 +275,7 @@ export default function ClientPortfolio() {
               url: cutData.url,
               thumbnail: cutData.thumbnail,
               views: cutData.views,
-              likes: cutData.likes,
+              likes: likeCounts[cutData.id] || cutData.likes || 0, // Use actual count or fallback
               shares: cutData.shares,
               created_at: cutData.created_at,
               barber: {
@@ -375,11 +402,72 @@ export default function ClientPortfolio() {
     })
   }
 
+  // Handle review editing
+  const handleEditReview = (review: any) => {
+    setEditingReview(review.id)
+    setEditReviewData({
+      rating: review.rating,
+      comment: review.comment || ''
+    })
+  }
+
+  const handleSaveReview = async (reviewId: string) => {
+    if (!user || updatingReview) return
+
+    try {
+      setUpdatingReview(true)
+
+      const { error } = await supabase
+        .from('reviews')
+        .update({
+          rating: editReviewData.rating,
+          comment: editReviewData.comment.trim() || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reviewId)
+        .eq('client_id', user.id) // Ensure user can only edit their own reviews
+
+      if (error) throw error
+
+      // Update local state
+      setUserReviews(prev => prev.map(review => 
+        review.id === reviewId 
+          ? { 
+              ...review, 
+              rating: editReviewData.rating, 
+              comment: editReviewData.comment.trim() || null,
+              updated_at: new Date().toISOString()
+            }
+          : review
+      ))
+
+      setEditingReview(null)
+      toast({
+        title: "Success",
+        description: "Review updated successfully!",
+      })
+    } catch (error) {
+      console.error('Error updating review:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update review. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingReview(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingReview(null)
+    setEditReviewData({rating: 5, comment: ''})
+  }
+
 
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center pb-[140px] md:pb-0">
         {/* Background Elements */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
@@ -399,7 +487,7 @@ export default function ClientPortfolio() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-[140px] md:pb-0">
       {/* Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
@@ -501,18 +589,18 @@ export default function ClientPortfolio() {
       {/* Tabs */}
       <div className="w-full max-w-3xl mx-auto mb-8">
         <Tabs defaultValue="liked" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl">
-            <TabsTrigger value="liked" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-              <Heart className="h-4 w-4 mr-2" />
-              Likes
+          <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-xl h-12 p-1">
+            <TabsTrigger value="liked" className="flex items-center justify-center gap-2 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary h-full px-2">
+              <Heart className="h-4 w-4 flex-shrink-0" />
+              <span>Likes</span>
             </TabsTrigger>
-            <TabsTrigger value="past-barbers" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-              <Users className="h-4 w-4 mr-2" />
-              Past Barbers
+            <TabsTrigger value="past-barbers" className="flex items-center justify-center gap-2 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary h-full px-2">
+              <Users className="h-4 w-4 flex-shrink-0" />
+              <span>Past Barbers</span>
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-1 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary">
-              <Star className="h-4 w-4 mr-2" />
-              Reviews
+            <TabsTrigger value="bookings" className="flex items-center justify-center gap-2 rounded-md text-sm data-[state=active]:bg-secondary data-[state=active]:text-primary h-full px-2">
+              <Star className="h-4 w-4 flex-shrink-0" />
+              <span>Reviews</span>
             </TabsTrigger>
           </TabsList>
 
@@ -537,43 +625,71 @@ export default function ClientPortfolio() {
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                   {likedVideos.map((video) => (
-                    <Card key={video.id} className="bg-white/5 border border-white/10 backdrop-blur-xl hover:border-secondary/30 transition-colors cursor-pointer" onClick={() => {
-                      setSelectedVideo(video)
-                      setOpenDialog('video')
-                    }}>
-                      <CardContent className="p-0">
-                        <div className="aspect-video relative">
-                          <video 
-                            src={video.url} 
-                            className="w-full h-full object-cover rounded-t-lg"
-                            poster={video.thumbnail}
-                          />
-                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <Play className="h-12 w-12 text-white" />
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={video.barber.image} alt={video.barber.name} />
-                              <AvatarFallback className="text-xs bg-secondary text-primary">
-                                {video.barber.name?.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <h3 className="font-semibold text-white text-xs mb-1 line-clamp-1">{video.title}</h3>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-white/60">
-                            <span>{video.barber.name}</span>
+                    <div 
+                      key={video.id} 
+                      className="relative aspect-[4/5] bg-gray-800 rounded-lg overflow-hidden group cursor-pointer"
+                      onMouseEnter={(e) => {
+                        const videoEl = e.currentTarget.querySelector('video') as HTMLVideoElement;
+                        if (videoEl) {
+                          videoEl.play().catch(() => {
+                            // Auto-play might be blocked
+                          });
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        const videoEl = e.currentTarget.querySelector('video') as HTMLVideoElement;
+                        if (videoEl) {
+                          videoEl.pause();
+                        }
+                      }}
+                      onClick={() => {
+                        window.location.href = `/reels?cutId=${video.id}`;
+                      }}
+                    >
+                      {video.thumbnail ? (
+                        <img 
+                          src={video.thumbnail} 
+                          alt={video.title} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <video 
+                          src={video.url} 
+                          className="w-full h-full object-cover"
+                          muted 
+                          playsInline 
+                          preload="metadata"
+                        />
+                      )}
+                      {/* Overlay with stats */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-2 left-2 right-2">
+                          <div className="flex items-center justify-between text-white text-xs">
+                            <div className="flex items-center gap-2">
+                              <Heart className="h-3 w-3" />
+                              <span>{video.likes || 0}</span>
+                            </div>
                             <div className="flex items-center gap-2">
                               <Eye className="h-3 w-3" />
-                              {video.views}
+                              <span>{video.views || 0}</span>
+                            </div>
+                          </div>
+                          <div className="mt-1">
+                            <div className="flex items-center gap-1">
+                              <Avatar className="h-4 w-4">
+                                <AvatarImage src={video.barber.image} alt={video.barber.name} />
+                                <AvatarFallback className="text-xs bg-secondary text-primary text-[8px]">
+                                  {video.barber.name?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs text-white/80 truncate">{video.barber.name}</span>
                             </div>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -654,27 +770,87 @@ export default function ClientPortfolio() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-semibold text-white text-sm">
-                                {review.barber?.profiles?.name}
-                              </h4>
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${
-                                      i < review.rating
-                                        ? 'text-yellow-400 fill-current'
-                                        : 'text-white/30'
-                                    }`}
-                                  />
-                                ))}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-white text-sm">
+                                  {review.barber?.profiles?.name}
+                                </h4>
+                                {editingReview === review.id ? (
+                                  <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-4 w-4 cursor-pointer transition-colors ${
+                                          i < editReviewData.rating
+                                            ? 'text-yellow-400 fill-current hover:text-yellow-300'
+                                            : 'text-white/30 hover:text-yellow-200'
+                                        }`}
+                                        onClick={() => setEditReviewData(prev => ({...prev, rating: i + 1}))}
+                                      />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-3 w-3 ${
+                                          i < review.rating
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-white/30'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
                               </div>
+                              {editingReview === review.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveReview(review.id)}
+                                    disabled={updatingReview}
+                                    className="h-7 px-2 bg-secondary hover:bg-secondary/90 text-primary"
+                                  >
+                                    {updatingReview ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Save className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelEdit}
+                                    className="h-7 px-2 border-white/20 text-white hover:bg-white/10"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditReview(review)}
+                                  className="h-7 px-2 text-white/60 hover:text-white hover:bg-white/10"
+                                >
+                                  <Edit3 className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
-                            {review.comment && (
-                              <p className="text-white/80 text-sm leading-relaxed mb-2">
-                                {review.comment}
-                              </p>
+                            {editingReview === review.id ? (
+                              <Textarea
+                                value={editReviewData.comment}
+                                onChange={(e) => setEditReviewData(prev => ({...prev, comment: e.target.value}))}
+                                placeholder="Share your experience..."
+                                className="bg-white/5 border-white/10 text-white placeholder-white/40 text-sm mb-2 min-h-[60px]"
+                              />
+                            ) : (
+                              review.comment && (
+                                <p className="text-white/80 text-sm leading-relaxed mb-2">
+                                  {review.comment}
+                                </p>
+                              )
                             )}
                             <div className="flex items-center gap-4 text-xs text-white/50">
                               <span>
@@ -685,6 +861,9 @@ export default function ClientPortfolio() {
                               <span>
                                 {new Date(review.created_at).toLocaleDateString()}
                               </span>
+                              {review.updated_at && review.updated_at !== review.created_at && (
+                                <span className="text-white/40">(edited)</span>
+                              )}
                             </div>
                           </div>
                         </div>

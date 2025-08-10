@@ -662,7 +662,7 @@ function BookPageContent() {
   }
 
   return (
-    <div className="bg-background">
+    <div className="bg-background pb-[140px] md:pb-0">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/5 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center justify-between px-4 py-3">

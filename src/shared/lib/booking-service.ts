@@ -1,6 +1,7 @@
 import { supabase } from '@/shared/lib/supabase';
 import { NotificationService } from './notification-service';
 import { Booking, BookingStatus, PaymentStatus } from '../types';
+import { reportApiError } from '@/shared/utils/error-reporter';
 
 export interface CreateBookingInput extends Omit<Booking, 'id' | 'created_at' | 'updated_at'> {
   payment_intent_id: string;
@@ -107,6 +108,9 @@ export class BookingService {
       return data;
     } catch (error) {
       console.error('Error creating booking:', error);
+      if (error instanceof Error) {
+        reportApiError(error, '/bookings', 500);
+      }
       throw error;
     }
   }
