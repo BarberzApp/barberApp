@@ -11,6 +11,7 @@ import {
 import { Video, ResizeMode } from 'expo-av';
 import tw from 'twrnc';
 import { theme } from '../lib/theme';
+import { Calendar } from 'lucide-react-native';
 
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -36,6 +37,7 @@ interface StaircaseGridProps {
   posts: Post[];
   onVideoPress?: (post: Post) => void;
   onImagePress?: (post: Post) => void;
+  onBookPress?: (post: Post) => void;
 }
 
 interface GridItem {
@@ -52,6 +54,7 @@ export default function StaircaseGrid({
   posts,
   onVideoPress,
   onImagePress,
+  onBookPress,
 }: StaircaseGridProps) {
   const [gridItems, setGridItems] = useState<GridItem[]>([]);
   const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
@@ -161,6 +164,22 @@ export default function StaircaseGrid({
               style={tw`w-full h-full`}
               resizeMode="cover"
             />
+          )}
+
+          {/* Book Button Overlay */}
+          {onBookPress && post.barberId && (
+            <TouchableOpacity
+              style={[
+                tw`absolute top-2 right-2 w-8 h-8 rounded-full items-center justify-center`,
+                { backgroundColor: 'rgba(0,0,0,0.6)' }
+              ]}
+              onPress={(e) => {
+                e.stopPropagation();
+                onBookPress(post);
+              }}
+            >
+              <Calendar size={16} color="#fff" />
+            </TouchableOpacity>
           )}
         </View>
       </TouchableOpacity>

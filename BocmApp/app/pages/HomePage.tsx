@@ -5,7 +5,6 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Animated,
-  Dimensions,
   StatusBar,
   Image,
 } from 'react-native';
@@ -165,6 +164,8 @@ export default function HomePage() {
     navigation.navigate('Login' as never);
   };
 
+
+
   return (
     <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
@@ -306,6 +307,8 @@ export default function HomePage() {
                 Log In
               </Text>
             </TouchableOpacity>
+
+
           </View>
         )}
 

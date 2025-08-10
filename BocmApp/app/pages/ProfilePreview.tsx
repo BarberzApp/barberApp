@@ -397,8 +397,12 @@ export default function ProfilePreview() {
                            }
                          ]}
                          onPress={() => {
-                           // Navigate to booking form for this specific service
-                           Alert.alert('Book Service', `Book ${service.name} for $${service.price + 1}`);
+                           // Navigate to booking calendar for this specific service
+                           navigation.navigate('BookingCalendar' as never, {
+                             barberId: route.params.barberId,
+                             barberName: profile.name,
+                             preSelectedService: service,
+                           } as never);
                          }}
                        >
                          <View
@@ -526,8 +530,11 @@ export default function ProfilePreview() {
               { backgroundColor: theme.colors.secondary }
             ]}
             onPress={() => {
-              // Navigate to booking form
-              Alert.alert('Book Appointment', 'Booking form coming soon!');
+              // Navigate to booking calendar
+              navigation.navigate('BookingCalendar' as never, {
+                barberId: route.params.barberId,
+                barberName: profile.name,
+              } as never);
             }}
           >
             <Text style={[tw`font-semibold text-sm`, { color: theme.colors.background }]}>

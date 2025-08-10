@@ -28,6 +28,7 @@ interface BookingFormProps {
   onClose: () => void;
   barberId: string;
   barberName: string;
+  preSelectedService?: Service;
   onBookingCreated: (booking: any) => void;
 }
 
@@ -45,6 +46,7 @@ export default function BookingForm({
   onClose, 
   barberId, 
   barberName, 
+  preSelectedService,
   onBookingCreated 
 }: BookingFormProps) {
   const navigation = useNavigation<BookingFormNavigationProp>();
@@ -69,7 +71,7 @@ export default function BookingForm({
     notes: ''
   });
   
-  const [paymentType, setPaymentType] = useState<'full' | 'fee'>('full');
+  const [paymentType, setPaymentType] = useState<'fee'>('fee');
   const [isDeveloperAccount, setIsDeveloperAccount] = useState(false);
 
   const totalSteps = 4;
@@ -79,8 +81,34 @@ export default function BookingForm({
       fetchServices();
       fetchBarberStatus();
       setCurrentStep(1);
+      
+      // Pre-populate user info if logged in
+      if (user) {
+        setGuestInfo(prev => ({
+          ...prev,
+          name: user.name || '',
+          email: user.email || ''
+        }));
+      }
     }
-  }, [isVisible, barberId]);
+  }, [isVisible, barberId, user]);
+
+  // Auto-select service if provided as prop
+  useEffect(() => {
+    if (preSelectedService && services.length > 0) {
+      const matchingService = services.find(service => service.id === preSelectedService.id);
+      if (matchingService) {
+        setSelectedService(matchingService);
+        console.log('[BOOKING_FORM] Auto-selected service:', matchingService.name);
+        // Auto-advance to next step if service is pre-selected
+        if (currentStep === 1) {
+          setTimeout(() => {
+            setCurrentStep(2);
+          }, 500);
+        }
+      }
+    }
+  }, [preSelectedService, services, currentStep]);
 
   useEffect(() => {
     if (isVisible && selectedService && selectedDate) {
@@ -90,11 +118,13 @@ export default function BookingForm({
 
   const fetchServices = async () => {
     try {
+      console.log('🔍 [BOOKING_FORM] Fetching services for barberId:', barberId);
       setLoading(true);
       const servicesData = await bookingService.getBarberServices(barberId);
+      console.log('✅ [BOOKING_FORM] Services fetched successfully:', servicesData);
       setServices(servicesData);
     } catch (error) {
-      console.error('Error fetching services:', error);
+      console.error('❌ [BOOKING_FORM] Error fetching services:', error);
       Alert.alert('Error', 'Failed to load services. Please try again.');
     } finally {
       setLoading(false);
@@ -103,24 +133,41 @@ export default function BookingForm({
 
   const fetchBarberStatus = async () => {
     try {
-      const { data: barber, error } = await supabase
-        .from('barbers')
-        .select('is_developer')
+      console.log('🔍 [BOOKING_FORM] Fetching barber status for barberId:', barberId);
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role, is_developer')
         .eq('id', barberId)
         .single();
 
-      if (!error && barber) {
-        setIsDeveloperAccount(barber.is_developer || false);
+      console.log('[BOOKING_FORM] Profile data:', profile);
+      console.log('[BOOKING_FORM] Profile error:', error);
+
+      if (!error && profile) {
+        const isBarber = profile.role === 'barber';
+        const isDeveloper = profile.is_developer || false;
+        setIsDeveloperAccount(isBarber && isDeveloper);
+        console.log('[BOOKING_FORM] Profile role:', profile.role, 'is developer:', isDeveloper);
+      } else {
+        console.log('[BOOKING_FORM] Error fetching profile status:', error);
       }
     } catch (error) {
-      console.error('Error fetching barber status:', error);
+      console.error('[BOOKING_FORM] Error fetching profile status:', error);
     }
   };
 
   const fetchTimeSlots = async () => {
-    if (!selectedDate || !selectedService) return;
+    if (!selectedDate || !selectedService) {
+      console.log('[BOOKING_FORM] Cannot fetch time slots - missing date or service');
+      return;
+    }
 
     try {
+      console.log('[BOOKING_FORM] Fetching time slots for:', {
+        barberId,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        serviceDuration: selectedService.duration
+      });
       setLoadingSlots(true);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const slots = await bookingService.getAvailableSlots(
@@ -128,9 +175,10 @@ export default function BookingForm({
         dateStr,
         selectedService.duration
       );
+      console.log('[BOOKING_FORM] Time slots fetched successfully:', slots);
       setTimeSlots(slots);
     } catch (error) {
-      console.error('Error fetching time slots:', error);
+      console.error('[BOOKING_FORM] Error fetching time slots:', error);
       Alert.alert('Error', 'Failed to load available times. Please try again.');
     } finally {
       setLoadingSlots(false);
@@ -183,17 +231,30 @@ export default function BookingForm({
   };
 
   const handleCreateBooking = async () => {
+    console.log('[BOOKING_FORM] Starting booking creation...');
+    console.log('[BOOKING_FORM] Current state:', {
+      selectedService,
+      selectedDate,
+      selectedTime,
+      user: !!user,
+      isDeveloperAccount,
+      guestInfo
+    });
+
     if (!selectedService || !selectedDate || !selectedTime) {
+      console.log('[BOOKING_FORM] Missing required fields');
       Alert.alert('Error', 'Please complete all required fields.');
       return;
     }
 
     if (!user && !isDeveloperAccount) {
+      console.log('[BOOKING_FORM] User not signed in and not developer account');
       Alert.alert('Error', 'Please sign in to book with this barber.');
       return;
     }
 
     if (!user && isDeveloperAccount && (!guestInfo.name || !guestInfo.email || !guestInfo.phone)) {
+      console.log('[BOOKING_FORM] Missing guest information');
       Alert.alert('Error', 'Please fill in all guest information.');
       return;
     }
@@ -205,62 +266,103 @@ export default function BookingForm({
       const [hours, minutes] = selectedTime.split(':');
       bookingDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
+      console.log('[BOOKING_FORM] Booking date:', bookingDate.toISOString());
+
       if (isDeveloperAccount) {
+        console.log('[BOOKING_FORM] Creating developer booking...');
+        
+        // Get the barber ID from the profile ID
+        const { data: barber, error: barberError } = await supabase
+          .from('barbers')
+          .select('id')
+          .eq('user_id', barberId)
+          .single();
+
+        if (barberError || !barber) {
+          throw new Error('Barber record not found');
+        }
+
         // Developer booking (no payment required)
+        const bookingData = {
+          barberId: barber.id,
+          serviceId: selectedService.id,
+          date: bookingDate.toISOString(),
+          notes: guestInfo.notes,
+          guestName: user ? undefined : guestInfo.name,
+          guestEmail: user ? undefined : guestInfo.email,
+          guestPhone: user ? undefined : guestInfo.phone,
+          clientId: user?.id || null,
+          paymentType: 'fee',
+          addonIds: []
+        };
+        console.log('[BOOKING_FORM] Developer booking data:', bookingData);
+
         const response = await fetch('https://bocmstyle.com/api/create-developer-booking', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            barberId,
-            serviceId: selectedService.id,
-            date: bookingDate.toISOString(),
-            notes: guestInfo.notes,
-            guestName: user ? undefined : guestInfo.name,
-            guestEmail: user ? undefined : guestInfo.email,
-            guestPhone: user ? undefined : guestInfo.phone,
-            clientId: user?.id || null,
-            paymentType: 'fee',
-            addonIds: []
-          })
+          body: JSON.stringify(bookingData)
         });
 
+        console.log('[BOOKING_FORM] Developer booking response status:', response.status);
         const data = await response.json();
+        console.log('[BOOKING_FORM] Developer booking response data:', data);
+
         if (!response.ok) {
           throw new Error(data.error || 'Failed to create developer booking');
         }
 
+        console.log('[BOOKING_FORM] Developer booking created successfully');
         Alert.alert(
           'Success!',
           'Your booking has been created successfully (developer mode - no payment required).',
           [{ text: 'OK', onPress: () => onBookingCreated(data.booking) }]
         );
       } else {
+        console.log('[BOOKING_FORM] Creating regular booking...');
         // Regular booking with payment
         if (!user) {
           Alert.alert('Error', 'Please sign in to book with this barber.');
           return;
         }
 
+        // Get the barber ID from the profile ID
+        const { data: barber, error: barberError } = await supabase
+          .from('barbers')
+          .select('id')
+          .eq('user_id', barberId)
+          .single();
+
+        if (barberError || !barber) {
+          throw new Error('Barber record not found');
+        }
+
+        const bookingData = {
+          barber_id: barber.id,
+          service_id: selectedService.id,
+          date: bookingDate.toISOString(),
+          price: Math.round(selectedService.price * 100), // Convert to cents
+          client_id: user.id,
+          notes: guestInfo.notes,
+          platform_fee: paymentType === 'fee' ? 338 : 0, // Convert to cents
+          barber_payout: Math.round(selectedService.price * 100) // Convert to cents
+        };
+        console.log('[BOOKING_FORM] Regular booking data:', bookingData);
+
         const response = await fetch('https://bocmstyle.com/api/bookings/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            barber_id: barberId,
-            service_id: selectedService.id,
-            date: bookingDate.toISOString(),
-            price: selectedService.price,
-            client_id: user.id,
-            notes: guestInfo.notes,
-            platform_fee: paymentType === 'fee' ? 3.38 : 0,
-            barber_payout: selectedService.price
-          })
+          body: JSON.stringify(bookingData)
         });
 
+        console.log('[BOOKING_FORM] Regular booking response status:', response.status);
         const data = await response.json();
+        console.log('[BOOKING_FORM] Regular booking response data:', data);
+
         if (!response.ok) {
           throw new Error(data.error || 'Failed to create booking');
         }
 
+        console.log('[BOOKING_FORM] Regular booking created successfully');
         Alert.alert(
           'Success!',
           'Your booking has been created successfully.',
@@ -270,7 +372,7 @@ export default function BookingForm({
 
       onClose();
     } catch (error) {
-      console.error('Error creating booking:', error);
+      console.error('[BOOKING_FORM] Error creating booking:', error);
       Alert.alert('Error', 'Failed to create booking. Please try again.');
     } finally {
       setBookingLoading(false);
@@ -324,8 +426,7 @@ export default function BookingForm({
   };
 
   const getTotalPrice = () => {
-    if (!selectedService) return 0;
-    return paymentType === 'fee' ? 3.38 : selectedService.price;
+    return 3.38; // Always return booking fee
   };
 
   if (!isVisible) return null;
@@ -410,7 +511,7 @@ export default function BookingForm({
                     <Text style={[tw`mt-4`, { color: theme.colors.mutedForeground }]}>Loading services...</Text>
                   </View>
                 ) : (
-                  <View style={tw`space-y-4`}>
+                  <View style={tw`gap-6`}>
                     {services.map((service) => (
                       <TouchableOpacity
                         key={service.id}
@@ -747,40 +848,23 @@ export default function BookingForm({
                   </View>
                 </View>
 
-                {/* Payment Options */}
+                {/* Payment Information */}
                 <View>
                   <Text style={[tw`text-lg font-semibold mb-4`, { color: theme.colors.foreground }]}>
-                    Payment Options
+                    Payment
                   </Text>
-                  <View style={tw`space-y-3`}>
-                    <TouchableOpacity
-                      onPress={() => setPaymentType('full')}
-                      style={tw`flex-row items-center`}
-                    >
-                      <View style={[
-                        tw`w-5 h-5 rounded-full border-2 mr-3`,
-                        paymentType === 'full'
-                          ? { backgroundColor: theme.colors.secondary, borderColor: theme.colors.secondary }
-                          : { borderColor: theme.colors.mutedForeground }
-                      ]} />
+                  <View style={[tw`p-4 rounded-xl`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                    <View style={tw`flex-row justify-between items-center`}>
                       <Text style={{ color: theme.colors.foreground }}>
-                        Pay full amount (${selectedService?.price.toFixed(2)})
+                        Booking Fee
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => setPaymentType('fee')}
-                      style={tw`flex-row items-center`}
-                    >
-                      <View style={[
-                        tw`w-5 h-5 rounded-full border-2 mr-3`,
-                        paymentType === 'fee'
-                          ? { backgroundColor: theme.colors.secondary, borderColor: theme.colors.secondary }
-                          : { borderColor: theme.colors.mutedForeground }
-                      ]} />
-                      <Text style={{ color: theme.colors.foreground }}>
-                        Pay booking fee only ($3.38)
+                      <Text style={[tw`font-semibold`, { color: theme.colors.secondary }]}>
+                        $3.38
                       </Text>
-                    </TouchableOpacity>
+                    </View>
+                    <Text style={[tw`text-sm mt-2`, { color: theme.colors.mutedForeground }]}>
+                      Pay the remaining amount directly to your barber
+                    </Text>
                   </View>
                 </View>
               </View>

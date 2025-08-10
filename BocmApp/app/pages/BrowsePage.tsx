@@ -26,6 +26,7 @@ import {
 import { Avatar } from '../shared/components/ui';
 import { RootStackParamList } from '../shared/types';
 import StaircaseGrid from '../shared/components/StaircaseGrid';
+import BookingForm from '../shared/components/BookingForm';
 
 const { width } = Dimensions.get('window');
 
@@ -98,6 +99,8 @@ export default function BrowsePage() {
   const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [allSpecialties, setAllSpecialties] = useState<string[]>([]);
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [selectedBarber, setSelectedBarber] = useState<any>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -255,6 +258,13 @@ export default function BrowsePage() {
     }
   };
 
+  const handleBookBarber = (post: any) => {
+    if (post.barberId) {
+      setSelectedBarber(post);
+      setShowBookingForm(true);
+    }
+  };
+
 
 
 
@@ -366,9 +376,32 @@ export default function BrowsePage() {
                    posts={filteredPosts} 
                    onVideoPress={handleVideoPress}
                    onImagePress={handleImagePress}
+                   onBookPress={handleBookBarber}
                  />
                )}
       </View>
+
+      {/* Booking Form Modal */}
+      {selectedBarber && (
+        <BookingForm
+          isVisible={showBookingForm}
+          onClose={() => {
+            setShowBookingForm(false);
+            setSelectedBarber(null);
+          }}
+          barberId={selectedBarber.barberId}
+          barberName={selectedBarber.barberName || selectedBarber.name}
+          onBookingCreated={(booking) => {
+            setShowBookingForm(false);
+            setSelectedBarber(null);
+            Alert.alert(
+              'Booking Created!',
+              'Your appointment has been scheduled successfully.',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 } 

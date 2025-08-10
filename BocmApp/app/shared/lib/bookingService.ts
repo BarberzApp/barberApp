@@ -52,12 +52,29 @@ export interface CreateBookingData {
 }
 
 class BookingService {
-  // Fetch services for a specific barber
-  async getBarberServices(barberId: string): Promise<Service[]> {
+  // Fetch services for a specific barber (using profile ID)
+  async getBarberServices(profileId: string): Promise<Service[]> {
+    const { data: barber, error: barberError } = await supabase
+      .from('barbers')
+      .select('id')
+      .eq('user_id', profileId)
+      .single();
+
+    if (barberError) {
+      console.error('Error fetching barber record:', barberError);
+      throw barberError;
+    }
+
+    if (!barber) {
+      console.log('No barber record found for profile ID:', profileId);
+      return [];
+    }
+
+    // Fetch services using the barber ID
     const { data, error } = await supabase
       .from('services')
       .select('*')
-      .eq('barber_id', barberId)
+      .eq('barber_id', barber.id)
       .order('price', { ascending: true });
 
     if (error) {
@@ -68,8 +85,25 @@ class BookingService {
     return data || [];
   }
 
-  // Get available time slots for a specific date
-  async getAvailableSlots(barberId: string, date: string, serviceDuration: number): Promise<TimeSlot[]> {
+  // Get available time slots for a specific date (using profile ID)
+  async getAvailableSlots(profileId: string, date: string, serviceDuration: number): Promise<TimeSlot[]> {
+    // First, get the barber record using the profile ID
+    const { data: barber, error: barberError } = await supabase
+      .from('barbers')
+      .select('id')
+      .eq('user_id', profileId)
+      .single();
+
+    if (barberError) {
+      console.error('Error fetching barber record for time slots:', barberError);
+      throw barberError;
+    }
+
+    if (!barber) {
+      console.log('No barber record found for profile ID:', profileId);
+      return [];
+    }
+
     // Get existing bookings for the date
     const startOfDay = `${date}T00:00:00`;
     const endOfDay = `${date}T23:59:59`;
@@ -77,7 +111,7 @@ class BookingService {
     const { data: bookings, error } = await supabase
       .from('bookings')
       .select('date')
-      .eq('barber_id', barberId)
+      .eq('barber_id', barber.id)
       .gte('date', startOfDay)
       .lte('date', endOfDay)
       .neq('status', 'cancelled');

@@ -11,10 +11,9 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
+import { theme } from '../shared/lib/theme';
 const Icon = require('react-native-vector-icons/Feather').default;
 import { RootStackParamList } from '../shared/types';
-import { useAuth } from '../shared/hooks/useAuth';
-import { theme } from '../shared/lib/theme';
 import BookingForm from '../shared/components/BookingForm';
 
 type BookingPageNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingCalendar'>;
@@ -23,8 +22,7 @@ type BookingPageRouteProp = RouteProp<RootStackParamList, 'BookingCalendar'>;
 export default function BookingCalendarPage() {
     const navigation = useNavigation<BookingPageNavigationProp>();
     const route = useRoute<BookingPageRouteProp>();
-    const { barberId, barberName } = route.params;
-    const { user } = useAuth();
+    const { barberId, barberName, preSelectedService } = route.params;
 
     const [showBookingForm, setShowBookingForm] = useState(false);
 
@@ -117,6 +115,7 @@ export default function BookingCalendarPage() {
                 onClose={() => setShowBookingForm(false)}
                 barberId={barberId}
                 barberName={barberName}
+                preSelectedService={preSelectedService}
                 onBookingCreated={handleBookingCreated}
             />
         </SafeAreaView>

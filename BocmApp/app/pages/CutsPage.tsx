@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Share2, User, Calendar } from 'lucide-react-nativ
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
+import BookingForm from '../shared/components/BookingForm';
 
 const { height } = Dimensions.get('window');
 const SPECIALTIES = [
@@ -34,6 +35,7 @@ const CutsPage = () => {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [shareModal, setShareModal] = useState(false);
+  const [showBookingForm, setShowBookingForm] = useState(false);
   const videoRefs = useRef<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
@@ -179,9 +181,12 @@ const CutsPage = () => {
     }
   };
 
-  // Book handler (placeholder)
+  // Book handler - open booking form modal
   const handleBook = (cut: any) => {
-    Alert.alert('Book', 'Booking feature coming soon!');
+    if (cut.barbers?.user_id) {
+      setSelectedCut(cut);
+      setShowBookingForm(true);
+    }
   };
 
   // Navigate to For You page
@@ -350,6 +355,28 @@ const CutsPage = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Booking Form Modal */}
+      {selectedCut && (
+        <BookingForm
+          isVisible={showBookingForm}
+          onClose={() => {
+            setShowBookingForm(false);
+            setSelectedCut(null);
+          }}
+          barberId={selectedCut.barbers?.user_id}
+          barberName={selectedCut.barber_name}
+          onBookingCreated={(booking) => {
+            setShowBookingForm(false);
+            setSelectedCut(null);
+            Alert.alert(
+              'Booking Created!',
+              'Your appointment has been scheduled successfully.',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
+      )}
     </View>
   );
 };

@@ -231,13 +231,15 @@ export default function SignUpPage() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={tw`flex-1`}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 <ScrollView
-                    contentContainerStyle={tw`flex-grow`}
+                    contentContainerStyle={tw`flex-grow justify-center`}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                 >
                     {/* Main Content */}
-                    <View style={tw`flex-1 justify-center px-6 py-4`}> 
+                    <View style={tw`px-6 py-8`}> 
                         <View style={tw`w-full max-w-md mx-auto`}> 
                             <View style={tw`items-center mb-6`}> 
                                 <Text style={[tw`text-2xl font-bold text-white text-center`]}>
@@ -371,7 +373,7 @@ export default function SignUpPage() {
                                             )}
                                         </View>
                                         
-                                        <View>
+                                        <View style={tw`mb-4`}>
                                             <Input
                                                 label="Password"
                                                 placeholder="Enter your password"
@@ -385,13 +387,16 @@ export default function SignUpPage() {
                                                 autoCorrect={false}
                                                 editable={!isLoading}
                                                 inputStyle={[tw`h-12`, errors.password ? { borderColor: '#ef4444' } : {}]}
+                                                textContentType="newPassword"
+                                                autoComplete="new-password"
+                                                passwordRules="minlength: 6;"
                                             />
                                             {errors.password && (
                                                 <Text style={tw`text-red-400 text-xs mt-1`}>{errors.password}</Text>
                                             )}
                                         </View>
                                         
-                                        <View>
+                                        <View style={tw`mb-4`}>
                                             <Input
                                                 label="Confirm Password"
                                                 placeholder="Re-enter your password"
@@ -405,6 +410,9 @@ export default function SignUpPage() {
                                                 autoCapitalize="none"
                                                 editable={!isLoading}
                                                 inputStyle={[tw`h-12`, errors.confirmPassword ? { borderColor: '#ef4444' } : {}]}
+                                                textContentType="oneTimeCode"
+                                                autoComplete="new-password"
+                                                passwordRules="minlength: 6;"
                                             />
                                             {errors.confirmPassword && (
                                                 <Text style={tw`text-red-400 text-xs mt-1`}>{errors.confirmPassword}</Text>

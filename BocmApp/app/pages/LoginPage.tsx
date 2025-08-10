@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   StatusBar,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -327,22 +328,28 @@ export default function LoginPage() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={tw`flex-1`}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Main Content */}
-        <View style={tw`flex-1 justify-center px-6`}>
-          <Card style={[
-            tw`w-full max-w-md mx-auto`,
-            {
-              backgroundColor: '#2d2342',
-              borderColor: 'rgba(255,255,255,0.10)',
-              borderWidth: 1,
-              borderRadius: 24,
-              shadowColor: '#000',
-              shadowOpacity: 0.15,
-              shadowRadius: 8,
-              elevation: 5
-            }
-          ]}>
+        <ScrollView
+          contentContainerStyle={tw`flex-grow justify-center`}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={tw`px-6 py-8`}>
+            <Card style={[
+              tw`w-full max-w-md mx-auto`,
+              {
+                backgroundColor: '#2d2342',
+                borderColor: 'rgba(255,255,255,0.10)',
+                borderWidth: 1,
+                borderRadius: 24,
+                shadowColor: '#000',
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                elevation: 5
+              }
+            ]}>
             <CardHeader style={tw`items-center pb-6`}>
               <Scissors size={40} color="#FFD180" style={tw`mb-4`} />
               <Text style={[tw`text-2xl font-bold text-white text-center mb-1`]}>WELCOME BACK</Text>
@@ -376,7 +383,7 @@ export default function LoginPage() {
                   inputStyle={tw`h-12`}
                 />
 
-                <View>
+                <View style={tw`mb-4`}>
                   <Input
                     label="Password"
                     placeholder="Enter your password"
@@ -387,8 +394,12 @@ export default function LoginPage() {
                     }}
                     secureTextEntry
                     autoCapitalize="none"
+                    autoCorrect={false}
                     editable={!isLoading}
                     inputStyle={tw`h-12`}
+                    textContentType="password"
+                    autoComplete="password"
+                    passwordRules="minlength: 6;"
                   />
                   <TouchableOpacity
                     onPress={handleForgotPassword}
@@ -447,6 +458,7 @@ export default function LoginPage() {
             </CardFooter>
           </Card>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
