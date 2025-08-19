@@ -1,20 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/shared/lib/supabase';
 
 export default function StripeConnectReturn() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   useEffect(() => {
     const handleReturn = async () => {
       try {
-        // Get the account_id from URL params
-        const accountId = searchParams.get('account_id');
-        const error = searchParams.get('error');
+        // Get the account_id from URL params using URLSearchParams
+        const urlParams = new URLSearchParams(window.location.search);
+        const accountId = urlParams.get('account_id');
+        const error = urlParams.get('error');
         
         if (error) {
           console.error('Stripe connect error:', error);
@@ -103,7 +103,7 @@ export default function StripeConnectReturn() {
     };
 
     handleReturn();
-  }, [searchParams, router]);
+  }, [router]);
 
   return (
     <div style={{
