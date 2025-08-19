@@ -124,6 +124,7 @@ export default function BarberOnboardingPage() {
     const { user, userProfile } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [stripeLoading, setStripeLoading] = useState(false);
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [stripeStatus, setStripeStatus] = useState<string | null>(null);
     const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -591,9 +592,16 @@ export default function BarberOnboardingPage() {
     };
 
     const handleStripeConnect = async () => {
-        if (loading) return;
+        if (stripeLoading) return;
         
-        setLoading(true);
+        setStripeLoading(true);
+        
+        // Add a timeout to prevent infinite loading
+        const timeoutId = setTimeout(() => {
+            console.log('Stripe Connect timeout - resetting loading state');
+            setStripeLoading(false);
+        }, 30000); // 30 second timeout
+        
         try {
             console.log('Starting Stripe Connect process for user:', user?.id);
             console.log('API_BASE_URL:', API_BASE_URL);
@@ -741,7 +749,8 @@ export default function BarberOnboardingPage() {
             console.error('Error creating Stripe account:', error);
             Alert.alert('Error', error instanceof Error ? error.message : 'Failed to connect Stripe account. Please try again.');
         } finally {
-            setLoading(false);
+            clearTimeout(timeoutId);
+            setStripeLoading(false);
         }
     };
 
@@ -1195,13 +1204,13 @@ export default function BarberOnboardingPage() {
                                     
                                     <TouchableOpacity
                                         onPress={handleStripeConnect}
-                                        disabled={loading}
+                                        disabled={stripeLoading}
                                         style={[
                                             tw`flex-row items-center justify-center py-3 px-6 rounded-xl`,
                                             { backgroundColor: theme.colors.secondary }
                                         ]}
                                     >
-                                        {loading ? (
+                                        {stripeLoading ? (
                                             <ActivityIndicator color={theme.colors.primaryForeground} />
                                         ) : (
                                             <>
