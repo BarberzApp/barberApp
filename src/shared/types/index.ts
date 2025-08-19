@@ -17,6 +17,7 @@ export interface User {
   location?: string;
   description?: string;
   bio?: string;
+  avatar_url?: string;
   favorites: string[];
   join_date: string;
   created_at: string;
@@ -231,4 +232,32 @@ export interface Notification {
   created_at: string;
   user?: User;
   booking?: Booking;
+} 
+
+export interface Review {
+  id: string;
+  booking_id: string;
+  barber_id: string;
+  client_id: string;
+  rating: number;
+  comment?: string;
+  is_verified: boolean;
+  is_public: boolean;
+  is_moderated: boolean;
+  moderator_notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  client?: User;
+  barber?: Barber;
+  booking?: Booking;
+}
+
+export interface ReviewStats {
+  total_reviews: number;
+  average_rating: number;
+  rating_distribution: {
+    [key: number]: number; // rating -> count
+  };
+  recent_reviews: Review[];
 } 

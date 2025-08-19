@@ -1,0 +1,10 @@
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:iOS Simulator, id:8F260E71-D810-4A19-9C79-DC0FDC66F9C5, OS:18.2, name:iPhone 16 }
+{ platform:iOS Simulator, id:8F260E71-D810-4A19-9C79-DC0FDC66F9C5, OS:18.2, name:iPhone 16 }
+** BUILD FAILED **
+
+
+The following build commands failed:
+	PhaseScriptExecution [CP]\ Check\ Pods\ Manifest.lock /Users/yaseenkhalil/Library/Developer/Xcode/DerivedData/barberapp-hcwplsoawdwnpjbfkzbwnxofyxog/Build/Intermediates.noindex/barberapp.build/Debug-iphonesimulator/barberapp.build/Script-08A4A3CD28434E44B6B9DE2E.sh (in target 'barberapp' from project 'barberapp')
+	Building project barberapp with scheme barberapp and configuration Debug
+(2 failures)

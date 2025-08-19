@@ -43,7 +43,10 @@ file_size_limit = "270MiB"
 # in emails.
 site_url = "https://www.bocmstyle.com"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://www.bocmstyle.com/auth/callback"]
+additional_redirect_urls = [
+  "https://www.bocmstyle.com/auth/callback",
+  "https://3d6b1eb7b7c8.ngrok-free.app/auth/callback"
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (one
 # week).
 jwt_expiry = 3600
@@ -85,6 +88,16 @@ enable_signup = false
 enabled = false
 client_id = ""
 secret = ""
+# Overrides the default auth redirectUrl.
+redirect_uri = ""
+# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
+# or any other third-party OIDC providers.
+url = ""
+
+[auth.external.google]
+enabled = true
+client_id = "641672528438-gpdghsrjsp82c3sr7pli3gimjrbdr4tq.apps.googleusercontent.com"
+secret = "${GOOGLE_CLIENT_SECRET}"
 # Overrides the default auth redirectUrl.
 redirect_uri = ""
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,

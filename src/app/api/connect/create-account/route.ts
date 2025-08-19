@@ -17,8 +17,20 @@ const getBaseUrl = () => {
 const APP_URL = getBaseUrl();
 console.log('Using app URL:', APP_URL);
 
+// Mobile deep link URLs for redirecting back to the app
+const getMobileRedirectUrls = () => {
+  // Use web URLs that will redirect to mobile deep links
+  const webReturnUrl = `${APP_URL}/barber/connect/return`;
+  const webRefreshUrl = `${APP_URL}/barber/connect/refresh`;
+  
+  return {
+    returnUrl: webReturnUrl,
+    refreshUrl: webRefreshUrl,
+  };
+};
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-05-28.basil',
+  apiVersion: '2024-06-20' as any,
 })
 
 // Type definitions
@@ -152,8 +164,8 @@ export async function POST(request: Request) {
         // Create a new account link for the existing account
         const accountLink = await stripe.accountLinks.create({
           account: existingAccount.id,
-          refresh_url: `${APP_URL}/barber/connect/refresh`,
-          return_url: `${APP_URL}/barber/connect/return`,
+          refresh_url: getMobileRedirectUrls().refreshUrl,
+          return_url: getMobileRedirectUrls().returnUrl,
           type: 'account_onboarding',
         })
 
@@ -255,8 +267,8 @@ export async function POST(request: Request) {
     // Create an account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
-      refresh_url: `${APP_URL}/barber/connect/refresh`,
-      return_url: `${APP_URL}/barber/connect/return`,
+      refresh_url: getMobileRedirectUrls().refreshUrl,
+      return_url: getMobileRedirectUrls().returnUrl,
       type: 'account_onboarding',
     })
 

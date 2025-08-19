@@ -1,0 +1,27 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["app/*"],
+      "@/shared/*": ["app/shared/*"],
+      "@/components/*": ["app/shared/components/*"],
+      "@/hooks/*": ["app/shared/hooks/*"],
+      "@/lib/*": ["app/shared/lib/*"],
+      "@/types/*": ["app/shared/types/*"],
+      "@/utils/*": ["app/shared/utils/*"],
+      "@/pages/*": ["app/pages/*"],
+      "@/navigation/*": ["app/navigation/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}

@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useEffect, useCallback, useState } from "react"
 import { Button } from "@/shared/components/ui/button"
@@ -36,28 +36,12 @@ export function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const isMobile = useMobile();
-  const [pathname, setPathname] = useState('');
+  const pathname = usePathname(); // Use Next.js hook for real-time pathname
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     // Set mounted immediately for better UX
     setMounted(true);
-    
-    // Get pathname immediately if possible
-    if (typeof window !== 'undefined') {
-      setPathname(window.location.pathname);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      if (typeof window !== 'undefined') {
-        setPathname(window.location.pathname);
-      }
-    };
-
-    window.addEventListener('popstate', handleRouteChange);
-    return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
   // Don't show on home page, but show on all other pages including settings
@@ -127,8 +111,8 @@ export function Navbar() {
             {/* Role-specific navigation items */}
             {roleSpecificNavItems().map((item) => {
               const isActive = pathname === item.href || 
-                (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
-                (item.href === "/reels" && pathname.startsWith("/reels"))
+                (item.href === "/calendar" && pathname?.startsWith("/calendar")) ||
+                (item.href === "/reels" && pathname?.startsWith("/reels"))
               
               return (
                 <Link
@@ -158,17 +142,17 @@ export function Navbar() {
               href="/browse" 
               className={cn(
                 "text-white/80 hover:text-saffron transition-all duration-300 font-medium px-4 py-2 rounded-xl flex items-center gap-2 group relative",
-                pathname === "/browse" || pathname.startsWith("/browse")
+                pathname === "/browse" || pathname?.startsWith("/browse")
                   ? "text-saffron bg-saffron/10 shadow-lg shadow-saffron/20 border border-saffron/30" 
                   : "hover:bg-white/5 hover:shadow-md"
               )}
             >
               <Compass className={cn(
                 "h-4 w-4 transition-all duration-300",
-                pathname === "/browse" || pathname.startsWith("/browse") ? "text-saffron scale-110" : "group-hover:scale-105"
+                pathname === "/browse" || pathname?.startsWith("/browse") ? "text-saffron scale-110" : "group-hover:scale-105"
               )} />
               Browse
-              {(pathname === "/browse" || pathname.startsWith("/browse")) && (
+              {(pathname === "/browse" || pathname?.startsWith("/browse")) && (
                 <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-saffron rounded-full" />
               )}
             </Link>

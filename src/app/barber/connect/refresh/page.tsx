@@ -1,299 +1,165 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/shared/lib/supabase";
-import { useAuth } from "@/shared/hooks/use-auth-zustand";
-import { validateSession, attemptSessionRecovery, isSessionReadyForStripeConnect } from "@/shared/lib/session-utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Button } from "@/shared/components/ui/button";
-import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/shared/lib/supabase';
 
-export default function StripeConnectRefreshPage() {
-  const { user, isLoading: authLoading } = useAuth();
+export default function StripeConnectRefresh() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [barberId, setBarberId] = useState<string | null>(null);
-  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
-  const [authRetryCount, setAuthRetryCount] = useState(0);
-  const [sessionRecoveryAttempted, setSessionRecoveryAttempted] = useState(false);
-
-  // Maximum number of auth retry attempts
-  const MAX_AUTH_RETRIES = 3;
+  const [status, setStatus] = useState<'loading' | 'retry' | 'error'>('loading');
 
   useEffect(() => {
-    const fetchBarberData = async () => {
-      if (!user && authRetryCount < MAX_AUTH_RETRIES) {
-        console.log(`No user found, attempting auth recovery (attempt ${authRetryCount + 1}/${MAX_AUTH_RETRIES})`);
-        await attemptAuthRecovery();
-        return;
-      }
-      
-      if (!user) {
-        console.log('No user found after all retry attempts');
-        setLoading(false);
-        return;
-      }
-      
-      setLoading(true);
-      
+    const handleRefresh = async () => {
       try {
-        // Use the new session utility for validation
-        const sessionReady = await isSessionReadyForStripeConnect();
-        if (!sessionReady) {
-          console.log('Session not ready for Stripe Connect');
-          setLoading(false);
-          return;
-        }
+        // Get the account_id from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const accountId = urlParams.get('account_id');
+        const error = urlParams.get('error');
         
-        const { data: barber, error } = await supabase
-          .from("barbers")
-          .select("id, stripe_account_id")
-          .eq("user_id", user.id)
-          .single();
-          
         if (error) {
-          console.error("Error fetching barber:", error);
-          setLoading(false);
+          console.error('Stripe connect error:', error);
+          setStatus('error');
           return;
         }
-        
-        setBarberId(barber.id);
-        setStripeAccountId(barber.stripe_account_id);
-        setLoading(false);
+
+        if (accountId) {
+          console.log('Stripe connect refresh, account_id:', accountId);
+          setStatus('retry');
+          
+          // Find the barber with this Stripe account ID and update their status
+          try {
+            const { data: barbers, error: findError } = await supabase
+              .from('barbers')
+              .select('id, stripe_account_id')
+              .eq('stripe_account_id', accountId);
+
+            if (findError) {
+              console.error('Error finding barber:', findError);
+            } else if (barbers && barbers.length > 0) {
+              // Update the barber's status
+              const { error: updateError } = await supabase
+                .from('barbers')
+                .update({
+                  stripe_account_status: 'active',
+                  stripe_account_ready: true,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('stripe_account_id', accountId);
+
+              if (updateError) {
+                console.error('Error updating barber status:', updateError);
+              } else {
+                console.log('Successfully updated barber status for account:', accountId);
+              }
+            } else {
+              // If no barber found with this account ID, try to find by pending status
+              const { data: pendingBarbers, error: pendingError } = await supabase
+                .from('barbers')
+                .select('id')
+                .eq('stripe_account_status', 'pending')
+                .is('stripe_account_id', null)
+                .limit(1);
+
+              if (!pendingError && pendingBarbers && pendingBarbers.length > 0) {
+                // Update the first pending barber with this account ID
+                const { error: updateError } = await supabase
+                  .from('barbers')
+                  .update({
+                    stripe_account_id: accountId,
+                    stripe_account_status: 'active',
+                    stripe_account_ready: true,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', pendingBarbers[0].id);
+
+                if (updateError) {
+                  console.error('Error updating pending barber:', updateError);
+                } else {
+                  console.log('Successfully updated pending barber with account ID:', accountId);
+                }
+              }
+            }
+          } catch (dbError) {
+            console.error('Database update error:', dbError);
+          }
+          
+          // Try to open the mobile app with deep link
+          const mobileDeepLink = `bocm://stripe-connect/refresh?account_id=${accountId}`;
+          
+          // Attempt to open mobile app
+          window.location.href = mobileDeepLink;
+          
+          // Fallback: redirect to web app after a delay
+          setTimeout(() => {
+            router.push('/barber/onboarding?stripe_refresh=true');
+          }, 2000);
+        } else {
+          setStatus('error');
+        }
       } catch (error) {
-        console.error("Error:", error);
-        setLoading(false);
+        console.error('Error handling Stripe refresh:', error);
+        setStatus('error');
       }
     };
-    
-    if (!authLoading) {
-      fetchBarberData();
-    }
-  }, [user, authLoading, authRetryCount]);
 
-  const attemptAuthRecovery = async () => {
-    if (sessionRecoveryAttempted) {
-      console.log('Session recovery already attempted');
-      setAuthRetryCount(prev => prev + 1);
-      return;
-    }
-
-    setSessionRecoveryAttempted(true);
-    console.log('Attempting session recovery...');
-    
-    try {
-      // Use the new session recovery utility
-      const recoverySuccessful = await attemptSessionRecovery(1);
-      
-      if (recoverySuccessful) {
-        console.log('Session recovered successfully');
-        // Reset retry count and recovery flag
-        setAuthRetryCount(0);
-        setSessionRecoveryAttempted(false);
-        // Force a re-render by updating loading state
-        setLoading(false);
-        setTimeout(() => setLoading(true), 100);
-      } else {
-        console.log('Session recovery failed');
-        setAuthRetryCount(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('Error in session recovery:', error);
-      setAuthRetryCount(prev => prev + 1);
-    }
-  };
-
-  const handleRefreshOnboarding = async () => {
-    if (!barberId) return;
-    
-    try {
-      const response = await fetch('/api/connect/create-account-link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ barberId }),
-      });
-      
-      if (response.ok) {
-        const { url } = await response.json();
-        window.location.href = url;
-      } else {
-        console.error('Failed to create account link');
-      }
-    } catch (error) {
-      console.error('Error refreshing onboarding:', error);
-    }
-  };
-
-  const retryAuthCheck = async () => {
-    console.log('Retrying authentication check...');
-    setLoading(true);
-    setAuthRetryCount(0);
-    setSessionRecoveryAttempted(false);
-    
-    try {
-      // Use the new session validation utility
-      const result = await validateSession(true);
-      
-      if (result.isValid) {
-        console.log('Session validated successfully, retrying status check');
-        // Trigger a re-render by updating a state
-        setLoading(false);
-        // Small delay to ensure state updates
-        setTimeout(() => {
-          setLoading(true);
-        }, 100);
-      } else {
-        console.log('Session validation failed:', result.error);
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Error in retryAuthCheck:', error);
-      setLoading(false);
-    }
-  };
-
-  // Show loading while auth is being checked
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show authentication recovery UI if user is not authenticated but we're still retrying
-  if (!user && authRetryCount < MAX_AUTH_RETRIES) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-            <CardTitle className="text-xl">Recovering Session</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="mb-6 text-muted-foreground">
-              We're recovering your session after returning from Stripe. This may take a moment...
-            </p>
-            <div className="space-y-2">
-              <Button onClick={retryAuthCheck} className="w-full">
-                Try Again
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push("/login")} 
-                className="w-full"
-              >
-                Log In Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Show login prompt if user is not authenticated after all retries
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <AlertCircle className="h-12 w-12 text-red-500" />
-            </div>
-            <CardTitle className="text-xl">Authentication Required</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="mb-6 text-muted-foreground">
-              You need to be logged in to continue with Stripe onboarding. Please log in and try again.
-            </p>
-            <div className="space-y-2">
-              <Button onClick={() => router.push("/login")} className="w-full">
-                Log In
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push("/")} 
-                className="w-full"
-              >
-                Go Home
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-4">Loading...</span>
-      </div>
-    );
-  }
-
-  if (!barberId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card>
-          <CardHeader>
-            <CardTitle>Barber Profile Not Found</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">You need to create a barber profile before connecting with Stripe.</p>
-            <Button onClick={() => router.push("/settings")}>Go to Settings</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!stripeAccountId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card>
-          <CardHeader>
-            <CardTitle>No Stripe Account Found</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">You need to create a Stripe Connect account first.</p>
-            <Button onClick={() => router.push("/settings")}>Go to Settings</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    handleRefresh();
+  }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Card>
-        <CardHeader>
-          <CardTitle>Continue Stripe Onboarding</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">
-            You can continue your Stripe Connect onboarding process. This will take you back to Stripe to complete any remaining steps.
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      backgroundColor: '#272a2f',
+      color: '#fff',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      {status === 'loading' && (
+        <>
+          <div style={{ fontSize: '24px', marginBottom: '16px' }}>🔄</div>
+          <h1 style={{ fontSize: '24px', marginBottom: '8px' }}>Refreshing...</h1>
+          <p style={{ fontSize: '16px', opacity: 0.8 }}>Updating your Stripe setup</p>
+        </>
+      )}
+      
+      {status === 'retry' && (
+        <>
+          <div style={{ fontSize: '24px', marginBottom: '16px' }}>🔄</div>
+          <h1 style={{ fontSize: '24px', marginBottom: '8px' }}>Setup In Progress</h1>
+          <p style={{ fontSize: '16px', opacity: 0.8, textAlign: 'center', maxWidth: '300px' }}>
+            Your Stripe account setup is still in progress. 
+            Redirecting you back to the app...
           </p>
-          <div className="space-y-2">
-            <Button onClick={handleRefreshOnboarding} className="w-full">
-              Continue Onboarding
-            </Button>
-            <Button onClick={() => router.push("/settings")} className="w-full">
-              Go to Settings
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </>
+      )}
+      
+      {status === 'error' && (
+        <>
+          <div style={{ fontSize: '24px', marginBottom: '16px' }}>❌</div>
+          <h1 style={{ fontSize: '24px', marginBottom: '8px' }}>Setup Failed</h1>
+          <p style={{ fontSize: '16px', opacity: 0.8, textAlign: 'center', maxWidth: '300px' }}>
+            There was an issue with your Stripe setup. 
+            Please try again or contact support.
+          </p>
+          <button 
+            onClick={() => router.push('/barber/onboarding')}
+            style={{
+              marginTop: '24px',
+              padding: '12px 24px',
+              backgroundColor: '#f59e0b',
+              color: '#000',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              cursor: 'pointer'
+            }}
+          >
+            Return to Onboarding
+          </button>
+        </>
+      )}
     </div>
   );
 } 
