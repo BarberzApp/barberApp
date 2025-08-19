@@ -30,8 +30,8 @@ async function testStripeConnect() {
     console.log('\n2. Creating account link...');
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
-      refresh_url: 'https://barber-app-five.vercel.app/barber/connect/refresh',
-      return_url: 'https://barber-app-five.vercel.app/barber/connect/return',
+      refresh_url: 'https://bocmstyle.com/barber/connect/refresh',
+      return_url: 'https://bocmstyle.com/barber/connect/return',
       type: 'account_onboarding',
     });
     

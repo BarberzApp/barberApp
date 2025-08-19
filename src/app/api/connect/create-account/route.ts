@@ -8,7 +8,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 const getBaseUrl = () => {
   if (process.env.NODE_ENV === 'production') {
-    return process.env.NEXT_PUBLIC_APP_URL || 'https://barber-app-five.vercel.app';
+    return process.env.NEXT_PUBLIC_APP_URL || 'https://bocmstyle.com';
   } else {
     return 'http://localhost:3002';
   }

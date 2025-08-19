@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useToast } from './useToast';
+import { useToast } from '../components/ui/use-toast';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://barber-app-five.vercel.app";
 
