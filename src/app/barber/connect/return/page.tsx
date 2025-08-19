@@ -86,13 +86,42 @@ export default function StripeConnectReturn() {
           // Try to open the mobile app with deep link
           const mobileDeepLink = `bocm://stripe-connect/return?account_id=${accountId}`;
           
-          // Attempt to open mobile app
-          window.location.href = mobileDeepLink;
+          console.log('Attempting to redirect to mobile app:', mobileDeepLink);
           
-          // Fallback: redirect to web app after a delay
+          // Try multiple methods to open the mobile app
+          try {
+            // Method 1: Direct location change
+            window.location.href = mobileDeepLink;
+            
+            // Method 2: Create a hidden iframe (fallback)
+            setTimeout(() => {
+              const iframe = document.createElement('iframe');
+              iframe.style.display = 'none';
+              iframe.src = mobileDeepLink;
+              document.body.appendChild(iframe);
+              
+              // Remove iframe after a short delay
+              setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                  document.body.removeChild(iframe);
+                }
+              }, 1000);
+            }, 500);
+            
+            // Method 3: Try window.open as another fallback
+            setTimeout(() => {
+              window.open(mobileDeepLink, '_self');
+            }, 1000);
+            
+          } catch (error) {
+            console.error('Error redirecting to mobile app:', error);
+          }
+          
+          // Fallback: redirect to web app after a longer delay
           setTimeout(() => {
+            console.log('Fallback: redirecting to web app');
             router.push('/barber/onboarding?stripe_success=true');
-          }, 2000);
+          }, 3000);
         } else {
           setStatus('error');
         }
@@ -128,9 +157,30 @@ export default function StripeConnectReturn() {
         <>
           <div style={{ fontSize: '24px', marginBottom: '16px' }}>✅</div>
           <h1 style={{ fontSize: '24px', marginBottom: '8px' }}>Setup Complete!</h1>
-          <p style={{ fontSize: '16px', opacity: 0.8, textAlign: 'center', maxWidth: '300px' }}>
+          <p style={{ fontSize: '16px', opacity: 0.8, textAlign: 'center', maxWidth: '300px', marginBottom: '24px' }}>
             Your Stripe account has been successfully connected. 
             Redirecting you back to the app...
+          </p>
+          <button 
+            onClick={() => {
+              const mobileDeepLink = `bocm://stripe-connect/return?account_id=${new URLSearchParams(window.location.search).get('account_id')}`;
+              window.location.href = mobileDeepLink;
+            }}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#f59e0b',
+              color: '#000',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              cursor: 'pointer',
+              marginBottom: '12px'
+            }}
+          >
+            Return to App
+          </button>
+          <p style={{ fontSize: '14px', opacity: 0.6 }}>
+            If the app doesn't open automatically, tap the button above
           </p>
         </>
       )}

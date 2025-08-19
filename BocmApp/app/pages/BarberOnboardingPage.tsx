@@ -12,8 +12,9 @@ import {
     Platform,
     Modal,
     StatusBar,
+    AppState,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as WebBrowser from 'expo-web-browser';
 import tw from 'twrnc';
@@ -49,7 +50,7 @@ import { SocialMediaLinks } from '../shared/components/ui/SocialMediaLinks';
 import { LocationInput } from '../shared/components/ui/LocationInput';
 import { BARBER_SPECIALTIES } from '../shared/utils/settings.utils';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://barber-app-five.vercel.app";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://bocmstyle.com";
 
 type BarberOnboardingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BarberOnboarding'>;
 
@@ -242,6 +243,103 @@ export default function BarberOnboardingPage() {
             navigation.navigate('Home');
         }
     }, [user, userProfile, navigation]);
+
+    // Check Stripe status when user returns to the app (e.g., from Stripe onboarding)
+    useFocusEffect(
+        useCallback(() => {
+            const checkStripeStatus = async () => {
+                if (!user) return;
+                
+                try {
+                    console.log('Checking Stripe status on app focus...');
+                    
+                    const { data: barber, error } = await supabase
+                        .from('barbers')
+                        .select('stripe_account_id, stripe_account_status, stripe_account_ready')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    if (error) {
+                        console.error('Error checking Stripe status:', error);
+                        return;
+                    }
+                    
+                    console.log('Current Stripe status:', barber);
+                    
+                    if (barber?.stripe_account_id && (barber.stripe_account_ready || barber.stripe_account_status === 'active')) {
+                        console.log('Stripe account is ready!');
+                        
+                        // Update form data to reflect Stripe is connected
+                        setFormData(prev => ({ ...prev, stripeConnected: true }));
+                        setStripeStatus(barber.stripe_account_status);
+                        
+                        // Show success message
+                        Alert.alert(
+                            'Payment Setup Complete!',
+                            'Your Stripe account has been successfully connected. You can now receive payments.',
+                            [
+                                {
+                                    text: 'Continue',
+                                    onPress: () => {
+                                        // Navigate to settings or continue with onboarding
+                                        if (currentStep === steps.length - 1) {
+                                            // If we're on the last step, complete onboarding
+                                            setOnboardingComplete(true);
+                                            navigation.navigate('Settings' as any);
+                                        }
+                                    }
+                                }
+                            ]
+                        );
+                    }
+                } catch (error) {
+                    console.error('Error in checkStripeStatus:', error);
+                }
+            };
+            
+            checkStripeStatus();
+        }, [user, currentStep, navigation])
+    );
+
+    // Also check Stripe status when app comes back to foreground
+    useEffect(() => {
+        const handleAppStateChange = (nextAppState: string) => {
+            if (nextAppState === 'active' && user) {
+                // App came back to foreground, check Stripe status
+                const checkStripeStatus = async () => {
+                    try {
+                        console.log('App became active, checking Stripe status...');
+                        
+                        const { data: barber, error } = await supabase
+                            .from('barbers')
+                            .select('stripe_account_id, stripe_account_status, stripe_account_ready')
+                            .eq('user_id', user.id)
+                            .single();
+                        
+                        if (error) {
+                            console.error('Error checking Stripe status on app state change:', error);
+                            return;
+                        }
+                        
+                        if (barber?.stripe_account_id && (barber.stripe_account_ready || barber.stripe_account_status === 'active')) {
+                            console.log('Stripe account is ready (app state change)!');
+                            
+                            // Update form data to reflect Stripe is connected
+                            setFormData(prev => ({ ...prev, stripeConnected: true }));
+                            setStripeStatus(barber.stripe_account_status);
+                        }
+                    } catch (error) {
+                        console.error('Error in app state change Stripe check:', error);
+                    }
+                };
+                
+                checkStripeStatus();
+            }
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+        return () => subscription?.remove();
+    }, [user]);
 
     const validateStep = async (stepIndex: number): Promise<boolean> => {
         const errors: ValidationErrors = {};
