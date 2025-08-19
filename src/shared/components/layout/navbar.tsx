@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { useEffect, useCallback, useState } from "react"
 import { Button } from "@/shared/components/ui/button"
@@ -36,7 +36,7 @@ export function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const isMobile = useMobile();
-  const pathname = usePathname(); // Use Next.js hook for real-time pathname
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

@@ -1,12 +1,12 @@
 "use client";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/shared/components/layout/navbar";
 import { MobileNav } from "@/shared/components/layout/mobile-nav";
 import React from "react";
 
 export default function ClientNavWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname(); // Use Next.js hook for real-time pathname
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const [mounted, setMounted] = React.useState(false);
   const [isNavigating, setIsNavigating] = React.useState(false);
 
