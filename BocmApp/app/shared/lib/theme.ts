@@ -1,37 +1,71 @@
+import { ANIMATION_TIMING, SPRING_CONFIG } from '../constants/animations';
+
 export const theme = {
   colors: {
-    // Exact matches from web app CSS variables
-    background: '#272a2f',
-    foreground: '#fff',
+    // Core colors - 4 Main Colors Theme
+    background: '#272a2f', // Dark grey background
+    foreground: '#fff', // White text
     card: '#fff',
     cardForeground: '#272a2f',
     popover: '#fff',
     popoverForeground: '#272a2f',
-    primary: '#272a2f',
+    primary: '#272a2f', // Dark grey primary
     primaryForeground: '#fff',
-    secondary: '#b48a3c', // hsl(35 55% 51%) converted to hex
-    secondaryForeground: '#272a2f',
-    muted: '#f5f5f5',
-    mutedForeground: '#b0b0b0',
-    accent: '#8d7250',
+    secondary: '#c78e3f', // Saffron brown (vibrant) - for buttons
+    secondaryForeground: '#fff',
+    muted: '#f5f5f5', // Light grey muted
+    mutedForeground: '#b0b0b0', // Medium grey text
+    accent: '#8d7250', // Coffee brown accent
     accentForeground: '#fff',
-    destructive: '#ff4d4f',
+    destructive: '#ff4d4f', // Red for errors
     destructiveForeground: '#fff',
-    border: '#e5e7eb',
+    border: '#e5e7eb', // Light grey border
     input: '#e5e7eb',
-    ring: '#8d7250',
+    ring: '#c78e3f', // Saffron brown ring
     radius: '0.5rem', // 8px equivalent
-    // Additional colors from web app
-    saffron: '#c78e3f',
-    darkneutral: '#2d2a26',
-    darkgreen: '#FFFFFF',
+    
+    // 4 Main Brand Colors
+    grey: '#272a2f', // Dark grey
+    saffronBrown: '#c78e3f', // Vibrant saffron brown (for buttons)
+    coffeeBrown: '#8d7250', // Coffee brown
+    beige: '#f5f5f5', // Beige/light grey
+    
+    // Additional colors
+    darkGrey: '#2d2a26', // Darker grey
+    lightGrey: '#f5f5f5', // Light grey
+    
     // Social Media Colors
     bookingHighlight: '#ff3b30',
     socialInstagram: '#e1306c',
     socialTwitter: '#1da1f2',
     socialTiktok: '#000000',
     socialFacebook: '#1877f3',
+
+    // Enhanced colors for new design
+    success: '#10b981',
+    warning: '#f59e0b',
+    premium: '#ffd700',
+    glass: 'rgba(255, 255, 255, 0.1)',
+    glassBorder: 'rgba(255, 255, 255, 0.1)',
   },
+  
+  // Enhanced gradient definitions
+  gradients: {
+    primary: ['#c78e3f', '#8d7250'],
+    background: ['#272a2f', '#2d2a26'],
+    glass: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)'],
+    logo: ['#c78e3f', '#8d7250'],
+    text: ['#c78e3f', '#8d7250'],
+    button: ['#c78e3f', '#8d7250'],
+    glow: ['rgba(199, 142, 63, 0.3)', 'rgba(199, 142, 63, 0.1)'],
+  },
+
+  // Animation configuration
+  animations: {
+    timing: ANIMATION_TIMING,
+    spring: SPRING_CONFIG,
+  },
+
   spacing: {
     // Tailwind default spacing scale
     0: 0,
@@ -106,7 +140,7 @@ export const theme = {
     },
     fontFamily: {
       sans: ['SF Pro Display', 'Inter', 'sans-serif'],
-      bebas: ['Bebas Neue', 'cursive', 'sans-serif'],
+      bebas: ['BebasNeue-Regular', 'Bebas Neue', 'cursive', 'sans-serif'],
     },
   },
   shadows: {

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useToast } from '../components/ui/use-toast';
+import { useToast } from './useToast';
+import { notificationService } from '../lib/notifications';
 
 export interface VideoCut {
   id: string;
@@ -195,6 +196,18 @@ export function useCuts() {
         if (createError) throw createError;
 
         setCuts((prev) => [newCut, ...prev]);
+
+        // Send cut creation notification
+        try {
+          await notificationService.sendCutCreatedNotification(
+            newCut.id,
+            cutData.title
+          );
+          console.log('✅ Cut creation notification sent');
+        } catch (notificationError) {
+          console.error('❌ Error sending cut creation notification:', notificationError);
+          // Don't fail the cut creation if notification fails
+        }
 
         toast({
           title: 'Success',

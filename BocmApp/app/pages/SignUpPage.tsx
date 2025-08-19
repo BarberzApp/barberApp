@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,15 +8,22 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
+    StatusBar,
+    Animated,
+    TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import tw from 'twrnc';
-import { Button, Input, Card, CardContent, CardFooter, LoadingSpinner } from '../shared/components/ui';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { Scissors, User, ArrowLeft, Eye, EyeOff, Check } from 'lucide-react-native';
 import { RootStackParamList } from '../shared/types';
 import { supabase } from '../shared/lib/supabase';
 import { theme } from '../shared/lib/theme';
-import { Scissors, User } from 'lucide-react-native';
+import { AnimatedBackground } from '../shared/components/AnimatedBackground';
+import { AnimatedText } from '../shared/components/AnimatedText';
+import { ActionButton } from '../shared/components/ActionButton';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -33,6 +40,14 @@ export default function SignUpPage() {
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showContent, setShowContent] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setShowContent(true), 500);
+        return () => clearTimeout(timer);
+    }, []);
 
     const validateForm = (): boolean => {
         const newErrors: { [key: string]: string } = {};
@@ -78,6 +93,7 @@ export default function SignUpPage() {
         }
 
         setIsLoading(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         console.log('=== Registration Process Started ===');
         console.log('Registration Data:', { name: fullName, email, role: userType, businessName });
 
@@ -210,301 +226,557 @@ export default function SignUpPage() {
     };
 
     const handleSignIn = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         navigation.navigate('Login' as any);
     };
 
     const handleTermsPress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         navigation.navigate('Terms' as any);
     };
 
     const handleGoogleSignUp = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         try {
-            // Note: Google OAuth in React Native requires additional setup
             Alert.alert('Coming Soon', 'Google Sign-Up will be available soon!');
         } catch (error) {
             console.error('Google sign-up error:', error);
         }
     };
 
+    const handleBack = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        navigation.goBack();
+    };
+
     return (
-        <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.colors.primary }]}> 
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
+            
+            {/* Animated Background */}
+            <AnimatedBackground />
+            
+            {/* Back Button */}
+            <TouchableOpacity
+                onPress={handleBack}
+                style={{
+                    position: 'absolute',
+                    top: 60,
+                    left: 20,
+                    zIndex: 10,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backdropFilter: 'blur(10px)',
+                }}
+            >
+                <ArrowLeft size={24} color={theme.colors.foreground} />
+            </TouchableOpacity>
+
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={tw`flex-1`}
+                style={{ flex: 1 }}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 <ScrollView
-                    contentContainerStyle={tw`flex-grow justify-center`}
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {/* Main Content */}
-                    <View style={tw`px-6 py-8`}> 
-                        <View style={tw`w-full max-w-md mx-auto`}> 
-                            <View style={tw`items-center mb-6`}> 
-                                <Text style={[tw`text-2xl font-bold text-white text-center`]}>
-                                    Create your account
-                                </Text>
-                                <Text style={tw`mt-2 text-sm text-white/80 text-center`}>
+                    <View style={{ paddingHorizontal: 32, paddingVertical: 24 }}>
+                        
+                        {/* Header */}
+                        {showContent && (
+                            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                                <AnimatedText
+                                    text="CREATE ACCOUNT"
+                                    type="welcome"
+                                    delay={1000}
+                                />
+                                
+                                <Text style={{
+                                    fontSize: 18,
+                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    textAlign: 'center',
+                                    marginTop: 12,
+                                }}>
                                     Join BOCM and start your journey
                                 </Text>
                             </View>
-                            
-                            <Card style={[
-                                tw`w-full`,
-                                {
-                                    backgroundColor: 'rgba(45,35,66,0.9)',
-                                    borderColor: 'rgba(255,255,255,0.10)',
-                                    borderWidth: 1,
-                                    borderRadius: 24,
-                                    shadowColor: '#000',
-                                    shadowOpacity: 0.15,
-                                    shadowRadius: 8,
-                                    elevation: 5,
-                                }
-                            ]}> 
-                                <CardContent style={tw`px-6 py-6`}> 
+                        )}
+
+                        {/* Sign Up Form */}
+                        {showContent && (
+                            <View style={{
+                                width: '100%',
+                                borderRadius: 24,
+                                overflow: 'hidden',
+                            }}>
+                                <BlurView
+                                    intensity={20}
+                                    style={{
+                                        padding: 32,
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    }}
+                                >
                                     {/* Error Display */}
                                     {errors.general && (
-                                        <View style={[
-                                            tw`p-3 mb-4 rounded-lg`,
-                                            { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)', borderWidth: 1 }
-                                        ]}>
-                                            <Text style={{ color: '#ef4444', textAlign: 'center' }}>{errors.general}</Text>
+                                        <View style={{
+                                            padding: 16,
+                                            marginBottom: 24,
+                                            borderRadius: 12,
+                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                            borderWidth: 1,
+                                            borderColor: 'rgba(239, 68, 68, 0.2)',
+                                        }}>
+                                            <Text style={{ color: '#ef4444', textAlign: 'center', fontSize: 14 }}>
+                                                {errors.general}
+                                            </Text>
                                         </View>
                                     )}
 
-                                    <View style={[
-                                        tw`flex-row mb-6 rounded-xl overflow-hidden`,
-                                        { backgroundColor: 'rgba(255,255,255,0.10)' }
-                                    ]}> 
+                                    {/* User Type Selection */}
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        marginBottom: 24,
+                                        borderRadius: 20,
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                        padding: 4,
+                                    }}>
                                         <TouchableOpacity
-                                            style={[
-                                                tw`flex-1 py-3 flex-row items-center justify-center`,
-                                                userType === 'client' ? { backgroundColor: '#FFD180' } : {}
-                                            ]}
-                                            onPress={() => setUserType('client')}
+                                            style={{
+                                                flex: 1,
+                                                paddingVertical: 12,
+                                                paddingHorizontal: 16,
+                                                borderRadius: 12,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: userType === 'client' ? theme.colors.secondary : 'transparent',
+                                            }}
+                                            onPress={() => {
+                                                setUserType('client');
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            }}
                                             disabled={isLoading}
                                         >
-                                            <User size={18} color={userType === 'client' ? '#2d2342' : '#fff'} style={tw`mr-2`} />
-                                            <Text style={[
-                                                tw`font-semibold`,
-                                                { color: userType === 'client' ? '#2d2342' : '#fff' }
-                                            ]}>
+                                            <User size={18} color={userType === 'client' ? theme.colors.background : theme.colors.foreground} style={{ marginRight: 8 }} />
+                                            <Text style={{
+                                                fontWeight: '600',
+                                                color: userType === 'client' ? theme.colors.background : theme.colors.foreground,
+                                            }}>
                                                 Client
                                             </Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            style={[
-                                                tw`flex-1 py-3 flex-row items-center justify-center`,
-                                                userType === 'barber' ? { backgroundColor: '#FFD180' } : {}
-                                            ]}
-                                            onPress={() => setUserType('barber')}
+                                            style={{
+                                                flex: 1,
+                                                paddingVertical: 12,
+                                                paddingHorizontal: 16,
+                                                borderRadius: 12,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: userType === 'barber' ? theme.colors.secondary : 'transparent',
+                                            }}
+                                            onPress={() => {
+                                                setUserType('barber');
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            }}
                                             disabled={isLoading}
                                         >
-                                            <Scissors size={18} color={userType === 'barber' ? '#2d2342' : '#fff'} style={tw`mr-2`} />
-                                            <Text style={[
-                                                tw`font-semibold`,
-                                                { color: userType === 'barber' ? '#2d2342' : '#fff' }
-                                            ]}>
+                                            <Scissors size={18} color={userType === 'barber' ? theme.colors.background : theme.colors.foreground} style={{ marginRight: 8 }} />
+                                            <Text style={{
+                                                fontWeight: '600',
+                                                color: userType === 'barber' ? theme.colors.background : theme.colors.foreground,
+                                            }}>
                                                 Barber
                                             </Text>
                                         </TouchableOpacity>
                                     </View>
-                                    
-                                    <View style={tw`gap-4`}>
-                                        <View>
-                                            <Input
-                                                label="Full Name"
+
+                                    {/* Full Name Input */}
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: theme.colors.foreground,
+                                            marginBottom: 8,
+                                        }}>
+                                            Full Name
+                                        </Text>
+                                        <View style={{
+                                            height: 56,
+                                            borderRadius: 20,
+                                            borderWidth: 1,
+                                            borderColor: errors.fullName ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            paddingHorizontal: 16,
+                                            justifyContent: 'center',
+                                        }}>
+                                            <TextInput
                                                 placeholder="John Doe"
+                                                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                                                 value={fullName}
                                                 onChangeText={(text) => {
                                                     setFullName(text);
                                                     setErrors({ ...errors, fullName: '' });
                                                 }}
+                                                style={{
+                                                    color: theme.colors.foreground,
+                                                    fontSize: 16,
+                                                }}
                                                 autoCapitalize="words"
                                                 autoCorrect={false}
                                                 editable={!isLoading}
-                                                inputStyle={[tw`h-12`, errors.fullName ? { borderColor: '#ef4444' } : {}]}
                                             />
-                                            {errors.fullName && (
-                                                <Text style={tw`text-red-400 text-xs mt-1`}>{errors.fullName}</Text>
-                                            )}
                                         </View>
-                                        
-                                        {userType === 'barber' && (
-                                            <View>
-                                                <Input
-                                                    label="Business Name"
+                                        {errors.fullName && (
+                                            <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
+                                                {errors.fullName}
+                                            </Text>
+                                        )}
+                                    </View>
+
+                                    {/* Business Name Input (for barbers) */}
+                                    {userType === 'barber' && (
+                                        <View style={{ marginBottom: 20 }}>
+                                            <Text style={{
+                                                fontSize: 14,
+                                                fontWeight: '600',
+                                                color: theme.colors.foreground,
+                                                marginBottom: 8,
+                                            }}>
+                                                Business Name
+                                            </Text>
+                                            <View style={{
+                                                height: 56,
+                                                borderRadius: 20,
+                                                borderWidth: 1,
+                                                borderColor: errors.businessName ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                paddingHorizontal: 16,
+                                                justifyContent: 'center',
+                                            }}>
+                                                <TextInput
                                                     placeholder="Your Barbershop Name"
+                                                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
                                                     value={businessName}
                                                     onChangeText={(text) => {
                                                         setBusinessName(text);
                                                         setErrors({ ...errors, businessName: '' });
                                                     }}
+                                                    style={{
+                                                        color: theme.colors.foreground,
+                                                        fontSize: 16,
+                                                    }}
                                                     autoCapitalize="words"
                                                     autoCorrect={false}
                                                     editable={!isLoading}
-                                                    inputStyle={[tw`h-12`, errors.businessName ? { borderColor: '#ef4444' } : {}]}
                                                 />
-                                                {errors.businessName && (
-                                                    <Text style={tw`text-red-400 text-xs mt-1`}>{errors.businessName}</Text>
-                                                )}
                                             </View>
-                                        )}
-                                        
-                                        <View>
-                                            <Input
-                                                label="Email"
+                                            {errors.businessName && (
+                                                <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
+                                                    {errors.businessName}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    )}
+
+                                    {/* Email Input */}
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: theme.colors.foreground,
+                                            marginBottom: 8,
+                                        }}>
+                                            Email
+                                        </Text>
+                                        <View style={{
+                                            height: 56,
+                                            borderRadius: 20,
+                                            borderWidth: 1,
+                                            borderColor: errors.email ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            paddingHorizontal: 16,
+                                            justifyContent: 'center',
+                                        }}>
+                                            <TextInput
                                                 placeholder="you@example.com"
+                                                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                                                 value={email}
                                                 onChangeText={(text) => {
                                                     setEmail(text);
                                                     setErrors({ ...errors, email: '' });
                                                 }}
+                                                style={{
+                                                    color: theme.colors.foreground,
+                                                    fontSize: 16,
+                                                }}
                                                 keyboardType="email-address"
                                                 autoCapitalize="none"
                                                 autoCorrect={false}
                                                 editable={!isLoading}
-                                                inputStyle={[tw`h-12`, errors.email ? { borderColor: '#ef4444' } : {}]}
                                             />
-                                            {errors.email && (
-                                                <Text style={tw`text-red-400 text-xs mt-1`}>{errors.email}</Text>
-                                            )}
                                         </View>
-                                        
-                                        <View style={tw`mb-4`}>
-                                            <Input
-                                                label="Password"
+                                        {errors.email && (
+                                            <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
+                                                {errors.email}
+                                            </Text>
+                                        )}
+                                    </View>
+
+                                    {/* Password Input */}
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: theme.colors.foreground,
+                                            marginBottom: 8,
+                                        }}>
+                                            Password
+                                        </Text>
+                                        <View style={{
+                                            height: 56,
+                                            borderRadius: 20,
+                                            borderWidth: 1,
+                                            borderColor: errors.password ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            paddingHorizontal: 16,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                        }}>
+                                            <TextInput
                                                 placeholder="Enter your password"
+                                                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                                                 value={password}
                                                 onChangeText={(text) => {
                                                     setPassword(text);
                                                     setErrors({ ...errors, password: '' });
                                                 }}
-                                                secureTextEntry
+                                                secureTextEntry={!showPassword}
+                                                style={{
+                                                    color: theme.colors.foreground,
+                                                    fontSize: 16,
+                                                    flex: 1,
+                                                }}
                                                 autoCapitalize="none"
                                                 autoCorrect={false}
                                                 editable={!isLoading}
-                                                inputStyle={[tw`h-12`, errors.password ? { borderColor: '#ef4444' } : {}]}
-                                                textContentType="newPassword"
-                                                autoComplete="new-password"
-                                                passwordRules="minlength: 6;"
                                             />
-                                            {errors.password && (
-                                                <Text style={tw`text-red-400 text-xs mt-1`}>{errors.password}</Text>
-                                            )}
+                                            <TouchableOpacity
+                                                onPress={() => setShowPassword(!showPassword)}
+                                                style={{ padding: 8 }}
+                                            >
+                                                {showPassword ? (
+                                                    <EyeOff size={20} color="rgba(255, 255, 255, 0.6)" />
+                                                ) : (
+                                                    <Eye size={20} color="rgba(255, 255, 255, 0.6)" />
+                                                )}
+                                            </TouchableOpacity>
                                         </View>
-                                        
-                                        <View style={tw`mb-4`}>
-                                            <Input
-                                                label="Confirm Password"
+                                        {errors.password && (
+                                            <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
+                                                {errors.password}
+                                            </Text>
+                                        )}
+                                    </View>
+
+                                    {/* Confirm Password Input */}
+                                    <View style={{ marginBottom: 24 }}>
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: theme.colors.foreground,
+                                            marginBottom: 8,
+                                        }}>
+                                            Confirm Password
+                                        </Text>
+                                        <View style={{
+                                            height: 56,
+                                            borderRadius: 20,
+                                            borderWidth: 1,
+                                            borderColor: errors.confirmPassword ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            paddingHorizontal: 16,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                        }}>
+                                            <TextInput
                                                 placeholder="Re-enter your password"
+                                                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                                                 value={confirmPassword}
                                                 onChangeText={(text) => {
                                                     setConfirmPassword(text);
                                                     setErrors({ ...errors, confirmPassword: '' });
                                                 }}
-                                                secureTextEntry
-                                                autoCorrect={false}
+                                                secureTextEntry={!showConfirmPassword}
+                                                style={{
+                                                    color: theme.colors.foreground,
+                                                    fontSize: 16,
+                                                    flex: 1,
+                                                }}
                                                 autoCapitalize="none"
+                                                autoCorrect={false}
                                                 editable={!isLoading}
-                                                inputStyle={[tw`h-12`, errors.confirmPassword ? { borderColor: '#ef4444' } : {}]}
-                                                textContentType="oneTimeCode"
-                                                autoComplete="new-password"
-                                                passwordRules="minlength: 6;"
                                             />
-                                            {errors.confirmPassword && (
-                                                <Text style={tw`text-red-400 text-xs mt-1`}>{errors.confirmPassword}</Text>
-                                            )}
+                                            <TouchableOpacity
+                                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                style={{ padding: 8 }}
+                                            >
+                                                {showConfirmPassword ? (
+                                                    <EyeOff size={20} color="rgba(255, 255, 255, 0.6)" />
+                                                ) : (
+                                                    <Eye size={20} color="rgba(255, 255, 255, 0.6)" />
+                                                )}
+                                            </TouchableOpacity>
                                         </View>
+                                        {errors.confirmPassword && (
+                                            <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
+                                                {errors.confirmPassword}
+                                            </Text>
+                                        )}
                                     </View>
-                                    
+
+                                    {/* Terms Agreement */}
                                     <TouchableOpacity
-                                        style={tw`flex-row items-center mt-4 mb-2`}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            marginBottom: 16,
+                                        }}
                                         onPress={() => {
                                             setAgreeToTerms(!agreeToTerms);
                                             setErrors({ ...errors, terms: '' });
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                         }}
                                         disabled={isLoading}
                                     >
-                                        <View style={[
-                                            tw`w-5 h-5 rounded border mr-3 items-center justify-center`,
-                                            { borderColor: errors.terms ? '#ef4444' : 'rgba(255,255,255,0.40)' },
-                                            agreeToTerms ? { backgroundColor: theme.colors.saffron } : { backgroundColor: 'transparent' }
-                                        ]}> 
+                                        <View style={{
+                                            width: 20,
+                                            height: 20,
+                                            borderRadius: 4,
+                                            borderWidth: 2,
+                                            borderColor: errors.terms ? '#ef4444' : 'rgba(255, 255, 255, 0.4)',
+                                            backgroundColor: agreeToTerms ? theme.colors.secondary : 'transparent',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            marginRight: 12,
+                                        }}>
                                             {agreeToTerms && (
-                                                <View style={tw`w-2.5 h-2.5 rounded-sm bg-[#2d2342]`} />
+                                                <Check size={12} color={theme.colors.background} />
                                             )}
                                         </View>
-                                        <Text style={tw`text-sm text-white flex-1`}>
+                                        <Text style={{
+                                            fontSize: 14,
+                                            color: theme.colors.foreground,
+                                            flex: 1,
+                                        }}>
                                             I agree to the{' '}
                                             <Text
                                                 onPress={handleTermsPress}
-                                                style={tw`text-[#FFD180] underline font-bold`}
+                                                style={{
+                                                    color: theme.colors.secondary,
+                                                    textDecorationLine: 'underline',
+                                                    fontWeight: '600',
+                                                }}
                                             >
                                                 terms and conditions
                                             </Text>
                                         </Text>
                                     </TouchableOpacity>
                                     {errors.terms && (
-                                        <Text style={tw`text-red-400 text-xs mb-2`}>{errors.terms}</Text>
-                                    )}
-                                    
-                                    <TouchableOpacity
-                                        style={tw`mb-6`}
-                                        onPress={handleTermsPress}
-                                    >
-                                        <Text style={tw`text-[#FFD180] underline text-center text-sm`}>
-                                            View Terms & Conditions
+                                        <Text style={{ color: '#ef4444', fontSize: 12, marginBottom: 16 }}>
+                                            {errors.terms}
                                         </Text>
-                                    </TouchableOpacity>
-                                    
-                                    <Button
+                                    )}
+
+                                    {/* Create Account Button */}
+                                    <ActionButton
+                                        variant="primary"
                                         onPress={handleSignUp}
-                                        size="lg"
-                                        style={[
-                                            tw`w-full`,
-                                            { backgroundColor: '#FFD180', height: 48 }
-                                        ]}
-                                        textStyle={{ color: '#262b2e', fontSize: 18 }}
                                         disabled={isLoading}
                                     >
-                                        {isLoading ? <LoadingSpinner color="#262b2e" /> : 'Create account'}
-                                    </Button>
+                                        {isLoading ? 'Creating account...' : 'Create account'}
+                                    </ActionButton>
 
                                     {/* Divider */}
-                                    <View style={tw`flex-row items-center my-4`}>
-                                        <View style={[tw`flex-1 h-px`, { backgroundColor: 'rgba(255,255,255,0.2)' }]} />
-                                        <Text style={tw`mx-4 text-white/60`}>or</Text>
-                                        <View style={[tw`flex-1 h-px`, { backgroundColor: 'rgba(255,255,255,0.2)' }]} />
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        marginVertical: 24,
+                                    }}>
+                                        <View style={{
+                                            flex: 1,
+                                            height: 1,
+                                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                        }} />
+                                        <Text style={{
+                                            marginHorizontal: 16,
+                                            color: 'rgba(255, 255, 255, 0.6)',
+                                            fontSize: 14,
+                                        }}>
+                                            or
+                                        </Text>
+                                        <View style={{
+                                            flex: 1,
+                                            height: 1,
+                                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                        }} />
                                     </View>
 
                                     {/* Google Sign Up */}
                                     <TouchableOpacity
                                         onPress={handleGoogleSignUp}
                                         disabled={isLoading}
-                                        style={[
-                                            tw`w-full flex-row items-center justify-center py-3 rounded-lg`,
-                                            { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', borderWidth: 1 }
-                                        ]}
+                                        style={{
+                                            height: 56,
+                                            borderRadius: 20,
+                                            borderWidth: 1,
+                                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                        }}
                                     >
-                                        <Text style={tw`text-white font-medium`}>Sign up with Google</Text>
-                                    </TouchableOpacity>
-                                </CardContent>
-                                
-                                <CardFooter style={tw`pb-6`}>
-                                    <View style={tw`w-full items-center`}>
-                                        <Text style={tw`text-sm text-white/80`}>
-                                            Already have an account?{' '}
-                                            <Text onPress={handleSignIn} style={tw`font-semibold text-[#FFD180]`}>
-                                                Sign in
-                                            </Text>
+                                        <Text style={{
+                                            color: theme.colors.foreground,
+                                            fontSize: 16,
+                                            fontWeight: '600',
+                                        }}>
+                                            Sign up with Google
                                         </Text>
-                                    </View>
-                                </CardFooter>
-                            </Card>
-                        </View>
+                                    </TouchableOpacity>
+                                </BlurView>
+                            </View>
+                        )}
+                            {/* Sign In Link */}
+                            <View style={{ alignItems: 'center', marginTop: 32 }}>
+                                <Text style={{
+                                    fontSize: 14,
+                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    textAlign: 'center',
+                                }}>
+                                    Already have an account?{' '}
+                                    <Text
+                                        onPress={handleSignIn}
+                                        style={{
+                                            color: theme.colors.secondary,
+                                            textDecorationLine: 'underline',
+                                            fontWeight: '600',
+                                        }}
+                                    >
+                                        Sign in
+                                    </Text>
+                                </Text>
+                            </View>
+                        )
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>

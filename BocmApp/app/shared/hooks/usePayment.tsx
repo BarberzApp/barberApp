@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { useToast } from '../components/ui/use-toast';
+import { useToast } from './useToast';
 
-interface PaymentIntent {
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://barber-app-five.vercel.app";
+
+export interface PaymentIntent {
   id: string;
   client_secret: string;
 }
@@ -19,7 +21,7 @@ export function usePayment() {
     try {
       // For React Native, we'll need to use a different approach
       // This could be through a mobile-specific payment service or API
-      const response = await fetch('/api/payments/create-intent', {
+      const response = await fetch(`${API_BASE_URL}/api/payments/create-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,7 +61,7 @@ export function usePayment() {
   ): Promise<void> => {
     setLoading(true);
     try {
-      const response = await fetch('/api/payments/confirm', {
+      const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

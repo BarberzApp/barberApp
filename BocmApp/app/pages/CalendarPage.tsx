@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -25,7 +26,9 @@ import {
   Plus,
   RefreshCw,
   Filter,
-  Search
+  Search,
+  Calendar,
+  Clock as ClockIcon
 } from 'lucide-react-native';
 import tw from 'twrnc';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, startOfWeek, endOfWeek, isSameWeek } from 'date-fns';
@@ -67,11 +70,13 @@ export default function CalendarPage() {
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [showManualAppointmentForm, setShowManualAppointmentForm] = useState(false);
   const [isMarkingMissed, setIsMarkingMissed] = useState(false);
+  const [isMarkingCompleted, setIsMarkingCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'month'>('month');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [userRole, setUserRole] = useState<'client' | 'barber' | null>(null);
+  const [barberViewMode, setBarberViewMode] = useState<'appointments' | 'bookings'>('appointments');
   
   // Manual appointment form state
   const [manualFormData, setManualFormData] = useState({
@@ -101,8 +106,10 @@ export default function CalendarPage() {
     
     // Fetch user role first, then bookings
     const initializeData = async () => {
-      await fetchUserRole();
-      await fetchBookings();
+      const role = await fetchUserRole();
+      if (role) {
+        await fetchBookings(role);
+      }
     };
     
     initializeData();
@@ -143,8 +150,19 @@ export default function CalendarPage() {
     }
   }, [showManualAppointmentForm]);
 
+  // Refresh calendar data when page comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user && userRole) {
+        console.log('🔄 [CALENDAR] Page focused - refreshing data...');
+        fetchBookings(userRole);
+      }
+    }, [user, userRole])
+  );
+
   const fetchUserRole = async () => {
     try {
+      console.log('🔍 [CALENDAR] Fetching user role for user ID:', user?.id);
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
@@ -153,48 +171,82 @@ export default function CalendarPage() {
       
       if (error) {
         console.error('Error fetching user role:', error);
-        return;
+        return null;
       }
       
+      console.log('✅ [CALENDAR] User role detected:', profile.role);
       setUserRole(profile.role as 'client' | 'barber');
+      return profile.role as 'client' | 'barber';
     } catch (error) {
       console.error('Error fetching user role:', error);
+      return null;
     }
   };
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (role?: 'client' | 'barber') => {
     try {
       setLoading(true);
-      console.log('Fetching bookings for user:', user?.id);
+      const userRoleToUse = role || userRole;
+      console.log('Fetching bookings for user:', user?.id, 'with role:', userRoleToUse);
       
-      if (userRole === 'barber') {
-      // Fetch the barber's ID from the barbers table
-      const { data: barberData, error: barberError } = await supabase
-        .from('barbers')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
-      
-      if (barberError || !barberData) {
-        console.log('No barber found for user');
-        return;
-      }
+      if (userRoleToUse === 'barber') {
+        console.log('🔍 [CALENDAR] Fetching barber data for user ID:', user?.id);
+        // Fetch the barber's ID from the barbers table
+        const { data: barberData, error: barberError } = await supabase
+          .from('barbers')
+          .select('id')
+          .eq('user_id', user?.id)
+          .single();
+        
+        console.log('📊 [CALENDAR] Barber data result:', { barberData, barberError });
+        
+        if (barberError || !barberData) {
+          console.log('❌ [CALENDAR] No barber found for user');
+          return;
+        }
 
-      // Fetch bookings for this barber
-      const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('barber_id', barberData.id)
-        .order('date', { ascending: true });
+        console.log('✅ [CALENDAR] Barber ID found:', barberData.id);
+        
+        let bookings: any[] = [];
+        
+        if (barberViewMode === 'appointments') {
+          // Fetch appointments where barber is providing service (clients coming to barber)
+          console.log('📅 [CALENDAR] Fetching barber appointments (clients coming in)');
+          const { data: appointmentsData, error: appointmentsError } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('barber_id', barberData.id)
+            .order('date', { ascending: true });
 
-      if (error || !bookings) {
-          console.error('Error fetching barber bookings:', error);
-        return;
-      }
+          if (appointmentsError) {
+            console.error('❌ [CALENDAR] Error fetching barber appointments:', appointmentsError);
+            return;
+          }
+          
+          bookings = appointmentsData || [];
+          console.log('✅ [CALENDAR] Found', bookings.length, 'appointments for barber');
+        } else {
+          // Fetch bookings where barber is the client (barber going somewhere)
+          console.log('📅 [CALENDAR] Fetching barber bookings (barber going somewhere)');
+          const { data: bookingsData, error: bookingsError } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('client_id', user?.id)
+            .order('date', { ascending: true });
+
+          if (bookingsError) {
+            console.error('❌ [CALENDAR] Error fetching barber bookings:', bookingsError);
+            return;
+          }
+          
+          bookings = bookingsData || [];
+          console.log('✅ [CALENDAR] Found', bookings.length, 'bookings for barber as client');
+        }
 
         // Process barber bookings
-        await processBookings(bookings);
-      } else if (userRole === 'client') {
+        await processBookings(bookings, userRoleToUse);
+      } else if (userRoleToUse === 'client') {
+        console.log('🔍 [CALENDAR] Fetching client bookings for user ID:', user?.id);
         // Fetch bookings for this client
         const { data: bookings, error } = await supabase
           .from('bookings')
@@ -202,13 +254,16 @@ export default function CalendarPage() {
           .eq('client_id', user?.id)
           .order('date', { ascending: true });
 
+        console.log('📊 [CALENDAR] Client bookings query result:', { bookings, error });
+
         if (error || !bookings) {
-          console.error('Error fetching client bookings:', error);
+          console.error('❌ [CALENDAR] Error fetching client bookings:', error);
           return;
         }
 
+        console.log('✅ [CALENDAR] Found', bookings.length, 'bookings for client');
         // Process client bookings
-        await processBookings(bookings);
+        await processBookings(bookings, userRoleToUse);
       }
     } catch (error) {
       console.error('Error in fetchBookings:', error);
@@ -217,8 +272,9 @@ export default function CalendarPage() {
     }
   };
 
-  const processBookings = async (bookings: any[]) => {
+  const processBookings = async (bookings: any[], role?: 'client' | 'barber') => {
     try {
+      const userRoleToUse = role || userRole;
       // Process each booking to create calendar events
       const events = await Promise.all(bookings.map(async (booking) => {
         // Fetch service details
@@ -239,9 +295,9 @@ export default function CalendarPage() {
           client = clientData;
         }
 
-        // Fetch barber details for client view
+        // Fetch barber details for client view or barber bookings view
         let barber = null;
-        if (userRole === 'client') {
+        if (userRoleToUse === 'client' || (userRoleToUse === 'barber' && barberViewMode === 'bookings')) {
           const { data: barberData } = await supabase
             .from('barbers')
             .select('user_id')
@@ -263,18 +319,21 @@ export default function CalendarPage() {
         let addonNames: string[] = [];
         const { data: bookingAddons } = await supabase
           .from('booking_addons')
-          .select('addon_id')
+          .select('addon_id, price')
           .eq('booking_id', booking.id);
 
         if (bookingAddons && bookingAddons.length > 0) {
+          // Use the stored addon prices from booking_addons table
+          addonTotal = bookingAddons.reduce((sum, ba) => sum + (ba.price || 0), 0);
+          
+          // Get addon names from service_addons table
           const addonIds = bookingAddons.map((ba) => ba.addon_id);
           const { data: addons } = await supabase
             .from('service_addons')
-            .select('id, name, price')
+            .select('id, name')
             .in('id', addonIds);
 
           if (addons) {
-            addonTotal = addons.reduce((sum, addon) => sum + (addon.price || 0), 0);
             addonNames = addons.map(a => a.name);
           }
         }
@@ -282,12 +341,16 @@ export default function CalendarPage() {
         const startDate = new Date(booking.date);
         const endDate = new Date(startDate.getTime() + (service?.duration || 60) * 60000);
 
-        // Create different titles based on user role
+        // Create different titles based on user role and view mode
         let title = '';
-        if (userRole === 'client') {
+        if (userRoleToUse === 'client') {
           title = `${service?.name || 'Service'} with ${barber?.name || 'Barber'}`;
-        } else {
-          title = `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`;
+        } else if (userRoleToUse === 'barber') {
+          if (barberViewMode === 'appointments') {
+            title = `${service?.name || 'Service'} - ${client?.name || booking.guest_name || 'Guest'}`;
+          } else {
+            title = `${service?.name || 'Service'} with ${barber?.name || 'Barber'}`;
+          }
         }
 
         return {
@@ -303,8 +366,8 @@ export default function CalendarPage() {
             serviceName: service?.name || '',
             clientName: client?.name || booking.guest_name || 'Guest',
             barberName: barber?.name || 'Barber',
-            price: (service?.price || booking.price || 0) + addonTotal,
-            basePrice: service?.price || booking.price || 0,
+            price: (booking.price || 0), // Total price from database (already includes add-ons)
+            basePrice: (booking.price || 0) - addonTotal, // Calculate base service price
             addonTotal,
             addonNames,
             isGuest: !client,
@@ -321,10 +384,16 @@ export default function CalendarPage() {
     }
   };
 
+  const handleBarberViewToggle = async (mode: 'appointments' | 'bookings') => {
+    setBarberViewMode(mode);
+    Vibration.vibrate(30); // Light haptic feedback
+    await fetchBookings(userRole || undefined);
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     Vibration.vibrate(50); // Light haptic feedback
-    await fetchBookings();
+    await fetchBookings(userRole || undefined);
     setRefreshing(false);
   };
 
@@ -417,6 +486,31 @@ export default function CalendarPage() {
       Alert.alert('Error', 'Failed to mark appointment as missed');
     } finally {
       setIsMarkingMissed(false);
+    }
+  };
+
+  const handleMarkAsCompleted = async () => {
+    if (!selectedEvent) return;
+
+    setIsMarkingCompleted(true);
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'completed' })
+        .eq('id', selectedEvent.id);
+
+      if (error) throw error;
+
+      Vibration.vibrate(100); // Success haptic feedback
+      Alert.alert('Success', 'Appointment marked as completed');
+      setShowEventDialog(false);
+      fetchBookings(); // Refresh events
+    } catch (error) {
+      console.error('Error marking as completed:', error);
+      Vibration.vibrate([100, 100]); // Error haptic feedback
+      Alert.alert('Error', 'Failed to mark appointment as completed');
+    } finally {
+      setIsMarkingCompleted(false);
     }
   };
 
@@ -629,6 +723,83 @@ export default function CalendarPage() {
           <Text style={[tw`text-2xl font-bold mb-4`, { color: theme.colors.foreground }]}>
             Calendar
           </Text>
+          
+          {/* Barber View Toggle */}
+          {userRole === 'barber' && (
+            <View style={[tw`flex-row mb-4 p-1 rounded-xl`, { 
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.1)'
+            }]}>
+              <TouchableOpacity
+                onPress={() => handleBarberViewToggle('appointments')}
+                style={[
+                  tw`flex-1 py-3 px-4 rounded-lg items-center`,
+                  barberViewMode === 'appointments' 
+                    ? { 
+                        backgroundColor: theme.colors.secondary,
+                        shadowColor: theme.colors.secondary,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 4
+                      }
+                    : { backgroundColor: 'transparent' }
+                ]}
+              >
+                <Text style={[
+                  tw`font-semibold text-sm`,
+                  barberViewMode === 'appointments' 
+                    ? { color: 'white' }
+                    : { color: theme.colors.mutedForeground }
+                ]}>
+                  My Appointments
+                </Text>
+                <Text style={[
+                  tw`text-xs mt-1`,
+                  barberViewMode === 'appointments' 
+                    ? { color: 'rgba(255,255,255,0.8)' }
+                    : { color: theme.colors.mutedForeground }
+                ]}>
+                  Clients Coming In
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => handleBarberViewToggle('bookings')}
+                style={[
+                  tw`flex-1 py-3 px-4 rounded-lg items-center`,
+                  barberViewMode === 'bookings' 
+                    ? { 
+                        backgroundColor: theme.colors.secondary,
+                        shadowColor: theme.colors.secondary,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 4
+                      }
+                    : { backgroundColor: 'transparent' }
+                ]}
+              >
+                <Text style={[
+                  tw`font-semibold text-sm`,
+                  barberViewMode === 'bookings' 
+                    ? { color: 'white' }
+                    : { color: theme.colors.mutedForeground }
+                ]}>
+                  My Bookings
+                </Text>
+                <Text style={[
+                  tw`text-xs mt-1`,
+                  barberViewMode === 'bookings' 
+                    ? { color: 'rgba(255,255,255,0.8)' }
+                    : { color: theme.colors.mutedForeground }
+                ]}>
+                  Going Somewhere
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
           {/* Single Main Calendar Container - Enhanced with glow */}
@@ -639,10 +810,10 @@ export default function CalendarPage() {
                 backgroundColor: 'rgba(0, 0, 0, 0.3)',
                 borderWidth: 1,
                 borderColor: 'rgba(255, 255, 255, 0.1)',
-                shadowColor: theme.colors.secondary,
-                shadowOffset: { width: 0, height: 15 },
-                shadowOpacity: 0.2,
-                shadowRadius: 30,
+                              shadowColor: theme.colors.secondary,
+              shadowOffset: { width: 0, height: 15 },
+              shadowOpacity: 0.2,
+              shadowRadius: 30,
                 elevation: 15
               }
             ]}
@@ -809,8 +980,8 @@ export default function CalendarPage() {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Manual Appointment Button - Only for Barbers */}
-            {userRole === 'barber' && (
+            {/* Manual Appointment Button - Only for Barbers in Appointments Mode */}
+            {userRole === 'barber' && barberViewMode === 'appointments' && (
               <View style={[tw`mt-4 p-4 rounded-2xl`, {
                 backgroundColor: `${theme.colors.secondary}10`,
                 borderWidth: 1,
@@ -930,7 +1101,7 @@ export default function CalendarPage() {
                               <Text style={[tw`text-xs font-semibold`, { 
                                 color: isMissed ? '#ef4444' : isPast ? '#22c55e' : theme.colors.secondary 
                               }]}>
-                                ${event.extendedProps.basePrice}
+                                ${event.extendedProps.price}
                       </Text>
                             </View>
                     </View>
@@ -955,7 +1126,7 @@ export default function CalendarPage() {
       >
         <View style={tw`flex-1 bg-black/50 justify-end`}>
           <View style={[tw`rounded-t-3xl p-6`, { 
-            backgroundColor: 'rgba(45,35,66,0.95)',
+            backgroundColor: theme.colors.background,
             borderTopWidth: 1,
             borderColor: 'rgba(255,255,255,0.1)'
           }]}>
@@ -970,87 +1141,169 @@ export default function CalendarPage() {
 
             {selectedEvent && (
               <View style={tw`space-y-4`}>
-                <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Service</Text>
-                  <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                    {selectedEvent.extendedProps.serviceName}
+                {/* Header Section */}
+                <View style={tw`items-center mb-4`}>
+                  <Text style={[tw`text-xl font-bold mb-1`, { color: theme.colors.foreground }]}>
+                    Booking Details
                   </Text>
-                </View>
-
-                <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                    {userRole === 'client' ? 'Barber' : 'Client'}
-                  </Text>
-                  <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                  <Text style={[tw`text-lg font-semibold mb-1`, { color: theme.colors.foreground }]}>
                     {userRole === 'client' 
                       ? selectedEvent.extendedProps.barberName 
                       : selectedEvent.extendedProps.clientName
                     }
                   </Text>
+                  <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+                    Booking #{selectedEvent.id.slice(0, 8).toUpperCase()}
+                  </Text>
                 </View>
 
-                <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Status</Text>
+                {/* Service Section */}
+                <View style={tw`mb-4`}>
+                  <Text style={[tw`text-sm font-semibold mb-2`, { color: theme.colors.foreground }]}>
+                    Service
+                  </Text>
+                  <Text style={[tw`text-base`, { color: theme.colors.foreground }]}>
+                    {selectedEvent.extendedProps.serviceName}
+                  </Text>
+                </View>
+
+                {/* Date & Time Section */}
+                <View style={tw`mb-4`}>
+                                      <View style={tw`flex-row items-center justify-between mb-2`}>
+                      <View style={tw`flex-row items-center`}>
+                        <Calendar size={16} color={theme.colors.mutedForeground} style={tw`mr-2`} />
+                        <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Date</Text>
+                      </View>
+                    <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                      {formatDate(new Date(selectedEvent.start))}
+                    </Text>
+                  </View>
+                  
+                                      <View style={tw`flex-row items-center justify-between`}>
+                      <View style={tw`flex-row items-center`}>
+                        <Clock size={16} color={theme.colors.mutedForeground} style={tw`mr-2`} />
+                        <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Time</Text>
+                      </View>
+                    <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                      {formatTime(new Date(selectedEvent.start))}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Status Section */}
+                <View style={tw`mb-4`}>
+                  <Text style={[tw`text-sm font-semibold mb-2`, { color: theme.colors.foreground }]}>
+                    Status
+                  </Text>
                   <View style={[
-                    tw`px-2 py-1 rounded-full`,
+                    tw`self-end px-3 py-1 rounded-full`,
                     selectedEvent.extendedProps.status === 'completed' 
-                      ? { backgroundColor: '#22c55e' }
-                      : { backgroundColor: theme.colors.secondary }
+                      ? { backgroundColor: '#10b981', shadowColor: '#10b981', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }
+                      : selectedEvent.extendedProps.status === 'cancelled'
+                      ? { backgroundColor: '#ef4444', shadowColor: '#ef4444', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }
+                      : selectedEvent.extendedProps.status === 'missed'
+                      ? { backgroundColor: '#f59e0b', shadowColor: '#f59e0b', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }
+                      : { backgroundColor: theme.colors.secondary, shadowColor: theme.colors.secondary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }
                   ]}>
-                    <Text style={[tw`text-xs font-semibold`, { color: 'white' }]}>
+                    <Text style={[tw`text-xs font-semibold capitalize`, { color: 'white' }]}>
                       {selectedEvent.extendedProps.status}
                     </Text>
                   </View>
                 </View>
 
-                <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Date</Text>
-                  <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                    {formatDate(new Date(selectedEvent.start))}
+                {/* Pricing Section */}
+                <View style={tw`mb-4`}>
+                  <Text style={[tw`text-sm font-semibold mb-3`, { color: theme.colors.foreground }]}>
+                    Pricing
                   </Text>
-                </View>
-
-                <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Time</Text>
-                  <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                    {formatTime(new Date(selectedEvent.start))} - {formatTime(new Date(selectedEvent.end))}
-                  </Text>
-                </View>
-
-                <View style={[tw`h-px`, { backgroundColor: 'rgba(255,255,255,0.1)' }]} />
-
-                <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Base Price</Text>
-                  <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
-                    ${selectedEvent.extendedProps.basePrice.toFixed(2)}
-                  </Text>
-                </View>
-
-                {selectedEvent.extendedProps.addonNames.length > 0 && (
-                  <View>
-                    <Text style={[tw`text-sm mb-2`, { color: theme.colors.mutedForeground }]}>Add-ons</Text>
-                    {selectedEvent.extendedProps.addonNames.map((addon, idx) => (
-                      <Text key={idx} style={[tw`text-sm ml-4`, { color: theme.colors.foreground }]}>
-                        • {addon}
+                  
+                  <View style={tw`space-y-2`}>
+                    <View style={tw`flex-row items-center justify-between`}>
+                      <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Service</Text>
+                      <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                        ${selectedEvent.extendedProps.basePrice.toFixed(2)}
                       </Text>
-                    ))}
+                    </View>
+
+                    {selectedEvent.extendedProps.addonNames.length > 0 && (
+                      <View>
+                        <Text style={[tw`text-sm mb-2`, { color: theme.colors.mutedForeground }]}>Add-ons</Text>
+                        <View style={tw`space-y-1`}>
+                          {selectedEvent.extendedProps.addonNames.map((addon, idx) => (
+                            <View key={idx} style={tw`flex-row items-center justify-between`}>
+                              <Text style={[tw`text-sm`, { color: theme.colors.foreground }]}>
+                                {addon}
+                              </Text>
+                              <Text style={[tw`text-sm font-semibold`, { color: theme.colors.foreground }]}>
+                                ${(selectedEvent.extendedProps.addonTotal / selectedEvent.extendedProps.addonNames.length).toFixed(2)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Total Section */}
+                <View style={tw`mb-4`}>
+                  <View style={tw`flex-row items-center justify-between`}>
+                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>Total</Text>
+                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>
+                      ${selectedEvent.extendedProps.price.toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Guest Information (if applicable) */}
+                {selectedEvent.extendedProps.isGuest && (
+                  <View style={tw`mb-4`}>
+                    <Text style={[tw`text-sm font-semibold mb-2`, { color: theme.colors.foreground }]}>
+                      Guest Information
+                    </Text>
+                    <View style={tw`space-y-1`}>
+                      <Text style={[tw`text-sm`, { color: theme.colors.foreground }]}>
+                        Email: {selectedEvent.extendedProps.guestEmail}
+                      </Text>
+                      <Text style={[tw`text-sm`, { color: theme.colors.foreground }]}>
+                        Phone: {selectedEvent.extendedProps.guestPhone}
+                      </Text>
+                    </View>
                   </View>
                 )}
 
-                <View style={[tw`flex-row items-center justify-between border-t border-white/10 pt-2`]}>
-                  <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>Total</Text>
-                  <Text style={[tw`font-bold text-lg`, { color: theme.colors.secondary }]}>
-                    ${selectedEvent.extendedProps.price.toFixed(2)}
-                  </Text>
-                </View>
-
                 {/* Action Buttons */}
-                {selectedEvent.extendedProps.status !== 'completed' && selectedEvent.extendedProps.status !== 'missed' && (
+                {selectedEvent.extendedProps.status === 'pending' && (
                   <View style={tw`flex-row gap-3 mt-6`}>
+                    <TouchableOpacity
+                      onPress={handleMarkAsCompleted}
+                      disabled={isMarkingCompleted}
+                      style={[tw`flex-1 py-3 rounded-xl items-center`, { 
+                        backgroundColor: '#10b981',
+                        shadowColor: '#10b981',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 4
+                      }]}
+                    >
+                      {isMarkingCompleted ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <Text style={tw`font-semibold text-white`}>Mark as Completed</Text>
+                      )}
+                    </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleMarkAsMissed}
                       disabled={isMarkingMissed}
-                      style={[tw`flex-1 py-3 rounded-xl items-center`, { backgroundColor: '#ef4444' }]}
+                      style={[tw`flex-1 py-3 rounded-xl items-center`, { 
+                        backgroundColor: theme.colors.secondary,
+                        shadowColor: theme.colors.secondary,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 4
+                      }]}
                     >
                       {isMarkingMissed ? (
                         <ActivityIndicator color="white" size="small" />
@@ -1075,7 +1328,7 @@ export default function CalendarPage() {
       >
         <View style={tw`flex-1 bg-black/50 justify-end`}>
           <View style={[tw`rounded-t-3xl p-6`, { 
-            backgroundColor: 'rgba(45,35,66,0.95)',
+            backgroundColor: theme.colors.background,
             borderTopWidth: 1,
             borderColor: 'rgba(255,255,255,0.1)'
           }]}>
@@ -1120,11 +1373,17 @@ export default function CalendarPage() {
                           tw`p-3 rounded-xl border mb-2`,
                           {
                             backgroundColor: manualFormData.serviceId === service.id 
-                              ? `${theme.colors.secondary}20` 
+                              ? `${theme.colors.secondary}15` 
                               : 'rgba(255,255,255,0.05)',
                             borderColor: manualFormData.serviceId === service.id 
                               ? theme.colors.secondary 
                               : 'rgba(255,255,255,0.1)',
+                            borderWidth: manualFormData.serviceId === service.id ? 2 : 1,
+                            shadowColor: manualFormData.serviceId === service.id ? theme.colors.secondary : 'transparent',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: manualFormData.serviceId === service.id ? 0.2 : 0,
+                            shadowRadius: 4,
+                            elevation: manualFormData.serviceId === service.id ? 2 : 0
                           }
                         ]}
                       >
@@ -1208,7 +1467,12 @@ export default function CalendarPage() {
                 style={[
                   tw`flex-1 py-3 rounded-xl items-center`, 
                   { 
-                    backgroundColor: isSubmitting ? 'rgba(255,255,255,0.3)' : theme.colors.secondary 
+                    backgroundColor: isSubmitting ? 'rgba(255,255,255,0.3)' : theme.colors.secondary,
+                    shadowColor: theme.colors.secondary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 4
                   }
                 ]}
             >

@@ -3,6 +3,9 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["app/*"],
       "@/shared/*": ["app/shared/*"],

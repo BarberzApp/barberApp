@@ -88,6 +88,33 @@ export interface User {
   };
 }
 
+// Review Types
+export interface Review {
+  id: string;
+  booking_id: string;
+  barber_id: string;
+  client_id: string;
+  rating: number;
+  comment?: string;
+  is_verified: boolean;
+  is_public: boolean;
+  is_moderated: boolean;
+  moderator_notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  client?: User;
+  barber?: Barber;
+  booking?: Booking;
+}
+
+export interface ReviewStats {
+  total_reviews: number;
+  average_rating: number;
+  rating_distribution: { [key: number]: number };
+  recent_reviews: Review[];
+}
+
 // Barber Types - Updated to match database schema
 export interface Barber {
   id: string;

@@ -17,9 +17,22 @@ import { format, addDays, isToday, isSameDay } from 'date-fns';
 import Icon from 'react-native-vector-icons/Feather';
 import { RootStackParamList } from '../types';
 import { bookingService, Service, TimeSlot } from '../lib/bookingService';
+
+// Add-on types
+interface ServiceAddon {
+  id: string;
+  barber_id: string;
+  name: string;
+  description?: string;
+  price: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 import { useAuth } from '../hooks/useAuth';
 import { theme } from '../lib/theme';
 import { supabase } from '../lib/supabase';
+import { notificationService, formatAppointmentTime } from '../lib/notifications';
 
 type BookingFormNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingCalendar'>;
 
@@ -50,15 +63,17 @@ export default function BookingForm({
   onBookingCreated 
 }: BookingFormProps) {
   const navigation = useNavigation<BookingFormNavigationProp>();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
 
   // State management
   const [currentStep, setCurrentStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
+  const [addons, setAddons] = useState<ServiceAddon[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -86,7 +101,7 @@ export default function BookingForm({
       if (user) {
         setGuestInfo(prev => ({
           ...prev,
-          name: user.name || '',
+          name: userProfile?.name || '',
           email: user.email || ''
         }));
       }
@@ -120,9 +135,41 @@ export default function BookingForm({
     try {
       console.log('🔍 [BOOKING_FORM] Fetching services for barberId:', barberId);
       setLoading(true);
-      const servicesData = await bookingService.getBarberServices(barberId);
+      
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+      
+      // Fetch services first (critical) with timeout
+      const servicesData = await Promise.race([
+        bookingService.getBarberServices(barberId),
+        timeoutPromise
+      ]) as Service[];
       console.log('✅ [BOOKING_FORM] Services fetched successfully:', servicesData);
+      
+      // Check if services exist
+      if (!servicesData || servicesData.length === 0) {
+        console.warn('⚠️ [BOOKING_FORM] No services found for this barber');
+        Alert.alert('No Services', 'This barber has no services available for booking.');
+        onClose();
+        return;
+      }
+      
       setServices(servicesData);
+      
+      // Fetch add-ons separately (non-critical) with timeout
+      try {
+        const addonsData = await Promise.race([
+          fetchAddons(),
+          timeoutPromise
+        ]) as ServiceAddon[];
+        console.log('✅ [BOOKING_FORM] Add-ons fetched successfully:', addonsData);
+        setAddons(addonsData);
+      } catch (addonError) {
+        console.warn('⚠️ [BOOKING_FORM] Add-ons fetch failed, continuing without add-ons:', addonError);
+        setAddons([]);
+      }
     } catch (error) {
       console.error('❌ [BOOKING_FORM] Error fetching services:', error);
       Alert.alert('Error', 'Failed to load services. Please try again.');
@@ -131,28 +178,46 @@ export default function BookingForm({
     }
   };
 
+  const fetchAddons = async (): Promise<ServiceAddon[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('service_addons')
+        .select('*')
+        .eq('barber_id', barberId)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching add-ons:', error);
+      return [];
+    }
+  };
+
   const fetchBarberStatus = async () => {
     try {
       console.log('🔍 [BOOKING_FORM] Fetching barber status for barberId:', barberId);
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role, is_developer')
+      const { data, error } = await supabase
+        .from('barbers')
+        .select('is_developer')
         .eq('id', barberId)
         .single();
 
-      console.log('[BOOKING_FORM] Profile data:', profile);
-      console.log('[BOOKING_FORM] Profile error:', error);
+      console.log('[BOOKING_FORM] Barber data:', data);
+      console.log('[BOOKING_FORM] Barber error:', error);
 
-      if (!error && profile) {
-        const isBarber = profile.role === 'barber';
-        const isDeveloper = profile.is_developer || false;
-        setIsDeveloperAccount(isBarber && isDeveloper);
-        console.log('[BOOKING_FORM] Profile role:', profile.role, 'is developer:', isDeveloper);
-      } else {
-        console.log('[BOOKING_FORM] Error fetching profile status:', error);
+      if (error) {
+        console.log('[BOOKING_FORM] Error fetching barber status:', error);
+        setIsDeveloperAccount(false);
+        return;
       }
+
+      setIsDeveloperAccount(data?.is_developer || false);
+      console.log('[BOOKING_FORM] Is developer account:', data?.is_developer || false);
     } catch (error) {
-      console.error('[BOOKING_FORM] Error fetching profile status:', error);
+      console.error('[BOOKING_FORM] Error fetching barber status:', error);
+      setIsDeveloperAccount(false);
     }
   };
 
@@ -269,104 +334,180 @@ export default function BookingForm({
       console.log('[BOOKING_FORM] Booking date:', bookingDate.toISOString());
 
       if (isDeveloperAccount) {
-        console.log('[BOOKING_FORM] Creating developer booking...');
+        console.log('[BOOKING_FORM] Creating developer booking directly in database...');
         
-        // Get the barber ID from the profile ID
-        const { data: barber, error: barberError } = await supabase
-          .from('barbers')
-          .select('id')
-          .eq('user_id', barberId)
+        const servicePrice = selectedService.price;
+        const addonTotal = getSelectedAddonsTotal();
+        const totalPrice = servicePrice + addonTotal;
+        
+        // Create booking directly in Supabase
+        const { data: booking, error: bookingError } = await supabase
+          .from('bookings')
+          .insert({
+            barber_id: barberId,
+            service_id: selectedService.id,
+            date: bookingDate.toISOString(),
+            price: totalPrice, // Total price (service + add-ons) in dollars
+            client_id: user?.id || null,
+            guest_name: user ? null : guestInfo.name,
+            guest_email: user ? null : guestInfo.email,
+            guest_phone: user ? null : guestInfo.phone,
+            notes: guestInfo.notes,
+            status: 'pending',
+            payment_status: 'pending',
+            platform_fee: 0, // No platform fee for developer accounts
+            barber_payout: totalPrice, // Barber gets the full amount in dollars
+            addon_total: addonTotal // Store add-on total separately
+          })
+          .select()
           .single();
 
-        if (barberError || !barber) {
-          throw new Error('Barber record not found');
+        if (bookingError) {
+          console.error('[BOOKING_FORM] Error creating developer booking:', bookingError);
+          throw new Error('Failed to create booking in database');
         }
 
-        // Developer booking (no payment required)
-        const bookingData = {
-          barberId: barber.id,
-          serviceId: selectedService.id,
-          date: bookingDate.toISOString(),
-          notes: guestInfo.notes,
-          guestName: user ? undefined : guestInfo.name,
-          guestEmail: user ? undefined : guestInfo.email,
-          guestPhone: user ? undefined : guestInfo.phone,
-          clientId: user?.id || null,
-          paymentType: 'fee',
-          addonIds: []
-        };
-        console.log('[BOOKING_FORM] Developer booking data:', bookingData);
+        console.log('[BOOKING_FORM] Developer booking created in database:', booking);
 
-        const response = await fetch('https://bocmstyle.com/api/create-developer-booking', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bookingData)
-        });
+        // Create booking add-ons if any are selected
+        if (selectedAddonIds.length > 0) {
+          // Get the selected add-ons with their prices
+          const selectedAddons = addons.filter(addon => selectedAddonIds.includes(addon.id));
+          
+          const addonData = selectedAddons.map(addon => ({
+            booking_id: booking.id,
+            addon_id: addon.id,
+            price: addon.price // Include the price at time of booking
+          }));
 
-        console.log('[BOOKING_FORM] Developer booking response status:', response.status);
-        const data = await response.json();
-        console.log('[BOOKING_FORM] Developer booking response data:', data);
+          const { error: addonError } = await supabase
+            .from('booking_addons')
+            .insert(addonData);
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to create developer booking');
+          if (addonError) {
+            console.error('[BOOKING_FORM] Error creating booking add-ons:', addonError);
+            // Don't throw error here, booking was created successfully
+          }
         }
 
         console.log('[BOOKING_FORM] Developer booking created successfully');
         Alert.alert(
           'Success!',
           'Your booking has been created successfully (developer mode - no payment required).',
-          [{ text: 'OK', onPress: () => onBookingCreated(data.booking) }]
+          [{ text: 'OK', onPress: () => onBookingCreated(booking) }]
         );
       } else {
-        console.log('[BOOKING_FORM] Creating regular booking...');
+        console.log('[BOOKING_FORM] Creating regular booking directly in database...');
         // Regular booking with payment
         if (!user) {
           Alert.alert('Error', 'Please sign in to book with this barber.');
           return;
         }
 
-        // Get the barber ID from the profile ID
-        const { data: barber, error: barberError } = await supabase
-          .from('barbers')
-          .select('id')
-          .eq('user_id', barberId)
+        const servicePrice = selectedService.price;
+        const addonTotal = getSelectedAddonsTotal();
+        const totalPrice = servicePrice + addonTotal;
+        
+        // Create booking directly in Supabase
+        const { data: booking, error: bookingError } = await supabase
+          .from('bookings')
+          .insert({
+            barber_id: barberId,
+            service_id: selectedService.id,
+            date: bookingDate.toISOString(),
+            price: totalPrice, // Total price (service + add-ons) in dollars
+            client_id: user.id,
+            notes: guestInfo.notes,
+            status: 'pending',
+            payment_status: 'pending',
+            platform_fee: paymentType === 'fee' ? 3.38 : 0, // Platform fee in dollars
+            barber_payout: totalPrice, // Barber gets the full amount in dollars
+            addon_total: addonTotal // Store add-on total separately
+          })
+          .select()
           .single();
 
-        if (barberError || !barber) {
-          throw new Error('Barber record not found');
+        if (bookingError) {
+          console.error('[BOOKING_FORM] Error creating regular booking:', bookingError);
+          throw new Error('Failed to create booking in database');
         }
 
-        const bookingData = {
-          barber_id: barber.id,
-          service_id: selectedService.id,
-          date: bookingDate.toISOString(),
-          price: Math.round(selectedService.price * 100), // Convert to cents
-          client_id: user.id,
-          notes: guestInfo.notes,
-          platform_fee: paymentType === 'fee' ? 338 : 0, // Convert to cents
-          barber_payout: Math.round(selectedService.price * 100) // Convert to cents
-        };
-        console.log('[BOOKING_FORM] Regular booking data:', bookingData);
+        console.log('[BOOKING_FORM] Regular booking created in database:', booking);
 
-        const response = await fetch('https://bocmstyle.com/api/bookings/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bookingData)
-        });
+        // Create booking add-ons if any are selected
+        if (selectedAddonIds.length > 0) {
+          // Get the selected add-ons with their prices
+          const selectedAddons = addons.filter(addon => selectedAddonIds.includes(addon.id));
+          
+          const addonData = selectedAddons.map(addon => ({
+            booking_id: booking.id,
+            addon_id: addon.id,
+            price: addon.price // Include the price at time of booking
+          }));
 
-        console.log('[BOOKING_FORM] Regular booking response status:', response.status);
-        const data = await response.json();
-        console.log('[BOOKING_FORM] Regular booking response data:', data);
+          const { error: addonError } = await supabase
+            .from('booking_addons')
+            .insert(addonData);
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to create booking');
+          if (addonError) {
+            console.error('[BOOKING_FORM] Error creating booking add-ons:', addonError);
+            // Don't throw error here, booking was created successfully
+          }
         }
 
         console.log('[BOOKING_FORM] Regular booking created successfully');
+        
+        // Send notifications after successful booking
+        try {
+          // Get barber name for notifications
+          const { data: barberProfile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', barberId)
+            .single();
+          
+          const barberDisplayName = barberProfile 
+            ? `${barberProfile.first_name} ${barberProfile.last_name}`.trim()
+            : barberName || 'Your Barber';
+          
+          const appointmentTime = formatAppointmentTime(bookingDate);
+          
+          // Send booking confirmation to client
+          await notificationService.sendBookingConfirmation(
+            booking.id,
+            selectedService.name,
+            appointmentTime,
+            barberDisplayName
+          );
+          
+          // Send new booking notification to barber
+          const clientName = user?.email?.split('@')[0] || guestInfo.name || 'Guest';
+          await notificationService.sendNewBookingNotification(
+            booking.id,
+            clientName,
+            selectedService.name,
+            appointmentTime
+          );
+          
+          // Schedule reminders
+          await notificationService.sendBookingReminder(
+            booking.id,
+            selectedService.name,
+            appointmentTime,
+            barberDisplayName,
+            30 // 30 minutes before
+          );
+          
+          console.log('[BOOKING_FORM] Notifications sent successfully');
+        } catch (notificationError) {
+          console.error('[BOOKING_FORM] Error sending notifications:', notificationError);
+          // Don't fail the booking if notifications fail
+        }
+        
         Alert.alert(
           'Success!',
           'Your booking has been created successfully.',
-          [{ text: 'OK', onPress: () => onBookingCreated(data.booking) }]
+          [{ text: 'OK', onPress: () => onBookingCreated(booking) }]
         );
       }
 
@@ -425,8 +566,16 @@ export default function BookingForm({
     }
   };
 
+  const getSelectedAddons = () => {
+    return addons.filter(addon => selectedAddonIds.includes(addon.id));
+  };
+
+  const getSelectedAddonsTotal = () => {
+    return getSelectedAddons().reduce((total, addon) => total + addon.price, 0);
+  };
+
   const getTotalPrice = () => {
-    return 3.38; // Always return booking fee
+    return isDeveloperAccount ? 0.00 : 3.38; // Return $0.00 for developer accounts
   };
 
   if (!isVisible) return null;
@@ -559,6 +708,101 @@ export default function BookingForm({
                         </View>
                       </TouchableOpacity>
                     ))}
+                  </View>
+                )}
+
+                {/* Add-ons Section */}
+                {addons.length > 0 && (
+                  <View style={tw`mt-6`}>
+                    <View style={tw`items-center mb-4`}>
+                      <Icon name="package" size={20} color={theme.colors.secondary} />
+                      <Text style={[tw`text-lg font-semibold mt-2`, { color: theme.colors.foreground }]}>
+                        Enhance Your Service (Optional)
+                      </Text>
+                    </View>
+                    
+                    <View style={tw`space-y-3`}>
+                      {addons.map((addon) => (
+                        <TouchableOpacity
+                          key={addon.id}
+                          onPress={() => {
+                            const isSelected = selectedAddonIds.includes(addon.id);
+                            if (isSelected) {
+                              setSelectedAddonIds(selectedAddonIds.filter(id => id !== addon.id));
+                            } else {
+                              setSelectedAddonIds([...selectedAddonIds, addon.id]);
+                            }
+                          }}
+                        >
+                          <View style={[
+                            tw`p-4 rounded-xl border-2`,
+                            selectedAddonIds.includes(addon.id)
+                              ? { 
+                                  borderColor: theme.colors.secondary, 
+                                  backgroundColor: `${theme.colors.secondary}10` 
+                                }
+                              : { 
+                                  borderColor: 'rgba(255,255,255,0.1)', 
+                                  backgroundColor: 'rgba(255,255,255,0.05)' 
+                                }
+                          ]}>
+                            <View style={tw`flex-row items-center justify-between`}>
+                              <View style={tw`flex-1`}>
+                                <Text style={[tw`text-lg font-semibold mb-1`, { color: theme.colors.foreground }]}>
+                                  {addon.name}
+                                </Text>
+                                {addon.description && (
+                                  <Text style={[tw`text-sm mb-2`, { color: theme.colors.mutedForeground }]}>
+                                    {addon.description}
+                                  </Text>
+                                )}
+                              </View>
+                              <View style={tw`items-end`}>
+                                <Text style={[tw`text-lg font-bold`, { color: theme.colors.secondary }]}>
+                                  +${addon.price.toFixed(2)}
+                                </Text>
+                                <View style={[
+                                  tw`w-6 h-6 rounded-full items-center justify-center mt-2`,
+                                  selectedAddonIds.includes(addon.id)
+                                    ? { backgroundColor: theme.colors.secondary }
+                                    : { backgroundColor: 'rgba(255,255,255,0.1)' }
+                                ]}>
+                                  {selectedAddonIds.includes(addon.id) && (
+                                    <Icon name="check" size={16} color={theme.colors.background} />
+                                  )}
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    {/* Add-ons Summary */}
+                    {selectedAddonIds.length > 0 && (
+                      <View style={[tw`mt-4 p-4 rounded-xl`, { backgroundColor: `${theme.colors.secondary}10`, borderWidth: 1, borderColor: `${theme.colors.secondary}20` }]}>
+                        <View style={tw`flex-row items-center justify-between mb-2`}>
+                          <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>
+                            Selected Add-ons ({selectedAddonIds.length})
+                          </Text>
+                          <Text style={[tw`font-semibold text-lg`, { color: theme.colors.secondary }]}>
+                            +${getSelectedAddonsTotal().toFixed(2)}
+                          </Text>
+                        </View>
+                        <View style={tw`space-y-1`}>
+                          {getSelectedAddons().map((addon) => (
+                            <View key={addon.id} style={tw`flex-row justify-between`}>
+                              <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+                                {addon.name}
+                              </Text>
+                              <Text style={[tw`text-sm`, { color: theme.colors.secondary }]}>
+                                +${addon.price.toFixed(2)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
@@ -766,7 +1010,7 @@ export default function BookingForm({
                         <Icon name="check" size={24} color={theme.colors.secondary} />
                       </View>
                       <Text style={[tw`text-lg font-semibold mb-2`, { color: theme.colors.foreground }]}>
-                        Welcome back, {user.name}!
+                        Welcome back, {userProfile?.name}!
                       </Text>
                       <Text style={[tw`text-center`, { color: theme.colors.mutedForeground }]}>
                         We'll use your account information for this booking
@@ -845,6 +1089,35 @@ export default function BookingForm({
                         ${selectedService?.price.toFixed(2)}
                       </Text>
                     </View>
+                    
+                    {/* Add-ons */}
+                    {selectedAddonIds.length > 0 && (
+                      <>
+                        <View style={tw`border-t border-white/10 pt-2 mt-2`}>
+                          <Text style={[tw`font-medium mb-2`, { color: theme.colors.foreground }]}>
+                            Add-ons:
+                          </Text>
+                          {getSelectedAddons().map((addon) => (
+                            <View key={addon.id} style={tw`flex-row justify-between`}>
+                              <Text style={{ color: theme.colors.mutedForeground }}>
+                                {addon.name}
+                              </Text>
+                              <Text style={{ color: theme.colors.foreground }}>
+                                +${addon.price.toFixed(2)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                        <View style={tw`flex-row justify-between pt-2 border-t border-white/10`}>
+                          <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                            Total Service Cost:
+                          </Text>
+                          <Text style={[tw`font-semibold`, { color: theme.colors.secondary }]}>
+                            ${(selectedService?.price || 0 + getSelectedAddonsTotal()).toFixed(2)}
+                          </Text>
+                        </View>
+                      </>
+                    )}
                   </View>
                 </View>
 
@@ -859,11 +1132,14 @@ export default function BookingForm({
                         Booking Fee
                       </Text>
                       <Text style={[tw`font-semibold`, { color: theme.colors.secondary }]}>
-                        $3.38
+                        {isDeveloperAccount ? '$0.00' : '$3.38'}
                       </Text>
                     </View>
                     <Text style={[tw`text-sm mt-2`, { color: theme.colors.mutedForeground }]}>
-                      Pay the remaining amount directly to your barber
+                      {isDeveloperAccount 
+                        ? 'Developer account - no platform fees charged. Service cost and any add-ons will be paid directly to the barber at your appointment.'
+                        : 'Pay the remaining amount directly to your barber'
+                      }
                     </Text>
                   </View>
                 </View>
