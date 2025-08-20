@@ -27,7 +27,7 @@ import {
   RefreshCw
 } from 'lucide-react-native';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://bocmstyle.com";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://www.bocmstyle.com";
 
 interface EarningsData {
   totalEarnings: number;

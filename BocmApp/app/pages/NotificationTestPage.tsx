@@ -206,7 +206,7 @@ export default function NotificationTestPage() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://bocmstyle.com";
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://www.bocmstyle.com";
       console.log('Testing API connection to:', API_BASE_URL);
       
       const response = await fetch(`${API_BASE_URL}/api/connect/create-account`, {

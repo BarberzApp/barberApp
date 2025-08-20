@@ -50,7 +50,7 @@ import { SocialMediaLinks } from '../shared/components/ui/SocialMediaLinks';
 import { LocationInput } from '../shared/components/ui/LocationInput';
 import { BARBER_SPECIALTIES } from '../shared/utils/settings.utils';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://bocmstyle.com";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://www.bocmstyle.com";
 
 type BarberOnboardingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BarberOnboarding'>;
 
