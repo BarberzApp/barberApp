@@ -198,10 +198,13 @@ export async function POST(request: Request) {
         console.log('Found existing Stripe account with email:', matchingAccount.id)
         
         // Update barber record with existing Stripe account ID
+        console.log('Updating barber record with existing Stripe account ID:', matchingAccount.id);
         const { error: updateError } = await supabase
           .from('barbers')
           .update({
             stripe_account_id: matchingAccount.id,
+            stripe_account_status: 'active',
+            stripe_account_ready: true,
             updated_at: new Date().toISOString(),
           })
           .eq('id', barberId)
@@ -216,6 +219,21 @@ export async function POST(request: Request) {
               'Access-Control-Allow-Headers': 'Content-Type',
             }}
           )
+        }
+
+        console.log('Successfully updated barber record with existing Stripe account ID');
+
+        // Verify the update was successful
+        const { data: verifyBarber, error: verifyError } = await supabase
+          .from('barbers')
+          .select('stripe_account_id, stripe_account_status, stripe_account_ready')
+          .eq('id', barberId)
+          .single();
+
+        if (verifyError) {
+          console.error('Error verifying barber update:', verifyError);
+        } else {
+          console.log('Verified barber record after update:', verifyBarber);
         }
 
         // Update the account status based on current Stripe status

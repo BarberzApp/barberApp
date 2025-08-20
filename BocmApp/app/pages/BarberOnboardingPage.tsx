@@ -631,68 +631,22 @@ export default function BarberOnboardingPage() {
             };
             console.log('Sending request body:', requestBody);
             
-            console.log('Making API request to:', `${API_BASE_URL}/api/connect/create-account`);
+            console.log('Calling Supabase Edge Function for Stripe Connect...');
             
-            // Test if the API endpoint is reachable first
-            try {
-                console.log('Testing API connectivity...');
-                const testController = new AbortController();
-                const testTimeoutId = setTimeout(() => testController.abort(), 5000); // 5 second timeout
-                
-                const testResponse = await fetch(`${API_BASE_URL}/api/test`, { 
-                    method: 'GET',
-                    signal: testController.signal
-                });
-                
-                clearTimeout(testTimeoutId);
-                console.log('API connectivity test result:', testResponse.status);
-            } catch (testError: any) {
-                console.error('API connectivity test failed:', testError);
-                if (testError.name === 'AbortError') {
-                    throw new Error('Server is not responding. Please try again later.');
-                } else {
-                    throw new Error('Cannot reach the server. Please check your internet connection and try again.');
-                }
+            // Call the Supabase Edge Function directly
+            const { data: stripeResponse, error } = await supabase.functions.invoke('stripe-connect', {
+                body: requestBody
+            });
+            
+            if (error) {
+                console.error('Supabase function error:', error);
+                throw new Error(error.message || 'Failed to connect Stripe account');
             }
             
-            // Add a timeout to the fetch request
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            console.log('Supabase function response:', stripeResponse);
             
-            let response;
-            try {
-                response = await fetch(`${API_BASE_URL}/api/connect/create-account`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestBody),
-                    signal: controller.signal,
-                });
-                
-                clearTimeout(timeoutId);
-                console.log('Response received!');
-            } catch (fetchError: any) {
-                clearTimeout(timeoutId);
-                console.error('Fetch error:', fetchError);
-                if (fetchError.name === 'AbortError') {
-                    throw new Error('Request timed out. Please check your internet connection and try again.');
-                } else {
-                    throw new Error('Network error. Please check your internet connection and try again.');
-                }
-            }
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
-
-            if (!response.ok) {
-                console.log('Response not OK, parsing error...');
-                const errorData = await response.json().catch(() => ({}));
-                console.error('API Error response:', errorData);
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-
-            console.log('Response OK, parsing JSON...');
-            const data = await response.json();
+            // Use the response data directly
+            const data = stripeResponse;
             console.log('Stripe Connect response:', data);
 
             if (data.url) {
