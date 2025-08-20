@@ -90,10 +90,15 @@ export default function StripeConnectReturn() {
           
           // Try multiple methods to open the mobile app
           try {
-            // Method 1: Direct location change
+            // Method 1: Direct location change (immediate)
             window.location.href = mobileDeepLink;
             
-            // Method 2: Create a hidden iframe (fallback)
+            // Method 2: Try again after a short delay (for iOS Safari)
+            setTimeout(() => {
+              window.location.href = mobileDeepLink;
+            }, 100);
+            
+            // Method 3: Create a hidden iframe (fallback)
             setTimeout(() => {
               const iframe = document.createElement('iframe');
               iframe.style.display = 'none';
@@ -108,10 +113,15 @@ export default function StripeConnectReturn() {
               }, 1000);
             }, 500);
             
-            // Method 3: Try window.open as another fallback
+            // Method 4: Try window.open as another fallback
             setTimeout(() => {
               window.open(mobileDeepLink, '_self');
             }, 1000);
+            
+            // Method 5: Try window.location.replace (more aggressive)
+            setTimeout(() => {
+              window.location.replace(mobileDeepLink);
+            }, 1500);
             
           } catch (error) {
             console.error('Error redirecting to mobile app:', error);

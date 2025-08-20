@@ -53,9 +53,11 @@ const App = () => {
           const accountId = urlParams.searchParams.get('account_id');
           console.log('Account ID from deep link:', accountId);
           
-          // User completed Stripe onboarding
-          // The onboarding page will handle the status check when user returns
-          console.log('Stripe onboarding completed successfully');
+          // Show a success message immediately
+          console.log('Stripe onboarding completed successfully - account ID:', accountId);
+          
+          // You could add a global state or navigation here to show success
+          // For now, we'll rely on the focus effect in the onboarding page
         } else if (event.url.includes('/refresh')) {
           // User needs to refresh/retry Stripe onboarding
           console.log('Stripe onboarding refresh via deep link');

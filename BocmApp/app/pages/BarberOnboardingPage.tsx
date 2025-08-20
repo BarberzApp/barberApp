@@ -298,7 +298,13 @@ export default function BarberOnboardingPage() {
                 }
             };
             
+            // Check immediately when focus is gained
             checkStripeStatus();
+            
+            // Also check after a short delay to catch any delayed updates
+            const delayedCheck = setTimeout(checkStripeStatus, 2000);
+            
+            return () => clearTimeout(delayedCheck);
         }, [user, currentStep, navigation])
     );
 
