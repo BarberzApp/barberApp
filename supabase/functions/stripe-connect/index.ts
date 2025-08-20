@@ -4,12 +4,22 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
+import { createClient } from '@supabase/supabase-js'
+import Stripe from 'stripe'
+
+// Deno types
+declare global {
+  const Deno: {
+    env: {
+      get(key: string): string | undefined;
+    };
+    serve(handler: (req: Request) => Response | Promise<Response>): void;
+  };
+}
 
 // Initialize Stripe with secret key
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-05-28.basil' as any,
 })
 
 // Initialize Supabase client
@@ -48,7 +58,7 @@ async function checkAndUpdateStripeAccountStatus(barberId: string, stripeAccount
   }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -59,6 +69,31 @@ Deno.serve(async (req) => {
       },
     })
   }
+
+  // Add better error handling and logging
+  console.log('Function called with method:', req.method);
+  console.log('Function called with headers:', Object.fromEntries(req.headers.entries()));
+
+  // Verify JWT token
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.error('Missing or invalid Authorization header');
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized - Missing JWT token' }),
+      { 
+        status: 401,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      }
+    )
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  console.log('JWT token received:', token ? 'present' : 'missing');
 
   try {
     const body: CreateAccountRequest = await req.json()
@@ -161,7 +196,7 @@ Deno.serve(async (req) => {
         limit: 10,
       })
 
-      const matchingAccount = existingAccounts.data.find(account => 
+      const matchingAccount = existingAccounts.data.find((account: any) => 
         account.email === email && account.type === 'express'
       )
 
@@ -319,9 +354,16 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error creating Stripe Connect account:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
+    
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to create Stripe account' 
+        error: error instanceof Error ? error.message : 'Failed to create Stripe account',
+        details: 'Check function logs for more information'
       }),
       { 
         status: 500,

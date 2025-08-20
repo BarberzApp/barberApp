@@ -633,9 +633,12 @@ export default function BarberOnboardingPage() {
             
             console.log('Calling Supabase Edge Function for Stripe Connect...');
             
-            // Call the Supabase Edge Function directly
+            // Call the Supabase Edge Function directly with user session
             const { data: stripeResponse, error } = await supabase.functions.invoke('stripe-connect', {
-                body: requestBody
+                body: requestBody,
+                headers: {
+                    Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                }
             });
             
             if (error) {
