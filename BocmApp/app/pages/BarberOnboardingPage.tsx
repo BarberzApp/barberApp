@@ -237,6 +237,50 @@ export default function BarberOnboardingPage() {
         }
     }, [user]);
 
+    // Check if onboarding is already complete
+    useEffect(() => {
+        const checkOnboardingComplete = async () => {
+            if (!user) return;
+            
+            try {
+                console.log('Checking if onboarding is already complete...');
+                
+                // Fetch barber data to check completion
+                const { data: barberData, error: barberError } = await supabase
+                    .from('barbers')
+                    .select('onboarding_complete, business_name, bio, specialties')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (barberError) {
+                    console.error('Error checking onboarding status:', barberError);
+                    return;
+                }
+
+                console.log('Onboarding completion check:', {
+                    onboarding_complete: barberData?.onboarding_complete,
+                    businessName: barberData?.business_name,
+                    bio: barberData?.bio,
+                    specialties: barberData?.specialties
+                });
+
+                // If onboarding is marked as complete, skip to main app
+                if (barberData?.onboarding_complete) {
+                    console.log('Onboarding is already complete! Redirecting to main app...');
+                    setOnboardingComplete(true);
+                    navigation.navigate('MainTabs' as any);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error checking onboarding completion:', error);
+            }
+        };
+
+        if (user) {
+            checkOnboardingComplete();
+        }
+    }, [user, navigation]);
+
     // Check if user is a barber
     useEffect(() => {
         if (user && userProfile?.role !== 'barber') {
@@ -282,11 +326,11 @@ export default function BarberOnboardingPage() {
                                 {
                                     text: 'Continue',
                                     onPress: () => {
-                                        // Navigate to settings or continue with onboarding
+                                        // Navigate to main app or continue with onboarding
                                         if (currentStep === steps.length - 1) {
                                             // If we're on the last step, complete onboarding
                                             setOnboardingComplete(true);
-                                            navigation.navigate('Settings' as any);
+                                            navigation.navigate('MainTabs' as any);
                                         }
                                     }
                                 }
@@ -504,6 +548,7 @@ export default function BarberOnboardingPage() {
                         twitter: extractHandle(formData.socialMedia.twitter),
                         tiktok: extractHandle(formData.socialMedia.tiktok),
                         facebook: extractHandle(formData.socialMedia.facebook),
+                        onboarding_complete: true,
                         updated_at: new Date().toISOString(),
                     }, { onConflict: 'user_id' });
 
@@ -577,9 +622,9 @@ export default function BarberOnboardingPage() {
                     'Your profile is fully set up and ready to receive payments. Welcome to the platform!',
                     [
                         {
-                            text: 'Go to Settings',
+                            text: 'Go to Main App',
                             onPress: () => {
-                                navigation.navigate('Settings' as any);
+                                navigation.navigate('MainTabs' as any);
                             }
                         }
                     ]
@@ -694,10 +739,10 @@ export default function BarberOnboardingPage() {
                                 'Your Stripe account has been successfully connected. You can now receive payments.',
                                 [
                                     {
-                                        text: 'Go to Settings',
+                                        text: 'Go to Main App',
                                         onPress: () => {
-                                            // Navigate to settings page
-                                            navigation.navigate('Settings' as any);
+                                            // Navigate to main app
+                                            navigation.navigate('MainTabs' as any);
                                         }
                                     }
                                 ]

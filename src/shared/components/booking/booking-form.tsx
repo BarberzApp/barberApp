@@ -278,9 +278,9 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           description: "Your booking has been created successfully (developer mode - no payment required).",
         })
 
-          onBookingCreated(data.booking)
+        onBookingCreated(data.booking)
       } else {
-        // For regular accounts, use the API endpoint to ensure SMS notifications are sent
+        // For regular accounts, create Stripe Checkout session
         if (!user) {
           toast({
             title: "Error",
@@ -290,69 +290,32 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           return
         }
 
-        // Calculate add-on total and get add-on prices
-        let addonTotal = 0;
-        let addonPriceMap: Record<string, number> = {};
-        if (selectedAddonIds.length > 0) {
-          const { data: selectedAddons, error: addonsError } = await supabase
-            .from('service_addons')
-            .select('id, price')
-            .in('id', selectedAddonIds);
-          if (!addonsError && selectedAddons) {
-            addonTotal = selectedAddons.reduce((sum, addon) => sum + (addon.price || 0), 0);
-            addonPriceMap = Object.fromEntries(selectedAddons.map(a => [a.id, a.price]));
-          }
-        }
-
-        // Use the API endpoint to create booking (this will handle SMS notifications)
-        const response = await fetch('/api/bookings/create', {
+        console.log('Creating Stripe Checkout session for web booking...');
+        
+        // Create Stripe Checkout session
+        const response = await fetch('/api/create-checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            barber_id: barberId,
-            service_id: formData.serviceId,
+            barberId,
+            serviceId: formData.serviceId,
             date: bookingDate.toISOString(),
-            price: service.price + addonTotal,
-            client_id: user.id,
             notes: formData.notes,
-            platform_fee: 0,
-            barber_payout: service.price + addonTotal
+            clientId: user.id,
+            paymentType: 'fee',
+            addonIds: selectedAddonIds
           })
         })
 
         const data = await response.json()
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to create booking')
+          throw new Error(data.error || 'Failed to create checkout session')
         }
 
-        // Add add-ons if any are selected
-        if (selectedAddonIds.length > 0) {
-          const addonBookings = selectedAddonIds.map(addonId => ({
-            booking_id: data.booking.id,
-            addon_id: addonId,
-            price: addonPriceMap[addonId] || 0,
-          }))
+        console.log('Checkout session created:', data);
 
-          const { error: addonError } = await supabase
-            .from('booking_addons')
-            .insert(addonBookings)
-
-          if (addonError) {
-            console.error('Error adding add-ons:', addonError)
-          }
-        }
-
-        // Sync with external service
-        if (syncService) {
-          await syncService.saveBooking(data.booking)
-        }
-
-        toast({
-          title: "Success!",
-          description: "Your booking has been created successfully.",
-        })
-
-        onBookingCreated(data.booking)
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
       }
     } catch (error) {
       console.error('Error creating booking:', error)
@@ -802,7 +765,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                    <p className="text-blue-400 text-sm">
                      {isDeveloperAccount 
                        ? 'Developer account - no platform fees charged. Service cost and any add-ons will be paid directly to the barber at your appointment.'
-                       : 'Service cost and any add-ons will be paid directly to the barber at your appointment.'
+                       : 'You will be redirected to Stripe to complete your payment securely. Your booking will be confirmed automatically after payment.'
                      }
                    </p>
                                  </div>
@@ -828,12 +791,12 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                    {loading ? (
                      <>
                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                       Processing...
+                       Redirecting to Payment...
                      </>
                    ) : (
                      <>
                        <CreditCard className="mr-2 h-4 w-4" />
-                       Complete Booking
+                       {isDeveloperAccount ? 'Complete Booking' : 'Proceed to Payment'}
                      </>
                    )}
                  </Button>

@@ -15,7 +15,6 @@ export interface ProfileFormData {
     tiktok: string;
     facebook: string;
   };
-  carrier: string;
   sms_notifications: boolean;
 }
 

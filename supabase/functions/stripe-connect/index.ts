@@ -7,96 +7,72 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 
-// Deno types
-declare global {
-  const Deno: {
-    env: {
-      get(key: string): string | undefined;
-    };
-    serve(handler: (req: Request) => Response | Promise<Response>): void;
-  };
-}
-
-// Initialize Stripe with secret key
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2025-05-28.basil' as any,
-})
-
-// Initialize Supabase client
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
 interface CreateAccountRequest {
   barberId: string
   email: string
 }
 
-// Helper function to check and update Stripe account status
-async function checkAndUpdateStripeAccountStatus(barberId: string, stripeAccountId: string) {
-  try {
-    const account = await stripe.accounts.retrieve(stripeAccountId)
-    
-    const { error: updateError } = await supabase
-      .from('barbers')
-      .update({
-        stripe_account_status: account.charges_enabled ? 'active' : 'pending',
-        stripe_account_ready: account.charges_enabled && account.details_submitted,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', barberId)
-
-    if (updateError) {
-      console.error('Error updating account status:', updateError)
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('Error checking Stripe account status:', error)
-    return false
-  }
-}
-
 Deno.serve(async (req: Request) => {
-  // Handle CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    })
-  }
-
-  // Add better error handling and logging
-  console.log('Function called with method:', req.method);
-  console.log('Function called with headers:', Object.fromEntries(req.headers.entries()));
-
-  // Verify JWT token
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error('Missing or invalid Authorization header');
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized - Missing JWT token' }),
-      { 
-        status: 401,
-        headers: { 
-          'Content-Type': 'application/json',
+  console.log('=== STRIPE CONNECT FUNCTION STARTED ===');
+  
+  try {
+    // Handle CORS
+    if (req.method === 'OPTIONS') {
+      console.log('Handling CORS preflight request');
+      return new Response(null, {
+        headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      })
+    }
+
+    console.log('Function called with method:', req.method);
+    
+    // Check environment variables
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('Environment variables check:');
+    console.log('- Stripe key present:', stripeKey ? 'yes' : 'no');
+    console.log('- Supabase URL present:', supabaseUrl ? 'yes' : 'no');
+    console.log('- Supabase key present:', supabaseKey ? 'yes' : 'no');
+
+    // Initialize Stripe and Supabase clients
+    if (!stripeKey || !supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing environment variables',
+          envCheck: {
+            stripeKey: stripeKey ? 'present' : 'missing',
+            supabaseUrl: supabaseUrl ? 'present' : 'missing',
+            supabaseKey: supabaseKey ? 'present' : 'missing'
+          }
+        }),
+        { 
+          status: 500,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          }
         }
-      }
-    )
-  }
+      )
+    }
 
-  const token = authHeader.replace('Bearer ', '');
-  console.log('JWT token received:', token ? 'present' : 'missing');
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: '2025-05-28.basil' as any,
+    })
 
-  try {
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Parse request body
+    console.log('Parsing request body...');
     const body: CreateAccountRequest = await req.json()
+    console.log('Request body parsed:', body);
     const { barberId, email } = body
 
     // Input validation
@@ -131,6 +107,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get barber details
+    console.log('Fetching barber details...');
     const { data: barber, error: barberError } = await supabase
       .from('barbers')
       .select('*')
@@ -138,6 +115,7 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (barberError || !barber) {
+      console.error('Barber not found:', barberError);
       return new Response(
         JSON.stringify({ error: 'Barber not found' }),
         { 
@@ -152,45 +130,10 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Check if barber already has a Stripe account in database
-    if (barber.stripe_account_id) {
-      try {
-        const existingAccount = await stripe.accounts.retrieve(barber.stripe_account_id)
-        console.log('Found existing Stripe account:', existingAccount.id)
-        
-        // Update the account status based on current Stripe status
-        await checkAndUpdateStripeAccountStatus(barberId, existingAccount.id)
-
-        // Create a new account link for the existing account
-        const accountLink = await stripe.accountLinks.create({
-          account: existingAccount.id,
-          refresh_url: 'https://www.bocmstyle.com/barber/connect/refresh',
-          return_url: 'https://www.bocmstyle.com/barber/connect/return',
-          type: 'account_onboarding',
-        })
-
-        return new Response(
-          JSON.stringify({
-            url: accountLink.url,
-            accountId: existingAccount.id,
-            existing: true,
-          }),
-          { 
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'POST, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            }
-          }
-        )
-      } catch (stripeError) {
-        console.log('Existing account not found or invalid, will create new one')
-        // Continue to create new account
-      }
-    }
+    console.log('Barber found:', barber.id);
 
     // Check for existing Stripe accounts with this email
+    console.log('Checking for existing Stripe accounts...');
     try {
       const existingAccounts = await stripe.accounts.list({
         limit: 10,
@@ -201,7 +144,24 @@ Deno.serve(async (req: Request) => {
       )
 
       if (matchingAccount) {
-        console.log('Found existing Stripe account with email:', matchingAccount.id)
+        console.log('Found existing Stripe account with email:', matchingAccount.id);
+        
+        // Update the Stripe account's business profile URL if it's incorrect
+        try {
+          const correctBusinessUrl = `https://bocmstyle.com/barber/${barberId}`;
+          console.log('Updating Stripe account business profile URL to:', correctBusinessUrl);
+          
+          await stripe.accounts.update(matchingAccount.id, {
+            business_profile: {
+              url: correctBusinessUrl
+            }
+          });
+          
+          console.log('Successfully updated Stripe account business profile URL');
+        } catch (updateError) {
+          console.log('Error updating Stripe account business profile URL:', updateError);
+          // Continue with the flow even if URL update fails
+        }
         
         // Update barber record with existing Stripe account ID
         console.log('Updating barber record with existing Stripe account ID:', matchingAccount.id);
@@ -216,7 +176,7 @@ Deno.serve(async (req: Request) => {
           .eq('id', barberId)
 
         if (updateError) {
-          console.error('Error updating barber with existing account:', updateError)
+          console.error('Error updating barber with existing account:', updateError);
           return new Response(
             JSON.stringify({ error: 'Failed to update barber record with existing account' }),
             { 
@@ -233,29 +193,16 @@ Deno.serve(async (req: Request) => {
 
         console.log('Successfully updated barber record with existing Stripe account ID');
 
-        // Verify the update was successful
-        const { data: verifyBarber, error: verifyError } = await supabase
-          .from('barbers')
-          .select('stripe_account_id, stripe_account_status, stripe_account_ready')
-          .eq('id', barberId)
-          .single();
-
-        if (verifyError) {
-          console.error('Error verifying barber update:', verifyError);
-        } else {
-          console.log('Verified barber record after update:', verifyBarber);
-        }
-
-        // Update the account status based on current Stripe status
-        await checkAndUpdateStripeAccountStatus(barberId, matchingAccount.id)
-
         // Create an account link for the existing account
+        console.log('Creating account link for existing account...');
         const accountLink = await stripe.accountLinks.create({
           account: matchingAccount.id,
           refresh_url: 'https://www.bocmstyle.com/barber/connect/refresh',
           return_url: 'https://www.bocmstyle.com/barber/connect/return',
           type: 'account_onboarding',
         })
+
+        console.log('Account link created:', accountLink.url);
 
         return new Response(
           JSON.stringify({
@@ -274,13 +221,13 @@ Deno.serve(async (req: Request) => {
         )
       }
     } catch (searchError) {
-      console.log('Error searching for existing accounts, will create new one:', searchError)
-      // Continue to create new account
+      console.log('Error searching for existing accounts, will create new one:', searchError);
     }
 
     // Create a new Stripe Connect Express account
-    const businessProfileUrl = `https://www.bocmstyle.com/barber/${barber.id}`;
-    console.log('Business profile URL:', businessProfileUrl)
+    console.log('Creating new Stripe account...');
+    const businessProfileUrl = `https://bocmstyle.com/barber/${barber.id}`;
+    console.log('Business profile URL:', businessProfileUrl);
 
     const account = await stripe.accounts.create({
       type: 'express',
@@ -297,13 +244,18 @@ Deno.serve(async (req: Request) => {
       },
     })
 
+    console.log('New Stripe account created:', account.id);
+
     // Create an account link for onboarding
+    console.log('Creating account link for new account...');
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: 'https://www.bocmstyle.com/barber/connect/refresh',
       return_url: 'https://www.bocmstyle.com/barber/connect/return',
       type: 'account_onboarding',
     })
+
+    console.log('Account link created:', accountLink.url);
 
     // Update barber record with Stripe account ID
     console.log('Saving Stripe account ID to database:', account.id, 'for barber:', barberId);
@@ -318,9 +270,9 @@ Deno.serve(async (req: Request) => {
       .eq('id', barberId)
 
     if (updateError) {
-      console.error('Error updating barber:', updateError)
+      console.error('Error updating barber:', updateError);
       // Attempt to delete the Stripe account since we couldn't save the ID
-      await stripe.accounts.del(account.id)
+      await stripe.accounts.del(account.id);
       return new Response(
         JSON.stringify({ error: 'Failed to update barber record' }),
         { 
@@ -351,19 +303,13 @@ Deno.serve(async (req: Request) => {
         }
       }
     )
-
-  } catch (error) {
-    console.error('Error creating Stripe Connect account:', error)
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : 'Unknown'
-    })
     
-    return new Response(
+  } catch (error) {
+    console.error('Stripe connect function error:', error);
+  return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to create Stripe account',
-        details: 'Check function logs for more information'
+        error: 'Stripe connect function failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
       }),
       { 
         status: 500,

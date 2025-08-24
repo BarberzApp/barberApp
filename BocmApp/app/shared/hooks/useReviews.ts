@@ -13,6 +13,8 @@ export function useReviews(barberId?: string) {
   const fetchReviews = useCallback(async (id?: string) => {
     if (!id) return;
     
+    console.log('🔍 Fetching reviews for barber ID:', id);
+    
     try {
       setLoading(true);
       
@@ -45,6 +47,8 @@ export function useReviews(barberId?: string) {
         .eq('is_moderated', true)
         .order('created_at', { ascending: false });
 
+      console.log('📊 Reviews query result:', { data, error });
+
       if (error) throw error;
 
       setReviews(data || []);
@@ -60,6 +64,8 @@ export function useReviews(barberId?: string) {
   const fetchReviewStats = useCallback(async (id?: string) => {
     if (!id) return;
     
+    console.log('📈 Fetching review stats for barber ID:', id);
+    
     try {
       const { data, error } = await supabase
         .from('reviews')
@@ -67,6 +73,8 @@ export function useReviews(barberId?: string) {
         .eq('barber_id', id)
         .eq('is_public', true)
         .eq('is_moderated', true);
+
+      console.log('📊 Review stats query result:', { data, error });
 
       if (error) throw error;
 
@@ -82,12 +90,15 @@ export function useReviews(barberId?: string) {
 
       const recentReviews = data?.slice(0, 5) || [];
 
-      setStats({
+      const statsData = {
         total_reviews: totalReviews,
         average_rating: Math.round(averageRating * 100) / 100,
         rating_distribution: ratingDistribution,
         recent_reviews: recentReviews as Review[]
-      });
+      };
+
+      console.log('📈 Calculated stats:', statsData);
+      setStats(statsData);
     } catch (error) {
       console.error('Error fetching review stats:', error);
     }

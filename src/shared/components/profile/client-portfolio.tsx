@@ -618,7 +618,7 @@ export default function ClientPortfolio() {
                     Videos you like from barbers will appear here. Start exploring and liking some cuts!
                   </p>
                   <Button
-                    onClick={() => window.location.href = '/reels'}
+                    onClick={() => window.location.href = '/cuts'}
                     className="bg-secondary text-primary hover:bg-secondary/90"
                   >
                     Browse Cuts
@@ -645,7 +645,7 @@ export default function ClientPortfolio() {
                         }
                       }}
                       onClick={() => {
-                        window.location.href = `/reels?cutId=${video.id}`;
+                        window.location.href = `/cuts?cutId=${video.id}`;
                       }}
                     >
                       {video.thumbnail ? (

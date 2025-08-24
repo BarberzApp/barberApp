@@ -407,6 +407,40 @@ export async function POST(request: Request) {
             // Don't fail the booking creation if SMS fails
           }
 
+          // Log successful booking creation for mobile payments
+          console.log('✅ Mobile payment booking created successfully:', {
+            bookingId: newBooking.id,
+            paymentIntentId: paymentIntent.id,
+            barberId,
+            clientId,
+            amount: paymentIntent.amount,
+            status: newBooking.status
+          })
+
+          // Track mobile payment success for analytics
+          try {
+            await supabase
+              .from('payment_events')
+              .insert({
+                payment_intent_id: paymentIntent.id,
+                event_type: 'mobile_payment_success',
+                booking_id: newBooking.id,
+                amount: paymentIntent.amount,
+                currency: paymentIntent.currency,
+                metadata: {
+                  source: 'mobile_app',
+                  barberId,
+                  serviceId,
+                  clientId,
+                  addonIds: addonIds || []
+                },
+                created_at: new Date().toISOString()
+              })
+          } catch (trackingError) {
+            console.error('Error tracking mobile payment event:', trackingError)
+            // Don't fail the webhook if tracking fails
+          }
+
           // Add add-ons to the booking if any were selected
           if (addonIds && addonIds.length > 0) {
             const addonIdArray = addonIds.split(',').filter(id => id.trim())

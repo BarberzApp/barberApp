@@ -170,6 +170,78 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
     }
   };
 
+  const handleViewStripeDetails = async () => {
+    try {
+      console.log('Opening Stripe Dashboard for barber:', barberId);
+      
+      // Create Stripe dashboard link
+      const { data, error } = await supabase.functions.invoke('stripe-dashboard', {
+        body: { barberId }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to create dashboard link');
+      }
+
+      if (!data.url) {
+        throw new Error('No dashboard URL received');
+      }
+
+      console.log('Opening Stripe URL:', data.url);
+      console.log('URL type:', data.type);
+      
+      // Show appropriate message based on type
+      if (data.type === 'onboarding') {
+        Alert.alert(
+          'Complete Stripe Setup',
+          data.message || 'Please complete your Stripe account setup to access the dashboard.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            },
+            {
+              text: 'Continue Setup',
+              onPress: async () => {
+                try {
+                  const result = await WebBrowser.openBrowserAsync(data.url, {
+                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+                    controlsColor: theme.colors.primary,
+                    toolbarColor: theme.colors.background,
+                  });
+                  
+                  console.log('WebBrowser result:', result);
+                  
+                  // After browser closes, refresh the earnings data
+                  await loadEarningsData();
+                } catch (browserError) {
+                  console.error('Error opening browser:', browserError);
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        // Open Stripe dashboard in browser
+        const result = await WebBrowser.openBrowserAsync(data.url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          controlsColor: theme.colors.primary,
+          toolbarColor: theme.colors.background,
+        });
+        
+        console.log('WebBrowser result:', result);
+      }
+      
+    } catch (error) {
+      console.error('Error opening Stripe dashboard:', error);
+      Alert.alert(
+        'Error', 
+        error instanceof Error ? error.message : 'Failed to open Stripe dashboard. Please try again.'
+      );
+    }
+  };
+
   const debugStripeAccount = async () => {
     try {
       console.log('=== DEBUGGING STRIPE ACCOUNT ===');
@@ -534,6 +606,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
                 </View>
                 <TouchableOpacity
                   style={[tw`px-4 py-2 rounded-xl`, { backgroundColor: theme.colors.secondary + '20' }]}
+                  onPress={handleViewStripeDetails}
                 >
                   <Text style={[tw`text-sm font-medium`, { color: theme.colors.secondary }]}>
                     View Details

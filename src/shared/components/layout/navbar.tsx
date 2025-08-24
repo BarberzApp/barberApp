@@ -58,7 +58,7 @@ export function Navbar() {
           label: "Calendar",
         },
         {
-          href: "/reels",
+          href: "/cuts",
           icon: Video,
           label: "Cuts",
         },
@@ -72,7 +72,7 @@ export function Navbar() {
         label: "Bookings",
       },
       {
-        href: "/reels",
+        href: "/cuts",
         icon: Video,
         label: "Cuts",
       },
@@ -112,7 +112,7 @@ export function Navbar() {
             {roleSpecificNavItems().map((item) => {
               const isActive = pathname === item.href || 
                 (item.href === "/calendar" && pathname?.startsWith("/calendar")) ||
-                (item.href === "/reels" && pathname?.startsWith("/reels"))
+                (item.href === "/cuts" && pathname?.startsWith("/cuts"))
               
               return (
                 <Link

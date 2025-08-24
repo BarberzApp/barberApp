@@ -559,7 +559,7 @@ export default function BrowsePage() {
             </p>
             {/* Cuts Button */}
             <div className="flex justify-center pt-6">
-              <Link href="/reels">
+              <Link href="/cuts">
                 <Button className="bg-secondary text-white font-bebas font-bold px-8 py-4 rounded-xl shadow-md shadow-secondary/15 hover:bg-secondary/90 transition-all text-lg flex items-center justify-center gap-2">
                   <Sparkles className="h-5 w-5" />
                   Watch Stylist Cuts

@@ -35,6 +35,7 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterv
 import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
+import { ReviewForm } from '../shared/components/ReviewForm';
 
 interface CalendarEvent {
   id: string;
@@ -49,6 +50,7 @@ interface CalendarEvent {
     serviceName: string;
     clientName: string;
     barberName: string;
+    barberId: string;
     price: number;
     basePrice: number;
     addonTotal: number;
@@ -88,6 +90,17 @@ export default function CalendarPage() {
   });
   const [services, setServices] = useState<Array<{id: string, name: string, price: number, duration: number}>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Review form state
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewFormData, setReviewFormData] = useState<{
+    barberId: string;
+    bookingId: string;
+    isEditing?: boolean;
+    reviewId?: string;
+    initialRating?: number;
+    initialComment?: string;
+  } | null>(null);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -232,6 +245,7 @@ export default function CalendarPage() {
             .from('bookings')
             .select('*')
             .eq('client_id', user?.id)
+            .eq('payment_status', 'succeeded') // Only show successful payments
             .order('date', { ascending: true });
 
           if (bookingsError) {
@@ -252,6 +266,7 @@ export default function CalendarPage() {
           .from('bookings')
           .select('*')
           .eq('client_id', user?.id)
+          .eq('payment_status', 'succeeded') // Only show successful payments
           .order('date', { ascending: true });
 
         console.log('📊 [CALENDAR] Client bookings query result:', { bookings, error });
@@ -366,6 +381,7 @@ export default function CalendarPage() {
             serviceName: service?.name || '',
             clientName: client?.name || booking.guest_name || 'Guest',
             barberName: barber?.name || 'Barber',
+            barberId: booking.barber_id, // Add barber_id for review functionality
             price: (booking.price || 0), // Total price from database (already includes add-ons)
             basePrice: (booking.price || 0) - addonTotal, // Calculate base service price
             addonTotal,
@@ -512,6 +528,25 @@ export default function CalendarPage() {
     } finally {
       setIsMarkingCompleted(false);
     }
+  };
+
+  const handleLeaveReview = async () => {
+    if (!selectedEvent) return;
+    
+    // Barbers can only leave reviews in "My Bookings" tab (when they're the client)
+    // They cannot leave reviews in "My Appointments" tab (when they're the service provider)
+    if (userRole === 'barber' && barberViewMode === 'appointments') {
+      Alert.alert('Info', 'You can only leave reviews for appointments where you are the client (My Bookings tab)');
+      return;
+    }
+
+    setReviewFormData({
+      barberId: selectedEvent.extendedProps.barberId,
+      bookingId: selectedEvent.id,
+      isEditing: false
+    });
+    setShowReviewForm(true);
+    setShowEventDialog(false);
   };
 
   const formatTime = (date: Date) => {
@@ -1313,6 +1348,25 @@ export default function CalendarPage() {
                     </TouchableOpacity>
                   </View>
                 )}
+
+                {/* Leave Review Button for Completed Appointments */}
+                {selectedEvent.extendedProps.status === 'completed' && userRole === 'client' && (
+                  <View style={tw`mt-6`}>
+                    <TouchableOpacity
+                      onPress={handleLeaveReview}
+                      style={[tw`py-3 rounded-xl items-center`, { 
+                        backgroundColor: '#3b82f6',
+                        shadowColor: '#3b82f6',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 4
+                      }]}
+                    >
+                      <Text style={tw`font-semibold text-white`}>Leave Review</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -1488,6 +1542,28 @@ export default function CalendarPage() {
           </View>
         </View>
       </Modal>
+
+      {/* Review Form Modal */}
+      {reviewFormData && (
+        <ReviewForm
+          barberId={reviewFormData.barberId}
+          bookingId={reviewFormData.bookingId}
+          onClose={() => {
+            setReviewFormData(null);
+            setShowReviewForm(false);
+          }}
+          onSuccess={() => {
+            setReviewFormData(null);
+            setShowReviewForm(false);
+            // Refresh events if needed
+            fetchBookings();
+          }}
+          isEditing={reviewFormData.isEditing}
+          reviewId={reviewFormData.reviewId}
+          initialRating={reviewFormData.initialRating}
+          initialComment={reviewFormData.initialComment}
+        />
+      )}
     </SafeAreaView>
   );
 } 

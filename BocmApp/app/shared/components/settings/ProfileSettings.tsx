@@ -39,7 +39,8 @@ import {
   BARBER_SPECIALTIES, 
   extractHandle 
 } from '../../utils/settings.utils';
-import { Picker } from '@react-native-picker/picker';
+import { notificationService } from '../../lib/notifications';
+
 
 interface ProfileSettingsProps {
   onUpdate?: () => void;
@@ -68,7 +69,6 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       tiktok: '',
       facebook: ''
     },
-    carrier: '',
     sms_notifications: false,
   });
 
@@ -117,7 +117,6 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               tiktok: barber.tiktok || '',
               facebook: barber.facebook || ''
             },
-            carrier: profile.carrier || '',
             sms_notifications: profile.sms_notifications || false,
           });
         }
@@ -139,7 +138,6 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             tiktok: '',
             facebook: ''
           },
-          carrier: profile.carrier || '',
           sms_notifications: profile.sms_notifications || false,
         });
       }
@@ -163,7 +161,7 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    if (!formData.carrier?.trim()) errors.carrier = 'Carrier is required';
+
     if (isBarber && !formData.businessName?.trim()) {
       errors.businessName = 'Business name is required for barbers';
     }
@@ -196,8 +194,8 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
           location: formData.location,
           description: formData.description,
           is_public: formData.isPublic,
-          carrier: formData.carrier,
           sms_notifications: formData.sms_notifications,
+          push_token: formData.sms_notifications ? notificationService.getPushToken() : null,
         })
         .eq('id', user?.id);
 
@@ -237,6 +235,46 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
       ? currentSpecialties.filter(s => s !== specialty)
       : [...currentSpecialties, specialty];
     setFormData({ ...formData, specialties: newSpecialties });
+  };
+
+  const handlePushNotificationToggle = async () => {
+    try {
+      if (!formData.sms_notifications) {
+        // Enable push notifications
+        console.log('🔔 Requesting push notification permissions...');
+        
+        // Initialize notifications and request permissions
+        await notificationService.initialize();
+        
+        // Update local state
+        setFormData({ ...formData, sms_notifications: true });
+        
+        Alert.alert(
+          'Push Notifications Enabled',
+          'You will now receive notifications for bookings, payments, and other important updates.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        // Disable push notifications
+        console.log('🔕 Disabling push notifications...');
+        
+        // Update local state
+        setFormData({ ...formData, sms_notifications: false });
+        
+        Alert.alert(
+          'Push Notifications Disabled',
+          'You will no longer receive push notifications. You can re-enable them anytime.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling push notifications:', error);
+      Alert.alert(
+        'Error',
+        'Failed to update push notification settings. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const InputField = ({ 
@@ -477,37 +515,14 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
             <View style={tw`flex-row items-center mb-4`}>
               <AlertCircle size={20} color={theme.colors.secondary} style={tw`mr-2`} />
               <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
-                SMS Notifications
+                Push Notifications
               </Text>
             </View>
 
-            <View style={tw`mb-4`}>
-              <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
-                Carrier *
-              </Text>
-              <View style={[
-                tw`rounded-xl overflow-hidden`,
-                { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: validationErrors.carrier ? theme.colors.destructive : 'rgba(255,255,255,0.1)' }
-              ]}>
-                <Picker
-                  selectedValue={formData.carrier}
-                  onValueChange={(value) => setFormData({ ...formData, carrier: value })}
-                  style={{ color: theme.colors.foreground }}
-                  itemStyle={{ color: theme.colors.foreground }}
-                >
-                  <Picker.Item label="Select your carrier..." value="" color={theme.colors.foreground} />
-                  {CARRIER_OPTIONS.map((carrier) => (
-                    <Picker.Item key={carrier.value} label={carrier.label} value={carrier.value} color={theme.colors.foreground} />
-                  ))}
-                </Picker>
-              </View>
-              {validationErrors.carrier && (
-                <Text style={[tw`text-xs mt-1`, { color: theme.colors.destructive }]}>{validationErrors.carrier}</Text>
-              )}
-            </View>
+
 
             <TouchableOpacity
-              onPress={() => setFormData({ ...formData, sms_notifications: !formData.sms_notifications })}
+              onPress={handlePushNotificationToggle}
               style={[
                 tw`px-4 py-2 rounded-xl flex-row items-center justify-center`,
                 { backgroundColor: formData.sms_notifications ? theme.colors.secondary : theme.colors.input }
@@ -516,10 +531,10 @@ export function ProfileSettings({ onUpdate }: ProfileSettingsProps) {
               {formData.sms_notifications ? (
                 <>
                   <Check size={16} color={theme.colors.primaryForeground} style={tw`mr-2`} />
-                  <Text style={[tw`font-medium`, { color: theme.colors.primaryForeground }]}>SMS Notifications Enabled</Text>
+                  <Text style={[tw`font-medium`, { color: theme.colors.primaryForeground }]}>Push Notifications Enabled</Text>
                 </>
               ) : (
-                <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>Enable SMS Notifications</Text>
+                <Text style={[tw`font-medium`, { color: theme.colors.foreground }]}>Enable Push Notifications</Text>
               )}
             </TouchableOpacity>
           </CardContent>

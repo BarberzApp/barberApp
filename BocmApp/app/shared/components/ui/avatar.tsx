@@ -25,10 +25,12 @@ const Avatar: React.FC<AvatarProps> = ({
     switch (size) {
       case 'sm':
         return tw`w-8 h-8`;
+      case 'md':
+        return tw`w-10 h-10`;
       case 'lg':
         return tw`w-12 h-12`;
       case 'xl':
-        return tw`w-16 h-16`;
+        return tw`w-32 h-32`;
       default:
         return tw`w-10 h-10`;
     }
@@ -38,10 +40,12 @@ const Avatar: React.FC<AvatarProps> = ({
     switch (size) {
       case 'sm':
         return 16;
+      case 'md':
+        return 20;
       case 'lg':
         return 24;
       case 'xl':
-        return 32;
+        return 48;
       default:
         return 20;
     }
@@ -51,10 +55,12 @@ const Avatar: React.FC<AvatarProps> = ({
     switch (size) {
       case 'sm':
         return tw`text-xs`;
+      case 'md':
+        return tw`text-sm`;
       case 'lg':
         return tw`text-base`;
       case 'xl':
-        return tw`text-lg`;
+        return tw`text-3xl`;
       default:
         return tw`text-sm`;
     }
@@ -76,6 +82,9 @@ const Avatar: React.FC<AvatarProps> = ({
           source={{ uri: src }}
           style={[tw`w-full h-full`, getSizeStyles()]}
           resizeMode="cover"
+          onError={(error) => {
+            console.log('Avatar image error:', error.nativeEvent.error);
+          }}
         />
       ) : fallback ? (
         <Text

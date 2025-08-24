@@ -32,12 +32,16 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
   // Define pages where navigation should be hidden
   const hiddenPages = ["/", "/landing"];
   
+  // Define pages that need special navigation handling
+  const isCutsPage = pathname?.startsWith('/cuts') || false;
+  
   // Determine what to show
   const showNavbar = pathname ? !hiddenPages.includes(pathname) : true;
   const isSettingsPage = pathname?.startsWith('/settings') || false;
   const isProfilePage = pathname?.startsWith('/profile') || false;
-  const shouldShowNav = showNavbar || isSettingsPage || isProfilePage;
-  const showMobileNav = showNavbar || isSettingsPage || isProfilePage;
+  const shouldShowNav = showNavbar || isSettingsPage || isProfilePage || isCutsPage;
+  const showMobileNav = (showNavbar || isSettingsPage || isProfilePage) && !isCutsPage;
+  const isFullScreenVideo = isCutsPage;
 
   // Debug logging
   React.useEffect(() => {
@@ -47,11 +51,12 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
       showNavbar,
       isSettingsPage,
       isProfilePage,
+      isCutsPage,
       shouldShowNav,
       showMobileNav,
       isNavigating,
     });
-  }, [pathname, mounted, showNavbar, isSettingsPage, isProfilePage, shouldShowNav, showMobileNav, isNavigating]);
+  }, [pathname, mounted, showNavbar, isSettingsPage, isProfilePage, isCutsPage, shouldShowNav, showMobileNav, isNavigating]);
 
   // Show loading state during navigation
   if (isNavigating) {
@@ -68,7 +73,7 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
   return (
     <>
       {shouldShowNav && <Navbar />}
-      <div>
+      <div className={isFullScreenVideo ? 'h-screen w-screen overflow-hidden' : ''}>
         {children}
       </div>
       {showMobileNav && <MobileNav />}

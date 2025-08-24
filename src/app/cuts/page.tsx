@@ -138,11 +138,14 @@ export default function CutsPage() {
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
   const [expandedDescriptions, setExpandedDescriptions] = useState<{[key: string]: boolean}>({})
   const [mutedVideos, setMutedVideos] = useState<{[key: string]: boolean}>({})
-  const [hasUserInteracted, setHasUserInteracted] = useState(false)
+
   const [buffering, setBuffering] = useState<boolean[]>([])
   const [activeVideoIndex, setActiveVideoIndex] = useState(0)
   const [mutedStates, setMutedStates] = useState<{[id: string]: boolean}>({})
   const [searchParams, setSearchParams] = useState<URLSearchParams | null>(null)
+  const [holdingForPause, setHoldingForPause] = useState<{[key: string]: boolean}>({})
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [currentDate, setCurrentDate] = useState<Date | null>(null)
 
   // Initialize search params from URL
   useEffect(() => {
@@ -151,22 +154,61 @@ export default function CutsPage() {
     }
   }, [])
 
+  // Responsive height calculation for card
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDesktop(window.innerWidth >= 768);
+      setCurrentDate(new Date());
+      
+      const handleResize = () => {
+        setIsDesktop(window.innerWidth >= 768);
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [])
 
 
-// Simple video control functions
+
+// Improved video control functions with better error handling
 const playVideo = useCallback((index: number) => {
   const video = videoRefs.current[index]
-  if (!video) return
-  video.play().catch(console.error)
+  if (!video) {
+    console.warn(`⚠️ Video element not found for index ${index}`)
+    return
+  }
+  
+  console.log(`▶️ Attempting to play video ${index}`)
+  
+  // Ensure video is ready
+  if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+    video.play().catch((error) => {
+      console.warn(`⚠️ Failed to play video ${index}:`, error)
+    })
+  } else {
+    console.log(`⏳ Video ${index} not ready yet, waiting...`)
+    video.addEventListener('canplay', () => {
+      video.play().catch((error) => {
+        console.warn(`⚠️ Failed to play video ${index} after ready:`, error)
+      })
+    }, { once: true })
+  }
 }, [])
 
 const pauseVideo = useCallback((index: number) => {
   const video = videoRefs.current[index]
-  if (!video) return
+  if (!video) {
+    console.warn(`⚠️ Video element not found for index ${index}`)
+    return
+  }
+  
+  console.log(`⏸️ Pausing video ${index}`)
   video.pause()
 }, [])
 
 const pauseAllVideosExcept = useCallback((exceptIndex: number) => {
+  console.log(`🛑 Pausing all videos except ${exceptIndex}`)
   videoRefs.current.forEach((video, index) => {
     if (video && index !== exceptIndex) {
       pauseVideo(index)
@@ -174,75 +216,19 @@ const pauseAllVideosExcept = useCallback((exceptIndex: number) => {
   })
 }, [pauseVideo])
 
-// Listen for user interaction to enable autoplay after interaction
-useEffect(() => {
-  const handleUserInteraction = () => {
-    setHasUserInteracted(true)
-  }
-  window.addEventListener('pointerdown', handleUserInteraction, { once: true })
-  window.addEventListener('keydown', handleUserInteraction, { once: true })
-  return () => {
-    window.removeEventListener('pointerdown', handleUserInteraction)
-    window.removeEventListener('keydown', handleUserInteraction)
-  }
-}, [])
+
 
 // Prevent body scrolling when component mounts
 useEffect(() => {
+  if (typeof document === 'undefined') return
+  
   document.body.style.overflow = 'hidden'
   return () => {
     document.body.style.overflow = 'unset'
   }
 }, [])
 
-// Simple Intersection Observer based on TikTok example
-useEffect(() => {
-  if (!containerRef.current || !cuts.length) return
 
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const index = parseInt(entry.target.getAttribute('data-index') || '0')
-          const cut = cuts[index]
-          
-          // Update current cut index
-          setCurrentCutIndex(index)
-          setActiveVideoIndex(index)
-          
-          // Pause all other videos
-          pauseAllVideosExcept(index)
-          
-          // Auto-play current video if user has interacted
-          if (hasUserInteracted) {
-            const video = videoRefs.current[index]
-            if (video && !mutedStates[cut.id]) {
-              playVideo(index)
-            }
-          }
-          
-          // Track view
-          if (cut) {
-            trackView(cut.id)
-          }
-        } else {
-          // Pause video when it goes out of view
-          const index = parseInt(entry.target.getAttribute('data-index') || '0')
-          pauseVideo(index)
-        }
-      })
-    },
-    {
-      threshold: 0.5,
-      rootMargin: '0px 0px -50% 0px'
-    }
-  )
-
-  const videoElements = containerRef.current.querySelectorAll('[data-index]')
-  videoElements.forEach((el) => observer.observe(el))
-
-  return () => observer.disconnect()
-  }, [cuts, hasUserInteracted, mutedStates, playVideo, pauseVideo, pauseAllVideosExcept])
 
   const categories = [
     { id: 'all', label: 'For You' },
@@ -306,7 +292,7 @@ useEffect(() => {
 useEffect(() => {
   videoRefs.current.forEach((video, idx) => {
     if (!video) return
-    if (idx === activeVideoIndex && hasUserInteracted) {
+    if (idx === activeVideoIndex) {
       const cut = cuts[idx]
       if (cut && !mutedStates[cut.id]) {
         video.currentTime = 0
@@ -316,25 +302,65 @@ useEffect(() => {
       video.pause()
     }
   })
-}, [activeVideoIndex, hasUserInteracted, cuts, mutedStates])
+}, [activeVideoIndex, cuts, mutedStates])
 
-// Simple video click handler - toggle play/pause
+// Touch and hold handler for pause functionality
+const handleVideoTouchStart = useCallback((index: number) => {
+  const video = videoRefs.current[index]
+  if (!video) return
+  
+  // Start a timer for 1 second
+  const holdTimer = setTimeout(() => {
+    // If video is playing, pause it
+    if (!video.paused) {
+      pauseVideo(index)
+      console.log(`⏸️ Video ${index} paused due to long press`)
+      
+      // Show pause indicator after video is paused
+      setHoldingForPause(prev => ({ ...prev, [index]: true }))
+      
+      // Haptic feedback
+      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+        navigator.vibrate(100)
+      }
+    }
+  }, 1000)
+  
+  // Store the timer so we can clear it if touch ends early
+  video.dataset.holdTimer = holdTimer.toString()
+}, [pauseVideo])
+
+const handleVideoTouchEnd = useCallback((index: number) => {
+  const video = videoRefs.current[index]
+  if (!video) return
+  
+  // Clear the hold timer if it exists
+  const holdTimer = video.dataset.holdTimer
+  if (holdTimer) {
+    clearTimeout(parseInt(holdTimer))
+    delete video.dataset.holdTimer
+  }
+  
+  // Hide pause indicator when touch ends
+  setHoldingForPause(prev => ({ ...prev, [index]: false }))
+}, [])
+
+// Simple video click handler - only play (pause is handled by long press)
 const handleVideoClick = useCallback((index: number) => {
   const video = videoRefs.current[index]
   if (!video) return
   
-  // Toggle play/pause
+  // Only play if video is paused
   if (video.paused) {
     playVideo(index)
-  } else {
-    pauseVideo(index)
+    console.log(`▶️ Video ${index} played due to click`)
+    
+    // Haptic feedback
+    if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+      navigator.vibrate(50)
+    }
   }
-  
-  // Haptic feedback
-  if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
-    navigator.vibrate(50)
-  }
-}, [playVideo, pauseVideo])
+}, [playVideo])
 
 // Simple mute toggle handler
 const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
@@ -433,7 +459,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
 
   // Get user's current location
   const getCurrentLocation = useCallback(() => {
-    if (navigator.geolocation) {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation({
@@ -469,6 +495,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
   const fetchCuts = useCallback(async () => {
     try {
       setLoading(true)
+      console.log('🔄 Fetching cuts data...')
       
       let query = supabase
         .from('cuts')
@@ -497,7 +524,18 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
       }
 
       const { data, error } = await query
-      if (error) throw error
+      
+      if (error) {
+        console.error('❌ Database error:', error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      if (!data) {
+        console.error('❌ No data returned from database')
+        throw new Error('No data returned from database')
+      }
+
+      console.log(`✅ Fetched ${data.length} cuts from database`)
 
       let filteredCuts = data?.map((cut: any) => ({
         ...cut,
@@ -646,15 +684,18 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
             // Update current cut index
             setCurrentCutIndex(index)
             
-            // Auto-play current video if not scrolling and user has interacted
-            if (hasUserInteracted) {
-              const videoState = mutedStates[cut.id]
+            // Auto-play current video immediately
+            const video = videoRefs.current[index]
+            if (video) {
+              // Ensure video is muted for autoplay
+              video.muted = true
               
-              // Only auto-resume if video was playing before scroll
-              if (!videoState) {
-                // Unmute if not manually muted
-                playVideo(index)
-              }
+              // Play the video
+              video.play().catch((error) => {
+                console.warn(`⚠️ Failed to autoplay video ${index}:`, error)
+              })
+              
+              console.log(`▶️ Playing video ${index} (muted: true)`)
             }
             
             // Track view
@@ -662,8 +703,10 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
               trackView(cut.id)
             }
           } else {
-            // Pause video when it goes out of view
-            pauseVideo(index)
+            // Only pause video when it goes out of view if we're not in a controlled scroll
+            if (!isScrolling) {
+              pauseVideo(index)
+            }
           }
         })
       },
@@ -677,7 +720,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
     videoElements.forEach((el) => observer.observe(el))
 
     return () => observer.disconnect()
-  }, [cuts, hasUserInteracted, mutedStates, playVideo, pauseVideo, pauseAllVideosExcept])
+  }, [cuts, mutedStates, playVideo, pauseVideo, pauseAllVideosExcept])
 
   // Handle location filter changes
   const handleLocationFilter = () => {
@@ -746,8 +789,142 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
     }
   }
 
+  // Controlled scroll to next/previous video
+  const scrollToNextVideo = () => {
+    if (currentCutIndex < cuts.length - 1) {
+      setIsScrolling(true);
+      const nextIndex = currentCutIndex + 1;
+      const container = containerRef.current;
+      if (container) {
+        const containerHeight = container.clientHeight;
+        container.scrollTo({
+          top: nextIndex * containerHeight,
+          behavior: 'smooth'
+        });
+        setCurrentCutIndex(nextIndex);
+        
+        // Reset scrolling state after animation
+        setTimeout(() => setIsScrolling(false), 500);
+      }
+    }
+  }
+
+  const scrollToPreviousVideo = () => {
+    if (currentCutIndex > 0) {
+      setIsScrolling(true);
+      const prevIndex = currentCutIndex - 1;
+      const container = containerRef.current;
+      if (container) {
+        const containerHeight = container.clientHeight;
+        container.scrollTo({
+          top: prevIndex * containerHeight,
+          behavior: 'smooth'
+        });
+        setCurrentCutIndex(prevIndex);
+        
+        // Reset scrolling state after animation
+        setTimeout(() => setIsScrolling(false), 500);
+      }
+    }
+  }
+
+  // Touch/swipe handlers for controlled scrolling
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isSwipe = Math.abs(distance) > 50; // Minimum swipe distance
+    
+    if (isSwipe) {
+      if (distance > 0) {
+        // Swipe up - next video
+        scrollToNextVideo();
+      } else {
+        // Swipe down - previous video
+        scrollToPreviousVideo();
+      }
+    }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  // Mouse wheel handler for web
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault(); // Prevent default scroll behavior
+    
+    const delta = e.deltaY;
+    const threshold = 50; // Minimum scroll amount
+    
+    if (Math.abs(delta) > threshold) {
+      if (delta > 0) {
+        // Scroll down - next video
+        scrollToNextVideo();
+      } else {
+        // Scroll up - previous video
+        scrollToPreviousVideo();
+      }
+    }
+  };
+
+  // Keyboard controls for web
+  const handleKeyDown = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'w':
+      case 'W':
+        e.preventDefault();
+        scrollToPreviousVideo();
+        break;
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        e.preventDefault();
+        scrollToNextVideo();
+        break;
+      case ' ':
+        e.preventDefault();
+        // Toggle play/pause for current video
+        const currentVideo = videoRefs.current[currentCutIndex];
+        if (currentVideo) {
+          if (currentVideo.paused) {
+            currentVideo.play();
+          } else {
+            currentVideo.pause();
+          }
+        }
+        break;
+    }
+  };
+
+  // Add keyboard event listener
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentCutIndex]);
+
+
+
   // Handle share
   const handleShare = async (cut: VideoCut, platform?: string) => {
+    if (typeof window === 'undefined') return
+    
     const shareUrl = `${window.location.origin}/cuts/${cut.id}`
     const shareText = `Check out this amazing ${cut.category.replace('-', ' ')} by @${cut.barber_name || 'barber'}`
 
@@ -799,7 +976,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
           user_id: user.id,
           action_type: 'view',
           ip_address: null,
-          user_agent: navigator.userAgent
+          user_agent: typeof window !== 'undefined' ? navigator.userAgent : 'server-side'
         })
       
       if (error) {
@@ -852,7 +1029,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
               user_id: user.id,
               action_type: 'like',
               ip_address: null,
-              user_agent: navigator.userAgent
+              user_agent: typeof window !== 'undefined' ? navigator.userAgent : 'server-side'
             })
           
           if (insertError) {
@@ -1028,12 +1205,10 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
 
   const currentCut = cuts[currentCutIndex]
 
-  // Responsive height calculation for card
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
   const cardHeight = isDesktop ? 'calc(100dvh - 128px)' : 'calc(100dvh - 136px)';
 
   return (
-    <div className="relative h-screen bg-black overflow-hidden pb-[140px] md:pb-0">
+    <div className="relative h-screen w-screen bg-black overflow-hidden">
       {/* Enhanced filter bar with glass morphism */}
       <div className="fixed top-0 md:top-16 left-0 w-full z-40 h-[64px] bg-transparent backdrop-blur-sm border-b border-white/5">
         <div className="relative h-full flex items-center justify-center">
@@ -1101,27 +1276,53 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
         </div>
       </div>
       {/* Video container with safe zones */}
-      <div className="h-[calc(100dvh-184px)] md:h-[calc(100vh-184px)] w-full overflow-y-auto snap-y snap-mandatory relative" style={{ marginTop: '64px' }}>
+      <div 
+        ref={containerRef}
+        className="h-screen w-full overflow-y-auto snap-y snap-mandatory relative scroll-smooth" 
+        style={{ scrollBehavior: 'smooth' }}
+        onScroll={(e) => {
+          const container = e.currentTarget;
+          const scrollTop = container.scrollTop;
+          const containerHeight = container.clientHeight;
+          const currentIndex = Math.round(scrollTop / containerHeight);
+          
+          // Ensure we snap to the nearest video
+          if (currentIndex !== currentCutIndex && currentIndex >= 0 && currentIndex < cuts.length) {
+            setCurrentCutIndex(currentIndex);
+          }
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
+      >
         {cuts.map((cut, index) => {
-          // Determine preload strategy
+          // Determine preload strategy - preload current and next few videos
           let preload = 'metadata';
           if (index === currentCutIndex + 1 || index === currentCutIndex + 2) {
             preload = 'auto';
           }
           return (
-            <div key={cut.id} className="relative h-full min-h-[inherit] w-full snap-start overflow-hidden">
+            <div key={cut.id} className="relative h-screen w-full snap-start overflow-hidden">
               <div className={cn("relative bg-black", getVideoSizing(cut.aspect_ratio).containerClass)}>
                 <video
                   ref={(el) => (videoRefs.current[index] = el)}
                   src={cut.url}
                   className={cn("cursor-pointer", getVideoSizing(cut.aspect_ratio).videoClass)}
-                  autoPlay={index === currentCutIndex}
+                  autoPlay={true}
                   loop
                   muted={true}
                   playsInline
                   preload={preload}
+                  data-index={index}
                   onClick={() => handleVideoClick(index)}
+                  onTouchStart={() => handleVideoTouchStart(index)}
+                  onTouchEnd={() => handleVideoTouchEnd(index)}
+                  onMouseDown={() => handleVideoTouchStart(index)}
+                  onMouseUp={() => handleVideoTouchEnd(index)}
+                  onMouseLeave={() => handleVideoTouchEnd(index)}
                   onLoadStart={() => {
+                    console.log(`📥 Video ${index} started loading:`, cut.title)
                     // Pause all other videos when this one starts
                     if (index === currentCutIndex) {
                       videoRefs.current.forEach((video, i) => {
@@ -1131,7 +1332,16 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                       });
                     }
                   }}
+                  onError={(e) => {
+                    console.error(`❌ Video ${index} failed to load:`, cut.title, e)
+                    setBuffering((prev) => {
+                      const next = [...prev];
+                      next[index] = false;
+                      return next;
+                    });
+                  }}
                   onWaiting={() => {
+                    console.log(`⏳ Video ${index} is buffering:`, cut.title)
                     setBuffering((prev) => {
                       const next = [...prev];
                       next[index] = true;
@@ -1139,6 +1349,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                     });
                   }}
                   onPlaying={() => {
+                    console.log(`▶️ Video ${index} started playing:`, cut.title)
                     setBuffering((prev) => {
                       const next = [...prev];
                       next[index] = false;
@@ -1146,6 +1357,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                     });
                   }}
                   onCanPlay={() => {
+                    console.log(`✅ Video ${index} can play:`, cut.title)
                     setBuffering((prev) => {
                       const next = [...prev];
                       next[index] = false;
@@ -1156,12 +1368,28 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                 {/* Buffering spinner overlay */}
                 {buffering[index] && (
                   <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saffron border-4" />
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary border-4" />
+                  </div>
+                )}
+                
+
+                
+                {/* Pause indicator - shows after video is paused */}
+                {holdingForPause[index] && (
+                  <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+                    <div className="bg-black/50 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-white rounded-sm"></div>
+                        </div>
+                        <p className="text-white font-medium">Paused</p>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {/* Mute indicator */}
                 {/* Side action buttons for each video */}
-                <div className="absolute right-4 z-60 flex flex-col gap-3" style={{ bottom: 180 }}>
+                <div className="absolute right-4 z-60 flex flex-col gap-3" style={{ bottom: 120 }}>
                   {/* Like button */}
                   <button className="flex flex-col items-center group" onClick={() => handleLike(cut.id, cut.is_liked || false)} aria-label="Like video">
                     <div className="bg-white/10 backdrop-blur-xl rounded-full p-3 mb-1.5 border border-white/20 group-hover:bg-white/20 group-hover:border-secondary/50 transition-all duration-300">
@@ -1220,7 +1448,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
                 </div>
 
                 {/* Video info overlay for each video */}
-                <div className="absolute left-0 right-0 p-6 z-50 pb-safe flex flex-col justify-end min-h-[200px]" style={{ bottom: '0px' }}>
+                <div className="absolute left-0 right-0 p-6 z-50 pb-safe flex flex-col justify-end" style={{ bottom: '0px' }}>
                   {/* Top row: Profile icon and Username together */}
                   <div className="inline-flex items-center mb-4 gap-x-2 w-[140px] md:w-[180px]">
                     <div className="h-12 w-12 border-2 border-white/30 rounded-full bg-secondary/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
@@ -1426,7 +1654,7 @@ const handleMuteToggle = useCallback((index: number, e: React.MouseEvent) => {
               isOpen={showBookingForm}
               onClose={() => setShowBookingForm(false)}
               barberId={selectedBarberId}
-              selectedDate={new Date()}
+              selectedDate={currentDate || new Date()}
               onBookingCreated={() => setShowBookingForm(false)}
             />
           )}

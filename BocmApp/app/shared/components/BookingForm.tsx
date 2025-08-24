@@ -17,6 +17,8 @@ import { format, addDays, isToday, isSameDay } from 'date-fns';
 import Icon from 'react-native-vector-icons/Feather';
 import { RootStackParamList } from '../types';
 import { bookingService, Service, TimeSlot } from '../lib/bookingService';
+import * as WebBrowser from 'expo-web-browser';
+import { initStripe, confirmPayment, presentPaymentSheet, CardField } from '@stripe/stripe-react-native';
 
 // Add-on types
 interface ServiceAddon {
@@ -89,7 +91,7 @@ export default function BookingForm({
   const [paymentType, setPaymentType] = useState<'fee'>('fee');
   const [isDeveloperAccount, setIsDeveloperAccount] = useState(false);
 
-  const totalSteps = 4;
+  const totalSteps = 5; // Added step 5 for card input
 
   useEffect(() => {
     if (isVisible) {
@@ -278,6 +280,9 @@ export default function BookingForm({
         return false;
       case 4:
         return true;
+      case 5:
+        return !isDeveloperAccount; // Only validate for regular bookings
+
       default:
         return false;
     }
@@ -285,7 +290,12 @@ export default function BookingForm({
 
   const handleNextStep = () => {
     if (validateStep() && currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+      // For developer accounts, skip step 5 (payment) and go directly to booking
+      if (currentStep === 4 && isDeveloperAccount) {
+        handleCreateBooking();
+      } else {
+        setCurrentStep(currentStep + 1);
+      }
     }
   };
 
@@ -334,180 +344,115 @@ export default function BookingForm({
       console.log('[BOOKING_FORM] Booking date:', bookingDate.toISOString());
 
       if (isDeveloperAccount) {
-        console.log('[BOOKING_FORM] Creating developer booking directly in database...');
+        console.log('[BOOKING_FORM] Creating developer booking via API...');
+        console.log('[BOOKING_FORM] Service being used:', {
+          id: selectedService.id,
+          name: selectedService.name,
+          price: selectedService.price
+        });
         
-        const servicePrice = selectedService.price;
-        const addonTotal = getSelectedAddonsTotal();
-        const totalPrice = servicePrice + addonTotal;
-        
-        // Create booking directly in Supabase
-        const { data: booking, error: bookingError } = await supabase
-          .from('bookings')
-          .insert({
-            barber_id: barberId,
-            service_id: selectedService.id,
+        // Use the developer booking Edge Function (same as rest of app)
+        const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-developer-booking`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            barberId,
+            serviceId: selectedService.id,
             date: bookingDate.toISOString(),
-            price: totalPrice, // Total price (service + add-ons) in dollars
-            client_id: user?.id || null,
-            guest_name: user ? null : guestInfo.name,
-            guest_email: user ? null : guestInfo.email,
-            guest_phone: user ? null : guestInfo.phone,
             notes: guestInfo.notes,
-            status: 'pending',
-            payment_status: 'pending',
-            platform_fee: 0, // No platform fee for developer accounts
-            barber_payout: totalPrice, // Barber gets the full amount in dollars
-            addon_total: addonTotal // Store add-on total separately
+            guestName: user ? undefined : guestInfo.name,
+            guestEmail: user ? undefined : guestInfo.email,
+            guestPhone: user ? undefined : guestInfo.phone,
+            clientId: user?.id || null,
+            paymentType: 'fee',
+            addonIds: selectedAddonIds
           })
-          .select()
-          .single();
+        });
 
-        if (bookingError) {
-          console.error('[BOOKING_FORM] Error creating developer booking:', bookingError);
-          throw new Error('Failed to create booking in database');
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create developer booking');
         }
 
-        console.log('[BOOKING_FORM] Developer booking created in database:', booking);
-
-        // Create booking add-ons if any are selected
-        if (selectedAddonIds.length > 0) {
-          // Get the selected add-ons with their prices
-          const selectedAddons = addons.filter(addon => selectedAddonIds.includes(addon.id));
-          
-          const addonData = selectedAddons.map(addon => ({
-            booking_id: booking.id,
-            addon_id: addon.id,
-            price: addon.price // Include the price at time of booking
-          }));
-
-          const { error: addonError } = await supabase
-            .from('booking_addons')
-            .insert(addonData);
-
-          if (addonError) {
-            console.error('[BOOKING_FORM] Error creating booking add-ons:', addonError);
-            // Don't throw error here, booking was created successfully
-          }
-        }
-
-        console.log('[BOOKING_FORM] Developer booking created successfully');
+        console.log('[BOOKING_FORM] Developer booking created successfully:', data.booking);
         Alert.alert(
           'Success!',
           'Your booking has been created successfully (developer mode - no payment required).',
-          [{ text: 'OK', onPress: () => onBookingCreated(booking) }]
+          [{ text: 'OK', onPress: () => onBookingCreated(data.booking) }]
         );
       } else {
-        console.log('[BOOKING_FORM] Creating regular booking directly in database...');
-        // Regular booking with payment
+        console.log('[BOOKING_FORM] Creating regular booking with payment...');
+        // Regular booking requires payment first
         if (!user) {
           Alert.alert('Error', 'Please sign in to book with this barber.');
           return;
         }
 
-        const servicePrice = selectedService.price;
-        const addonTotal = getSelectedAddonsTotal();
-        const totalPrice = servicePrice + addonTotal;
+        console.log('[BOOKING_FORM] Creating payment intent for Stripe Payment Sheet...');
+        console.log('[BOOKING_FORM] Service being used:', {
+          id: selectedService.id,
+          name: selectedService.name,
+          price: selectedService.price
+        });
         
-        // Create booking directly in Supabase
-        const { data: booking, error: bookingError } = await supabase
-          .from('bookings')
-          .insert({
-            barber_id: barberId,
-            service_id: selectedService.id,
+        // Initialize Stripe
+        await initStripe({
+          publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+        });
+
+        // Create payment intent using Edge Function
+        const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-intent`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            barberId,
+            serviceId: selectedService.id,
             date: bookingDate.toISOString(),
-            price: totalPrice, // Total price (service + add-ons) in dollars
-            client_id: user.id,
             notes: guestInfo.notes,
-            status: 'pending',
-            payment_status: 'pending',
-            platform_fee: paymentType === 'fee' ? 3.38 : 0, // Platform fee in dollars
-            barber_payout: totalPrice, // Barber gets the full amount in dollars
-            addon_total: addonTotal // Store add-on total separately
+            clientId: user.id,
+            paymentType: 'fee',
+            addonIds: selectedAddonIds
           })
-          .select()
-          .single();
+        });
 
-        if (bookingError) {
-          console.error('[BOOKING_FORM] Error creating regular booking:', bookingError);
-          throw new Error('Failed to create booking in database');
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create payment intent');
         }
 
-        console.log('[BOOKING_FORM] Regular booking created in database:', booking);
+        console.log('[BOOKING_FORM] Payment intent created:', data);
 
-        // Create booking add-ons if any are selected
-        if (selectedAddonIds.length > 0) {
-          // Get the selected add-ons with their prices
-          const selectedAddons = addons.filter(addon => selectedAddonIds.includes(addon.id));
-          
-          const addonData = selectedAddons.map(addon => ({
-            booking_id: booking.id,
-            addon_id: addon.id,
-            price: addon.price // Include the price at time of booking
-          }));
+        // Confirm payment in-app (secure)
+        const { error: paymentError } = await confirmPayment(data.clientSecret, {
+          paymentMethodType: 'Card',
+        });
 
-          const { error: addonError } = await supabase
-            .from('booking_addons')
-            .insert(addonData);
-
-          if (addonError) {
-            console.error('[BOOKING_FORM] Error creating booking add-ons:', addonError);
-            // Don't throw error here, booking was created successfully
-          }
+        if (paymentError) {
+          console.error('[BOOKING_FORM] Payment error:', paymentError);
+          Alert.alert('Payment Failed', paymentError.message || 'Payment could not be completed.');
+          return;
         }
 
-        console.log('[BOOKING_FORM] Regular booking created successfully');
-        
-        // Send notifications after successful booking
-        try {
-          // Get barber name for notifications
-          const { data: barberProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', barberId)
-            .single();
-          
-          const barberDisplayName = barberProfile 
-            ? `${barberProfile.first_name} ${barberProfile.last_name}`.trim()
-            : barberName || 'Your Barber';
-          
-          const appointmentTime = formatAppointmentTime(bookingDate);
-          
-          // Send booking confirmation to client
-          await notificationService.sendBookingConfirmation(
-            booking.id,
-            selectedService.name,
-            appointmentTime,
-            barberDisplayName
-          );
-          
-          // Send new booking notification to barber
-          const clientName = user?.email?.split('@')[0] || guestInfo.name || 'Guest';
-          await notificationService.sendNewBookingNotification(
-            booking.id,
-            clientName,
-            selectedService.name,
-            appointmentTime
-          );
-          
-          // Schedule reminders
-          await notificationService.sendBookingReminder(
-            booking.id,
-            selectedService.name,
-            appointmentTime,
-            barberDisplayName,
-            30 // 30 minutes before
-          );
-          
-          console.log('[BOOKING_FORM] Notifications sent successfully');
-        } catch (notificationError) {
-          console.error('[BOOKING_FORM] Error sending notifications:', notificationError);
-          // Don't fail the booking if notifications fail
-        }
+        // Payment successful - booking will be created by webhook
+        console.log('[BOOKING_FORM] Payment successful! Booking will be created automatically via webhook.');
         
         Alert.alert(
-          'Success!',
-          'Your booking has been created successfully.',
-          [{ text: 'OK', onPress: () => onBookingCreated(booking) }]
+          'Payment Successful!',
+          'Your payment has been processed. Your booking will be confirmed shortly.',
+          [{ 
+            text: 'OK', 
+            onPress: () => {
+              // Navigate to success page or close form
+              // The booking will be created by the webhook, so we pass null
+              onBookingCreated(null);
+            }
+          }]
         );
       }
 
@@ -552,6 +497,7 @@ export default function BookingForm({
       case 2: return 'Pick Your Time';
       case 3: return 'Your Information';
       case 4: return 'Review & Book';
+      case 5: return 'Payment';
       default: return '';
     }
   };
@@ -562,6 +508,7 @@ export default function BookingForm({
       case 2: return 'Choose your preferred appointment time';
       case 3: return 'Provide your contact information';
       case 4: return 'Review your booking details and confirm';
+      case 5: return 'Enter your payment information';
       default: return '';
     }
   };
@@ -615,7 +562,7 @@ export default function BookingForm({
 
           {/* Step Indicators */}
           <View style={tw`flex-row justify-between`}>
-            {[1, 2, 3, 4].map((step) => (
+            {[1, 2, 3, 4, 5].map((step) => (
               <View key={step} style={tw`items-center`}>
                 <View style={[
                   tw`w-8 h-8 rounded-full items-center justify-center`,
@@ -1145,6 +1092,179 @@ export default function BookingForm({
                 </View>
               </View>
             )}
+
+            {/* Step 5: Card Input (only for regular bookings) */}
+            {currentStep === 5 && !isDeveloperAccount && (
+              <View style={tw`space-y-6`}>
+                {/* Header Section */}
+                <View style={tw`items-center mb-8`}>
+                  <View style={[
+                    tw`w-20 h-20 rounded-full items-center justify-center mb-4`,
+                    { 
+                      backgroundColor: `${theme.colors.secondary}20`,
+                      borderWidth: 2,
+                      borderColor: `${theme.colors.secondary}40`
+                    }
+                  ]}>
+                    <Icon name="credit-card" size={28} color={theme.colors.secondary} />
+                  </View>
+                  <Text style={[tw`text-2xl font-bold mb-3`, { color: theme.colors.foreground }]}>
+                    Secure Payment
+                  </Text>
+                  <Text style={[tw`text-center text-base leading-6`, { color: theme.colors.mutedForeground }]}>
+                    Your payment information is encrypted and secure
+                  </Text>
+                </View>
+
+                {/* Security Badge */}
+                <View style={[
+                  tw`flex-row items-center justify-center p-3 rounded-full mb-6`,
+                  { backgroundColor: `${theme.colors.secondary}15` }
+                ]}>
+                  <Icon name="shield" size={16} color={theme.colors.secondary} />
+                  <Text style={[tw`ml-2 text-sm font-medium`, { color: theme.colors.secondary }]}>
+                    Powered by Stripe • PCI Compliant
+                  </Text>
+                </View>
+
+                {/* Card Input Section */}
+                <View style={[
+                  tw`p-6 rounded-2xl`,
+                  { 
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.1)'
+                  }
+                ]}>
+                  <View style={tw`flex-row items-center mb-4`}>
+                    <Icon name="credit-card" size={20} color={theme.colors.secondary} />
+                    <Text style={[tw`ml-2 text-lg font-semibold`, { color: theme.colors.foreground }]}>
+                      Card Information
+                    </Text>
+                  </View>
+                  
+                  <CardField
+                    postalCodeEnabled={false}
+                    placeholders={{
+                      number: "4242 4242 4242 4242",
+                    }}
+                    cardStyle={{
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      textColor: theme.colors.foreground,
+                      fontSize: 16,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.2)',
+                    }}
+                    style={{
+                      width: '100%',
+                      height: 56,
+                      marginVertical: 8,
+                    }}
+                  />
+                  
+                  <View style={tw`flex-row items-center mt-3`}>
+                    <Icon name="info" size={14} color={theme.colors.mutedForeground} />
+                    <Text style={[tw`ml-2 text-xs`, { color: theme.colors.mutedForeground }]}>
+                      Test: 4242 4242 4242 4242 • Any future date • Any CVC
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Payment Summary */}
+                <View style={[
+                  tw`p-6 rounded-2xl`,
+                  { 
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.1)'
+                  }
+                ]}>
+                  <View style={tw`flex-row items-center mb-4`}>
+                    <Icon name="receipt" size={20} color={theme.colors.secondary} />
+                    <Text style={[tw`ml-2 text-lg font-semibold`, { color: theme.colors.foreground }]}>
+                      Payment Summary
+                    </Text>
+                  </View>
+                  
+                  <View style={tw`space-y-3`}>
+                    <View style={tw`flex-row justify-between items-center`}>
+                      <Text style={[tw`text-base`, { color: theme.colors.mutedForeground }]}>
+                        Service
+                      </Text>
+                      <Text style={[tw`text-base font-medium`, { color: theme.colors.foreground }]}>
+                        {selectedService?.name}
+                      </Text>
+                    </View>
+                    
+                    <View style={tw`flex-row justify-between items-center`}>
+                      <Text style={[tw`text-base`, { color: theme.colors.mutedForeground }]}>
+                        Booking Fee
+                      </Text>
+                      <Text style={[tw`text-base font-medium`, { color: theme.colors.foreground }]}>
+                        $3.38
+                      </Text>
+                    </View>
+                    
+                    {/* Add-ons if any */}
+                    {selectedAddonIds.length > 0 && (
+                      <View style={tw`space-y-2`}>
+                        {getSelectedAddons().map((addon) => (
+                          <View key={addon.id} style={tw`flex-row justify-between items-center`}>
+                            <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+                              + {addon.name}
+                            </Text>
+                            <Text style={[tw`text-sm font-medium`, { color: theme.colors.foreground }]}>
+                              +${addon.price.toFixed(2)}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    
+                    <View style={[
+                      tw`border-t border-white/10 pt-3 mt-3`,
+                      { borderTopWidth: 1 }
+                    ]}>
+                      <View style={tw`flex-row justify-between items-center`}>
+                        <Text style={[tw`text-lg font-semibold`, { color: theme.colors.foreground }]}>
+                          Total
+                        </Text>
+                        <Text style={[tw`text-xl font-bold`, { color: theme.colors.secondary }]}>
+                          ${(3.38 + getSelectedAddonsTotal()).toFixed(2)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Trust Indicators */}
+                <View style={tw`items-center mt-4`}>
+                  <View style={tw`flex-row items-center space-x-4`}>
+                    <View style={tw`items-center`}>
+                      <Icon name="lock" size={16} color={theme.colors.mutedForeground} />
+                      <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                        Encrypted
+                      </Text>
+                    </View>
+                    <View style={tw`items-center`}>
+                      <Icon name="shield" size={16} color={theme.colors.mutedForeground} />
+                      <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                        Secure
+                      </Text>
+                    </View>
+                    <View style={tw`items-center`}>
+                      <Icon name="check-circle" size={16} color={theme.colors.mutedForeground} />
+                      <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                        Verified
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+
           </View>
         </ScrollView>
 

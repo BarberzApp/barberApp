@@ -6,7 +6,9 @@ const DEVELOPER_EMAIL = 'bocmtexter@gmail.com'
 // Email sending function using the existing utility pattern
 async function sendErrorEmail(to: string, subject: string, htmlContent: string, textContent: string) {
   try {
-    const response = await fetch('/api/send-error-email', {
+    // Use absolute URL for server-side fetch
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    const response = await fetch(`${baseUrl}/api/send-error-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

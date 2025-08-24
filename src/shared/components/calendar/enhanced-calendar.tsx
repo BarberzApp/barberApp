@@ -157,6 +157,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             )
           `)
           .eq('barber_id', barberData.id)
+          .eq('payment_status', 'succeeded') // Only show successful payments
           .order('date', { ascending: true })
       } else {
         // User is a client - fetch their bookings
@@ -182,6 +183,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             )
           `)
           .eq('client_id', user?.id)
+          .eq('payment_status', 'succeeded') // Only show successful payments
           .order('date', { ascending: true })
       }
 

@@ -1,75 +1,62 @@
-const { createClient } = require('@supabase/supabase-js')
-require('dotenv').config()
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vrunuggwpwmwtpwdjnpu.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing required environment variables')
-  process.exit(1)
+if (!supabaseServiceKey) {
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+  process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-async function checkBarberStripe() {
+async function checkBarberStripe(barberId) {
+  console.log(`🔍 Checking Stripe status for barber: ${barberId}`);
+  
   try {
-    console.log('🔍 Checking barber Stripe account status...')
-    
-    const barberId = '0beca26d-7782-40e4-89bd-bcd05e57a825'
-
-    // Get barber details including Stripe info
     const { data: barber, error } = await supabase
       .from('barbers')
-      .select(`
-        id,
-        business_name,
-        is_developer,
-        stripe_account_id,
-        stripe_account_status,
-        stripe_account_ready,
-        profiles(name, email)
-      `)
+      .select('id, business_name, is_developer, stripe_account_id, stripe_account_status, onboarding_complete')
       .eq('id', barberId)
-      .single()
+      .single();
 
-    if (error || !barber) {
-      console.error('❌ Barber not found:', error?.message || 'Barber does not exist')
-      return
+    if (error) {
+      console.error('❌ Error fetching barber:', error);
+      return;
     }
 
-    console.log('📋 Barber Details:')
-    console.log('Name:', barber.profiles?.name || 'Unknown')
-    console.log('Business:', barber.business_name || 'No business name')
-    console.log('Developer Mode:', barber.is_developer ? '✅ ENABLED' : '❌ DISABLED')
-    console.log('')
-    console.log('💳 Stripe Account Details:')
-    console.log('Stripe Account ID:', barber.stripe_account_id || '❌ NOT SET')
-    console.log('Stripe Account Status:', barber.stripe_account_status || '❌ NOT SET')
-    console.log('Stripe Account Ready:', barber.stripe_account_ready ? '✅ YES' : '❌ NO')
-    console.log('')
+    console.log('📋 Barber Details:');
+    console.log('  ID:', barber.id);
+    console.log('  Business Name:', barber.business_name);
+    console.log('  Is Developer:', barber.is_developer);
+    console.log('  Stripe Account ID:', barber.stripe_account_id);
+    console.log('  Stripe Account Status:', barber.stripe_account_status);
+    console.log('  Onboarding Complete:', barber.onboarding_complete);
 
-    if (!barber.stripe_account_id) {
-      console.log('⚠️  ISSUE: No Stripe account ID found')
-      console.log('This barber needs to complete Stripe Connect onboarding')
-      console.log('Even in developer mode, a valid Stripe account is required for payments')
+    if (barber.is_developer) {
+      console.log('✅ This is a developer account - no Stripe required');
+    } else if (!barber.stripe_account_id) {
+      console.log('❌ No Stripe account ID - barber needs to complete Stripe Connect onboarding');
     } else if (barber.stripe_account_status !== 'active') {
-      console.log('⚠️  ISSUE: Stripe account not active')
-      console.log('Status:', barber.stripe_account_status)
-      console.log('The account needs to be activated in Stripe')
+      console.log('❌ Stripe account not active - status:', barber.stripe_account_status);
     } else {
-      console.log('✅ Stripe account appears to be properly configured')
+      console.log('✅ Stripe account is active and ready for payments');
     }
-
-    console.log('')
-    console.log('💡 Solution:')
-    console.log('1. The barber needs to complete Stripe Connect onboarding')
-    console.log('2. Go to /barber/connect in the app')
-    console.log('3. Complete the Stripe account setup process')
-    console.log('4. Even developer accounts need valid Stripe accounts for payment processing')
 
   } catch (error) {
-    console.error('❌ Unexpected error:', error)
+    console.error('❌ Error:', error);
   }
 }
 
-checkBarberStripe() 
+// Get barber ID from command line argument
+const barberId = process.argv[2];
+
+if (!barberId) {
+  console.log('Usage: node scripts/check-barber-stripe.js <barber_id>');
+  console.log('Example: node scripts/check-barber-stripe.js 0beca26d-7782-40e4-89bd-bcd05e57a825');
+  process.exit(1);
+}
+
+checkBarberStripe(barberId); 

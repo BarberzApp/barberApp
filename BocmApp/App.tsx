@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Font from 'expo-font';
@@ -10,10 +10,49 @@ import tw from 'twrnc';
 import { theme } from './app/shared/lib/theme';
 import { AppNavigator } from './app/navigation/AppNavigator';
 import { AuthProvider } from './app/shared/hooks/useAuth';
+import { StripeProvider } from '@stripe/stripe-react-native';
 
 const App = () => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Function to create booking from Stripe session
+  const createBookingFromSession = async (sessionId: string) => {
+    try {
+      console.log('Creating booking from session:', sessionId);
+      
+      const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-booking-after-checkout`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          sessionId: sessionId
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create booking');
+      }
+
+      console.log('Booking created successfully:', data);
+      
+      Alert.alert(
+        'Booking Confirmed!',
+        'Your payment was successful and your booking has been created.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error creating booking from session:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create booking. Please contact support.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
 
   useEffect(() => {
     async function loadFonts() {
@@ -68,6 +107,32 @@ const App = () => {
           console.log('Account ID from refresh deep link:', accountId);
         }
       }
+      
+      // Handle booking payment redirects
+      if (event.url.includes('bocm://booking/')) {
+        if (event.url.includes('/success')) {
+          // User completed payment successfully
+          console.log('Booking payment completed via deep link');
+          
+          // Extract session_id if present
+          const urlParams = new URL(event.url);
+          const sessionId = urlParams.searchParams.get('session_id');
+          console.log('Session ID from deep link:', sessionId);
+          
+          if (sessionId) {
+            // Create booking using the session ID
+            createBookingFromSession(sessionId);
+          }
+        } else if (event.url.includes('/cancel')) {
+          // User cancelled payment
+          console.log('Booking payment cancelled via deep link');
+          Alert.alert(
+            'Payment Cancelled',
+            'Your payment was not completed. Please try again.',
+            [{ text: 'OK' }]
+          );
+        }
+      }
     };
 
     // Listen for incoming links when app is already running
@@ -96,9 +161,11 @@ const App = () => {
   }
 
     return (
-        <AuthProvider>
-            <AppNavigator />
-        </AuthProvider>
+        <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}>
+            <AuthProvider>
+                <AppNavigator />
+            </AuthProvider>
+        </StripeProvider>
     );
 };
 

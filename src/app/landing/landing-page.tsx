@@ -305,7 +305,7 @@ export default function LandingPage() {
                   Start Your Journey
                   <ArrowRight className="inline ml-2 h-5 w-5" />
                 </Link>
-                <Link href="/reels" className="flex items-center justify-center px-8 py-4 border border-white/20 text-white rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-300">
+                <Link href="/cuts" className="flex items-center justify-center px-8 py-4 border border-white/20 text-white rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-300">
                   <Play className="inline w-5 h-5 mr-2" />
                   Watch Real Results
                 </Link>
@@ -382,7 +382,7 @@ export default function LandingPage() {
             <div className="flex justify-center w-full">
               <div className="grid grid-cols-2 gap-6 sm:gap-8 max-w-4xl w-full">
             {showcaseCuts.map((cut, index) => (
-                  <Link key={cut.id} href="/reels">
+                  <Link key={cut.id} href="/cuts">
               <Card
                 key={cut.id}
                 className={

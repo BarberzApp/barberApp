@@ -150,7 +150,34 @@ export default function LoginPage() {
       if (profile.email === 'primbocm@gmail.com') {
         redirectPath = 'SuperAdmin' as any;
       } else if (profile.role === 'barber') {
-        redirectPath = 'BarberOnboarding';
+        // Check if barber onboarding is already complete
+        console.log('💈 Checking if barber onboarding is complete...');
+        const { data: barberData, error: barberError } = await supabase
+          .from('barbers')
+          .select('onboarding_complete, business_name, bio, specialties')
+          .eq('user_id', userId)
+          .single();
+
+        if (barberError) {
+          console.error('❌ Error checking barber data:', barberError);
+          redirectPath = 'BarberOnboarding';
+        } else {
+          console.log('💈 Onboarding completion check:', {
+            onboarding_complete: barberData?.onboarding_complete,
+            businessName: barberData?.business_name,
+            bio: barberData?.bio,
+            specialties: barberData?.specialties
+          });
+
+          // If onboarding is marked as complete, skip to main app
+          if (barberData?.onboarding_complete) {
+            console.log('✅ Barber onboarding is already complete! Going to main app...');
+            redirectPath = 'MainTabs';
+          } else {
+            console.log('⚠️ Barber onboarding incomplete, going to onboarding...');
+            redirectPath = 'BarberOnboarding';
+          }
+        }
       } else if (profile.location) {
         redirectPath = 'MainTabs';
       } else {

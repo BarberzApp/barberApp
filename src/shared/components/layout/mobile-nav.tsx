@@ -4,11 +4,9 @@ import * as React from "react"
 import { useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut, Bell } from "lucide-react"
+import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut } from "lucide-react"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { cn } from "@/shared/lib/utils"
-import { UpdatesBadge } from "@/shared/components/updates/updates-badge"
-import { NotificationBell } from "@/shared/notifications/notification-bell"
 
 export function MobileNav() {
   const router = useRouter()
@@ -48,12 +46,12 @@ export function MobileNav() {
       case "client":
         return [
           { name: "Bookings", href: "/calendar", icon: Calendar },
-          { name: "Cuts", href: "/reels", icon: Video },
+          { name: "Cuts", href: "/cuts", icon: Video },
         ]
       case "barber":
         return [
           { name: "Calendar", href: "/calendar", icon: Calendar },
-          { name: "Cuts", href: "/reels", icon: Video },
+          { name: "Cuts", href: "/cuts", icon: Video },
         ]
       default:
         return []
@@ -76,7 +74,7 @@ export function MobileNav() {
   function getOrderedNavItems() {
     const browse = allNavItems.find(item => item.href === '/browse');
     const calendar = allNavItems.find(item => item.href === '/calendar');
-    const cuts = allNavItems.find(item => item.href === '/reels');
+    const cuts = allNavItems.find(item => item.href === '/cuts');
     const profile = allNavItems.find(item => item.href === '/settings/barber-profile');
     const settings = allNavItems.find(item => item.href === '/settings');
     
@@ -90,15 +88,15 @@ export function MobileNav() {
   }
   
   const orderedNavItems = getOrderedNavItems();
-  const centerIndex = orderedNavItems.findIndex(item => item?.href === '/reels') !== -1 ? 2 : 1;
+  const centerIndex = orderedNavItems.findIndex(item => item?.href === '/cuts') !== -1 ? 2 : 1;
   const leftItems = orderedNavItems.slice(0, centerIndex);
   const centerItem = orderedNavItems[centerIndex];
   const rightItems = orderedNavItems.slice(centerIndex + 1, centerIndex + 3);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-[1000] md:hidden">
       {/* Modern glass morphism background */}
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-2xl border-t border-white/10 shadow-2xl" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl border-t border-white/10 shadow-2xl" />
       
       {/* Subtle gradient overlay for depth */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
@@ -112,7 +110,7 @@ export function MobileNav() {
             (item.href === "/settings/barber-profile" && pathname.startsWith("/settings")) ||
             (item.href === "/settings" && pathname.startsWith("/settings")) ||
             (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
-            (item.href === "/reels" && pathname.startsWith("/reels")) ||
+            (item.href === "/cuts" && pathname.startsWith("/cuts")) ||
             (item.href === "/browse" && pathname.startsWith("/browse"))
           
           return (
@@ -183,7 +181,7 @@ export function MobileNav() {
             (item.href === "/settings/barber-profile" && pathname.startsWith("/settings")) ||
             (item.href === "/settings" && pathname.startsWith("/settings")) ||
             (item.href === "/calendar" && pathname.startsWith("/calendar")) ||
-            (item.href === "/reels" && pathname.startsWith("/reels")) ||
+            (item.href === "/cuts" && pathname.startsWith("/cuts")) ||
             (item.href === "/browse" && pathname.startsWith("/browse"))
           
           return (
@@ -218,12 +216,7 @@ export function MobileNav() {
           )
         })}
 
-        {/* Notification Bell - positioned above the navbar */}
-        {user && (
-          <div className="absolute -top-3 right-4">
-            <NotificationBell />
-          </div>
-        )}
+
       </div>
     </div>
   )

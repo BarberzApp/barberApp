@@ -10,7 +10,11 @@ import {
   RefreshControl,
   Dimensions,
   Alert,
+  Image,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import tw from 'twrnc';
@@ -23,6 +27,8 @@ import {
   Filter,
   X,
   Grid3X3,
+  Heart,
+  Scissors,
 } from 'lucide-react-native';
 import { Avatar } from '../shared/components/ui';
 import { RootStackParamList } from '../shared/types';
@@ -31,6 +37,7 @@ import BookingForm from '../shared/components/BookingForm';
 import { useReviews } from '../shared/hooks/useReviews';
 import { ReviewCard } from '../shared/components/ReviewCard';
 import { ReviewForm } from '../shared/components/ReviewForm';
+import { Star } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -76,6 +83,7 @@ type Barber = {
   bio?: string;
   priceRange?: string;
   avatarUrl?: string;
+  coverPhotoUrl?: string;
   isPublic?: boolean;
   isStripeReady?: boolean;
   instagram?: string;
@@ -92,9 +100,159 @@ type Barber = {
 type SortOption = 'name' | 'location' | 'price' | 'distance';
 type SortOrder = 'asc' | 'desc';
 
+// Star Rating Component
+function BarberRating({ barberId }: { barberId: string }) {
+  const { stats, loading } = useReviews(barberId);
+  const [likesCount, setLikesCount] = useState(0);
+  const [likesLoading, setLikesLoading] = useState(true);
+
+  // Fetch likes count for this barber
+  useEffect(() => {
+    const fetchLikesCount = async () => {
+      try {
+        setLikesLoading(true);
+        const { data, error } = await supabase
+          .from('cuts')
+          .select('likes')
+          .eq('barber_id', barberId)
+          .eq('is_public', true);
+
+        if (error) {
+          console.error('Error fetching likes:', error);
+          return;
+        }
+
+        const totalLikes = data?.reduce((sum, cut) => sum + (cut.likes || 0), 0) || 0;
+        setLikesCount(totalLikes);
+      } catch (error) {
+        console.error('Error fetching likes count:', error);
+      } finally {
+        setLikesLoading(false);
+      }
+    };
+
+    fetchLikesCount();
+  }, [barberId]);
+
+  if (loading || likesLoading) {
+    return (
+      <View style={tw`flex-row items-center`}>
+        <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!stats || stats.total_reviews === 0) {
+    return (
+      <View style={tw`flex-row items-center justify-between`}>
+        <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>No reviews yet</Text>
+        {likesCount > 0 && (
+          <View style={tw`flex-row items-center`}>
+            <Heart size={12} color={theme.colors.mutedForeground} style={tw`mr-1`} />
+            <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+              {likesCount}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={tw`flex-row items-center justify-between`}>
+      <View style={tw`flex-row items-center`}>
+        {Array.from({ length: 5 }, (_, index) => (
+          <Star
+            key={index}
+            size={12}
+            fill={index < Math.round(stats.average_rating) ? '#FFD700' : 'transparent'}
+            color={index < Math.round(stats.average_rating) ? '#FFD700' : '#6B7280'}
+            style={tw`mr-0.5`}
+          />
+        ))}
+        <Text style={[tw`text-sm ml-1`, { color: theme.colors.mutedForeground }]}>
+          {stats.average_rating.toFixed(1)} ({stats.total_reviews})
+        </Text>
+      </View>
+      {likesCount > 0 && (
+        <View style={tw`flex-row items-center`}>
+          <Heart size={12} color={theme.colors.mutedForeground} style={tw`mr-1`} />
+          <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+            {likesCount}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ReviewsList Component
 function ReviewsList({ barberId }: { barberId: string }) {
-  const { reviews, loading } = useReviews(barberId);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  
+  console.log('ReviewsList - barberId:', barberId, 'reviews:', reviews, 'loading:', loading, 'hasLoaded:', hasLoaded);
+  
+  // Only fetch reviews when component mounts (when modal opens)
+  useEffect(() => {
+    if (barberId && !hasLoaded) {
+      fetchReviews();
+    }
+  }, [barberId, hasLoaded]);
+
+  const fetchReviews = async () => {
+    if (!barberId) return;
+    
+    console.log('🔍 Fetching reviews for barber ID:', barberId);
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          client:client_id(
+            id,
+            name,
+            avatar_url,
+            username
+          ),
+          barber:barber_id(
+            id,
+            user_id,
+            business_name
+          ),
+          booking:booking_id(
+            id,
+            date,
+            service_id,
+            service:service_id(
+              name
+            )
+          )
+        `)
+        .eq('barber_id', barberId)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+
+      console.log('📊 Reviews query result:', { data, error });
+
+      if (error) {
+        console.error('Error fetching reviews:', error);
+        Alert.alert('Error', 'Failed to load reviews.');
+        return;
+      }
+
+      setReviews(data || []);
+      setHasLoaded(true);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      Alert.alert('Error', 'Failed to load reviews.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -151,7 +309,19 @@ export default function BrowsePage() {
   const [allSpecialties, setAllSpecialties] = useState<string[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedBarber, setSelectedBarber] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'explore' | 'cosmetologists'>('explore');
+  const [viewMode, setViewMode] = useState<'explore' | 'cosmetologists'>('cosmetologists');
+  
+  // Batch loading state
+  const [barbersPage, setBarbersPage] = useState(0);
+  const [hasMoreBarbers, setHasMoreBarbers] = useState(true);
+  const [barbersLoadingMore, setBarbersLoadingMore] = useState(false);
+  const BATCH_SIZE = 10;
+  
+  // Location state
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [useLocation, setUseLocation] = useState(false);
   
   // Review system state
   const [selectedBarberForReviews, setSelectedBarberForReviews] = useState<string | null>(null);
@@ -168,7 +338,7 @@ export default function BrowsePage() {
 
   useEffect(() => {
     fetchPosts();
-    fetchBarbers();
+    fetchBarbers(0); // Load first batch
   }, []);
 
   // Debounce search query
@@ -180,9 +350,18 @@ export default function BrowsePage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchBarbers = async () => {
+  const fetchBarbers = async (page = 0, append = false) => {
     try {
-      setBarbersLoading(true);
+      if (page === 0) {
+        setBarbersLoading(true);
+      } else {
+        setBarbersLoadingMore(true);
+      }
+      
+      const from = page * BATCH_SIZE;
+      const to = from + BATCH_SIZE - 1;
+      
+      console.log(`📦 Fetching barbers batch ${page + 1} (${from}-${to})`);
       
       // Fetch barbers with their profiles and ratings
       const { data: barbersData, error: barbersError } = await supabase
@@ -205,7 +384,9 @@ export default function BrowsePage() {
           state,
           created_at,
           updated_at
-        `);
+        `)
+        .range(from, to)
+        .order('created_at', { ascending: false });
 
       if (barbersError) {
         console.error('Error fetching barbers:', barbersError);
@@ -223,6 +404,7 @@ export default function BrowsePage() {
           location,
           bio,
           avatar_url,
+          coverphoto,
           is_public
         `)
         .in('id', userIds)
@@ -241,6 +423,17 @@ export default function BrowsePage() {
         
         // Only include barbers that have a public profile
         if (profile) {
+          // Calculate distance if user location is available
+          let distance: number | undefined;
+          if (useLocation && userLocation && barber.latitude && barber.longitude) {
+            distance = calculateDistance(
+              userLocation.coords.latitude,
+              userLocation.coords.longitude,
+              barber.latitude,
+              barber.longitude
+            );
+          }
+          
           transformedBarbers.push({
             id: barber.id,
             userId: barber.user_id,
@@ -251,7 +444,8 @@ export default function BrowsePage() {
             specialties: barber.specialties || [],
             bio: barber.bio || profile.bio,
             priceRange: barber.price_range,
-            avatarUrl: profile.avatar_url,
+            avatarUrl: processAvatarUrl(profile.avatar_url),
+            coverPhotoUrl: profile.coverphoto,
             isPublic: profile.is_public ?? true,
             isStripeReady: barber.stripe_account_status === 'active',
             instagram: barber.instagram,
@@ -262,17 +456,153 @@ export default function BrowsePage() {
             longitude: barber.longitude,
             city: barber.city,
             state: barber.state,
+            distance: distance,
+          });
+          
+          // Debug logging
+          console.log('Barber data:', {
+            name: profile.name,
+            avatarUrl: profile.avatar_url,
+            coverPhotoUrl: profile.coverphoto
           });
         }
       });
 
-      setBarbers(transformedBarbers);
-      setFilteredBarbers(transformedBarbers);
+      // Sort by distance if location is enabled
+      if (useLocation && userLocation) {
+        transformedBarbers.sort((a, b) => {
+          if (a.distance === undefined && b.distance === undefined) return 0;
+          if (a.distance === undefined) return 1;
+          if (b.distance === undefined) return -1;
+          return a.distance - b.distance;
+        });
+        console.log('📍 Barbers sorted by distance');
+      }
+      
+      // Check if we have more barbers to load
+      const hasMore = transformedBarbers.length === BATCH_SIZE;
+      setHasMoreBarbers(hasMore);
+      
+      if (page === 0) {
+        // First load - replace all barbers
+        setBarbers(transformedBarbers);
+        setFilteredBarbers(transformedBarbers);
+        setBarbersPage(0);
+      } else {
+        // Append new barbers to existing list
+        setBarbers(prevBarbers => {
+          const newBarbers = [...prevBarbers, ...transformedBarbers];
+          setFilteredBarbers(newBarbers);
+          return newBarbers;
+        });
+        setBarbersPage(page);
+      }
+      
+      console.log(`✅ Loaded ${transformedBarbers.length} barbers (batch ${page + 1})`);
+      if (!hasMore) {
+        console.log('🏁 No more barbers to load');
+      }
     } catch (error) {
       console.error('Error fetching barbers:', error);
     } finally {
-      setBarbersLoading(false);
+      if (page === 0) {
+        setBarbersLoading(false);
+      } else {
+        setBarbersLoadingMore(false);
+      }
     }
+  };
+
+  // Location functions
+  const requestLocationPermission = async () => {
+    try {
+      setLocationLoading(true);
+      
+      // Check if location services are enabled
+      const isEnabled = await Location.hasServicesEnabledAsync();
+      if (!isEnabled) {
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable location services in your device settings to find barbers near you.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setLocationPermission(status);
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Location Permission Required',
+          'Location permission is required to find barbers near you. Please grant permission in settings.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+      Alert.alert('Error', 'Failed to get location permission.');
+      return false;
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const getUserLocation = async () => {
+    try {
+      setLocationLoading(true);
+      
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) return;
+      
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 5000,
+        distanceInterval: 10,
+      });
+      
+      setUserLocation(location);
+      setUseLocation(true);
+      console.log('📍 User location obtained:', {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
+      });
+      
+      // Refresh barbers with location-based sorting
+      await fetchBarbers(0);
+      
+    } catch (error) {
+      console.error('Error getting user location:', error);
+      Alert.alert('Error', 'Failed to get your current location.');
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in kilometers
+    return distance;
+  };
+
+  const loadMoreBarbers = async () => {
+    if (!hasMoreBarbers || barbersLoadingMore) return;
+    
+    const nextPage = barbersPage + 1;
+    console.log(`📦 Loading more barbers (page ${nextPage + 1})`);
+    await fetchBarbers(nextPage, true);
   };
 
   const fetchPosts = async () => {
@@ -327,7 +657,7 @@ export default function BrowsePage() {
           thumbnail: cut.thumbnail,
           title: cut.title,
           barberName: profile?.name || 'Unknown',
-          barberAvatar: profile?.avatar_url,
+          barberAvatar: processAvatarUrl(profile?.avatar_url),
           barberId: barber?.user_id, // Add barber ID for navigation
           likes: cut.likes || 0,
           views: cut.views || 0,
@@ -478,6 +808,37 @@ export default function BrowsePage() {
     }
   };
 
+  // Function to render star ratings
+  const renderStarRating = (rating: number, size: number = 14) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <Star
+        key={index}
+        size={size}
+        fill={index < rating ? '#FFD700' : 'transparent'}
+        color={index < rating ? '#FFD700' : '#6B7280'}
+        style={tw`mr-0.5`}
+      />
+    ));
+  };
+
+  // Function to process avatar URL
+  const processAvatarUrl = (url?: string) => {
+    if (!url) return undefined;
+    
+    // If it's already a full URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // If it's a relative path, construct the full URL
+    if (url.startsWith('/')) {
+      return `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars${url}`;
+    }
+    
+    // If it's just a filename, construct the full URL
+    return `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${url}`;
+  };
+
 
 
 
@@ -492,9 +853,10 @@ export default function BrowsePage() {
             Browse
           </Text>
           
-          {/* View Toggle Buttons */}
+          {/* View Toggle Buttons - Explore tab hidden but code preserved */}
           <View style={tw`flex-row bg-white/10 rounded-lg p-1`}>
-            <TouchableOpacity
+            {/* Explore tab - hidden but code preserved for future use */}
+            {/* <TouchableOpacity
               style={[
                 tw`px-4 py-2 rounded-md`,
                 viewMode === 'explore' 
@@ -511,7 +873,7 @@ export default function BrowsePage() {
               ]}>
                 Explore
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             
             <TouchableOpacity
               style={[
@@ -551,8 +913,32 @@ export default function BrowsePage() {
               </TouchableOpacity>
             )}
           </View>
+          
+          {/* Location Button */}
           <TouchableOpacity
-            style={[tw`ml-3 p-2 rounded-xl`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
+            style={[
+              tw`ml-2 p-2 rounded-xl`,
+              { 
+                backgroundColor: useLocation 
+                  ? 'rgba(59,130,246,0.3)' 
+                  : 'rgba(255,255,255,0.1)' 
+              }
+            ]}
+            onPress={getUserLocation}
+            disabled={locationLoading}
+          >
+            {locationLoading ? (
+              <ActivityIndicator size={20} color={theme.colors.secondary} />
+            ) : (
+              <MapPin 
+                size={20} 
+                color={useLocation ? theme.colors.secondary : theme.colors.foreground} 
+              />
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[tw`ml-2 p-2 rounded-xl`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
             onPress={() => setShowFilters(!showFilters)}
           >
             <Filter size={20} color={theme.colors.foreground} />
@@ -661,76 +1047,219 @@ export default function BrowsePage() {
             ) : (
               <ScrollView showsVerticalScrollIndicator={false}>
                 {filteredBarbers.map((barber) => (
-                  <View key={barber.id} style={tw`mb-4 mx-4`}>
-                    {/* Barber Card */}
-                    <View style={[tw`bg-white/5 border border-white/10 rounded-lg p-4`, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
-                      <View style={tw`flex-row items-start`}>
-                        <View style={tw`mr-3`}>
-                          <Avatar
-                            src={barber.avatarUrl}
-                            size="lg"
+                  <View key={barber.id} style={tw`mb-6 mx-4`}>
+                    {/* Barber Card - Web App Style */}
+                    <View style={[
+                      tw`bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl`,
+                      { 
+                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        shadowColor: theme.colors.secondary,
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 16,
+                        elevation: 8
+                      }
+                    ]}>
+                      {/* Cover Photo Section with Gradient */}
+                      <View style={tw`relative h-48`}>
+                        {barber.coverPhotoUrl ? (
+                          <Image
+                            source={{ uri: barber.coverPhotoUrl }}
+                            style={tw`w-full h-full`}
+                            resizeMode="cover"
                           />
-                        </View>
-                        <View style={tw`flex-1`}>
-                          <View style={tw`flex-row items-center justify-between`}>
-                            <View style={tw`flex-1`}>
-                              <Text style={[tw`text-lg font-bold`, { color: theme.colors.foreground }]}>
-                                {barber.name}
-                              </Text>
-                              <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
-                                @{barber.username}
-                              </Text>
-                            </View>
-                            {/* <TouchableOpacity
-                              style={tw`bg-blue-500/20 px-3 py-1 rounded-full`}
-                              onPress={() => {
-                                setSelectedBarberForReviews(barber.id);
-                                setShowReviews(true);
-                              }}
-                            >
-                              <Text style={tw`text-blue-400 text-xs font-medium`}>Reviews</Text>
-                            </TouchableOpacity> */}
+                        ) : (
+                          <View style={[
+                            tw`w-full h-full`,
+                            { 
+                              backgroundColor: 'rgba(255,255,255,0.05)',
+                              backgroundImage: 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(147,51,234,0.2) 50%, rgba(59,130,246,0.2) 100%)'
+                            }
+                          ]}>
+                            {/* Decorative Pattern */}
+                            <View style={tw`absolute top-4 left-4 w-20 h-20 border border-white/20 rounded-full opacity-10`} />
+                            <View style={tw`absolute bottom-4 right-4 w-16 h-16 border border-white/20 rounded-full opacity-10`} />
+                            <View style={tw`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-white/20 rounded-full opacity-10`} />
                           </View>
-                          
+                        )}
+                      </View>
 
-                          
-                          {/* Location */}
-                          <View style={tw`flex-row items-center mt-1`}>
-                            <MapPin size={14} color={theme.colors.mutedForeground} />
-                            <Text style={[tw`text-sm ml-1`, { color: theme.colors.mutedForeground }]}>
+                      {/* Avatar Section - Centered and Overlapping */}
+                      <View style={tw`relative -mt-16 px-6`}>
+                        <View style={tw`items-center`}>
+                          <View style={[
+                            tw`h-32 w-32 rounded-full border-4 shadow-xl overflow-hidden`,
+                            { 
+                              borderColor: 'rgba(0,0,0,0.8)',
+                              shadowColor: theme.colors.secondary,
+                              shadowOffset: { width: 0, height: 4 },
+                              shadowOpacity: 0.3,
+                              shadowRadius: 8,
+                              elevation: 4
+                            }
+                          ]}>
+                            {barber.avatarUrl ? (
+                              <Image
+                                source={{ uri: barber.avatarUrl }}
+                                style={tw`w-full h-full`}
+                                resizeMode="cover"
+                                onError={(error) => {
+                                  console.log('Profile image error:', error.nativeEvent.error);
+                                }}
+                              />
+                            ) : (
+                              <View style={tw`w-full h-full bg-gray-600 items-center justify-center`}>
+                                <Text style={[tw`text-3xl font-bold`, { color: 'white' }]}>
+                                  {barber.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Content Section */}
+                      <View style={tw`px-6 pb-6`}>
+                        {/* Header - Centered */}
+                        <View style={tw`items-center mb-4`}>
+                          <Text style={[tw`text-2xl font-bold text-center`, { color: theme.colors.foreground }]}>
+                            {barber.name}
+                          </Text>
+                          {barber.businessName && (
+                            <Text style={[tw`text-base font-medium text-center mb-1`, { color: 'rgba(255,255,255,0.6)' }]}>
+                              {barber.businessName}
+                            </Text>
+                          )}
+                          <Text style={[tw`text-lg font-semibold`, { color: theme.colors.secondary }]}>
+                            @{barber.username}
+                          </Text>
+                        </View>
+
+                        {/* Location - Centered */}
+                        {barber.location && (
+                          <View style={tw`flex-row items-center justify-center mb-3`}>
+                            <MapPin size={16} color={theme.colors.secondary} />
+                            <Text style={[tw`text-sm ml-2`, { color: 'rgba(255,255,255,0.7)' }]}>
                               {barber.location}
                             </Text>
+                            {useLocation && barber.distance !== undefined && (
+                              <Text style={[tw`text-sm ml-2`, { color: theme.colors.secondary }]}>
+                                • {barber.distance < 1 
+                                    ? `${Math.round(barber.distance * 1000)}m` 
+                                    : `${barber.distance.toFixed(1)}km`}
+                              </Text>
+                            )}
                           </View>
-                          
-                          {/* Specialties */}
-                          {barber.specialties && barber.specialties.length > 0 && (
-                            <View style={tw`flex-row flex-wrap mt-2`}>
+                        )}
+
+                        {/* Star Rating - Centered */}
+                        <View style={tw`items-center mb-3`}>
+                          <BarberRating barberId={barber.id} />
+                        </View>
+
+                        {/* Price Range */}
+                        {barber.priceRange && (
+                          <View style={tw`items-center mb-3`}>
+                            <View style={[
+                              tw`px-3 py-1 rounded-full border`,
+                              { 
+                                backgroundColor: 'rgba(59,130,246,0.2)',
+                                borderColor: 'rgba(59,130,246,0.3)'
+                              }
+                            ]}>
+                              <Text style={[tw`text-xs font-medium`, { color: theme.colors.secondary }]}>
+                                {barber.priceRange} Pricing
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Bio */}
+                        {barber.bio && (
+                          <Text style={[tw`text-sm text-center mb-4 leading-relaxed`, { color: 'rgba(255,255,255,0.7)' }]}>
+                            {barber.bio}
+                          </Text>
+                        )}
+
+                        {/* Specialties */}
+                        {barber.specialties && barber.specialties.length > 0 && (
+                          <View style={tw`mb-4`}>
+                            <View style={tw`flex-row items-center justify-center mb-2`}>
+                              <Scissors size={16} color={theme.colors.secondary} />
+                              <Text style={[tw`text-xs font-semibold ml-2 uppercase tracking-wide`, { color: 'rgba(255,255,255,0.8)' }]}>
+                                Specialties
+                              </Text>
+                            </View>
+                            <View style={tw`flex-row flex-wrap justify-center`}>
                               {barber.specialties.slice(0, 3).map((specialty, index) => (
                                 <View
                                   key={index}
-                                  style={[tw`px-2 py-1 rounded-full mr-2 mb-1`, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
+                                  style={[
+                                    tw`px-2 py-1 rounded-full mx-1 mb-1 border`,
+                                    { 
+                                      backgroundColor: 'rgba(255,255,255,0.1)',
+                                      borderColor: 'rgba(255,255,255,0.2)'
+                                    }
+                                  ]}
                                 >
-                                  <Text style={[tw`text-xs`, { color: theme.colors.foreground }]}>
+                                  <Text style={[tw`text-xs`, { color: 'rgba(255,255,255,0.8)' }]}>
                                     {specialty}
                                   </Text>
                                 </View>
                               ))}
+                              {barber.specialties.length > 3 && (
+                                <View style={[
+                                  tw`px-2 py-1 rounded-full mx-1 mb-1 border`,
+                                  { 
+                                    backgroundColor: 'transparent',
+                                    borderColor: 'rgba(255,255,255,0.2)'
+                                  }
+                                ]}>
+                                  <Text style={[tw`text-xs`, { color: 'rgba(255,255,255,0.6)' }]}>
+                                    +{barber.specialties.length - 3} more
+                                  </Text>
+                                </View>
+                              )}
                             </View>
-                          )}
-                          
-                          {/* Book Now Button */}
+                          </View>
+                        )}
+
+                        {/* Action Buttons */}
+                        <View style={tw`flex-row gap-3`}>
                           <TouchableOpacity
-                            style={[tw`mt-3 bg-blue-500 rounded-lg p-3 items-center`, { backgroundColor: theme.colors.secondary }]}
+                            style={[
+                              tw`flex-1 py-3 rounded-xl items-center border`,
+                              { 
+                                backgroundColor: 'rgba(59,130,246,0.2)',
+                                borderColor: 'rgba(59,130,246,0.3)'
+                              }
+                            ]}
+                            onPress={() => {
+                              console.log('Reviews button clicked for barber:', barber.id, barber.name);
+                              setSelectedBarberForReviews(barber.id);
+                              setShowReviews(true);
+                            }}
+                          >
+                            <Text style={[tw`font-semibold text-sm`, { color: theme.colors.secondary }]}>
+                              Reviews
+                            </Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            style={[
+                              tw`flex-1 py-3 rounded-xl items-center`,
+                              { backgroundColor: theme.colors.secondary }
+                            ]}
                             onPress={() => {
                               setSelectedBarber({
-                                barberId: barber.id,  // Use barber.id (barber ID) instead of barber.userId (profile ID)
+                                barberId: barber.id,
                                 barberName: barber.name,
                                 name: barber.name
                               });
                               setShowBookingForm(true);
                             }}
                           >
-                            <Text style={[tw`font-semibold text-base`, { color: theme.colors.primary }]}>
+                            <Text style={[tw`font-semibold text-sm`, { color: theme.colors.primary }]}>
                               Book Now
                             </Text>
                           </TouchableOpacity>
@@ -739,6 +1268,50 @@ export default function BrowsePage() {
                     </View>
                   </View>
                 ))}
+                
+                {/* Load More Section */}
+                {hasMoreBarbers && (
+                  <View style={tw`py-6 px-4`}>
+                    <TouchableOpacity
+                      style={[
+                        tw`py-4 px-6 rounded-xl items-center border-2 border-dashed`,
+                        { 
+                          borderColor: 'rgba(255,255,255,0.2)',
+                          backgroundColor: 'rgba(255,255,255,0.05)'
+                        }
+                      ]}
+                      onPress={loadMoreBarbers}
+                      disabled={barbersLoadingMore}
+                    >
+                      {barbersLoadingMore ? (
+                        <View style={tw`flex-row items-center`}>
+                          <ActivityIndicator size="small" color={theme.colors.secondary} />
+                          <Text style={[tw`ml-2 font-medium`, { color: theme.colors.secondary }]}>
+                            Loading more barbers...
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={tw`items-center`}>
+                          <Text style={[tw`text-lg font-semibold mb-1`, { color: theme.colors.foreground }]}>
+                            Load More Barbers
+                          </Text>
+                          <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+                            Tap to load the next 10 barbers
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {/* End of barbers message */}
+                {!hasMoreBarbers && barbers.length > 0 && (
+                  <View style={tw`py-6 px-4 items-center`}>
+                    <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>
+                      You've seen all available barbers!
+                    </Text>
+                  </View>
+                )}
               </ScrollView>
             )}
           </>
@@ -748,7 +1321,7 @@ export default function BrowsePage() {
 
 
       {/* Reviews Modal */}
-      {selectedBarberForReviews && (
+      {selectedBarberForReviews && showReviews && (
         <View style={tw`absolute inset-0 bg-black/90`}>
           <View style={tw`flex-1 pt-12`}>
             <View style={tw`flex-row items-center justify-between px-4 mb-4`}>

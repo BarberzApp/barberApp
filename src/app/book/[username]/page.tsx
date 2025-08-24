@@ -886,7 +886,7 @@ function BookPageContent() {
                     key={reel.id}
                     className="group relative aspect-square bg-white/5 cursor-pointer"
                     onClick={() => {
-                      window.location.href = `/reels?cutId=${reel.id}`
+                      window.location.href = `/cuts?cutId=${reel.id}`
                     }}
                   >
                     <video

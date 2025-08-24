@@ -79,6 +79,7 @@ export default function BarberCalendar() {
             .from('bookings')
             .select('*')
             .eq('barber_id', barberData.id)
+            .eq('payment_status', 'succeeded') // Only show successful payments
             .order('date', { ascending: true });
           
           if (error || !bookings) {
@@ -171,6 +172,7 @@ export default function BarberCalendar() {
               services:service_id(name, duration, price)
             `)
             .eq('client_id', user.id)
+            .eq('payment_status', 'succeeded') // Only show successful payments
             .order('date', { ascending: true });
           
           console.log('📊 Client bookings query result:', { bookings, error });
