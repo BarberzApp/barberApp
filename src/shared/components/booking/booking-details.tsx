@@ -27,9 +27,35 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
   const handleCancel = async () => {
     if (!user || !syncService) return
 
+    // Additional safety check
+    if (!booking || !booking.id) {
+      console.error('No valid booking to cancel');
+      toast({
+        title: "Error",
+        description: "Invalid booking data",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent cancellation of already cancelled bookings
+    if (booking.status === 'cancelled') {
+      toast({
+        title: "Already Cancelled",
+        description: "This booking has already been cancelled.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true)
     try {
+      console.log(`Cancelling booking ${booking.id} for user ${user.id}`);
+      
       await syncService.cancelBooking(booking.id)
+      
+      console.log(`Successfully cancelled booking ${booking.id}`);
+      
       toast({
         title: "Booking cancelled",
         description: "Your booking has been cancelled successfully.",
@@ -37,6 +63,7 @@ export function BookingDetails({ booking, isOpen, onClose, onBookingCancelled }:
       onBookingCancelled(booking.id)
       onClose()
     } catch (error) {
+      console.error(`Failed to cancel booking ${booking.id}:`, error);
       toast({
         title: "Error",
         description: "Failed to cancel booking. Please try again.",

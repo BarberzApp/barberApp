@@ -99,15 +99,17 @@ export async function POST(request: Request) {
 
     const servicePrice = Math.round(Number(service.price) * 100) // Convert to cents
     
-    // Get add-ons if any are selected
+    // Get add-ons if any are selected (deduplicate first)
     let addonTotal = 0
     let addonItems: any[] = []
     
     if (addonIds && addonIds.length > 0) {
+      // Deduplicate addon IDs to prevent double-counting
+      const uniqueAddonIds = [...new Set(addonIds)]
       const { data: addons, error: addonsError } = await supabase
         .from('service_addons')
         .select('id, name, price')
-        .in('id', addonIds)
+        .in('id', uniqueAddonIds)
         .eq('is_active', true)
 
       if (addonsError) {
@@ -229,7 +231,7 @@ export async function POST(request: Request) {
         serviceName: service.name,
         servicePrice: servicePrice.toString(),
         addonTotal: Math.round(addonTotal * 100).toString(),
-        addonIds: addonIds.join(','),
+        addonIds: [...new Set(addonIds)].join(','),
         platformFee: platformFee.toString(),
         paymentType,
         feeType: paymentType === 'fee' ? 'fee_only' : 'fee_and_cut',

@@ -331,10 +331,13 @@ export async function POST(request: Request) {
             )
           }
 
-          // (Optional) Look up the service price
+          // (Optional) Look up the service price (stored in dollars)
           let price = 0
-          let platform_fee = paymentIntent.application_fee_amount || 0
-          let barber_payout = paymentIntent.amount - platform_fee
+          // Convert Stripe cents to dollars for bookings table (which stores NUMERIC dollars)
+          const platform_fee_cents = paymentIntent.application_fee_amount || 0
+          const platform_fee = platform_fee_cents / 100
+          const barber_payout_cents = paymentIntent.amount - platform_fee_cents
+          const barber_payout = barber_payout_cents / 100
           const { data: service } = await supabase
             .from('services')
             .select('price')
@@ -344,11 +347,12 @@ export async function POST(request: Request) {
             price = Number(service.price)
           }
 
-          // Calculate add-on total from add-ons table using addonIds
+          // Calculate add-on total from add-ons table using addonIds (deduplicate first)
           let addon_total = 0
           let addonIdArray: string[] = []
           if (addonIds && typeof addonIds === 'string' && addonIds.length > 0) {
-            addonIdArray = addonIds.split(',').filter(id => id.trim())
+            // Deduplicate addon IDs to prevent double-counting
+            addonIdArray = [...new Set(addonIds.split(',').filter(id => id.trim()))]
             if (addonIdArray.length > 0) {
               const { data: addons } = await supabase
                 .from('service_addons')
@@ -370,8 +374,8 @@ export async function POST(request: Request) {
             payment_intent_id: paymentIntent.id,
             price,        // base service price only
             addon_total,  // add-ons only
-            platform_fee,
-            barber_payout,
+            platform_fee, // dollars
+            barber_payout, // dollars
             notes: notes || null,
             guest_name: guestName || null,
             guest_email: guestEmail || null,
@@ -441,9 +445,9 @@ export async function POST(request: Request) {
             // Don't fail the webhook if tracking fails
           }
 
-          // Add add-ons to the booking if any were selected
+          // Add add-ons to the booking if any were selected (deduplicate first)
           if (addonIds && addonIds.length > 0) {
-            const addonIdArray = addonIds.split(',').filter(id => id.trim())
+            const addonIdArray = [...new Set(addonIds.split(',').filter(id => id.trim()))]
             if (addonIdArray.length > 0) {
               const { data: addons } = await supabase
                 .from('service_addons')

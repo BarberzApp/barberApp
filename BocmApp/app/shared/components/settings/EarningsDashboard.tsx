@@ -83,7 +83,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
 
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select('*, services(price)')
+        .select('id, created_at, barber_payout')
         .eq('barber_id', barberId)
         .eq('status', 'completed');
 
@@ -96,7 +96,8 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
       let yearlyEarnings = 0;
 
       bookings?.forEach(booking => {
-        const amount = booking.services?.price || 0;
+        // Net amount barber earns (already stored in dollars)
+        const amount = Number(booking.barber_payout || 0);
         const bookingDate = new Date(booking.created_at);
         
         totalEarnings += amount;
@@ -118,7 +119,7 @@ export function EarningsDashboard({ barberId }: EarningsDashboardProps) {
         totalEarnings,
         monthlyEarnings: period === 'month' ? monthlyEarnings : period === 'week' ? weeklyEarnings : yearlyEarnings,
         weeklyEarnings,
-        pendingPayouts: 0, // Would come from Stripe API
+        pendingPayouts: 0, // Could be derived from Stripe balance transactions
         completedBookings: bookings?.length || 0,
         averageServicePrice,
         stripeConnected: barber?.stripe_account_status === 'active',

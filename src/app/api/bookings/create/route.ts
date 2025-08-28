@@ -9,6 +9,7 @@ export async function POST(request: Request) {
       barber_id, 
       service_id, 
       date, 
+      end_time,
       price, 
       client_id, 
       guest_name, 
@@ -28,6 +29,31 @@ export async function POST(request: Request) {
       )
     }
 
+    // Optional: basic conflict prevention (keep simple)
+    // If end_time is provided, ensure no overlap with existing non-cancelled bookings
+    if (end_time) {
+      const { data: conflicts, error: conflictError } = await supabaseAdmin
+        .from('bookings')
+        .select('id')
+        .eq('barber_id', barber_id)
+        .neq('status', 'cancelled')
+        .or(`and(date.lt.${end_time},end_time.gt.${date})`)
+
+      if (conflictError) {
+        return NextResponse.json(
+          { error: 'Failed to check availability' },
+          { status: 500 }
+        )
+      }
+
+      if (conflicts && conflicts.length > 0) {
+        return NextResponse.json(
+          { error: 'Time slot conflicts with an existing booking' },
+          { status: 409 }
+        )
+      }
+    }
+
     // Create the booking using the admin client
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
@@ -35,6 +61,7 @@ export async function POST(request: Request) {
         barber_id,
         service_id,
         date,
+        end_time: end_time || null,
         price,
         status: "confirmed",
         payment_status: "succeeded",

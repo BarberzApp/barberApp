@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { usePathname } from "next/navigation"
 
 interface MobileLinkProps extends React.ComponentPropsWithoutRef<typeof Link> {
   onOpenChange?: (open: boolean) => void
@@ -16,10 +17,7 @@ export function MobileLink({
   children,
   ...props
 }: MobileLinkProps) {
-  const [pathname, setPathname] = React.useState(window.location.pathname)
-  React.useEffect(() => {
-    setPathname(window.location.pathname)
-  }, [])
+  const pathname = usePathname() || ""
   const isActive = pathname === href
 
   return (

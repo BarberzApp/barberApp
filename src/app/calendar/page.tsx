@@ -674,8 +674,8 @@ export default function BarberCalendar() {
 
       {showEventDialog && selectedEvent && (
         <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-          <DialogContent className="max-w-md w-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6">
-            <DialogHeader>
+          <DialogContent className="max-w-md w-full max-h-[80vh] bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 overflow-hidden">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle className="text-2xl font-bold text-white">
                 {selectedEvent.extendedProps.isBarberView ? 'Booking Details' : 'Appointment Details'}
               </DialogTitle>
@@ -683,7 +683,7 @@ export default function BarberCalendar() {
                 {selectedEvent.title}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 mt-4 overflow-y-auto flex-1 max-h-[60vh] pr-2">
               <div className="flex items-center justify-between">
                 <span className="text-white/70">Service</span>
                 <span className="text-white font-semibold">{selectedEvent.extendedProps.serviceName}</span>

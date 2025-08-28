@@ -63,26 +63,67 @@ export class IndexedDBService {
   }
 
   async deleteBooking(id: string): Promise<void> {
+    // Validate input
+    if (!id || typeof id !== 'string') {
+      throw new Error('Invalid booking ID provided for IndexedDB deletion');
+    }
+
     if (!this.db) await this.init();
+    
+    // Check if booking exists before deletion
+    const existingBooking = await this.getBooking(id);
+    if (!existingBooking) {
+      console.warn(`Attempted to delete non-existent booking from IndexedDB: ${id}`);
+      return;
+    }
+
+    console.log(`Deleting booking ${id} from IndexedDB`);
+    
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(BOOKINGS_STORE, 'readwrite');
       const store = transaction.objectStore(BOOKINGS_STORE);
       const request = store.delete(id);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+      request.onerror = () => {
+        console.error(`Failed to delete booking ${id} from IndexedDB:`, request.error);
+        reject(request.error);
+      };
+      request.onsuccess = () => {
+        console.log(`Successfully deleted booking ${id} from IndexedDB`);
+        resolve();
+      };
     });
   }
 
   async clearAllBookings(): Promise<void> {
+    console.warn('⚠️ CLEARING ALL BOOKINGS FROM INDEXEDDB - This is a destructive operation!');
+    
     if (!this.db) await this.init();
+    
+    // Get count before clearing for logging
+    const allBookings = await this.getAllBookings();
+    const bookingCount = allBookings.length;
+    
+    if (bookingCount === 0) {
+      console.log('No bookings to clear from IndexedDB');
+      return;
+    }
+    
+    console.log(`Clearing ${bookingCount} bookings from IndexedDB`);
+    
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(BOOKINGS_STORE, 'readwrite');
       const store = transaction.objectStore(BOOKINGS_STORE);
       const request = store.clear();
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+      request.onerror = () => {
+        console.error('Failed to clear bookings from IndexedDB:', request.error);
+        reject(request.error);
+      };
+      request.onsuccess = () => {
+        console.log(`Successfully cleared ${bookingCount} bookings from IndexedDB`);
+        resolve();
+      };
     });
   }
 }

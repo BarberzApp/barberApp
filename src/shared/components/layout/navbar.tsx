@@ -31,18 +31,14 @@ import {
 import { cn } from "@/shared/lib/utils"
 import { UpdatesBadge } from "@/shared/components/updates/updates-badge"
 import { NotificationBell } from "@/shared/notifications/notification-bell"
+import { usePathname } from "next/navigation"
 
 export function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const isMobile = useMobile();
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // Set mounted immediately for better UX
-    setMounted(true);
-  }, []);
+  const pathname = usePathname() || '';
+  // usePathname updates automatically on route changes
 
   // Don't show on home page, but show on all other pages including settings
   if (pathname === '/') return null;

@@ -368,6 +368,14 @@ export default function CalendarPage() {
           }
         }
 
+        // Compute monetary fields in dollars: use actual service price, not stored booking price
+        // total = base + addon_total + platform_fee
+        const basePrice = (service?.price || 0);
+        const addonsPrice = (booking.addon_total || addonTotal || 0);
+        const platformFee = (booking.platform_fee || 0);
+        // Barber net payout: prefer stored barber_payout; fallback to base + addons + 40% of fee
+        const barberPayout = (typeof booking.barber_payout === 'number' ? booking.barber_payout : (basePrice + addonsPrice + (platformFee * 0.40)));
+
         return {
           id: booking.id,
           title,
@@ -382,9 +390,9 @@ export default function CalendarPage() {
             clientName: client?.name || booking.guest_name || 'Guest',
             barberName: barber?.name || 'Barber',
             barberId: booking.barber_id, // Add barber_id for review functionality
-            price: (booking.price || 0), // Total price from database (already includes add-ons)
-            basePrice: (booking.price || 0) - addonTotal, // Calculate base service price
-            addonTotal,
+            price: barberPayout, // show barber's take-home amount
+            basePrice: basePrice,
+            addonTotal: addonsPrice,
             addonNames,
             isGuest: !client,
             guestEmail: booking.guest_email,
@@ -670,24 +678,46 @@ export default function CalendarPage() {
       const appointmentDate = new Date(manualFormData.date);
       appointmentDate.setHours(hour, minutes, 0, 0);
 
-      // Create booking
-      const { error: bookingError } = await supabase
+      // Compute end_time using service duration
+      const endTime = new Date(appointmentDate.getTime() + (selectedService.duration || 60) * 60000);
+
+      // Simple conflict check: overlapping non-cancelled bookings
+      const { data: conflicts, error: conflictError } = await supabase
         .from('bookings')
-        .insert([{
+        .select('id')
+        .eq('barber_id', barberData.id)
+        .neq('status', 'cancelled')
+        .or(`and(date.lt.${endTime.toISOString()},end_time.gt.${appointmentDate.toISOString()})`);
+
+      if (conflictError) throw conflictError;
+      if (conflicts && conflicts.length > 0) {
+        Alert.alert('Time Conflict', 'This time overlaps an existing booking.');
+        return;
+      }
+
+      // Create booking using API to keep behavior consistent (adds notifications)
+      const response = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           barber_id: barberData.id,
-          client_id: null, // Manual appointment
           service_id: manualFormData.serviceId,
           date: appointmentDate.toISOString(),
+          end_time: endTime.toISOString(),
           status: 'confirmed',
-          payment_status: 'succeeded', // Manual appointments are considered paid
+          payment_status: 'succeeded',
           price: selectedService.price,
           guest_name: manualFormData.clientName,
           guest_email: '',
           guest_phone: '',
           notes: 'Manual appointment created by barber'
-        }]);
+        })
+      });
 
-      if (bookingError) throw bookingError;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create appointment');
+      }
 
       Alert.alert('Success', 'Manual appointment created successfully');
       setShowManualAppointmentForm(false);

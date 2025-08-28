@@ -3,36 +3,19 @@
 import * as React from "react"
 import { useCallback, useMemo } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut } from "lucide-react"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { cn } from "@/shared/lib/utils"
 
 export function MobileNav() {
   const router = useRouter()
-  const [pathname, setPathname] = React.useState("")
-  const [mounted, setMounted] = React.useState(false)
+  const pathname = usePathname() || ""
   const { user, logout } = useAuth()
 
-  // Get current pathname safely and set mounted immediately
-  React.useEffect(() => {
-    setMounted(true)
-    if (typeof window !== 'undefined') {
-      setPathname(window.location.pathname)
-    }
-  }, [])
+  // usePathname updates automatically on route changes
 
-  // Listen for route changes
-  React.useEffect(() => {
-    const handleRouteChange = () => {
-      if (typeof window !== 'undefined') {
-        setPathname(window.location.pathname)
-      }
-    }
-
-    window.addEventListener('popstate', handleRouteChange)
-    return () => window.removeEventListener('popstate', handleRouteChange)
-  }, [])
+  // usePathname already updates on route change; no window listeners needed
 
   const baseNavItems = [
     { name: "Browse", href: "/browse", icon: Search },

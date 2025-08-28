@@ -1,33 +1,11 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Navbar } from "@/shared/components/layout/navbar";
 import { MobileNav } from "@/shared/components/layout/mobile-nav";
 import React from "react";
 
 export default function ClientNavWrapper({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const [mounted, setMounted] = React.useState(false);
-  const [isNavigating, setIsNavigating] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Handle navigation state
-  React.useEffect(() => {
-    const handleStart = () => setIsNavigating(true);
-    const handleComplete = () => setIsNavigating(false);
-
-    // Listen for route changes
-    window.addEventListener('beforeunload', handleStart);
-    window.addEventListener('load', handleComplete);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleStart);
-      window.removeEventListener('load', handleComplete);
-    };
-  }, []);
+  const pathname = usePathname() || '';
 
   // Define pages where navigation should be hidden
   const hiddenPages = ["/", "/landing"];
@@ -43,32 +21,7 @@ export default function ClientNavWrapper({ children }: { children: React.ReactNo
   const showMobileNav = (showNavbar || isSettingsPage || isProfilePage) && !isCutsPage;
   const isFullScreenVideo = isCutsPage;
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('ClientNavWrapper Debug:', {
-      pathname,
-      mounted,
-      showNavbar,
-      isSettingsPage,
-      isProfilePage,
-      isCutsPage,
-      shouldShowNav,
-      showMobileNav,
-      isNavigating,
-    });
-  }, [pathname, mounted, showNavbar, isSettingsPage, isProfilePage, isCutsPage, shouldShowNav, showMobileNav, isNavigating]);
-
-  // Show loading state during navigation
-  if (isNavigating) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Debug logging can be re-enabled if needed
 
   return (
     <>

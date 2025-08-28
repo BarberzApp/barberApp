@@ -206,11 +206,11 @@ export default function CalendarDemo() {
         {/* Event Details Modal */}
         {selectedEvent && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-md bg-darkpurple/95 border border-white/10 backdrop-blur-xl">
-              <CardHeader>
+            <Card className="w-full max-w-md max-h-[80vh] bg-darkpurple/95 border border-white/10 backdrop-blur-xl overflow-hidden">
+              <CardHeader className="flex-shrink-0">
                 <CardTitle className="text-white">Appointment Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 overflow-y-auto flex-1 max-h-[60vh] pr-2">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-saffron/20 rounded-lg">
                     <DollarSign className="h-4 w-4 text-saffron" />

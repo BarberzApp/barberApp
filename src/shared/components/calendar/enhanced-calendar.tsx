@@ -232,17 +232,21 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
         const startDate = new Date(booking.date)
         const endDate = new Date(startDate.getTime() + (service?.duration || 60) * 60000)
 
-        // Calculate total price including add-ons
-        const basePrice = booking.price || service?.price || 0
+        // Calculate values in dollars
+        const basePrice = service?.price || 0
         const addonTotal = booking.addon_total || 0
-        const totalPrice = basePrice + addonTotal
+        const platformFee = booking.platform_fee || 0
+        const barberPayout = typeof booking.barber_payout === 'number'
+          ? booking.barber_payout
+          : basePrice + addonTotal + (platformFee * 0.40)
         
         console.log('EnhancedCalendar: Price calculation for booking', booking.id, {
           servicePrice: service?.price,
           bookingPrice: booking.price,
           basePrice,
           addonTotal,
-          totalPrice,
+          platformFee,
+          barberPayout,
           addonNames: booking.booking_addons?.map((addon: any) => addon.service_addons?.name)
         })
 
@@ -274,7 +278,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             serviceName: service?.name || '',
             clientName: client?.name || booking.guest_name || 'Guest',
             barberName: barber?.profiles?.name || 'Barber',
-            price: totalPrice,
+            price: barberPayout,
             basePrice: basePrice,
             addonTotal: addonTotal,
             addonNames: addonNames,
@@ -969,8 +973,8 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
 
       {/* Event Detail Dialog */}
       <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="bg-black/95 backdrop-blur-3xl border border-white/20 max-w-lg mx-4 rounded-2xl shadow-2xl">
-          <DialogHeader className="pb-6">
+        <DialogContent className="bg-black/95 backdrop-blur-3xl border border-white/20 max-w-lg mx-4 max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden">
+          <DialogHeader className="pb-6 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className={cn(
@@ -1007,7 +1011,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
           </DialogHeader>
           
           {selectedEvent && (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto flex-1 max-h-[65vh] pr-2">
               {/* Service Information */}
               <div className={cn(
                 "rounded-2xl p-6 transition-all duration-300 border",
@@ -1227,7 +1231,7 @@ export function EnhancedCalendar({ className, onEventClick, onDateSelect }: Enha
             </div>
           )}
           
-          <DialogFooter className="pt-6">
+          <DialogFooter className="pt-6 flex-shrink-0">
             <Button 
               onClick={() => setShowEventDialog(false)}
               className="w-full bg-secondary text-primary hover:bg-secondary/90 font-semibold py-3"

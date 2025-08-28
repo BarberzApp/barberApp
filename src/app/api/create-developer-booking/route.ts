@@ -66,14 +66,16 @@ export async function POST(request: Request) {
 
     const servicePrice = Number(service.price)
     
-    // Get add-ons if any are selected
+    // Get add-ons if any are selected (deduplicate first)
     let addonTotal = 0
     
     if (addonIds && addonIds.length > 0) {
+      // Deduplicate addon IDs to prevent double-counting
+      const uniqueAddonIds = [...new Set(addonIds)]
       const { data: addons, error: addonsError } = await supabaseAdmin
         .from('service_addons')
         .select('id, name, price')
-        .in('id', addonIds)
+        .in('id', uniqueAddonIds)
         .eq('is_active', true)
 
       if (addonsError) {
@@ -131,12 +133,13 @@ export async function POST(request: Request) {
       )
     }
 
-    // Add add-ons to the booking if any were selected
+    // Add add-ons to the booking if any were selected (deduplicate first)
     if (addonIds && addonIds.length > 0) {
+      const uniqueAddonIds = [...new Set(addonIds)]
       const { data: addons } = await supabaseAdmin
         .from('service_addons')
         .select('id, price')
-        .in('id', addonIds)
+        .in('id', uniqueAddonIds)
         .eq('is_active', true)
 
       if (addons && addons.length > 0) {

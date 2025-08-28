@@ -122,6 +122,24 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
       const selectedDate = date.toISOString().split('T')[0]
       const timeSlotInterval = selectedService.duration // Use service duration as interval
       
+      // Get existing bookings for the selected date (treat any non-cancelled as taken)
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('date')
+        .eq('barber_id', barberId)
+        .gte('date', `${selectedDate}T00:00:00`)
+        .lt('date', `${selectedDate}T23:59:59`)
+        .neq('status', 'cancelled')
+
+      if (bookingsError) throw bookingsError
+
+      // Log fetched bookings
+      console.log('Fetched bookings:', bookings)
+
+      // Set bookedTimes based on fetched bookings
+      const newBookedTimes = new Set(bookings?.map(b => new Date(b.date).toTimeString().slice(0, 5)) || [])
+      setBookedTimes(newBookedTimes)
+
       // First check for special hours
       const { data: specialHours, error: specialHoursError } = await supabase
         .from('special_hours')
@@ -139,58 +157,32 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
         return
       }
 
-      // If there are special hours, use those times
+      // Build slots from either special hours or regular availability
+      const slots: string[] = []
+
       if (specialHours?.[0]) {
         const start = new Date(`2000-01-01T${specialHours[0].start_time}`)
         const end = new Date(`2000-01-01T${specialHours[0].end_time}`)
-        const slots: string[] = []
-        
         for (let time = new Date(start); time < end; time.setMinutes(time.getMinutes() + timeSlotInterval)) {
           const timeStr = time.toTimeString().slice(0, 5)
           slots.push(timeStr)
         }
-        setAvailableTimeSlots(slots)
-        return
-      }
+      } else {
+        // If no special hours, use regular availability
+        const dayOfWeek = date.getDay()
+        const { data: availability, error: availabilityError } = await supabase
+          .from('availability')
+          .select('*')
+          .eq('barber_id', barberId)
+          .eq('day_of_week', dayOfWeek)
 
-      // If no special hours, use regular availability
-      const dayOfWeek = date.getDay()
-      const { data: availability, error: availabilityError } = await supabase
-        .from('availability')
-        .select('*')
-        .eq('barber_id', barberId)
-        .eq('day_of_week', dayOfWeek)
+        if (availabilityError) throw availabilityError
 
-      if (availabilityError) throw availabilityError
-
-      // Get existing bookings for the selected date
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('date')
-        .eq('barber_id', barberId)
-        .gte('date', `${selectedDate}T00:00:00`)
-        .lt('date', `${selectedDate}T23:59:59`)
-        .eq('status', 'pending')
-
-      if (bookingsError) throw bookingsError
-
-      // Log fetched bookings
-      console.log('Fetched bookings:', bookings)
-
-      // Set bookedTimes based on fetched bookings
-      const newBookedTimes = new Set(bookings?.map(b => new Date(b.date).toTimeString().slice(0, 5)) || [])
-      setBookedTimes(newBookedTimes)
-
-      // Generate time slots based on availability
-      const slots: string[] = []
-      
-      if (availability?.[0]) {
-        const start = new Date(`2000-01-01T${availability[0].start_time}`)
-        const end = new Date(`2000-01-01T${availability[0].end_time}`)
-        
-        for (let time = new Date(start); time < end; time.setMinutes(time.getMinutes() + timeSlotInterval)) {
-          const timeStr = time.toTimeString().slice(0, 5)
-          if (!newBookedTimes.has(timeStr)) {
+        if (availability?.[0]) {
+          const start = new Date(`2000-01-01T${availability[0].start_time}`)
+          const end = new Date(`2000-01-01T${availability[0].end_time}`)
+          for (let time = new Date(start); time < end; time.setMinutes(time.getMinutes() + timeSlotInterval)) {
+            const timeStr = time.toTimeString().slice(0, 5)
             slots.push(timeStr)
           }
         }
@@ -568,22 +560,36 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                 
                 {availableTimeSlots.length > 0 ? (
                   <div className="grid grid-cols-3 gap-3">
-                    {availableTimeSlots.map((time) => (
-                      <Button
-                        key={time}
-                        type="button"
+                    {availableTimeSlots.map((time) => {
+                      const [hours, minutes] = time.split(':').map((t) => parseInt(t))
+                      const slotDateTime = new Date(date)
+                      slotDateTime.setHours(hours, minutes, 0, 0)
+                      const isPast = slotDateTime <= new Date()
+                      const isBooked = bookedTimes.has(time)
+                      const isDisabled = isPast || isBooked
+
+                      return (
+                        <Button
+                          key={time}
+                          type="button"
                           variant="ghost"
-                        className={cn(
-                          "h-16 text-sm font-medium transition-all duration-300 relative overflow-hidden group",
-                          formData.time === time 
-                              ? "bg-gradient-to-br from-secondary to-orange-500 text-white border-2 border-secondary/50 shadow-lg scale-105 transform" 
-                              : "bg-white/5 border border-white/20 text-white hover:bg-gradient-to-br hover:from-secondary/20 hover:to-orange-500/20 hover:border-secondary/50 hover:scale-105 hover:shadow-md"
-                        )}
-                        onClick={() => setFormData({ ...formData, time })}
-                      >
-                            <div className="font-semibold">{formatTime(time)}</div>
-                      </Button>
-                    ))}
+                          disabled={isDisabled}
+                          className={cn(
+                            "h-16 text-sm font-medium transition-all duration-300 relative overflow-hidden group",
+                            isDisabled
+                              ? "bg-white/5 border border-white/10 text-white/40 opacity-50 cursor-not-allowed"
+                              : formData.time === time
+                                ? "bg-gradient-to-br from-secondary to-orange-500 text-white border-2 border-secondary/50 shadow-lg scale-105 transform"
+                                : "bg-white/5 border border-white/20 text-white hover:bg-gradient-to-br hover:from-secondary/20 hover:to-orange-500/20 hover:border-secondary/50 hover:scale-105 hover:shadow-md"
+                          )}
+                          onClick={() => {
+                            if (!isDisabled) setFormData({ ...formData, time })
+                          }}
+                        >
+                          <div className="font-semibold">{formatTime(time)}</div>
+                        </Button>
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12">
