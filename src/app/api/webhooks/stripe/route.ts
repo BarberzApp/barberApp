@@ -373,7 +373,7 @@ export async function POST(request: Request) {
             payment_status: 'succeeded',
             payment_intent_id: paymentIntent.id,
             price,        // base service price only
-            addon_total,  // add-ons only
+            addon_total: 0,  // Let the trigger calculate this from booking_addons
             platform_fee, // dollars
             barber_payout, // dollars
             notes: notes || null,

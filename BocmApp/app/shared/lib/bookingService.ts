@@ -94,28 +94,42 @@ class BookingService {
       throw error;
     }
 
-    // Generate time slots (9 AM to 6 PM, 30-minute intervals)
+    // Generate time slots based on service duration
     const slots: TimeSlot[] = [];
     const bookedTimes = new Set((bookings || []).map(b => new Date(b.date).toISOString()));
 
-    for (let hour = 9; hour < 18; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
+    // Calculate slot interval based on service duration
+    // Use the service duration as the interval, but minimum 10 minutes
+    const slotInterval = Math.max(serviceDuration, 10);
+    
+    // Start from 9 AM and go until 6 PM
+    const startHour = 9;
+    const endHour = 18;
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += slotInterval) {
         const slotTime = new Date(date);
         slotTime.setHours(hour, minute, 0, 0);
         
-        // Check if slot is available (not booked and has enough time for service)
+        // Skip if this would go past 6 PM
+        const endTime = new Date(slotTime);
+        endTime.setMinutes(endTime.getMinutes() + serviceDuration);
+        if (endTime.getHours() >= endHour) {
+          continue;
+        }
+        
         const slotISO = slotTime.toISOString();
         const isBooked = bookedTimes.has(slotISO);
         
-        // Check if there's enough time before next booking
+        // Check if there's enough time for the service
         let hasEnoughTime = true;
-        if (!isBooked && serviceDuration > 30) {
-          const endTime = new Date(slotTime);
-          endTime.setMinutes(endTime.getMinutes() + serviceDuration);
+        if (!isBooked) {
+          const serviceEndTime = new Date(slotTime);
+          serviceEndTime.setMinutes(serviceEndTime.getMinutes() + serviceDuration);
           
           for (const bookedTime of bookedTimes) {
             const booked = new Date(bookedTime);
-            if (booked >= slotTime && booked < endTime) {
+            if (booked >= slotTime && booked < serviceEndTime) {
               hasEnoughTime = false;
               break;
             }

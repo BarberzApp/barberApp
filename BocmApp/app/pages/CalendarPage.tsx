@@ -36,6 +36,7 @@ import { supabase } from '../shared/lib/supabase';
 import { useAuth } from '../shared/hooks/useAuth';
 import { theme } from '../shared/lib/theme';
 import { ReviewForm } from '../shared/components/ReviewForm';
+import { bookingService } from '../shared/lib/bookingService';
 
 interface CalendarEvent {
   id: string;
@@ -89,7 +90,10 @@ export default function CalendarPage() {
     date: selectedDate || new Date()
   });
   const [services, setServices] = useState<Array<{id: string, name: string, price: number, duration: number}>>([]);
+  const [barberId, setBarberId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeSlots, setTimeSlots] = useState<Array<{time: string, available: boolean}>>([]);
+  const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
   
   // Review form state
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -162,6 +166,102 @@ export default function CalendarPage() {
       fetchServices();
     }
   }, [showManualAppointmentForm]);
+
+  // Fetch time slots when date or service changes
+  useEffect(() => {
+    if (showManualAppointmentForm && manualFormData.date && manualFormData.serviceId && barberId) {
+      fetchTimeSlots();
+    }
+  }, [showManualAppointmentForm, manualFormData.date, manualFormData.serviceId, barberId]);
+
+
+
+  const formatTimeSlot = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const fetchTimeSlots = async () => {
+    if (!manualFormData.date || !manualFormData.serviceId || !barberId) {
+      return;
+    }
+
+    try {
+      setLoadingTimeSlots(true);
+      const selectedService = services.find(s => s.id === manualFormData.serviceId);
+      if (!selectedService) return;
+
+      const dateStr = format(manualFormData.date, 'yyyy-MM-dd');
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('date')
+        .eq('barber_id', barberId)
+        .gte('date', `${dateStr}T00:00:00`)
+        .lte('date', `${dateStr}T23:59:59`)
+        .neq('status', 'cancelled');
+
+      if (error) throw error;
+
+      // Generate time slots based on service duration
+      const slots: Array<{time: string, available: boolean}> = [];
+      const bookedTimes = new Set((bookings || []).map(b => new Date(b.date).toISOString()));
+
+      // Calculate slot interval based on service duration
+      // Use the service duration as the interval, but minimum 10 minutes
+      const slotInterval = Math.max(selectedService.duration, 10);
+      
+      // Start from 9 AM and go until 6 PM
+      const startHour = 9;
+      const endHour = 18;
+      
+      for (let hour = startHour; hour < endHour; hour++) {
+        for (let minute = 0; minute < 60; minute += slotInterval) {
+          const slotTime = new Date(manualFormData.date);
+          slotTime.setHours(hour, minute, 0, 0);
+          
+          // Skip if this would go past 6 PM
+          const endTime = new Date(slotTime);
+          endTime.setMinutes(endTime.getMinutes() + selectedService.duration);
+          if (endTime.getHours() >= endHour) {
+            continue;
+          }
+          
+          const slotISO = slotTime.toISOString();
+          const isBooked = bookedTimes.has(slotISO);
+          
+          // Check if there's enough time for the service
+          let hasEnoughTime = true;
+          if (!isBooked) {
+            const serviceEndTime = new Date(slotTime);
+            serviceEndTime.setMinutes(serviceEndTime.getMinutes() + selectedService.duration);
+            
+            for (const bookedTime of bookedTimes) {
+              const booked = new Date(bookedTime);
+              if (booked >= slotTime && booked < serviceEndTime) {
+                hasEnoughTime = false;
+                break;
+              }
+            }
+          }
+
+          slots.push({
+            time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+            available: !isBooked && hasEnoughTime && slotTime > new Date()
+          });
+        }
+      }
+
+      setTimeSlots(slots);
+    } catch (error) {
+      console.error('Error fetching time slots:', error);
+      setTimeSlots([]);
+    } finally {
+      setLoadingTimeSlots(false);
+    }
+  };
 
   // Refresh calendar data when page comes into focus
   useFocusEffect(
@@ -330,7 +430,7 @@ export default function CalendarPage() {
         }
 
         // Fetch add-ons for this booking
-        let addonTotal = 0;
+        let calculatedAddonTotal = 0;
         let addonNames: string[] = [];
         const { data: bookingAddons } = await supabase
           .from('booking_addons')
@@ -339,7 +439,7 @@ export default function CalendarPage() {
 
         if (bookingAddons && bookingAddons.length > 0) {
           // Use the stored addon prices from booking_addons table
-          addonTotal = bookingAddons.reduce((sum, ba) => sum + (ba.price || 0), 0);
+          calculatedAddonTotal = bookingAddons.reduce((sum, ba) => sum + (ba.price || 0), 0);
           
           // Get addon names from service_addons table
           const addonIds = bookingAddons.map((ba) => ba.addon_id);
@@ -371,10 +471,10 @@ export default function CalendarPage() {
         // Compute monetary fields in dollars: use actual service price, not stored booking price
         // total = base + addon_total + platform_fee
         const basePrice = (service?.price || 0);
-        const addonsPrice = (booking.addon_total || addonTotal || 0);
+        const addonTotal = (booking.addon_total || 0);
         const platformFee = (booking.platform_fee || 0);
         // Barber net payout: prefer stored barber_payout; fallback to base + addons + 40% of fee
-        const barberPayout = (typeof booking.barber_payout === 'number' ? booking.barber_payout : (basePrice + addonsPrice + (platformFee * 0.40)));
+        const barberPayout = (typeof booking.barber_payout === 'number' ? booking.barber_payout : (basePrice + addonTotal + (platformFee * 0.40)));
 
         return {
           id: booking.id,
@@ -392,7 +492,7 @@ export default function CalendarPage() {
             barberId: booking.barber_id, // Add barber_id for review functionality
             price: barberPayout, // show barber's take-home amount
             basePrice: basePrice,
-            addonTotal: addonsPrice,
+            addonTotal: addonTotal,
             addonNames,
             isGuest: !client,
             guestEmail: booking.guest_email,
@@ -557,6 +657,39 @@ export default function CalendarPage() {
     setShowEventDialog(false);
   };
 
+  const handleCancelBooking = async () => {
+    if (!selectedEvent) return;
+
+    // Show confirmation dialog
+    Alert.alert(
+      'Cancel Booking',
+      'Are you sure you want to cancel this booking? This action cannot be undone.',
+      [
+        {
+          text: 'Keep Booking',
+          style: 'cancel'
+        },
+        {
+          text: 'Cancel Booking',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await bookingService.cancelBooking(selectedEvent.id);
+              Vibration.vibrate(100); // Success haptic feedback
+              Alert.alert('Success', 'Booking cancelled successfully');
+              setShowEventDialog(false);
+              fetchBookings(); // Refresh events
+            } catch (error) {
+              console.error('Error cancelling booking:', error);
+              Vibration.vibrate([100, 100]); // Error haptic feedback
+              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -630,6 +763,7 @@ export default function CalendarPage() {
       }
 
       setServices(servicesData || []);
+      setBarberId(barberData.id);
       
       if (!servicesData || servicesData.length === 0) {
         Alert.alert(
@@ -744,6 +878,14 @@ export default function CalendarPage() {
       ...prev,
       serviceId,
       price: selectedService ? selectedService.price.toString() : ''
+    }));
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setManualFormData(prev => ({
+      ...prev,
+      date: date,
+      time: '' // Clear time when date changes
     }));
   };
 
@@ -1279,45 +1421,61 @@ export default function CalendarPage() {
                 {/* Pricing Section */}
                 <View style={tw`mb-4`}>
                   <Text style={[tw`text-sm font-semibold mb-3`, { color: theme.colors.foreground }]}>
-                    Pricing
+                    Pricing Breakdown
                   </Text>
                   
                   <View style={tw`space-y-2`}>
                     <View style={tw`flex-row items-center justify-between`}>
-                      <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Service</Text>
+                      <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Service Price</Text>
                       <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
                         ${selectedEvent.extendedProps.basePrice.toFixed(2)}
                       </Text>
                     </View>
 
                     {selectedEvent.extendedProps.addonNames.length > 0 && (
-                      <View>
-                        <Text style={[tw`text-sm mb-2`, { color: theme.colors.mutedForeground }]}>Add-ons</Text>
-                        <View style={tw`space-y-1`}>
-                          {selectedEvent.extendedProps.addonNames.map((addon, idx) => (
-                            <View key={idx} style={tw`flex-row items-center justify-between`}>
-                              <Text style={[tw`text-sm`, { color: theme.colors.foreground }]}>
-                                {addon}
-                              </Text>
-                              <Text style={[tw`text-sm font-semibold`, { color: theme.colors.foreground }]}>
-                                ${(selectedEvent.extendedProps.addonTotal / selectedEvent.extendedProps.addonNames.length).toFixed(2)}
-                              </Text>
-                            </View>
-                          ))}
-                        </View>
+                      <View style={tw`flex-row items-center justify-between`}>
+                        <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Add-ons</Text>
+                        <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                          +${selectedEvent.extendedProps.addonTotal.toFixed(2)}
+                        </Text>
                       </View>
                     )}
+
+                    {/* Calculate platform fee from the booking data */}
+                    {(() => {
+                      const totalCharged = selectedEvent.extendedProps.basePrice + selectedEvent.extendedProps.addonTotal;
+                      const platformFee = selectedEvent.extendedProps.price - totalCharged;
+                      return platformFee > 0 ? (
+                        <View style={tw`flex-row items-center justify-between`}>
+                          <Text style={[tw`text-sm`, { color: theme.colors.mutedForeground }]}>Platform Fee</Text>
+                          <Text style={[tw`font-semibold`, { color: theme.colors.foreground }]}>
+                            +${platformFee.toFixed(2)}
+                          </Text>
+                        </View>
+                      ) : null;
+                    })()}
                   </View>
                 </View>
 
                 {/* Total Section */}
                 <View style={tw`mb-4`}>
                   <View style={tw`flex-row items-center justify-between`}>
-                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>Total</Text>
                     <Text style={[tw`font-bold text-lg`, { color: theme.colors.foreground }]}>
+                      {userRole === 'barber' ? 'Your Payout' : 'Total Charged'}
+                    </Text>
+                    <Text style={[tw`font-bold text-lg`, { color: theme.colors.secondary }]}>
                       ${selectedEvent.extendedProps.price.toFixed(2)}
                     </Text>
                   </View>
+                  {userRole === 'barber' ? (
+                    <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                      Amount you'll receive for this booking
+                    </Text>
+                  ) : (
+                    <Text style={[tw`text-xs mt-1`, { color: theme.colors.mutedForeground }]}>
+                      Total amount charged to customer
+                    </Text>
+                  )}
                 </View>
 
                 {/* Guest Information (if applicable) */}
@@ -1375,6 +1533,28 @@ export default function CalendarPage() {
                       ) : (
                         <Text style={tw`font-semibold text-white`}>Mark as Missed</Text>
                       )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Cancel Booking Button - for future bookings that aren't cancelled */}
+                {selectedEvent.extendedProps.status !== 'cancelled' && 
+                 selectedEvent.extendedProps.status !== 'completed' && 
+                 selectedEvent.extendedProps.status !== 'missed' && 
+                 new Date(selectedEvent.start) > new Date() && (
+                  <View style={tw`mt-6`}>
+                    <TouchableOpacity
+                      onPress={handleCancelBooking}
+                      style={[tw`py-3 rounded-xl items-center`, { 
+                        backgroundColor: '#ef4444',
+                        shadowColor: '#ef4444',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 4
+                      }]}
+                    >
+                      <Text style={tw`font-semibold text-white`}>Cancel Booking</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -1516,19 +1696,98 @@ export default function CalendarPage() {
 
               <View>
                 <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
-                  Time *
+                  Date *
                 </Text>
-                <TextInput
+                <TouchableOpacity
+                  onPress={() => {
+                    console.log('Date picker button pressed, showing simple alert');
+                    Alert.alert(
+                      'Select Date',
+                      'Choose a date for the appointment',
+                      [
+                        {
+                          text: 'Today',
+                          onPress: () => {
+                            console.log('Selected Today');
+                            handleDateSelect(new Date());
+                          }
+                        },
+                        {
+                          text: 'Tomorrow',
+                          onPress: () => {
+                            console.log('Selected Tomorrow');
+                            handleDateSelect(new Date(Date.now() + 24 * 60 * 60 * 1000));
+                          }
+                        },
+                        {
+                          text: 'Next Week',
+                          onPress: () => {
+                            console.log('Selected Next Week');
+                            handleDateSelect(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+                          }
+                        },
+                        {
+                          text: 'Cancel',
+                          style: 'cancel',
+                          onPress: () => console.log('Cancelled date selection')
+                        }
+                      ]
+                    );
+                  }}
                   style={[tw`p-3 rounded-xl border`, {
                     backgroundColor: 'rgba(255,255,255,0.05)',
                     borderColor: 'rgba(255,255,255,0.1)',
-                    color: theme.colors.foreground
                   }]}
-                  placeholder="Enter time (e.g., 2:00 PM)"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={manualFormData.time}
-                  onChangeText={(text) => setManualFormData(prev => ({ ...prev, time: text }))}
-                />
+                >
+                  <Text style={[tw`text-center`, { color: theme.colors.foreground }]}>
+                    {manualFormData.date ? format(manualFormData.date, 'MMM dd, yyyy') : 'Select Date'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View>
+                <Text style={[tw`text-sm font-medium mb-2`, { color: theme.colors.foreground }]}>
+                  Time *
+                </Text>
+                {manualFormData.date && (
+                  <View>
+                    {loadingTimeSlots ? (
+                      <View style={tw`items-center py-8`}>
+                        <ActivityIndicator size="small" color={theme.colors.secondary} />
+                        <Text style={[tw`mt-2`, { color: theme.colors.mutedForeground }]}>Loading times...</Text>
+                      </View>
+                    ) : (
+                      <View style={tw`flex-row flex-wrap -mx-1`}>
+                        {timeSlots
+                          .filter(slot => slot.available)
+                          .map((slot) => (
+                            <TouchableOpacity
+                              key={slot.time}
+                              onPress={() => setManualFormData(prev => ({ ...prev, time: slot.time }))}
+                              style={tw`w-1/3 px-1 mb-2`}
+                              disabled={isSubmitting}
+                            >
+                              <View style={[
+                                tw`rounded-lg py-3 items-center`,
+                                manualFormData.time === slot.time
+                                  ? { backgroundColor: theme.colors.secondary }
+                                  : { backgroundColor: 'rgba(255,255,255,0.05)' }
+                              ]}>
+                                <Text style={[
+                                  tw`text-sm font-medium`,
+                                  manualFormData.time === slot.time
+                                    ? { color: theme.colors.background }
+                                    : { color: theme.colors.foreground }
+                                ]}>
+                                  {formatTimeSlot(slot.time)}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
 
@@ -1572,6 +1831,8 @@ export default function CalendarPage() {
           </View>
         </View>
       </Modal>
+
+
 
       {/* Review Form Modal */}
       {reviewFormData && (

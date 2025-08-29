@@ -79,7 +79,7 @@ async function createTestBookingWithAddons() {
       status: 'confirmed',
       payment_status: 'succeeded',
       price: totalPrice,
-      addon_total: addonTotal,
+      addon_total: 0, // Let the trigger calculate this from booking_addons
       platform_fee: 0,
       barber_payout: totalPrice,
       payment_intent_id: `test_${Date.now()}`,

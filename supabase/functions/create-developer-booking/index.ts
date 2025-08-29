@@ -103,8 +103,8 @@ serve(async (req) => {
 
     // For developer accounts, no platform fees
     const platformFee = 0
-    const barberPayout = 0 // No payout from platform for developer accounts
-    const totalPrice = 0 // Developer accounts pay no platform fee
+    const barberPayout = service.price + addonTotal // Developer gets full service + addons
+    const totalPrice = service.price + addonTotal // Developer accounts pay no platform fee
 
     // Create the booking
     const bookingData = {
@@ -119,7 +119,7 @@ serve(async (req) => {
       status: 'confirmed',
       payment_status: 'succeeded', // Developer bookings are automatically paid
       price: totalPrice,
-      addon_total: addonTotal,
+      addon_total: addonTotal, // Store the calculated addon total
       platform_fee: platformFee,
       barber_payout: barberPayout,
       payment_intent_id: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID
@@ -146,19 +146,31 @@ serve(async (req) => {
 
     // Add add-ons if any are selected
     if (addonIds && addonIds.length > 0) {
-      const addonBookings = addonIds.map(addonId => ({
-        booking_id: booking.id,
-        addon_id: addonId,
-        price: 0, // Add-ons are free for developer accounts
-      }))
+      // Get add-on details to store correct prices
+      const { data: addons, error: addonsError } = await supabase
+        .from('service_addons')
+        .select('id, name, price')
+        .in('id', addonIds)
+        .eq('is_active', true)
 
-      const { error: addonError } = await supabase
-        .from('booking_addons')
-        .insert(addonBookings)
+      if (!addonsError && addons) {
+        const addonBookings = addonIds.map(addonId => {
+          const addon = addons.find(a => a.id === addonId)
+          return {
+            booking_id: booking.id,
+            addon_id: addonId,
+            price: addon ? addon.price : 0, // Store actual add-on price
+          }
+        })
 
-      if (addonError) {
-        console.error('Error adding add-ons:', addonError)
-        // Don't fail the booking if add-ons fail
+        const { error: addonError } = await supabase
+          .from('booking_addons')
+          .insert(addonBookings)
+
+        if (addonError) {
+          console.error('Error adding add-ons:', addonError)
+          // Don't fail the booking if add-ons fail
+        }
       }
     }
 

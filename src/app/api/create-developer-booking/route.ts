@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       status: 'confirmed',
       payment_status: 'succeeded', // Developer bookings are automatically paid
       price: servicePrice + addonTotal,
-      addon_total: addonTotal,
+      addon_total: 0, // Let the trigger calculate this from booking_addons
       platform_fee: platformFee,
       barber_payout: barberPayout,
       payment_intent_id: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID

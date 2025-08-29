@@ -1060,7 +1060,7 @@ export default function BookingForm({
                             Total Service Cost:
                           </Text>
                           <Text style={[tw`font-semibold`, { color: theme.colors.secondary }]}>
-                            ${(selectedService?.price || 0 + getSelectedAddonsTotal()).toFixed(2)}
+                            ${((selectedService?.price || 0) + getSelectedAddonsTotal()).toFixed(2)}
                           </Text>
                         </View>
                       </>
