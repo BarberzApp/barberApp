@@ -296,38 +296,66 @@ export function ShareSettings() {
                 <h3 className="text-lg font-semibold text-white">QR Code</h3>
               </div>
               <div className="flex justify-center">
-                <div className="p-4 bg-white rounded-3xl shadow-lg">
+                <div className="p-6 bg-white rounded-3xl shadow-lg">
                   <QRCode
                     value={bookingLink}
                     size={200}
                     level="H"
                     fgColor="#262b2e"
                     bgColor="#ffffff"
+                    id="booking-qr-code"
                   />
                 </div>
               </div>
-              <p className="text-sm text-white/60">
-                Clients can scan this QR code to access your booking page
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-white/60">
+                  Clients can scan this QR code to access your booking page
+                </p>
+                <p className="text-xs text-white/40">
+                  {profileData.business_name || profileData.name || 'Your'} Booking Link
+                </p>
+              </div>
               <Button
                 onClick={() => {
-                  // Create a canvas element to download the QR code
-                  const canvas = document.createElement('canvas')
-                  const qrCode = document.querySelector('svg')
-                  if (qrCode) {
-                    const svgData = new XMLSerializer().serializeToString(qrCode)
-                    const img = new Image()
-                    img.onload = () => {
-                      canvas.width = img.width
-                      canvas.height = img.height
-                      const ctx = canvas.getContext('2d')
-                      ctx?.drawImage(img, 0, 0)
-                      const link = document.createElement('a')
-                      link.download = 'booking-qr-code.png'
-                      link.href = canvas.toDataURL()
-                      link.click()
+                  try {
+                    // Create a canvas element to download the QR code
+                    const canvas = document.createElement('canvas')
+                    const qrCode = document.querySelector('#booking-qr-code')
+                    if (qrCode) {
+                      const svgData = new XMLSerializer().serializeToString(qrCode)
+                      const img = new Image()
+                      img.onload = () => {
+                        canvas.width = img.width
+                        canvas.height = img.height
+                        const ctx = canvas.getContext('2d')
+                        ctx?.drawImage(img, 0, 0)
+                        const link = document.createElement('a')
+                        link.download = `booking-qr-${profileData.username || barberId || 'code'}.png`
+                        link.href = canvas.toDataURL()
+                        link.click()
+                      }
+                      img.onerror = () => {
+                        toast({
+                          title: "Download failed",
+                          description: "Failed to generate QR code image. Please try again.",
+                          variant: "destructive",
+                        })
+                      }
+                      img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+                    } else {
+                      toast({
+                        title: "QR Code not found",
+                        description: "Please try refreshing the page and generating the QR code again.",
+                        variant: "destructive",
+                      })
                     }
-                    img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+                  } catch (error) {
+                    console.error('Error downloading QR code:', error)
+                    toast({
+                      title: "Download failed",
+                      description: "An error occurred while downloading the QR code.",
+                      variant: "destructive",
+                    })
                   }
                 }}
                 variant="outline"

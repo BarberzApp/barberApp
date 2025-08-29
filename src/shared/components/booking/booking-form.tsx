@@ -382,7 +382,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden mb-[140px] md:mb-0">
+      <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden mb-[200px] md:mb-0 max-h-[90vh] md:max-h-[85vh] sm:max-h-[80vh]">
         {/* Header */}
         <div className="relative p-6 border-b border-white/10">
           <div className="flex items-center justify-between mb-4">
@@ -429,7 +429,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           </div>
         </div>
 
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 space-y-6 max-h-[45vh] sm:max-h-[50vh] md:max-h-[70vh] overflow-y-auto pb-8 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
           {/* Step 1: Service Selection */}
           {currentStep === 1 && (
             <div className="space-y-6">
@@ -778,7 +778,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                </div>
 
                {/* Navigation Buttons for Step 4 */}
-               <div className="flex gap-3 pt-6 border-t border-white/10">
+               <div className="flex gap-3 pt-6 pb-4 border-t border-white/10">
                  <Button 
                    type="button" 
                    variant="outline" 
@@ -812,7 +812,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
           {/* Navigation Buttons for Steps 1-3 */}
           {currentStep < 4 && (
-            <div className="flex gap-3 pt-6 border-t border-white/10">
+            <div className="flex gap-3 pt-6 pb-4 border-t border-white/10">
               {currentStep > 1 && (
                 <Button 
                   type="button" 

@@ -6,6 +6,7 @@ import {
   Share,
   Alert,
   Clipboard,
+  Platform,
 } from 'react-native';
 import tw from 'twrnc';
 import { theme } from '../../lib/theme';
@@ -24,6 +25,7 @@ import {
   Globe,
   Download
 } from 'lucide-react-native';
+import QRCode from 'react-native-qrcode-svg';
 
 interface ShareSettingsProps {
   barberId: string;
@@ -138,6 +140,8 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
     }
   };
 
+
+
   if (isLoading) {
     return (
       <Card style={[{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
@@ -172,10 +176,10 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
 
         {/* Profile Status Alert */}
         {!profileData.is_public && (
-          <View style={[tw`mb-4 p-3 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.saffron + '10', borderWidth: 1, borderColor: theme.colors.saffron + '20' }]}>
-            <AlertCircle size={16} color={theme.colors.saffron} style={tw`mr-2 mt-0.5`} />
+          <View style={[tw`mb-4 p-3 rounded-xl flex-row items-start`, { backgroundColor: theme.colors.saffronBrown + '10', borderWidth: 1, borderColor: theme.colors.saffronBrown + '20' }]}>
+            <AlertCircle size={16} color={theme.colors.saffronBrown} style={tw`mr-2 mt-0.5`} />
             <View style={tw`flex-1`}>
-              <Text style={[tw`text-sm`, { color: theme.colors.saffron }]}>
+              <Text style={[tw`text-sm`, { color: theme.colors.saffronBrown }]}>
                 Your profile is currently private. Make it public to allow clients to book appointments.
               </Text>
             </View>
@@ -240,18 +244,22 @@ export function ShareSettings({ barberId }: ShareSettingsProps) {
               <Text style={[tw`text-sm mb-3`, { color: theme.colors.foreground }]}>
                 Clients can scan this QR code to book appointments
               </Text>
-              {/* QR Code would be rendered here using a library like react-native-qrcode-svg */}
-              <View style={[tw`w-48 h-48 rounded-xl items-center justify-center`, { backgroundColor: theme.colors.foreground }]}>
-                <Text style={[tw`text-xs text-center`, { color: theme.colors.primary }]}>QR Code Placeholder</Text>
+              <View style={[tw`p-4 rounded-xl`, { backgroundColor: theme.colors.foreground }]}>
+                <QRCode
+                  value={bookingLink}
+                  size={200}
+                  color={theme.colors.primary}
+                  backgroundColor={theme.colors.foreground}
+                />
               </View>
-              <TouchableOpacity
-                style={[tw`mt-4 px-4 py-2 rounded-xl flex-row items-center`, { backgroundColor: theme.colors.secondary + '20' }]}
-              >
-                <Download size={16} color={theme.colors.secondary} style={tw`mr-2`} />
-                <Text style={[tw`text-sm font-medium`, { color: theme.colors.secondary }]}>
-                  Download QR Code
+              <View style={tw`mt-3 items-center`}>
+                <Text style={[tw`text-xs text-center mb-1`, { color: theme.colors.mutedForeground }]}>
+                  Scan this QR code to access the booking page
                 </Text>
-              </TouchableOpacity>
+                <Text style={[tw`text-xs text-center`, { color: theme.colors.secondary }]}>
+                  {profileData.business_name || profileData.name || 'Your'} Booking Link
+                </Text>
+              </View>
             </View>
           </View>
         )}
