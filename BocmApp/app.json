@@ -10,26 +10,51 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aryangupta0102.BOCM"
+      "bundleIdentifier": "com.yaskhalil.bocm",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to take photos for profile pictures and document uploads.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images for profile pictures and document uploads.",
+        "NSLocationWhenInUseUsageDescription": "This app uses location to find nearby barbers and services.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone for voice features and calls.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow BOCM to use your location to find nearby barbers and services."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "76040184-9ae5-46f2-9750-71eb065a6d50"
+      }
     }
   }
 }

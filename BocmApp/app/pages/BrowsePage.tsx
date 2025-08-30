@@ -13,6 +13,7 @@ import {
   Image,
   PermissionsAndroid,
   Platform,
+  Linking,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
@@ -425,10 +426,10 @@ export default function BrowsePage() {
         if (profile) {
           // Calculate distance if user location is available
           let distance: number | undefined;
-          if (useLocation && userLocation && barber.latitude && barber.longitude) {
+          if (isLocationAvailable && barber.latitude && barber.longitude) {
             distance = calculateDistance(
-              userLocation.coords.latitude,
-              userLocation.coords.longitude,
+              userLocation!.coords.latitude,
+              userLocation!.coords.longitude,
               barber.latitude,
               barber.longitude
             );
@@ -469,7 +470,7 @@ export default function BrowsePage() {
       });
 
       // Sort by distance if location is enabled
-      if (useLocation && userLocation) {
+      if (isLocationAvailable) {
         transformedBarbers.sort((a, b) => {
           if (a.distance === undefined && b.distance === undefined) return 0;
           if (a.distance === undefined) return 1;
@@ -524,7 +525,10 @@ export default function BrowsePage() {
         Alert.alert(
           'Location Services Disabled',
           'Please enable location services in your device settings to find barbers near you.',
-          [{ text: 'OK' }]
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
         );
         return false;
       }
@@ -537,7 +541,10 @@ export default function BrowsePage() {
         Alert.alert(
           'Location Permission Required',
           'Location permission is required to find barbers near you. Please grant permission in settings.',
-          [{ text: 'OK' }]
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
         );
         return false;
       }
@@ -545,7 +552,7 @@ export default function BrowsePage() {
       return true;
     } catch (error) {
       console.error('Error requesting location permission:', error);
-      Alert.alert('Error', 'Failed to get location permission.');
+      Alert.alert('Error', 'Failed to get location permission. Please try again.');
       return false;
     } finally {
       setLocationLoading(false);
@@ -559,32 +566,71 @@ export default function BrowsePage() {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) return;
       
-      // Get current location
+      // Get current location with better accuracy settings
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: 5000,
-        distanceInterval: 10,
+        accuracy: Location.Accuracy.High,
+        timeInterval: 10000,
+        distanceInterval: 5,
       });
+      
+      // Check if location accuracy is reasonable (less than 100 meters)
+      if (location.coords.accuracy && location.coords.accuracy > 100) {
+        Alert.alert(
+          'Low Location Accuracy',
+          'Your location accuracy is low. For better results, try moving to an open area or enabling GPS.',
+          [{ text: 'OK' }]
+        );
+      }
       
       setUserLocation(location);
       setUseLocation(true);
       console.log('📍 User location obtained:', {
         latitude: location.coords.latitude,
-        longitude: location.coords.longitude
+        longitude: location.coords.longitude,
+        accuracy: location.coords.accuracy
       });
       
       // Refresh barbers with location-based sorting
       await fetchBarbers(0);
       
+      // Show success feedback
+      Alert.alert(
+        'Location Updated',
+        'Your location has been updated. Barbers are now sorted by distance.',
+        [{ text: 'OK' }]
+      );
+      
     } catch (error) {
       console.error('Error getting user location:', error);
-      Alert.alert('Error', 'Failed to get your current location.');
+      Alert.alert(
+        'Location Error', 
+        'Failed to get your current location. Please check your GPS settings and try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLocationLoading(false);
     }
   };
 
+  const toggleLocation = () => {
+    if (useLocation) {
+      // Turn off location
+      setUseLocation(false);
+      setUserLocation(null);
+      // Refresh barbers without location sorting
+      fetchBarbers(0);
+    } else {
+      // Turn on location
+      getUserLocation();
+    }
+  };
+
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    // Validate coordinates
+    if (!lat1 || !lon1 || !lat2 || !lon2) {
+      return 0;
+    }
+    
     const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -596,6 +642,21 @@ export default function BrowsePage() {
     const distance = R * c; // Distance in kilometers
     return distance;
   };
+
+  const formatDistance = (distance: number): string => {
+    if (distance < 0.1) {
+      return `${Math.round(distance * 1000)}m`;
+    } else if (distance < 1) {
+      return `${Math.round(distance * 100)}m`;
+    } else if (distance < 10) {
+      return `${distance.toFixed(1)}km`;
+    } else {
+      return `${Math.round(distance)}km`;
+    }
+  };
+
+  // Check if location is available and working
+  const isLocationAvailable = useLocation && userLocation && userLocation.coords;
 
   const loadMoreBarbers = async () => {
     if (!hasMoreBarbers || barbersLoadingMore) return;
@@ -917,23 +978,30 @@ export default function BrowsePage() {
           {/* Location Button */}
           <TouchableOpacity
             style={[
-              tw`ml-2 p-2 rounded-xl`,
+              tw`ml-2 p-3 rounded-xl flex-row items-center`,
               { 
                 backgroundColor: useLocation 
                   ? 'rgba(59,130,246,0.3)' 
-                  : 'rgba(255,255,255,0.1)' 
+                  : 'rgba(255,255,255,0.1)',
+                borderWidth: useLocation ? 1 : 0,
+                borderColor: useLocation ? 'rgba(59,130,246,0.5)' : 'transparent'
               }
             ]}
-            onPress={getUserLocation}
+            onPress={toggleLocation}
             disabled={locationLoading}
           >
             {locationLoading ? (
-              <ActivityIndicator size={20} color={theme.colors.secondary} />
+              <ActivityIndicator size={16} color={theme.colors.secondary} />
             ) : (
               <MapPin 
-                size={20} 
+                size={16} 
                 color={useLocation ? theme.colors.secondary : theme.colors.foreground} 
               />
+            )}
+            {useLocation && !locationLoading && (
+              <Text style={[tw`ml-1 text-xs font-medium`, { color: theme.colors.secondary }]}>
+                ON
+              </Text>
             )}
           </TouchableOpacity>
           
@@ -944,6 +1012,19 @@ export default function BrowsePage() {
             <Filter size={20} color={theme.colors.foreground} />
           </TouchableOpacity>
         </View>
+
+        {/* Location Status Indicator */}
+        {isLocationAvailable && (
+          <View style={[
+            tw`mb-3 p-3 rounded-xl flex-row items-center justify-center`,
+            { backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)' }
+          ]}>
+            <MapPin size={16} color={theme.colors.secondary} />
+            <Text style={[tw`ml-2 text-sm font-medium`, { color: theme.colors.secondary }]}>
+              Showing barbers sorted by distance from your location
+            </Text>
+          </View>
+        )}
 
         {/* Filters */}
         {showFilters && (
@@ -1142,12 +1223,16 @@ export default function BrowsePage() {
                             <Text style={[tw`text-sm ml-2`, { color: 'rgba(255,255,255,0.7)' }]}>
                               {barber.location}
                             </Text>
-                            {useLocation && barber.distance !== undefined && (
-                              <Text style={[tw`text-sm ml-2`, { color: theme.colors.secondary }]}>
-                                • {barber.distance < 1 
-                                    ? `${Math.round(barber.distance * 1000)}m` 
-                                    : `${barber.distance.toFixed(1)}km`}
-                              </Text>
+                            {isLocationAvailable && barber.distance !== undefined && (
+                              <View style={tw`flex-row items-center ml-2`}>
+                                <View style={[
+                                  tw`w-1 h-1 rounded-full mr-1`,
+                                  { backgroundColor: theme.colors.secondary }
+                                ]} />
+                                <Text style={[tw`text-sm font-medium`, { color: theme.colors.secondary }]}>
+                                  {formatDistance(barber.distance)}
+                                </Text>
+                              </View>
                             )}
                           </View>
                         )}

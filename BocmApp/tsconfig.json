@@ -23,5 +23,13 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "../src/**/*",
+    "../future-features/**/*",
+    "../cypress/**/*",
+    "../docs/**/*",
+    "../DBDocs/**/*",
+    "../scripts/**/*"
   ]
 }

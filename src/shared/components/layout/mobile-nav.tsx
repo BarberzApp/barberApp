@@ -1,21 +1,50 @@
 "use client"
 
 import * as React from "react"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
 import { Home, Search, Settings as SettingsIcon, Calendar, User, Video, DollarSign, Users, LogOut } from "lucide-react"
 import { useAuth } from "@/shared/hooks/use-auth-zustand"
 import { cn } from "@/shared/lib/utils"
 
 export function MobileNav() {
-  const router = useRouter()
-  const pathname = usePathname() || ""
+  const [pathname, setPathname] = useState<string>('')
   const { user, logout } = useAuth()
 
-  // usePathname updates automatically on route changes
+  // Update pathname when component mounts and when route changes
+  useEffect(() => {
+    // Set initial pathname
+    setPathname(window.location.pathname);
 
-  // usePathname already updates on route change; no window listeners needed
+    // Listen for route changes
+    const handleRouteChange = () => {
+      setPathname(window.location.pathname);
+    };
+
+    // Add event listener for popstate (back/forward navigation)
+    window.addEventListener('popstate', handleRouteChange);
+
+    // Listen for navigation events
+    const handleNavigation = () => {
+      // Small delay to ensure the route has changed
+      setTimeout(() => {
+        setPathname(window.location.pathname);
+      }, 0);
+    };
+
+    // Listen for clicks on navigation links
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A' || target.closest('a')) {
+        handleNavigation();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+      document.removeEventListener('click', handleNavigation);
+    };
+  }, []);
 
   const baseNavItems = [
     { name: "Browse", href: "/browse", icon: Search },
