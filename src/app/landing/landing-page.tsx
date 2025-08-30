@@ -136,7 +136,7 @@ export default function LandingPage() {
     {
       number: "03",
       title: "Reach System",
-      description: "Expand your client base with our upcoming Reach System—get discovered by more clients and grow your business faster.",
+      description: "Get discovered by clients through our on-demand marketplace—customers browse, book, and you get paid for every service delivered.",
       icon: Zap,
       color: "bg-secondary/20 text-secondary",
       beta: true
