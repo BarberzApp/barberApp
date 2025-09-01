@@ -382,7 +382,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden mb-[200px] md:mb-0 max-h-[90vh] md:max-h-[85vh] sm:max-h-[80vh]">
+      <DialogContent className="max-w-2xl w-full bg-black border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-0 overflow-hidden mb-[200px] md:mb-0 max-h-[95vh] md:max-h-[90vh] sm:max-h-[85vh]">
         {/* Header */}
         <div className="relative p-6 border-b border-white/10">
           <div className="flex items-center justify-between mb-4">
@@ -429,10 +429,10 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
           </div>
         </div>
 
-        <div className="p-6 space-y-6 max-h-[45vh] sm:max-h-[50vh] md:max-h-[70vh] overflow-y-auto pb-8 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+        <div className="p-6 space-y-6 max-h-[50vh] sm:max-h-[55vh] md:max-h-[75vh] lg:max-h-[80vh] overflow-y-auto pb-40 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent scrollbar-thumb-rounded-full scrollbar-track-rounded-full scroll-smooth hover:scrollbar-thumb-white/30 transition-all duration-200">
           {/* Step 1: Service Selection */}
           {currentStep === 1 && (
-            <div className="space-y-6">
+            <div className="space-y-6 pb-8">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Scissors className="h-8 w-8 text-secondary" />
@@ -504,7 +504,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
           {/* Step 2: Date & Time Selection */}
           {currentStep === 2 && (
-            <div className="space-y-6">
+            <div className="space-y-6 pb-8">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CalendarIcon className="h-8 w-8 text-secondary" />
@@ -604,7 +604,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
 
                      {/* Step 3: Guest Information */}
            {currentStep === 3 && (
-             <div className="space-y-6">
+             <div className="space-y-6 pb-8">
                <div className="text-center mb-6">
                  <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                    <User className="h-8 w-8 text-secondary" />
@@ -683,7 +683,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                       
                      {/* Step 4: Review & Payment */}
            {currentStep === 4 && (
-             <form onSubmit={handleSubmit} className="space-y-6">
+             <form onSubmit={handleSubmit} className="space-y-6 pb-8">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CreditCard className="h-8 w-8 text-secondary" />
@@ -829,7 +829,7 @@ export function BookingForm({ isOpen, onClose, selectedDate, barberId, onBooking
                 type="button" 
                 onClick={handleNextStep}
                 disabled={!canProceed()}
-                className="flex-1 bg-secondary text-black font-semibold rounded-xl hover:bg-secondary/90"
+                className="flex-1 bg-secondary text-black font-semibold rounded-xl hover:bg-secondary/90 relative z-10"
               >
                 Continue
                 <ArrowRight className="h-4 w-4 ml-2" />
