@@ -684,7 +684,17 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-12 bg-white/5 backdrop-blur-sm border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center">
+          <div className="text-center space-y-6">
+            {/* Support Button */}
+            <div className="flex justify-center">
+              <Link href="/support">
+                <Button className="bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-secondary/30 transition-all duration-300 rounded-xl px-6 py-3 font-semibold">
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Need Help? Contact Support
+                </Button>
+              </Link>
+            </div>
+            
             <p className="text-white/60 text-sm">
               © 2025 BOCM. All rights reserved. The future of booking.
             </p>
