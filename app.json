@@ -1,5 +1,13 @@
 {
   "ios": {
-    "bundleIdentifier": "com.yaseen.khalil.barber-app"
+    "bundleIdentifier": "com.yaseen.khalil.barber-app",
+    "infoPlist": {
+      "ITSAppUsesNonExemptEncryption": false
+    }
+  },
+  "extra": {
+    "eas": {
+      "projectId": "c5b198af-cdb9-4280-912e-edc958488eef"
+    }
   }
 }
